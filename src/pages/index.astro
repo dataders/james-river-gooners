@@ -3,35 +3,13 @@ import Base from '../layouts/Base.astro';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// Read gooners.js at build time so we can inline it in the bookmarklet
-// (Cannon's CSP blocks loading scripts from external domains)
 const goonersScript = readFileSync(resolve('public/gooners.js'), 'utf-8');
 
-// Category definitions: label, default state
-const categories = [
-  // User wants these ON by default
-  { label: 'Furniture', group: 'show', on: true },
-  { label: 'Home Goods', group: 'show', on: true },
-  { label: 'Appliances', group: 'show', on: true },
-  { label: 'Tools', group: 'show', on: true },
-  { label: 'Outdoor', group: 'show', on: true },
-  { label: 'Sporting Goods', group: 'show', on: true },
-  { label: 'Electronics', group: 'show', on: true },
-  { label: 'Computers', group: 'show', on: true },
-  { label: 'Books', group: 'show', on: true },
-  { label: 'Vinyl', group: 'show', on: true },
-  { label: 'Collectibles', group: 'show', on: true },
-  { label: 'Art', group: 'show', on: true },
-  { label: 'Antiques', group: 'show', on: true },
-
-  // User wants these OFF by default
-  { label: 'Coins', group: 'hide', on: false },
-  { label: 'Currency', group: 'hide', on: false },
-  { label: 'Jewelry', group: 'hide', on: false },
-  { label: 'Watches', group: 'hide', on: false },
-  { label: 'Guns', group: 'hide', on: false },
-  { label: 'Ammo', group: 'hide', on: false },
-  { label: 'Firearms', group: 'hide', on: false },
+// Categories to exclude by default
+const excludeCategories = [
+  'Coins', 'Currency', 'Jewelry', 'Watches',
+  'Guns', 'Ammo', 'Firearms', 'Gemstones',
+  'Sterling', 'silverplate',
 ];
 ---
 
@@ -43,7 +21,7 @@ const categories = [
   <div class="steps">
     <div class="step">
       <div class="step-num">1</div>
-      <div class="step-text">Pick the categories you care about below</div>
+      <div class="step-text">Edit your exclude list below (categories you don't want to see)</div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
@@ -55,37 +33,17 @@ const categories = [
     </div>
   </div>
 
-  <h2>Categories</h2>
-  <p>Toggle categories on/off. Crossed-out categories will be hidden when you use the bookmarklet.</p>
+  <h2>Exclude These Categories</h2>
+  <p>Items matching these terms will be hidden. Click to remove, or type to add new ones.</p>
 
-  <div class="cat-group">
-    <div class="cat-group-label">Show these</div>
-    <div class="cat-chips" id="show-chips">
-      {categories.filter(c => c.group === 'show').map(c => (
-        <button
-          class={`cat-chip ${c.on ? 'active' : 'excluded'}`}
-          data-label={c.label}
-          data-on={c.on ? 'true' : 'false'}
-        >
-          {c.label}
-        </button>
-      ))}
-    </div>
+  <div class="cat-chips" id="exclude-chips">
+    {excludeCategories.map(cat => (
+      <button class="cat-chip excluded" data-label={cat}>{cat} &times;</button>
+    ))}
   </div>
-
-  <div class="cat-group">
-    <div class="cat-group-label">Hide these</div>
-    <div class="cat-chips" id="hide-chips">
-      {categories.filter(c => c.group === 'hide').map(c => (
-        <button
-          class={`cat-chip ${c.on ? 'active' : 'excluded'}`}
-          data-label={c.label}
-          data-on={c.on ? 'true' : 'false'}
-        >
-          {c.label}
-        </button>
-      ))}
-    </div>
+  <div style="margin-top:10px;display:flex;gap:8px;">
+    <input type="text" id="add-exclude" class="add-input" placeholder="Add category term..." />
+    <button id="add-btn" class="add-btn">Add</button>
   </div>
 
   <h2>Your Bookmarklet</h2>
@@ -125,58 +83,50 @@ const categories = [
   </div>
 
   <script define:vars={{ goonersScript }}>
-    // -----------------------------------------------------------------------
-    // Bookmarklet generator — inlines the full gooners.js script
-    // (Cannon's CSP blocks loading scripts from external domains,
-    //  but allows unsafe-inline and unsafe-eval)
-    // -----------------------------------------------------------------------
-    const chips = document.querySelectorAll('.cat-chip');
+    const chipsContainer = document.getElementById('exclude-chips');
     const bookmarkletLink = document.getElementById('bookmarklet');
     const copyBtn = document.getElementById('copy-btn');
+    const addInput = document.getElementById('add-exclude');
+    const addBtn = document.getElementById('add-btn');
 
     function getExcluded() {
-      const excluded = [];
-      chips.forEach(chip => {
-        if (chip.dataset.on === 'false') {
-          excluded.push(chip.dataset.label);
-        }
-      });
-      return excluded;
-    }
-
-    function getIncluded() {
-      const included = [];
-      chips.forEach(chip => {
-        if (chip.dataset.on === 'true') {
-          included.push(chip.dataset.label);
-        }
-      });
-      return included;
+      return Array.from(chipsContainer.querySelectorAll('.cat-chip'))
+        .map(chip => chip.dataset.label);
     }
 
     function buildBookmarklet() {
-      const config = JSON.stringify({
-        exclude: getExcluded(),
-        include: getIncluded(),
-      });
-
-      // Inline the full script — CSP on Cannon's site blocks external script loading
-      // but allows unsafe-inline, so we eval the script directly
+      const config = JSON.stringify({ exclude: getExcluded() });
       const code = `javascript:(function(){window.__gooners_loaded=false;window.__gooners_config=${config};eval(${JSON.stringify(goonersScript)});})();`;
-
       bookmarkletLink.href = code;
       return code;
     }
 
-    // Toggle chip state on click
-    chips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        const isOn = chip.dataset.on === 'true';
-        chip.dataset.on = isOn ? 'false' : 'true';
-        chip.classList.toggle('active', !isOn);
-        chip.classList.toggle('excluded', isOn);
-        buildBookmarklet();
-      });
+    function addChip(label) {
+      const btn = document.createElement('button');
+      btn.className = 'cat-chip excluded';
+      btn.dataset.label = label;
+      btn.textContent = label + ' \u00d7';
+      btn.addEventListener('click', () => { btn.remove(); buildBookmarklet(); });
+      chipsContainer.appendChild(btn);
+      buildBookmarklet();
+    }
+
+    // Wire up existing chips
+    chipsContainer.querySelectorAll('.cat-chip').forEach(chip => {
+      chip.addEventListener('click', () => { chip.remove(); buildBookmarklet(); });
+    });
+
+    // Add new exclude term
+    function addFromInput() {
+      const val = addInput.value.trim();
+      if (val && !getExcluded().includes(val)) {
+        addChip(val);
+        addInput.value = '';
+      }
+    }
+    addBtn.addEventListener('click', addFromInput);
+    addInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addFromInput();
     });
 
     // Copy button
@@ -187,7 +137,6 @@ const categories = [
         copyBtn.textContent = 'Copied!';
         setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
       } catch {
-        // Fallback
         const ta = document.createElement('textarea');
         ta.value = code;
         document.body.appendChild(ta);
@@ -199,12 +148,8 @@ const categories = [
       }
     });
 
-    // Prevent bookmarklet link from navigating when clicked on this page
-    bookmarkletLink.addEventListener('click', (e) => {
-      e.preventDefault();
-    });
+    bookmarkletLink.addEventListener('click', (e) => { e.preventDefault(); });
 
-    // Initial build
     buildBookmarklet();
   </script>
 </Base>

@@ -6,7 +6,7 @@
  * filterable/searchable view with category chips.
  *
  * Config via window.__gooners_config:
- *   { exclude: ["Coins", "Jewelry", ...], include: ["Furniture", ...] }
+ *   { exclude: ["Coins", "Jewelry", ...] }
  */
 (function () {
   'use strict';
@@ -14,7 +14,7 @@
   if (window.__gooners_loaded) return;
   window.__gooners_loaded = true;
 
-  var config = window.__gooners_config || { exclude: [], include: [] };
+  var config = window.__gooners_config || { exclude: [] };
 
   // ---------------------------------------------------------------------------
   // DOM Selectors for Auction Mobility / Maxanet (as of 2026-03)

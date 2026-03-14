@@ -143,8 +143,42 @@ a {
 
 .cat-chip.excluded {
   background: var(--chip-off);
-  color: #666;
-  text-decoration: line-through;
+  color: #aaa;
+}
+
+.cat-chip.excluded:hover {
+  background: #4a1a1a;
+  border-color: #e94560;
+}
+
+.add-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.add-input:focus {
+  border-color: var(--accent);
+}
+
+.add-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.add-btn:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 /* Bookmarklet area */
