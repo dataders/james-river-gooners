@@ -1,0 +1,30 @@
+name: Scrape Auction Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      auction_url:
+        description: 'Full Cannon''s auction URL (with AuctionId and all params)'
+        required: true
+        type: string
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Run scraper
+        run: |
+          cd scraper
+          uv run --with requests --with beautifulsoup4 python scrape.py "${{ inputs.auction_url }}"
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/
+          git diff --staged --quiet || git commit -m "data: update scraped auction data"
+          git push
