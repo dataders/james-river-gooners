@@ -82,24 +82,35 @@
   // Discover pagination URLs from the current page
   // ---------------------------------------------------------------------------
   function getPageUrls() {
-    // Find all pagination links (the numbered page links)
-    var pageLinks = document.querySelectorAll('.pagination a[href], a[onclick*="pageNumber"], a[href*="pageNumber"]');
     var urls = {};
 
-    // Also try the simpler pagination structure
-    var allLinks = document.querySelectorAll('a');
-    for (var i = 0; i < allLinks.length; i++) {
-      var a = allLinks[i];
+    // Cannon's uses .page-item links with /Public/Auction/GetAuctionItems?page=N
+    var pageItemLinks = document.querySelectorAll('.page-item a[href*="GetAuctionItems"], .pagination a[href*="GetAuctionItems"]');
+    for (var i = 0; i < pageItemLinks.length; i++) {
+      var a = pageItemLinks[i];
       var href = a.getAttribute('href');
       var text = a.textContent.trim();
 
-      // Look for numbered page links (1, 2, 3, etc.)
-      if (href && /^\d+$/.test(text) && href.indexOf('pageNumber') !== -1) {
+      if (/^\d+$/.test(text)) {
         urls[text] = href;
       }
-      // Also grab "Last" link to know total pages
-      if (href && text === 'Last' && href.indexOf('pageNumber') !== -1) {
+      if (text === 'Last' || text === '»') {
         urls['Last'] = href;
+      }
+    }
+
+    // If we found a "Last" link, extract the max page number and generate all URLs
+    if (urls['Last']) {
+      var lastMatch = urls['Last'].match(/[?&]page=(\d+)/);
+      if (lastMatch) {
+        var lastPage = parseInt(lastMatch[1]);
+        // Build URLs for all pages using the same URL pattern
+        var baseUrl = urls['Last'].replace(/([?&])page=\d+/, '$1page=');
+        for (var p = 1; p <= lastPage; p++) {
+          if (!urls[String(p)]) {
+            urls[String(p)] = baseUrl + p;
+          }
+        }
       }
     }
 
@@ -123,7 +134,18 @@
       var html = await resp.text();
       var parser = new DOMParser();
       var doc = parser.parseFromString(html, 'text/html');
-      return extractItemsFromDoc(doc);
+      var items = extractItemsFromDoc(doc);
+
+      // If no items found, the endpoint may return an HTML fragment.
+      // Wrap it in a container and try again.
+      if (items.length === 0 && html.indexOf('col-lg-4') !== -1) {
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        // Create a minimal doc-like object with querySelector/querySelectorAll
+        items = extractItemsFromDoc(wrapper);
+      }
+
+      return items;
     } catch (e) {
       console.warn('[Gooners] Error fetching page:', url, e);
       return [];
