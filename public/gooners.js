@@ -17,178 +17,103 @@
   var config = window.__gooners_config || { exclude: [], include: [] };
 
   // ---------------------------------------------------------------------------
-  // DOM Selectors — update these if Auction Mobility changes their markup
+  // DOM Selectors — based on Auction Mobility / Maxanet markup as of 2026-03
   // ---------------------------------------------------------------------------
-  // These are best-guess selectors for the Auction Mobility platform.
-  // If they don't match, discovery mode kicks in and logs diagnostics.
   var SELECTORS = {
-    // The grid/list container that holds all auction item cards
-    itemContainer: [
-      '.lot-list',
-      '.auction-items',
-      '#lotList',
-      '#auctionItemsList',
-      '[class*="lot-list"]',
-      '[class*="item-list"]',
-      '[class*="auction-item"]',
-    ],
-    // Individual item card
-    itemCard: [
-      '.lot-row',
-      '.lot-item',
-      '.auction-item',
-      '.item-card',
-      '[class*="lot-row"]',
-      '[class*="lot-item"]',
-      '[class*="lotRow"]',
-    ],
-    // Title text within a card
-    itemTitle: [
-      '.lot-title',
-      '.item-title',
-      '.lot-name',
-      'h3',
-      'h4',
-      '[class*="title"]',
-      '[class*="name"]',
-    ],
-    // Current bid amount within a card
-    itemBid: [
-      '.current-bid',
-      '.bid-amount',
-      '.lot-bid',
-      '[class*="bid"]',
-      '[class*="price"]',
-    ],
-    // Image within a card
-    itemImage: ['img'],
-    // Category label within a card
-    itemCategory: [
-      '.category',
-      '.lot-category',
-      '[class*="category"]',
-      '[class*="cat-"]',
-    ],
-    // Link to item detail page
-    itemLink: ['a[href*="AuctionItem"]', 'a[href*="LotDetail"]', 'a[href*="lot"]', 'a'],
+    // Container: Bootstrap row holding all item grid columns
+    itemContainer: '.row.px-2',
+    // Each item card is a Bootstrap column
+    itemCard: ':scope > .col-lg-4',
+    // Category stored in hidden input named Types{index}
+    itemCategory: 'input[name^="Types"]',
+    // Item name (e.g. "C4491")
+    itemTitle: 'h4.auction-ItemGrid-Title a',
+    // Full description
+    itemDescription: '.catelog-desc',
+    // Lot number text
+    itemLot: 'span.public-item-font-color',
+    // Current bid display
+    itemBid: 'span[id^="CurrentBidAmount_"]',
+    // Current bid amount from hidden input
+    itemBidValue: 'input[name^="CurrentAmount_"]',
+    // First (active) carousel image
+    itemImage: '.carousel-item.active img',
+    // Link to detail page
+    itemLink: 'a[href*="AuctionItemDetail"]',
+    // Time remaining countdown
+    itemTimer: '.remain-time',
+    // Total bids hidden input
+    itemTotalBids: 'input[name^="TotalBids"]',
+    // Category filter dropdown on the original page
+    categoryDropdown: '#CategoryFilter',
   };
-
-  // ---------------------------------------------------------------------------
-  // Selector resolution
-  // ---------------------------------------------------------------------------
-  function findContainer() {
-    for (var i = 0; i < SELECTORS.itemContainer.length; i++) {
-      var el = document.querySelector(SELECTORS.itemContainer[i]);
-      if (el) return el;
-    }
-    return null;
-  }
-
-  function findCards(container) {
-    for (var i = 0; i < SELECTORS.itemCard.length; i++) {
-      var cards = container.querySelectorAll(SELECTORS.itemCard[i]);
-      if (cards.length > 0) return { selector: SELECTORS.itemCard[i], cards: cards };
-    }
-    // Fallback: direct children that look like repeated items
-    var children = container.children;
-    if (children.length > 3) return { selector: ':scope > *', cards: children };
-    return null;
-  }
-
-  function findInCard(card, selectorList) {
-    for (var i = 0; i < selectorList.length; i++) {
-      var el = card.querySelector(selectorList[i]);
-      if (el) return el;
-    }
-    return null;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Discovery mode — logs DOM structure when selectors fail
-  // ---------------------------------------------------------------------------
-  function runDiscovery() {
-    console.group('%c[Gooners] Discovery Mode', 'color: #e74c3c; font-size: 14px;');
-    console.log('Could not find the auction items container. Logging page structure to help identify selectors.');
-    console.log('');
-
-    // Log all elements with many children (likely containers)
-    var allElements = document.querySelectorAll('*');
-    var candidates = [];
-    for (var i = 0; i < allElements.length; i++) {
-      var el = allElements[i];
-      if (el.children.length >= 5) {
-        candidates.push({
-          tag: el.tagName,
-          id: el.id,
-          className: el.className,
-          childCount: el.children.length,
-          firstChildTag: el.children[0] ? el.children[0].tagName : 'none',
-          firstChildClass: el.children[0] ? el.children[0].className : 'none',
-        });
-      }
-    }
-    candidates.sort(function (a, b) { return b.childCount - a.childCount; });
-    console.log('Elements with 5+ children (likely item containers):');
-    console.table(candidates.slice(0, 20));
-
-    // Log all classes used on the page
-    var classCounts = {};
-    for (var j = 0; j < allElements.length; j++) {
-      var classes = allElements[j].classList;
-      for (var k = 0; k < classes.length; k++) {
-        classCounts[classes[k]] = (classCounts[classes[k]] || 0) + 1;
-      }
-    }
-    var sortedClasses = Object.keys(classCounts)
-      .map(function (c) { return { class: c, count: classCounts[c] }; })
-      .sort(function (a, b) { return b.count - a.count; });
-    console.log('Most common CSS classes on this page:');
-    console.table(sortedClasses.slice(0, 40));
-
-    console.log('');
-    console.log('Next steps: identify the item container and card selectors from the data above,');
-    console.log('then update the SELECTORS object at the top of gooners.js.');
-    console.groupEnd();
-
-    // Inject a visible banner so user knows it ran
-    injectDiscoveryBanner();
-  }
-
-  function injectDiscoveryBanner() {
-    var banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;padding:16px;font:16px/1.4 system-ui,sans-serif;text-align:center;';
-    banner.innerHTML = '<strong>Gooners:</strong> Discovery mode &mdash; selectors need updating. Open browser console (F12) for details.';
-    document.body.prepend(banner);
-  }
 
   // ---------------------------------------------------------------------------
   // Parse items from the page
   // ---------------------------------------------------------------------------
-  function parseItems(container, cardResult) {
+  function parseItems() {
+    var container = document.querySelector(SELECTORS.itemContainer);
+    if (!container) {
+      console.warn('[Gooners] Could not find item container (.row.px-2)');
+      return [];
+    }
+
+    var cards = container.querySelectorAll(SELECTORS.itemCard);
+    if (!cards.length) {
+      console.warn('[Gooners] No item cards found');
+      return [];
+    }
+
     var items = [];
-    var cards = cardResult.cards;
     for (var i = 0; i < cards.length; i++) {
       var card = cards[i];
-      var titleEl = findInCard(card, SELECTORS.itemTitle);
-      var bidEl = findInCard(card, SELECTORS.itemBid);
-      var imgEl = findInCard(card, SELECTORS.itemImage);
-      var catEl = findInCard(card, SELECTORS.itemCategory);
-      var linkEl = findInCard(card, SELECTORS.itemLink);
+
+      var catInput = card.querySelector(SELECTORS.itemCategory);
+      var titleEl = card.querySelector(SELECTORS.itemTitle);
+      var descEl = card.querySelector(SELECTORS.itemDescription);
+      var lotEl = card.querySelector(SELECTORS.itemLot);
+      var bidEl = card.querySelector(SELECTORS.itemBid);
+      var bidValEl = card.querySelector(SELECTORS.itemBidValue);
+      var imgEl = card.querySelector(SELECTORS.itemImage);
+      var linkEl = card.querySelector(SELECTORS.itemLink);
+      var timerEl = card.querySelector(SELECTORS.itemTimer);
+      var bidsEl = card.querySelector(SELECTORS.itemTotalBids);
 
       items.push({
         element: card,
+        category: catInput ? catInput.value : '',
         title: titleEl ? titleEl.textContent.trim() : '',
+        description: descEl ? descEl.textContent.trim() : '',
+        lot: lotEl ? lotEl.textContent.trim() : '',
         bid: bidEl ? bidEl.textContent.trim() : '',
-        image: imgEl ? (imgEl.src || imgEl.getAttribute('data-src') || '') : '',
-        category: catEl ? catEl.textContent.trim() : '',
+        bidValue: bidValEl ? parseFloat(bidValEl.value) || 0 : 0,
+        image: imgEl ? (imgEl.src || '') : '',
         link: linkEl ? linkEl.href : '',
+        timeLeft: timerEl ? timerEl.textContent.trim() : '',
+        totalBids: bidsEl ? parseInt(bidsEl.value) || 0 : 0,
       });
     }
+
     return items;
   }
 
   // ---------------------------------------------------------------------------
-  // Category extraction and matching
+  // Get all categories from the page's own category dropdown
+  // ---------------------------------------------------------------------------
+  function getSiteCategories() {
+    var select = document.querySelector(SELECTORS.categoryDropdown);
+    if (!select) return [];
+    var cats = [];
+    for (var i = 0; i < select.options.length; i++) {
+      var val = select.options[i].value;
+      var text = select.options[i].textContent.trim();
+      if (val && text) cats.push(text);
+    }
+    return cats;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Category extraction from items and matching logic
   // ---------------------------------------------------------------------------
   function extractCategories(items) {
     var cats = {};
@@ -199,11 +124,11 @@
     return Object.keys(cats).sort();
   }
 
-  function matchesCategory(itemCategory, categoryList) {
-    if (!itemCategory) return false;
-    var lower = itemCategory.toLowerCase();
-    for (var i = 0; i < categoryList.length; i++) {
-      if (lower.indexOf(categoryList[i].toLowerCase()) !== -1) return true;
+  function matchesAnyTerm(text, terms) {
+    if (!text) return false;
+    var lower = text.toLowerCase();
+    for (var i = 0; i < terms.length; i++) {
+      if (lower.indexOf(terms[i].toLowerCase()) !== -1) return true;
     }
     return false;
   }
@@ -227,9 +152,12 @@
         show = false;
       }
 
-      // Search filter
-      if (show && query && item.title.toLowerCase().indexOf(query) === -1) {
-        show = false;
+      // Search filter — matches against title, description, and lot
+      if (show && query) {
+        var searchable = (item.title + ' ' + item.description + ' ' + item.lot).toLowerCase();
+        if (searchable.indexOf(query) === -1) {
+          show = false;
+        }
       }
 
       item.element.style.display = show ? '' : 'none';
@@ -254,9 +182,9 @@
     host.id = 'gooners-root';
     var shadow = host.attachShadow({ mode: 'open' });
 
-    // Initialize hidden categories from config
+    // Initialize hidden categories from config exclusion list
     for (var i = 0; i < categories.length; i++) {
-      if (matchesCategory(categories[i], config.exclude)) {
+      if (matchesAnyTerm(categories[i], config.exclude)) {
         hiddenCategories[categories[i]] = true;
       }
     }
@@ -265,14 +193,15 @@
     toolbarHTML += '<div class="gooners-header">';
     toolbarHTML += '<span class="gooners-logo">Gooners</span>';
     toolbarHTML += '<span class="gooners-count"></span>';
+    toolbarHTML += '<button class="gooners-close" title="Close Gooners">&times;</button>';
     toolbarHTML += '</div>';
-    toolbarHTML += '<input type="text" class="gooners-search" placeholder="Search items..." />';
+    toolbarHTML += '<input type="text" class="gooners-search" placeholder="Search items by name, description, lot..." />';
     toolbarHTML += '<div class="gooners-chips">';
     for (var j = 0; j < categories.length; j++) {
       var cat = categories[j];
       var isHidden = !!hiddenCategories[cat];
-      toolbarHTML += '<button class="gooners-chip' + (isHidden ? ' hidden' : '') + '" data-cat="' + cat.replace(/"/g, '&quot;') + '">';
-      toolbarHTML += cat;
+      toolbarHTML += '<button class="gooners-chip' + (isHidden ? ' hidden' : '') + '" data-cat="' + escapeAttr(cat) + '">';
+      toolbarHTML += escapeHTML(cat);
       toolbarHTML += '</button>';
     }
     toolbarHTML += '</div>';
@@ -302,18 +231,38 @@
       });
     }
 
+    // Wire up close button
+    shadow.querySelector('.gooners-close').addEventListener('click', function () {
+      // Show all items again
+      for (var i = 0; i < items.length; i++) {
+        items[i].element.style.display = '';
+      }
+      host.remove();
+      window.__gooners_loaded = false;
+    });
+
     countEl = shadow.querySelector('.gooners-count');
 
     return host;
   }
 
+  function escapeHTML(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function escapeAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   function getToolbarCSS() {
     return [
+      '*, *::before, *::after { box-sizing: border-box; }',
       '.gooners-toolbar {',
-      '  position: sticky; top: 0; z-index: 99998;',
+      '  position: fixed; top: 0; left: 0; right: 0; z-index: 99998;',
       '  background: #1a1a2e; color: #eee;',
       '  padding: 12px 16px; font-family: system-ui, -apple-system, sans-serif;',
       '  box-shadow: 0 2px 12px rgba(0,0,0,0.3);',
+      '  max-height: 50vh; overflow-y: auto;',
       '}',
       '.gooners-header {',
       '  display: flex; align-items: center; justify-content: space-between;',
@@ -323,8 +272,13 @@
       '  font-size: 18px; font-weight: 700; color: #e94560;',
       '}',
       '.gooners-count {',
-      '  font-size: 13px; color: #999;',
+      '  font-size: 13px; color: #999; flex: 1; text-align: center;',
       '}',
+      '.gooners-close {',
+      '  background: none; border: none; color: #999; font-size: 22px;',
+      '  cursor: pointer; padding: 0 4px; line-height: 1;',
+      '}',
+      '.gooners-close:hover { color: #e94560; }',
       '.gooners-search {',
       '  width: 100%; box-sizing: border-box;',
       '  padding: 10px 14px; border: 1px solid #333; border-radius: 8px;',
@@ -340,6 +294,7 @@
       '  padding: 6px 12px; border-radius: 16px; border: 1px solid #333;',
       '  background: #0f3460; color: #eee; font-size: 13px;',
       '  cursor: pointer; transition: all 0.15s;',
+      '  white-space: nowrap;',
       '}',
       '.gooners-chip:hover { border-color: #e94560; }',
       '.gooners-chip.hidden {',
@@ -349,33 +304,17 @@
   }
 
   // ---------------------------------------------------------------------------
-  // UI: Mobile card layout improvements (injected into main document)
+  // Push page content down so the toolbar doesn't overlap
   // ---------------------------------------------------------------------------
-  function injectCardStyles() {
-    var style = document.createElement('style');
-    style.id = 'gooners-card-styles';
-    style.textContent = [
-      '/* Gooners: Mobile card layout improvements */',
-      '@media (max-width: 768px) {',
-      '  [class*="lot-row"], [class*="lot-item"], [class*="auction-item"], .item-card {',
-      '    display: flex !important;',
-      '    flex-direction: row !important;',
-      '    align-items: flex-start !important;',
-      '    gap: 12px !important;',
-      '    padding: 12px !important;',
-      '    margin-bottom: 8px !important;',
-      '    border-bottom: 1px solid #eee !important;',
-      '  }',
-      '  [class*="lot-row"] img, [class*="lot-item"] img, [class*="auction-item"] img, .item-card img {',
-      '    width: 100px !important;',
-      '    height: 100px !important;',
-      '    object-fit: cover !important;',
-      '    border-radius: 8px !important;',
-      '    flex-shrink: 0 !important;',
-      '  }',
-      '}',
-    ].join('\n');
-    document.head.appendChild(style);
+  function addBodyPadding() {
+    var toolbar = document.querySelector('#gooners-root');
+    if (!toolbar || !toolbar.shadowRoot) return;
+    var tb = toolbar.shadowRoot.querySelector('.gooners-toolbar');
+    if (!tb) return;
+    // Give time for render
+    setTimeout(function () {
+      document.body.style.paddingTop = tb.offsetHeight + 'px';
+    }, 50);
   }
 
   // ---------------------------------------------------------------------------
@@ -384,37 +323,33 @@
   function main() {
     console.log('%c[Gooners] Initializing...', 'color: #e94560; font-size: 12px;');
 
-    var container = findContainer();
-    if (!container) {
-      console.warn('[Gooners] Could not find item container. Running discovery mode.');
-      runDiscovery();
+    var items = parseItems();
+    if (!items.length) {
+      console.warn('[Gooners] No items found on this page. Make sure you are on an auction items page.');
+      var banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;padding:16px;font:16px/1.4 system-ui,sans-serif;text-align:center;';
+      banner.innerHTML = '<strong>Gooners:</strong> No auction items found on this page. Navigate to an auction items listing page first.';
+      document.body.prepend(banner);
+      setTimeout(function () { banner.remove(); }, 5000);
+      window.__gooners_loaded = false;
       return;
     }
 
-    var cardResult = findCards(container);
-    if (!cardResult || cardResult.cards.length === 0) {
-      console.warn('[Gooners] Found container but no item cards. Running discovery mode.');
-      runDiscovery();
-      return;
-    }
+    console.log('[Gooners] Found ' + items.length + ' items');
 
-    console.log('[Gooners] Found ' + cardResult.cards.length + ' items using selector: ' + cardResult.selector);
-
-    var items = parseItems(container, cardResult);
+    // Get categories from items themselves
     var categories = extractCategories(items);
     console.log('[Gooners] Categories found:', categories);
 
     // Inject toolbar
     var toolbar = createToolbar(items, categories);
     document.body.prepend(toolbar);
-
-    // Inject card style improvements
-    injectCardStyles();
+    addBodyPadding();
 
     // Apply initial filters (exclude configured categories)
     applyFilters(items);
 
-    console.log('%c[Gooners] Ready!', 'color: #27ae60; font-size: 12px;');
+    console.log('%c[Gooners] Ready! ' + items.length + ' items loaded.', 'color: #27ae60; font-size: 12px;');
   }
 
   // Run after DOM is ready

@@ -1,7 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const SCRIPT_URL = `${import.meta.env.SITE}${import.meta.env.BASE_URL}gooners.js`;
+// Read gooners.js at build time so we can inline it in the bookmarklet
+// (Cannon's CSP blocks loading scripts from external domains)
+const goonersScript = readFileSync(resolve('public/gooners.js'), 'utf-8');
 
 // Category definitions: label, default state
 const categories = [
@@ -120,9 +124,11 @@ const categories = [
     </details>
   </div>
 
-  <script define:vars={{ SCRIPT_URL }}>
+  <script define:vars={{ goonersScript }}>
     // -----------------------------------------------------------------------
-    // Bookmarklet generator — rebuilds the javascript: URL when chips toggle
+    // Bookmarklet generator — inlines the full gooners.js script
+    // (Cannon's CSP blocks loading scripts from external domains,
+    //  but allows unsafe-inline and unsafe-eval)
     // -----------------------------------------------------------------------
     const chips = document.querySelectorAll('.cat-chip');
     const bookmarkletLink = document.getElementById('bookmarklet');
@@ -154,7 +160,9 @@ const categories = [
         include: getIncluded(),
       });
 
-      const code = `javascript:(function(){window.__gooners_config=${config};var s=document.createElement('script');s.src='${SCRIPT_URL}?v='+Date.now();document.body.appendChild(s);})();`;
+      // Inline the full script — CSP on Cannon's site blocks external script loading
+      // but allows unsafe-inline, so we eval the script directly
+      const code = `javascript:(function(){window.__gooners_loaded=false;window.__gooners_config=${config};eval(${JSON.stringify(goonersScript)});})();`;
 
       bookmarkletLink.href = code;
       return code;
