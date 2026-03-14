@@ -1,0 +1,202 @@
+---
+import Base from '../layouts/Base.astro';
+
+const SCRIPT_URL = `${import.meta.env.SITE}${import.meta.env.BASE_URL}gooners.js`;
+
+// Category definitions: label, default state
+const categories = [
+  // User wants these ON by default
+  { label: 'Furniture', group: 'show', on: true },
+  { label: 'Home Goods', group: 'show', on: true },
+  { label: 'Appliances', group: 'show', on: true },
+  { label: 'Tools', group: 'show', on: true },
+  { label: 'Outdoor', group: 'show', on: true },
+  { label: 'Sporting Goods', group: 'show', on: true },
+  { label: 'Electronics', group: 'show', on: true },
+  { label: 'Computers', group: 'show', on: true },
+  { label: 'Books', group: 'show', on: true },
+  { label: 'Vinyl', group: 'show', on: true },
+  { label: 'Collectibles', group: 'show', on: true },
+  { label: 'Art', group: 'show', on: true },
+  { label: 'Antiques', group: 'show', on: true },
+
+  // User wants these OFF by default
+  { label: 'Coins', group: 'hide', on: false },
+  { label: 'Currency', group: 'hide', on: false },
+  { label: 'Jewelry', group: 'hide', on: false },
+  { label: 'Watches', group: 'hide', on: false },
+  { label: 'Guns', group: 'hide', on: false },
+  { label: 'Ammo', group: 'hide', on: false },
+  { label: 'Firearms', group: 'hide', on: false },
+];
+---
+
+<Base title="Gooners — Better Cannon's Auction Browsing">
+  <h1>Gooners</h1>
+  <p class="tagline">A better way to browse Cannon's Auctions. Search, filter, and actually enjoy mobile.</p>
+
+  <h2>How It Works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Pick the categories you care about below</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Drag the bookmarklet to your bookmarks bar (or copy it on mobile)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Visit a <a href="https://bid.cannonsauctions.com/Public/Auction/All" target="_blank" rel="noopener">Cannon's auction page</a> and click the bookmarklet</div>
+    </div>
+  </div>
+
+  <h2>Categories</h2>
+  <p>Toggle categories on/off. Crossed-out categories will be hidden when you use the bookmarklet.</p>
+
+  <div class="cat-group">
+    <div class="cat-group-label">Show these</div>
+    <div class="cat-chips" id="show-chips">
+      {categories.filter(c => c.group === 'show').map(c => (
+        <button
+          class={`cat-chip ${c.on ? 'active' : 'excluded'}`}
+          data-label={c.label}
+          data-on={c.on ? 'true' : 'false'}
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <div class="cat-group">
+    <div class="cat-group-label">Hide these</div>
+    <div class="cat-chips" id="hide-chips">
+      {categories.filter(c => c.group === 'hide').map(c => (
+        <button
+          class={`cat-chip ${c.on ? 'active' : 'excluded'}`}
+          data-label={c.label}
+          data-on={c.on ? 'true' : 'false'}
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <h2>Your Bookmarklet</h2>
+  <div class="bookmarklet-area">
+    <a id="bookmarklet" class="bookmarklet-link" href="#">
+      Gooners
+    </a>
+    <p style="margin-top:12px;font-size:0.85rem;color:#888;">
+      Drag this to your bookmarks bar
+    </p>
+    <button id="copy-btn" class="copy-btn">Copy to Clipboard</button>
+  </div>
+
+  <h2>Mobile Setup</h2>
+  <div class="instructions">
+    <details>
+      <summary>iOS Safari</summary>
+      <ol>
+        <li>Tap <strong>Copy to Clipboard</strong> above</li>
+        <li>Bookmark any page (tap Share &rarr; Add Bookmark)</li>
+        <li>Go to Bookmarks, tap <strong>Edit</strong></li>
+        <li>Find the bookmark you just made, tap it</li>
+        <li>Clear the URL field and paste the copied code</li>
+        <li>Save. Now visit a Cannon's auction and tap the bookmark.</li>
+      </ol>
+    </details>
+    <details style="margin-top:8px;">
+      <summary>Android Chrome</summary>
+      <ol>
+        <li>Tap <strong>Copy to Clipboard</strong> above</li>
+        <li>Bookmark any page</li>
+        <li>Open Bookmarks, long-press the bookmark &rarr; Edit</li>
+        <li>Replace the URL with the copied code</li>
+        <li>Save. Now visit a Cannon's auction and select the bookmark from the address bar.</li>
+      </ol>
+    </details>
+  </div>
+
+  <script define:vars={{ SCRIPT_URL }}>
+    // -----------------------------------------------------------------------
+    // Bookmarklet generator — rebuilds the javascript: URL when chips toggle
+    // -----------------------------------------------------------------------
+    const chips = document.querySelectorAll('.cat-chip');
+    const bookmarkletLink = document.getElementById('bookmarklet');
+    const copyBtn = document.getElementById('copy-btn');
+
+    function getExcluded() {
+      const excluded = [];
+      chips.forEach(chip => {
+        if (chip.dataset.on === 'false') {
+          excluded.push(chip.dataset.label);
+        }
+      });
+      return excluded;
+    }
+
+    function getIncluded() {
+      const included = [];
+      chips.forEach(chip => {
+        if (chip.dataset.on === 'true') {
+          included.push(chip.dataset.label);
+        }
+      });
+      return included;
+    }
+
+    function buildBookmarklet() {
+      const config = JSON.stringify({
+        exclude: getExcluded(),
+        include: getIncluded(),
+      });
+
+      const code = `javascript:(function(){window.__gooners_config=${config};var s=document.createElement('script');s.src='${SCRIPT_URL}?v='+Date.now();document.body.appendChild(s);})();`;
+
+      bookmarkletLink.href = code;
+      return code;
+    }
+
+    // Toggle chip state on click
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const isOn = chip.dataset.on === 'true';
+        chip.dataset.on = isOn ? 'false' : 'true';
+        chip.classList.toggle('active', !isOn);
+        chip.classList.toggle('excluded', isOn);
+        buildBookmarklet();
+      });
+    });
+
+    // Copy button
+    copyBtn.addEventListener('click', async () => {
+      const code = buildBookmarklet();
+      try {
+        await navigator.clipboard.writeText(code);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
+      } catch {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
+      }
+    });
+
+    // Prevent bookmarklet link from navigating when clicked on this page
+    bookmarkletLink.addEventListener('click', (e) => {
+      e.preventDefault();
+    });
+
+    // Initial build
+    buildBookmarklet();
+  </script>
+</Base>
