@@ -1,126 +1,83 @@
 """
 Category normalization for Cannon's Auctions (Maxanet).
 
-Maps the messy raw categories from the site into clean groups.
-Uses case-insensitive substring matching.
+Reads mappings from category_mappings.yml.
 """
 
-# Each group maps to a list of substrings that match raw category names.
-# Order matters: first match wins.
-CATEGORY_GROUPS = {
-    "Firearms": [
-        "firearm", "gun", "rifle", "pistol", "shotgun", "revolver",
-        "ammunition", "ammo", "ar-15", "ar15", "holster",
-    ],
-    "Coins & Currency": [
-        "coin", "currency", "gold eagle", "silver dollar", "morgan",
-        "peace dollar", "liberty head", "pcgs", "ngc", "mint",
-        "gold dollar", "half dollar", "quarter eagle",
-    ],
-    "Jewelry": [
-        "jewelry", "jewel", "ring", "necklace", "bracelet", "earring",
-        "pendant", "brooch", "diamond", "gemstone", "carat", "karat",
-        "watches", "watch",
-    ],
-    "Furniture": [
-        "furniture", "chair", "table", "desk", "cabinet", "dresser",
-        "bed", "sofa", "couch", "bookcase", "shelf", "armoire",
-        "sideboard", "buffet", "hutch", "nightstand", "ottoman",
-        "victorian", "chippendale", "empire", "mahogany",
-    ],
-    "Tools & Hardware": [
-        "tool", "hardware", "drill", "saw", "wrench", "socket",
-        "snap-on", "dewalt", "makita", "craftsman", "power tool",
-        "hand tool", "workshop",
-    ],
-    "Electronics": [
-        "electronic", "camera", "audio", "computer", "phone",
-        "speaker", "television", "tv", "monitor", "laptop",
-        "tablet", "stereo", "receiver", "amplifier", "lens",
-        "canon", "nikon", "sony",
-    ],
-    "Vehicles": [
-        "vehicle", "car", "truck", "trailer", "camper", "rv",
-        "boat", "motorcycle", "atv", "tractor", "van",
-        "chevy", "ford", "honda", "toyota", "dodge", "gmc",
-        "yamaha", "harley", "kawasaki", "suzuki",
-    ],
-    "Art & Decor": [
-        "art", "painting", "sculpture", "print", "lithograph",
-        "watercolor", "oil on", "decorative", "decor", "figurine",
-        "statue", "vase", "pottery", "bronze", "lladro",
-    ],
-    "Lighting & Clocks": [
-        "lighting", "lamp", "chandelier", "sconce", "lantern",
-        "clock", "timepiece",
-    ],
-    "Toys & Games": [
-        "toy", "game", "gaming", "doll", "disney", "lego",
-        "puzzle", "board game",
-    ],
-    "Fashion & Accessories": [
-        "purse", "handbag", "fashion", "clothing", "hat",
-        "scarf", "sewing",
-    ],
-    "Science & Nature": [
-        "scientific", "rock", "fossil", "mineral", "taxidermy",
-        "specimen",
-    ],
-    "Music & Media": [
-        "musical instrument", "guitar", "piano", "cd", "dvd",
-        "vinyl record",
-    ],
-    "Hobby & Aviation": [
-        "drone", "photography", "aviation", "model",
-    ],
-    "China & Glass": [
-        "china", "ceramic", "porcelain", "crystal", "glassware",
-        "glass", "stoneware", "earthenware",
-    ],
-    "Books & Ephemera": [
-        "book", "ephemera", "record", "vinyl", "album", "magazine",
-        "newspaper", "letter", "document", "map", "postcard",
-    ],
-    "Rugs & Textiles": [
-        "rug", "carpet", "linen", "textile", "quilt", "tapestry",
-        "needlepoint",
-    ],
-    "Lawn & Garden": [
-        "lawn", "garden", "outdoor", "patio", "landscape",
-        "mower", "trimmer",
-    ],
-    "Silver & Metal": [
-        "sterling", "silverplate", "silver plate", "pewter",
-        "cast iron", "copper", "brass",
-    ],
-    "Kitchen": [
-        "kitchen", "kitchenware", "appliance", "cookware",
-        "silverware", "flatware",
-    ],
-    "Sporting Goods": [
-        "sport", "fishing", "camping", "hunting", "archery",
-        "baseball", "basketball", "football", "golf", "tennis",
-        "bicycle", "bike",
-    ],
-    "Collectibles": [
-        "collectible", "antique", "vintage", "memorabilia",
-        "military", "civil war", "wwii",
-        "knife", "knives", "sword",
-    ],
-    "Home & General": [
-        "general", "holiday", "fireplace", "office",
-        "exercise", "ambulatory",
-    ],
-}
+from pathlib import Path
+
+import yaml
+
+_MAPPINGS_PATH = Path(__file__).resolve().parent / "category_mappings.yml"
+
+def _load_mappings():
+    with open(_MAPPINGS_PATH) as f:
+        return yaml.safe_load(f)
+
+_config = _load_mappings()
+
+# Build alias lookup: lowercased variant -> canonical name
+_ALIAS_LOOKUP = {}
+for canonical, variants in _config["raw_aliases"].items():
+    for v in variants:
+        _ALIAS_LOOKUP[str(v).lower().strip()] = canonical
+
+# Group mappings
+CATEGORY_GROUPS = _config["groups"]
+
+# Description keywords: list of (keyword, raw_cat, group)
+_DESCRIPTION_KEYWORDS = []
+for keyword, (raw_cat, group) in _config["description_keywords"].items():
+    _DESCRIPTION_KEYWORDS.append((str(keyword).lower(), raw_cat, group))
 
 
-def normalize_category(raw_category: str) -> str:
-    """Map a raw Maxanet category string to a clean group name."""
-    if not raw_category:
+def normalize_raw_category(raw: str) -> str:
+    """Normalize a raw category name to its canonical form."""
+    if not raw:
         return "Other"
-    lower = raw_category.lower().strip()
+    cleaned = raw.strip().strip(",").strip()
+    lower = cleaned.lower()
+    if lower in _ALIAS_LOOKUP:
+        return _ALIAS_LOOKUP[lower]
+    if "," in cleaned:
+        for part in cleaned.split(","):
+            part_lower = part.strip().lower()
+            if part_lower in _ALIAS_LOOKUP:
+                return _ALIAS_LOOKUP[part_lower]
+    return cleaned
+
+
+def infer_from_description(description: str) -> tuple[str, str] | None:
+    """Try to infer category from item description."""
+    if not description:
+        return None
+    lower = description.lower()
+    for keyword, raw_cat, group in _DESCRIPTION_KEYWORDS:
+        if keyword in lower:
+            return raw_cat, group
+    return None
+
+
+def normalize_category(raw_category: str, description: str = "") -> str:
+    """Map a raw category string to a broad group name."""
+    canonical = normalize_raw_category(raw_category)
+    lower = canonical.lower()
     for group, terms in CATEGORY_GROUPS.items():
         for term in terms:
             if term in lower:
                 return group
+    if canonical == "Other" or lower == "other":
+        result = infer_from_description(description)
+        if result:
+            return result[1]
     return "Other"
+
+
+def normalize_raw_with_description(raw_category: str, description: str = "") -> str:
+    """Normalize raw category, falling back to description inference."""
+    canonical = normalize_raw_category(raw_category)
+    if canonical == "Other" or not canonical:
+        result = infer_from_description(description)
+        if result:
+            return result[0]
+    return canonical
