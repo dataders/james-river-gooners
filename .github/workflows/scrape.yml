@@ -1,12 +1,19 @@
 name: Scrape Auction Data
 
 on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
   workflow_dispatch:
     inputs:
       auction_url:
-        description: 'Full Cannon''s auction URL (with AuctionId and all params)'
-        required: true
+        description: 'Full Cannon''s auction URL (or leave empty to re-scrape all existing auctions)'
+        required: false
         type: string
+      dry_run:
+        description: 'Test only — scrape but do not commit'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   scrape:
@@ -16,15 +23,34 @@ jobs:
 
       - uses: astral-sh/setup-uv@v4
 
-      - name: Run scraper
+      - name: Scrape auction(s)
         run: |
           cd scraper
-          uv run --with requests --with beautifulsoup4 python scrape.py "${{ inputs.auction_url }}"
+          if [ -n "${{ inputs.auction_url }}" ]; then
+            echo "Scraping single auction..."
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+              python scrape.py "${{ inputs.auction_url }}"
+          else
+            echo "Re-scraping all auctions from manifest..."
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+              python rescrape_all.py
+          fi
 
-      - name: Commit data
+      - name: Update manifest
+        run: |
+          node -e "
+          const fs = require('fs');
+          const dir = 'public/data/items';
+          const files = fs.readdirSync(dir).filter(f => f.endsWith('.parquet')).map(f => f.replace('.parquet', ''));
+          fs.writeFileSync('public/data/manifest.json', JSON.stringify(files, null, 2));
+          console.log('Manifest updated:', files.length, 'auctions');
+          "
+
+      - name: Commit and push
+        if: ${{ inputs.dry_run != 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/data/
-          git diff --staged --quiet || git commit -m "data: update scraped auction data"
+          git diff --staged --quiet || git commit -m "data: update scraped auction data [$(date -u +%Y-%m-%dT%H:%M)]"
           git push
