@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { usePreferences } from './hooks/usePreferences'
+import { useTheme } from './hooks/useTheme'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
+import { ThemeToggle } from './components/ThemeToggle'
 
 export default function App() {
   const {
@@ -26,6 +28,8 @@ export default function App() {
     showAll,
     setSearchQuery,
   } = usePreferences()
+
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const [minPrice, setMinPrice] = useState(null)
   const [maxPrice, setMaxPrice] = useState(null)
@@ -56,6 +60,7 @@ export default function App() {
       <header className="app-header">
         <div className="header-top">
           <h1 className="logo">Gooners</h1>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <p className="tagline">A better way to browse Cannon's Auctions</p>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
