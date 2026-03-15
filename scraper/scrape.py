@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, urlparse, unquote
 import requests
 from bs4 import BeautifulSoup
 
-from categories import normalize_category
+from categories import normalize_category, normalize_raw_with_description
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
@@ -209,8 +209,8 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
         "totalBids": total_bids,
         "endDate": end_date,
         "images": images[:5],  # Keep first 5 images
-        "category": category,
-        "rawCategory": raw_category,
+        "category": normalize_category(raw_category, description),
+        "rawCategory": normalize_raw_with_description(raw_category, description),
         "detailUrl": detail_url,
     }
 
@@ -262,47 +262,29 @@ def scrape_auction(auction_url: str) -> None:
     for cat, count in sorted(cat_counts.items(), key=lambda x: -x[1]):
         print(f"  {cat}: {count}")
 
-    # Write items JSON
+    # Write items as Parquet with embedded auction metadata
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
     ITEMS_DIR.mkdir(parents=True, exist_ok=True)
-    items_path = ITEMS_DIR / f"{safe_id}.json"
-    with open(items_path, "w") as f:
-        json.dump(all_items, f, indent=2)
-    print(f"\nWrote {len(all_items)} items to {items_path}")
 
-    # Update auctions.json
-    auctions_path = DATA_DIR / "auctions.json"
-    auctions = []
-    if auctions_path.exists():
-        with open(auctions_path) as f:
-            auctions = json.load(f)
-
-    # Find end date from items
     end_dates = [item["endDate"] for item in all_items if item["endDate"]]
     latest_end = max(end_dates) if end_dates else ""
+    scraped_at = datetime.now(timezone.utc).isoformat()
 
-    # Update or add this auction
-    auction_entry = {
-        "id": auction_id,
-        "safeId": safe_id,
-        "title": auction_title,
-        "endDate": latest_end,
-        "totalItems": len(all_items),
-        "scrapedAt": datetime.now(timezone.utc).isoformat(),
-    }
+    # Embed auction metadata in each item row
+    for item in all_items:
+        item["images"] = json.dumps(item["images"])
+        item["auctionId"] = auction_id
+        item["auctionSafeId"] = safe_id
+        item["auctionTitle"] = auction_title
+        item["auctionEndDate"] = latest_end
+        item["scrapedAt"] = scraped_at
 
-    # Replace existing entry or append
-    found = False
-    for i, a in enumerate(auctions):
-        if a["id"] == auction_id:
-            auctions[i] = auction_entry
-            found = True
-            break
-    if not found:
-        auctions.append(auction_entry)
-
-    with open(auctions_path, "w") as f:
-        json.dump(auctions, f, indent=2)
-    print(f"Updated {auctions_path}")
+    table = pa.Table.from_pylist(all_items)
+    items_path = ITEMS_DIR / f"{safe_id}.parquet"
+    pq.write_table(table, items_path, compression="snappy")
+    print(f"\nWrote {len(all_items)} items to {items_path}")
 
 
 if __name__ == "__main__":
