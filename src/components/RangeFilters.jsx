@@ -17,29 +17,45 @@ function formatPrice(v) {
   return `$${Math.round(v)}`
 }
 
+// Log scale helpers: map between linear slider position [0, steps] and real value [min, max]
+// Uses log(1+x) to handle min=0 gracefully
+function toLog(value, min, max) {
+  if (max <= min) return 0
+  const minLog = Math.log1p(min)
+  const maxLog = Math.log1p(max)
+  return (Math.log1p(value) - minLog) / (maxLog - minLog)
+}
+
+function fromLog(ratio, min, max) {
+  const minLog = Math.log1p(min)
+  const maxLog = Math.log1p(max)
+  return Math.expm1(minLog + ratio * (maxLog - minLog))
+}
+
+const SLIDER_STEPS = 200
+
 const NUM_BINS = 40
 
-function buildHistogram(values, min, max) {
+function buildHistogram(values, min, max, logScale) {
   if (max <= min || values.length === 0) return new Array(NUM_BINS).fill(0)
   const bins = new Array(NUM_BINS).fill(0)
-  const range = max - min
   for (const v of values) {
-    const idx = Math.min(NUM_BINS - 1, Math.floor(((v - min) / range) * NUM_BINS))
+    const ratio = logScale ? toLog(v, min, max) : (v - min) / (max - min)
+    const idx = Math.min(NUM_BINS - 1, Math.floor(ratio * NUM_BINS))
     bins[idx]++
   }
   return bins
 }
 
-function Histogram({ bins, min, max, valueLo, valueHi }) {
+function Histogram({ bins, valueLoPct, valueHiPct }) {
   const peak = Math.max(...bins, 1)
-  const range = max - min || 1
 
   return (
     <svg className="histogram" viewBox={`0 0 ${NUM_BINS} 20`} preserveAspectRatio="none">
       {bins.map((count, i) => {
-        const barMin = min + (i / NUM_BINS) * range
-        const barMax = min + ((i + 1) / NUM_BINS) * range
-        const inRange = barMax >= valueLo && barMin <= valueHi
+        const barLo = i / NUM_BINS
+        const barHi = (i + 1) / NUM_BINS
+        const inRange = barHi >= valueLoPct && barLo <= valueHiPct
         const h = (count / peak) * 20
         return (
           <rect
@@ -56,7 +72,7 @@ function Histogram({ bins, min, max, valueLo, valueHi }) {
   )
 }
 
-function DualSlider({ label, min, max, valueLo, valueHi, step, formatLo, formatHi, formatBoundLo, formatBoundHi, onLoChange, onHiChange, histogram }) {
+function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, formatBoundLo, formatBoundHi, onLoChange, onHiChange, histogram, logScale }) {
   const loAtMin = valueLo <= min
   const hiAtMax = valueHi >= max
   const summary = loAtMin && hiAtMax
@@ -67,6 +83,34 @@ function DualSlider({ label, min, max, valueLo, valueHi, step, formatLo, formatH
         ? `≥ ${formatLo(valueLo)}`
         : `${formatLo(valueLo)} – ${formatHi(valueHi)}`
 
+  // Convert real values to slider positions
+  const sliderLo = logScale
+    ? Math.round(toLog(valueLo, min, max) * SLIDER_STEPS)
+    : Math.round(((valueLo - min) / (max - min)) * SLIDER_STEPS)
+  const sliderHi = logScale
+    ? Math.round(toLog(valueHi, min, max) * SLIDER_STEPS)
+    : Math.round(((valueHi - min) / (max - min)) * SLIDER_STEPS)
+
+  const handleLo = (e) => {
+    const pos = Number(e.target.value)
+    const ratio = pos / SLIDER_STEPS
+    const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
+    const snapped = Math.round(real)
+    onLoChange(Math.min(snapped, valueHi))
+  }
+
+  const handleHi = (e) => {
+    const pos = Number(e.target.value)
+    const ratio = pos / SLIDER_STEPS
+    const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
+    const snapped = Math.round(real)
+    onHiChange(Math.max(snapped, valueLo))
+  }
+
+  // Percentage positions for histogram highlighting
+  const valueLoPct = logScale ? toLog(valueLo, min, max) : (valueLo - min) / (max - min || 1)
+  const valueHiPct = logScale ? toLog(valueHi, min, max) : (valueHi - min) / (max - min || 1)
+
   return (
     <div className="range-filter">
       <label className="range-label">
@@ -75,31 +119,25 @@ function DualSlider({ label, min, max, valueLo, valueHi, step, formatLo, formatH
       </label>
       <div className="dual-slider">
         {histogram && (
-          <Histogram bins={histogram} min={min} max={max} valueLo={valueLo} valueHi={valueHi} />
+          <Histogram bins={histogram} valueLoPct={valueLoPct} valueHiPct={valueHiPct} />
         )}
         <input
           type="range"
           className="range-slider range-slider-lo"
-          min={min}
-          max={max}
-          step={step}
-          value={valueLo}
-          onChange={e => {
-            const v = Number(e.target.value)
-            onLoChange(Math.min(v, valueHi))
-          }}
+          min={0}
+          max={SLIDER_STEPS}
+          step={1}
+          value={sliderLo}
+          onChange={handleLo}
         />
         <input
           type="range"
           className="range-slider range-slider-hi"
-          min={min}
-          max={max}
-          step={step}
-          value={valueHi}
-          onChange={e => {
-            const v = Number(e.target.value)
-            onHiChange(Math.max(v, valueLo))
-          }}
+          min={0}
+          max={SLIDER_STEPS}
+          step={1}
+          value={sliderHi}
+          onChange={handleHi}
         />
       </div>
       <div className="range-bounds">
@@ -140,15 +178,14 @@ export function RangeFilters({
       priceMax: pMax,
       hoursMax: hMax,
       bidsMax: bMax,
-      priceHist: buildHistogram(prices, 0, pMax),
-      bidsHist: buildHistogram(bidCounts, 0, bMax),
-      hoursHist: buildHistogram(hours, 0, hMax),
+      priceHist: buildHistogram(prices, 0, pMax, true),
+      bidsHist: buildHistogram(bidCounts, 0, bMax, true),
+      hoursHist: buildHistogram(hours, 0, hMax, false),
     }
   }, [items])
 
   if (!priceMax && !hoursMax && !bidsMax) return null
 
-  const step = (max) => Math.max(1, Math.floor(max / 100))
   const formatBids = (v) => `${Math.round(v)}`
 
   return (
@@ -159,7 +196,6 @@ export function RangeFilters({
         max={priceMax}
         valueLo={minPrice ?? 0}
         valueHi={maxPrice ?? priceMax}
-        step={step(priceMax)}
         formatLo={formatPrice}
         formatHi={formatPrice}
         formatBoundLo="$0"
@@ -167,6 +203,7 @@ export function RangeFilters({
         onLoChange={onMinPriceChange}
         onHiChange={onMaxPriceChange}
         histogram={priceHist}
+        logScale
       />
       <DualSlider
         label="Bids"
@@ -174,7 +211,6 @@ export function RangeFilters({
         max={bidsMax}
         valueLo={minBids ?? 0}
         valueHi={maxBids ?? bidsMax}
-        step={Math.max(1, Math.floor(bidsMax / 50))}
         formatLo={formatBids}
         formatHi={formatBids}
         formatBoundLo="0"
@@ -182,6 +218,7 @@ export function RangeFilters({
         onLoChange={onMinBidsChange}
         onHiChange={onMaxBidsChange}
         histogram={bidsHist}
+        logScale
       />
       <DualSlider
         label="Ends within"
@@ -189,7 +226,6 @@ export function RangeFilters({
         max={hoursMax}
         valueLo={minHours ?? 0}
         valueHi={maxHours ?? hoursMax}
-        step={step(hoursMax)}
         formatLo={formatHours}
         formatHi={formatHours}
         formatBoundLo="Now"
