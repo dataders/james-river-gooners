@@ -62,7 +62,19 @@ export default function App() {
           <h1 className="logo">Gooners</h1>
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
-        <p className="tagline">A better way to browse Cannon's Auctions</p>
+        <p className="tagline">
+          A better way to browse Cannon's Auctions
+          {auctions.length > 0 && (() => {
+            const ts = auctions.reduce((max, a) => a.scrapedAt > max ? a.scrapedAt : max, '')
+            if (!ts) return null
+            const d = new Date(ts)
+            return (
+              <span className="data-freshness">
+                {' · '}refreshed {d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </span>
+            )
+          })()}
+        </p>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <RangeFilters
           items={items}
