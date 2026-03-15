@@ -1,50 +1,50 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { usePreferences } from './hooks/usePreferences'
-import { filterItems, getCategoryCounts } from './utils/filters'
-import { AuctionPicker } from './components/AuctionPicker'
+import { filterItems, getGroupedCategories } from './utils/filters'
+import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
+import { RangeFilters } from './components/RangeFilters'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
-
-function DataFreshness({ auctions, selectedId }) {
-  const auction = auctions.find(a => a.safeId === selectedId)
-  if (!auction?.scrapedAt) return null
-  const scraped = new Date(auction.scrapedAt)
-  const ago = Math.round((Date.now() - scraped) / 60000)
-  const label = ago < 60
-    ? `${ago}m ago`
-    : ago < 1440
-      ? `${Math.round(ago / 60)}h ago`
-      : `${Math.round(ago / 1440)}d ago`
-  return <span className="data-freshness">Data from {label}</span>
-}
 
 export default function App() {
   const {
     auctions,
-    selectedAuctionId,
-    setSelectedAuctionId,
+    excludedAuctions,
+    toggleAuction,
     items,
     loading,
     error,
   } = useAuctionData()
 
   const {
-    includedCategories,
     excludedCategories,
     searchQuery,
-    toggleIncluded,
     toggleExcluded,
-    clearIncluded,
+    hideAll,
+    showAll,
     setSearchQuery,
   } = usePreferences()
 
-  const categories = useMemo(() => getCategoryCounts(items), [items])
+  const [minPrice, setMinPrice] = useState(null)
+  const [maxPrice, setMaxPrice] = useState(null)
+  const [minBids, setMinBids] = useState(null)
+  const [maxBids, setMaxBids] = useState(null)
+  const [minHours, setMinHours] = useState(null)
+  const [maxHours, setMaxHours] = useState(null)
+
+  // Items passing price/time/bids/search but NOT category filters — for dynamic counts
+  const preFilteredItems = useMemo(
+    () => filterItems(items, { excludedCategories: [], searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }),
+    [items, searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours]
+  )
+
+  const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
 
   const filteredItems = useMemo(
-    () => filterItems(items, { includedCategories, excludedCategories, searchQuery }),
-    [items, includedCategories, excludedCategories, searchQuery]
+    () => preFilteredItems.filter(item => !excludedCategories.includes(item.rawCategory)),
+    [preFilteredItems, excludedCategories]
   )
 
   if (error) {
@@ -56,22 +56,38 @@ export default function App() {
       <header className="app-header">
         <div className="header-top">
           <h1 className="logo">Gooners</h1>
-          <DataFreshness auctions={auctions} selectedId={selectedAuctionId} />
         </div>
         <p className="tagline">A better way to browse Cannon's Auctions</p>
-        <AuctionPicker
-          auctions={auctions}
-          selectedId={selectedAuctionId}
-          onSelect={setSelectedAuctionId}
-        />
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <RangeFilters
+          items={items}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          minBids={minBids}
+          maxBids={maxBids}
+          minHours={minHours}
+          maxHours={maxHours}
+          onMinPriceChange={v => setMinPrice(v)}
+          onMaxPriceChange={v => setMaxPrice(v)}
+          onMinBidsChange={v => setMinBids(v)}
+          onMaxBidsChange={v => setMaxBids(v)}
+          onMinHoursChange={v => setMinHours(v)}
+          onMaxHoursChange={v => setMaxHours(v)}
+        />
+        <AuctionFilter
+          auctions={auctions}
+          excludedAuctions={excludedAuctions}
+          onToggle={toggleAuction}
+        />
         <FilterBar
-          categories={categories}
-          includedCategories={includedCategories}
+          groupedCategories={groupedCategories}
           excludedCategories={excludedCategories}
-          onToggleIncluded={toggleIncluded}
           onToggleExcluded={toggleExcluded}
-          onClearIncluded={clearIncluded}
+          onHideAll={() => {
+            const allRaw = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
+            hideAll(allRaw)
+          }}
+          onShowAll={showAll}
         />
       </header>
 

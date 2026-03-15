@@ -4,7 +4,7 @@ const STORAGE_KEY = 'gooners-preferences'
 
 const DEFAULT_PREFS = {
   includedCategories: [], // empty = all
-  excludedCategories: ['Coins & Currency', 'Jewelry', 'Firearms'],
+  excludedCategories: [],
   searchQuery: '',
 }
 
@@ -72,15 +72,31 @@ export function usePreferences() {
     })
   }, [])
 
+  const hideAll = useCallback((allCategories) => {
+    setPrefs(prev => {
+      const next = { ...prev, excludedCategories: [...allCategories] }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
+  const showAll = useCallback(() => {
+    setPrefs(prev => {
+      const next = { ...prev, excludedCategories: [] }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   const setSearchQuery = useCallback((query) => {
     setPrefs(prev => ({ ...prev, searchQuery: query }))
   }, [])
 
   return {
     ...prefs,
-    toggleIncluded,
     toggleExcluded,
-    clearIncluded,
+    hideAll,
+    showAll,
     setSearchQuery,
   }
 }
