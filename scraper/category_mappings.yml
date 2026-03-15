@@ -1,0 +1,519 @@
+# Category mappings for Cannon's Auctions (Maxanet)
+#
+# Two layers:
+# 1. raw_aliases: maps messy site category names -> canonical display names
+# 2. groups: maps canonical names -> broad groups (via substring matching)
+# 3. description_keywords: infers category from item description when raw category is missing
+#
+# Edit this file to adjust categorization. The scraper reads it at runtime.
+
+raw_aliases:
+  # Art
+  Paintings & Prints:
+    - paintings and prints
+    - painting and prints
+    - pictures/artwork
+    - paintings & prints
+  Decorative Accessories:
+    - decorative accessories
+    - decorative
+    - decors accessories
+    - decorations accessories
+    - decoration accessories
+    - lladro
+    - treenware
+  Sculpture:
+    - sculpture
+    - figurines
+  African & Ethnographic Art:
+    - african art
+    - ethnographic
+    - native american
+  Stained Glass:
+    - stained glass
+
+  # China & Glass
+  China & Pottery:
+    - china and pottery
+    - china and ceramics
+    - pottery
+    - porcelain
+    - roseville
+  Glassware:
+    - glassware
+    - glass
+  Crystal:
+    - crystal
+    - waterford
+    - steuben
+    - lalique
+    - swarovski
+
+  # Collectibles & Antiques
+  Collectibles:
+    - collectibles
+    - antiques
+    - memorabilia
+    - vintage
+    - coca cola
+    - longaberger
+    - advertising
+  Military & Militaria:
+    - military gear
+    - militaria
+    - scouting
+  Knives & Swords:
+    - knives and swords
+    - knives
+    - cutlery
+  Stamps:
+    - philately
+  Sports Collectibles:
+    - sports collectibles
+  Hot Wheels & Models:
+    - hot wheels
+    - model trains
+    - model kits
+  Steins:
+    - steins
+    - beer steins
+  Globes:
+    - globes
+  Black Americana:
+    - black americana
+  Mahjong:
+    - mahjong
+
+  # Silver & Metal
+  Sterling & Silverplate:
+    - silver and silverplate
+    - sterling and silverplate
+    - sterling silver and silverplate
+    - sterling silver
+    - sterling
+    - silverplate
+  Pewter:
+    - pewter
+  Cast Iron:
+    - cast iron
+  Brassware & Copper:
+    - brassware
+    - copper
+
+  # Furniture
+  Furniture:
+    - furniture
+  Mirrors:
+    - mirrors
+
+  # Jewelry & Watches
+  Jewelry:
+    - jewelry
+    - costume jewelry
+    - gold ring
+  Watches:
+    - watches
+    - rolex
+    - timepieces
+  Gemstones:
+    - gemstones
+
+  # Coins
+  Coins & Currency:
+    - coins and currency
+    - coins
+
+  # Firearms
+  Firearms:
+    - firearms
+    - air guns
+  Firearm Accessories:
+    - firearm accessories
+    - firearms ammo & accessories
+  Ammunition:
+    - ammunition
+
+  # Books & Media
+  Books:
+    - books
+    - cookbooks
+  Ephemera:
+    - ephemera
+  Vinyl & CDs:
+    - vinyl lp records
+    - cds and dvds
+    - cd and dvds
+    - dvds
+  Video Games:
+    - video games
+
+  # Electronics
+  Audiovisual:
+    - audiovisual
+    - audio visual
+  Electronics:
+    - electronics
+    - computers and printers
+    - telephone
+  Photography:
+    - photography
+    - binoculars
+
+  # Home & Household
+  Kitchenware:
+    - kitchenware
+    - kitchen
+    - tableware
+    - cookware
+    - barware
+    - flatware
+  Appliances:
+    - appliances
+    - small appliances
+  Lighting:
+    - lighting
+    - lamps
+    - candles and accessories
+  Clocks:
+    - clocks
+  Household:
+    - household
+    - household items
+    - housekeeping
+    - general
+    - closet contents
+    - shed contents
+    - storage containers
+    - bathroom
+    - vacuum
+    - heaters
+    - baskets
+    - bookends
+    - thermometer
+  Fireplace:
+    - fireplace
+  Faux Plants:
+    - faux plants
+
+  # Fashion & Apparel
+  Clothing:
+    - clothes
+    - men's apparel
+    - women's apparel
+    - fashion
+    - vintage clothing
+    - furs
+    - gloves
+    - socks & slippers
+    - personal accessories
+  Purses & Bags:
+    - purses
+    - luggage
+    - travel
+  Health & Beauty:
+    - health and beauty
+    - health & beauty
+    - eyewear
+    - perfumes
+    - avon
+  Shoes & Boots:
+    - boots
+
+  # Toys
+  Toys & Games:
+    - toys and games
+    - toys & games
+    - gaming
+    - plush
+  Dolls:
+    - dolls and doll accessories
+    - dolls
+    - dolls house
+  Lego:
+    - lego
+  Disney:
+    - disney
+  Steiff:
+    - steiff
+
+  # Textiles
+  Rugs:
+    - rugs
+    - rugs.
+    - rug, rugs
+    - rigs, rugs
+    - " rugs"
+  Linens & Textiles:
+    - linens
+    - linens and textiles
+    - hold,linens
+    - blankets and throws
+    - quilts
+
+  # Lawn & Garden
+  Lawn & Garden:
+    - lawn and garden
+    - lawn & garden
+    - yard and garden
+    - lawn equipment
+    - lawn mower
+    - pool accessories
+    - grills
+    - coolers
+    - step ladders
+  Outdoor & Patio:
+    - outdoor
+    - outdoors
+
+  # Sporting Goods
+  Sporting Goods:
+    - sporting goods
+  Fishing:
+    - fishing
+  Equestrian:
+    - equestrian
+
+  # Hobbies
+  Hobbies & Crafts:
+    - hobbies and crafts
+    - arts and crafts
+    - sewing
+    - sewing machine
+    - miniatures
+  Drones:
+    - drones
+  Aviation:
+    - aviation
+
+  # Seasonal
+  Christmas & Holiday:
+    - christmas
+    - holiday
+    - holiday and seasonal
+    - angels
+
+  # Vehicles
+  Vehicles:
+    - 90 rolls royce
+    - 05 honda shadow
+    - automotive
+    - motorcycle accessories
+
+  # Science
+  Rocks & Minerals:
+    - rocks fossils and minerals
+  Scientific Equipment:
+    - scientific equipment
+  Taxidermy:
+    - taxidermy
+
+  # Music
+  Musical Instruments:
+    - musical instruments
+
+  # Misc
+  Office Supplies:
+    - office supplies
+    - office
+    - cash register
+  Pet Accessories:
+    - pet essentials
+    - pet accessories
+  Exercise & Fitness:
+    - exercise equipment
+    - fitness
+  Child Care:
+    - child care
+  Ambulatory:
+    - ambulatory
+  Hardware:
+    - hardware
+    - tools & hardware
+    - batteries
+  Light Bulbs:
+    - light bulbs
+  Materials:
+    - materials
+  Virginia Tech:
+    - virginia tech
+  Oriental:
+    - oriental
+  Artifacts:
+    - artifacts
+
+groups:
+  Firearms:
+    - firearm
+    - ammunition
+    - air gun
+  Coins & Currency:
+    - coins
+  Jewelry & Watches:
+    - jewelry
+    - watches
+    - gemstone
+  Furniture:
+    - furniture
+    - mirrors
+  Tools & Hardware:
+    - tools
+    - hardware
+  Electronics:
+    - audiovisual
+    - electronics
+    - photography
+  Vehicles:
+    - vehicles
+  Art:
+    - paintings
+    - sculpture
+    - decorative accessories
+    - african
+    - stained glass
+  China & Glass:
+    - china
+    - glassware
+    - crystal
+  Silver & Metal:
+    - sterling
+    - pewter
+    - cast iron
+    - brassware
+  Collectibles:
+    - collectibles
+    - military
+    - knives
+    - stamps
+    - sports collectible
+    - hot wheels
+    - steins
+    - globes
+    - black americana
+    - mahjong
+    - virginia tech
+    - artifacts
+    - oriental
+  Books & Media:
+    - books
+    - ephemera
+    - vinyl
+    - video games
+  Home & Kitchen:
+    - kitchenware
+    - appliances
+    - lighting
+    - clocks
+    - household
+    - fireplace
+    - faux plants
+    - light bulb
+    - materials
+    - office
+    - ambulatory
+  Fashion:
+    - clothing
+    - apparel
+    - purses
+    - personal accessories
+    - health
+    - shoes
+  Toys & Games:
+    - toys
+    - dolls
+    - lego
+    - disney
+    - steiff
+  Rugs & Textiles:
+    - rugs
+    - linens
+  Lawn & Garden:
+    - lawn
+    - outdoor
+  Sporting Goods:
+    - sporting
+    - fishing
+    - equestrian
+  Hobbies:
+    - hobbies
+    - drones
+    - aviation
+    - musical
+  Seasonal:
+    - christmas
+    - holiday
+  Science & Nature:
+    - rocks
+    - scientific
+    - taxidermy
+  Pets & Kids:
+    - pet
+    - child care
+    - exercise
+
+description_keywords:
+  # keyword -> [canonical raw category, broad group]
+  # More specific terms first
+  rifle: [Firearms, Firearms]
+  pistol: [Firearms, Firearms]
+  shotgun: [Firearms, Firearms]
+  revolver: [Firearms, Firearms]
+  firearm: [Firearms, Firearms]
+  ammunition: [Ammunition, Firearms]
+  handbag: [Purses & Bags, Fashion]
+  hand bag: [Purses & Bags, Fashion]
+  purse: [Purses & Bags, Fashion]
+  tote bag: [Purses & Bags, Fashion]
+  leather bag: [Purses & Bags, Fashion]
+  coach leather: [Purses & Bags, Fashion]
+  "doctor's bag": [Purses & Bags, Fashion]
+  necklace: [Jewelry, Jewelry & Watches]
+  bracelet: [Jewelry, Jewelry & Watches]
+  earring: [Jewelry, Jewelry & Watches]
+  pendant: [Jewelry, Jewelry & Watches]
+  brooch: [Jewelry, Jewelry & Watches]
+  diamond: [Jewelry, Jewelry & Watches]
+  gemstone: [Gemstones, Jewelry & Watches]
+  wristwatch: [Watches, Jewelry & Watches]
+  coin: [Coins & Currency, Coins & Currency]
+  silver dollar: [Coins & Currency, Coins & Currency]
+  gold eagle: [Coins & Currency, Coins & Currency]
+  sofa: [Furniture, Furniture]
+  dresser: [Furniture, Furniture]
+  chest of drawers: [Furniture, Furniture]
+  bookcase: [Furniture, Furniture]
+  armoire: [Furniture, Furniture]
+  sideboard: [Furniture, Furniture]
+  nightstand: [Furniture, Furniture]
+  dining table: [Furniture, Furniture]
+  camera: [Photography, Electronics]
+  television: [Audiovisual, Electronics]
+  stereo: [Audiovisual, Electronics]
+  speaker: [Audiovisual, Electronics]
+  laptop: [Electronics, Electronics]
+  computer: [Electronics, Electronics]
+  oil on canvas: [Paintings & Prints, Art]
+  watercolor: [Paintings & Prints, Art]
+  lithograph: [Paintings & Prints, Art]
+  etching: [Paintings & Prints, Art]
+  sculpture: [Sculpture, Art]
+  bronze: [Sculpture, Art]
+  porcelain: [China & Pottery, China & Glass]
+  stoneware: [China & Pottery, China & Glass]
+  crystal: [Crystal, China & Glass]
+  sterling silver: [Sterling & Silverplate, Silver & Metal]
+  silverplate: [Sterling & Silverplate, Silver & Metal]
+  pewter: [Pewter, Silver & Metal]
+  oriental rug: [Rugs, Rugs & Textiles]
+  persian rug: [Rugs, Rugs & Textiles]
+  quilt: [Linens & Textiles, Rugs & Textiles]
+  drill: [Tools, Tools & Hardware]
+  wrench: [Tools, Tools & Hardware]
+  saw: [Tools, Tools & Hardware]
+  book: [Books, Books & Media]
+  fishing: [Fishing, Sporting Goods]
+  golf: [Sporting Goods, Sporting Goods]
+  bicycle: [Sporting Goods, Sporting Goods]
+  doll: [Dolls, Toys & Games]
+  lego: [Lego, Toys & Games]
+  cookware: [Kitchenware, Home & Kitchen]
+  lawn mower: [Lawn & Garden, Lawn & Garden]
