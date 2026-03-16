@@ -9,6 +9,7 @@ import { RangeFilters } from './components/RangeFilters'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
+import { ItemDetail } from './components/ItemDetail'
 
 export default function App() {
   const {
@@ -37,11 +38,32 @@ export default function App() {
   const [maxBids, setMaxBids] = useState(null)
   const [minHours, setMinHours] = useState(null)
   const [maxHours, setMaxHours] = useState(null)
+  const [selectedItem, setSelectedItem] = useState(null)
+  const [localOnly, setLocalOnly] = useState(false)
+
+  const localAuctionIds = useMemo(() => {
+    const ids = new Set()
+    for (const a of auctions) {
+      if (a.isLocal) ids.add(a.safeId)
+    }
+    return ids
+  }, [auctions])
+
+  // Apply locality filter upstream so auctions list + category counts reflect it
+  const visibleAuctions = useMemo(
+    () => localOnly ? auctions.filter(a => a.isLocal) : auctions,
+    [auctions, localOnly]
+  )
+
+  const visibleItems = useMemo(
+    () => localOnly ? items.filter(item => localAuctionIds.has(item.auctionSafeId)) : items,
+    [items, localOnly, localAuctionIds]
+  )
 
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
   const preFilteredItems = useMemo(
-    () => filterItems(items, { excludedCategories: [], searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }),
-    [items, searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours]
+    () => filterItems(visibleItems, { excludedCategories: [], searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }),
+    [visibleItems, searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours]
   )
 
   const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
@@ -63,9 +85,17 @@ export default function App() {
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <p className="tagline">A better way to browse Cannon's Auctions</p>
+        <label className="local-toggle">
+          <input
+            type="checkbox"
+            checked={localOnly}
+            onChange={e => setLocalOnly(e.target.checked)}
+          />
+          <span>Richmond area only</span>
+        </label>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <RangeFilters
-          items={items}
+          items={visibleItems}
           minPrice={minPrice}
           maxPrice={maxPrice}
           minBids={minBids}
@@ -80,7 +110,7 @@ export default function App() {
           onMaxHoursChange={v => setMaxHours(v)}
         />
         <AuctionFilter
-          auctions={auctions}
+          auctions={visibleAuctions}
           excludedAuctions={excludedAuctions}
           onToggle={toggleAuction}
         />
@@ -100,9 +130,13 @@ export default function App() {
         {loading ? (
           <div className="loading">Loading auction items...</div>
         ) : (
-          <ItemGrid items={filteredItems} />
+          <ItemGrid items={filteredItems} onItemClick={setSelectedItem} />
         )}
       </main>
+
+      {selectedItem && (
+        <ItemDetail item={selectedItem} onClose={() => setSelectedItem(null)} />
+      )}
     </div>
   )
 }

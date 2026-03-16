@@ -10,7 +10,7 @@ const breakpointColumns = {
   800: 2,
 }
 
-export function ItemGrid({ items }) {
+export function ItemGrid({ items, onItemClick }) {
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const sentinelRef = useRef(null)
 
@@ -49,7 +49,7 @@ export function ItemGrid({ items }) {
         columnClassName="masonry-column"
       >
         {visibleItems.map(item => (
-          <ItemCard key={item.id} item={item} />
+          <ItemCard key={item.id} item={item} onItemClick={onItemClick} />
         ))}
       </Masonry>
       {visibleCount < items.length && (
