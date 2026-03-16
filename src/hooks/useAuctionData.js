@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import initWasm, { readParquet } from 'parquet-wasm'
+import { isLocalAuction } from '../utils/locality'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -58,6 +59,7 @@ export function useAuctionData() {
                 title: row.auctionTitle,
                 endDate: row.auctionEndDate,
                 scrapedAt: row.scrapedAt,
+                isLocal: isLocalAuction(row.auctionTitle),
                 totalItems: 0,
               }
             }
