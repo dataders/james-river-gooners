@@ -21,14 +21,14 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    env:
+      MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v4
 
       - name: Scrape auction(s)
-        env:
-          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
         run: |
           cd scraper
           if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
@@ -37,18 +37,28 @@ jobs:
           if [ -n "${{ inputs.auction_url }}" ]; then
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              python3 scrape.py "${{ inputs.auction_url }}"
+              python scrape.py "${{ inputs.auction_url }}"
           else
             echo "Re-scraping all auctions from manifest..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              python3 rescrape_all.py
+              python rescrape_all.py
           fi
 
       - name: Rebuild manifests
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-            python3 -c "from rescrape_all import update_manifests; update_manifests()"
+            python -c "from rescrape_all import update_manifests; update_manifests()"
+
+      - name: Export eBay comps from MotherDuck
+        run: |
+          if [ -z "${MOTHERDUCK_TOKEN:-}" ]; then
+            echo "Skipping eBay comp export because MOTHERDUCK_TOKEN is not configured"
+            exit 0
+          fi
+          cd scraper
+          uv run --with 'duckdb==1.5.2' \
+            python ebay_comps.py export --allow-missing
 
       - name: Commit and push
         if: ${{ inputs.dry_run != 'true' }}
