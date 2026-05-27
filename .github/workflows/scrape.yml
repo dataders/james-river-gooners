@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+      MOTHERDUCK_READ_SCALING_TOKEN: ${{ secrets.MOTHERDUCK_READ_SCALING_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,8 +53,27 @@ jobs:
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
             python -c "from rescrape_all import update_manifests; update_manifests()"
 
+      - name: Ingest eBay comps into MotherDuck
+        run: |
+          if [ -z "${MOTHERDUCK_TOKEN:-}" ]; then
+            echo "Skipping eBay comp ingestion because MOTHERDUCK_TOKEN is not configured"
+            exit 0
+          fi
+          cd scraper
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Dry run: planning eBay comp ingestion without MotherDuck writes"
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+              python ebay_comps.py ingest --dry-run --limit 1 --sleep-seconds 0
+          else
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+              python ebay_comps.py ingest --limit "${GOONERS_EBAY_COMPS_LIMIT:-50}"
+          fi
+
       - name: Export eBay comps from MotherDuck
         run: |
+          if [ -n "${MOTHERDUCK_READ_SCALING_TOKEN:-}" ]; then
+            export MOTHERDUCK_TOKEN="${MOTHERDUCK_READ_SCALING_TOKEN}"
+          fi
           if [ -z "${MOTHERDUCK_TOKEN:-}" ]; then
             echo "Skipping eBay comp export because MOTHERDUCK_TOKEN is not configured"
             exit 0
