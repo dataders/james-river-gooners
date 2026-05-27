@@ -35,7 +35,7 @@ DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 )
-DEFAULT_AGENT_BROWSER_COMMAND = "npm exec --yes agent-browser@11.9.0 --"
+DEFAULT_AGENT_BROWSER_COMMAND = "npm exec --yes agent-browser@0.27.0 --"
 
 STOP_WORDS = {
     "and",
@@ -474,6 +474,11 @@ def agent_browser_env() -> dict:
     }
     env = {key: value for key, value in os.environ.items() if key in allowed and value}
     env.setdefault("npm_config_cache", str(Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "npm-agent-browser"))
+    env.setdefault("AGENT_BROWSER_ALLOWED_DOMAINS", "www.ebay.com,ebay.com")
+    env.setdefault("AGENT_BROWSER_ARGS", "--no-sandbox,--disable-blink-features=AutomationControlled")
+    env.setdefault("AGENT_BROWSER_DEFAULT_TIMEOUT", "30000")
+    env.setdefault("AGENT_BROWSER_SESSION", "gooners-ebay-comps")
+    env.setdefault("AGENT_BROWSER_USER_AGENT", os.environ.get("GOONERS_EBAY_USER_AGENT", DEFAULT_USER_AGENT))
     return env
 
 
@@ -491,13 +496,20 @@ def run_agent_browser(args: list[str], timeout: int = 45) -> str:
 
 
 def agent_browser_html(url: str, browser_runner=run_agent_browser) -> str:
-    browser_runner(["open", url], timeout=45)
+    try:
+        browser_runner(["open", url], timeout=45)
+    except Exception:
+        browser_runner(["install"], timeout=180)
+        browser_runner(["open", url], timeout=45)
     try:
         browser_runner(["wait", "li.s-item, .s-card"], timeout=30)
     except Exception:
         pass
     try:
-        return html_from_browser_output(browser_runner(["eval", "document.documentElement.outerHTML"], timeout=45))
+        try:
+            return html_from_browser_output(browser_runner(["get", "html"], timeout=45))
+        except Exception:
+            return html_from_browser_output(browser_runner(["eval", "document.documentElement.outerHTML"], timeout=45))
     finally:
         try:
             browser_runner(["close"], timeout=10)
@@ -570,13 +582,15 @@ def fetch_sold_matches(
         timeout=timeout,
     )
     if response.status_code in {403, 429, 503}:
+        browser_warning = ""
         if os.environ.get("GOONERS_EBAY_BROWSER_FALLBACK", "1").lower() in {"1", "true", "yes", "on"}:
             result = browser_sold_matches(search, max_matches=max_matches, browser_runner=browser_runner)
             if result["status"] != "blocked":
                 return result
+            browser_warning = f" Browser fallback: {result.get('warning', '')}".rstrip()
         return {
             "status": "blocked",
-            "warning": f"eBay search returned HTTP {response.status_code}; stopping this ingestion run.",
+            "warning": f"eBay search returned HTTP {response.status_code}; stopping this ingestion run.{browser_warning}",
             "matches": [],
         }
     if response.status_code >= 400:
