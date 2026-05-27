@@ -89,5 +89,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/data/
-          git diff --staged --quiet || git commit -m "data: update scraped auction data [$(date -u +%Y-%m-%dT%H:%M)]"
+          if git diff --staged --quiet; then
+            echo "No data changes to commit"
+            exit 0
+          fi
+          git commit -m "data: update scraped auction data [$(date -u +%Y-%m-%dT%H:%M)]"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push failed; rebasing on origin/main before retry ${attempt}"
+            git fetch origin main
+            git rebase origin/main
+          done
           git push
