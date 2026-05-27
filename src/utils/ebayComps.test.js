@@ -5,6 +5,8 @@ import {
   buildEbaySoldSearchUrl,
   compactItemText,
   getEbayCompKey,
+  isEbayItemUrl,
+  normalizeEbaySoldMatches,
 } from './ebayComps.js'
 
 test('buildEbaySoldSearchUrl targets eBay sold and completed results', () => {
@@ -23,6 +25,38 @@ test('getEbayCompKey matches auction and item ids', () => {
     getEbayCompKey({ auctionSafeId: 'abc', id: '123' }),
     'abc:123'
   )
+})
+
+test('isEbayItemUrl accepts sold item pages but rejects search pages', () => {
+  assert.equal(isEbayItemUrl('https://www.ebay.com/itm/177917908706'), true)
+  assert.equal(isEbayItemUrl('https://www.ebay.com/sch/i.html?_nkw=Five+sterling+silver+rimmed'), false)
+})
+
+test('normalizeEbaySoldMatches keeps only priced matches with real item links', () => {
+  const matches = normalizeEbaySoldMatches({
+    matches: [
+      {
+        title: 'Real sold item',
+        price: { value: '99.00', currency: 'USD' },
+        soldDateLabel: 'Sold Mar 4, 2026',
+        itemWebUrl: 'https://www.ebay.com/itm/177917908706',
+      },
+      {
+        title: 'Keyword search masquerading as a comp',
+        price: { value: '55.00', currency: 'USD' },
+        itemWebUrl: 'https://www.ebay.com/sch/i.html?_nkw=Five+sterling+silver+rimmed',
+      },
+      {
+        title: 'No price',
+        itemWebUrl: 'https://www.ebay.com/itm/177917908707',
+      },
+    ],
+  })
+
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].title, 'Real sold item')
+  assert.equal(matches[0].priceLabel, '$99.00')
+  assert.equal(matches[0].itemWebUrl, 'https://www.ebay.com/itm/177917908706')
 })
 
 test('buildEbaySoldSearches keeps model-like terms for electronics', () => {

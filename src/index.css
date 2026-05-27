@@ -916,6 +916,22 @@ body {
   gap: 8px;
 }
 
+.ebay-comps-search {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--green);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.ebay-comps-search:hover {
+  border-color: var(--green);
+  text-decoration: underline;
+}
+
 .ebay-comp-card {
   display: grid;
   grid-template-columns: 64px 1fr;

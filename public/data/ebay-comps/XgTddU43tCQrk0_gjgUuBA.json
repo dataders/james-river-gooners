@@ -9,32 +9,8 @@
       "query": "Rosenthal crackle glaze hand-painted",
       "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+crackle+glaze+hand-painted&LH_Sold=1&LH_Complete=1&_sop=13",
       "fetchedAt": "2026-05-27T04:50:29Z",
-      "warning": "First two captured cards link to their eBay sold search because the browser accessibility snapshot truncated the item URLs.",
+      "warning": null,
       "matches": [
-        {
-          "title": "Rosenthal 14\" porcelain hand painted tropical bird vase STUNNING Circa 1900-1910",
-          "price": { "value": "155.00", "currency": "USD" },
-          "shippingLabel": "+$35.00 delivery",
-          "soldDate": "2026-05-26",
-          "soldDateLabel": "Sold May 26, 2026",
-          "thumbnailUrl": null,
-          "itemWebUrl": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+14%22+porcelain+hand+painted+tropical+bird+vase+STUNNING+Circa+1900-1910&LH_Sold=1&LH_Complete=1&_sop=13",
-          "condition": "Pre-Owned",
-          "sourceQuery": "specific",
-          "matchConfidence": "medium"
-        },
-        {
-          "title": "Vintage Rosenthal Madonna Porcelain Sculpture Crackle Glaze Mid Century German",
-          "price": { "value": "79.99", "currency": "USD" },
-          "shippingLabel": "+$18.07 delivery",
-          "soldDate": "2026-05-10",
-          "soldDateLabel": "Sold May 10, 2026",
-          "thumbnailUrl": null,
-          "itemWebUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+Rosenthal+Madonna+Porcelain+Sculpture+Crackle+Glaze+Mid+Century+German&LH_Sold=1&LH_Complete=1&_sop=13",
-          "condition": "Pre-Owned",
-          "sourceQuery": "specific",
-          "matchConfidence": "medium"
-        },
         {
           "ebayItemId": "317945717922",
           "title": "Vintage Rosenthal Keramik Vase Yellow Crackle Glaze Mid-Century Modern Germany",
@@ -103,32 +79,8 @@
       "query": "Vintage Italian Murano glass color gradient handkerchief vase",
       "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+Italian+Murano+glass+color+gradient+handkerchief+vase&LH_Sold=1&LH_Complete=1&_sop=13",
       "fetchedAt": "2026-05-27T04:50:29Z",
-      "warning": "First two captured cards link to their eBay sold search because the browser accessibility snapshot truncated the item URLs.",
+      "warning": null,
       "matches": [
-        {
-          "title": "VINTAGE GLASS PURPLE AND BLUE ITALIAN MURANO STYLE ART HANDKERCHIEF VASE",
-          "price": { "value": "69.99", "currency": "USD" },
-          "shippingLabel": "+$8.13 delivery",
-          "soldDate": "2026-05-26",
-          "soldDateLabel": "Sold May 26, 2026",
-          "thumbnailUrl": null,
-          "itemWebUrl": "https://www.ebay.com/sch/i.html?_nkw=VINTAGE+GLASS+PURPLE+AND+BLUE+ITALIAN+MURANO+STYLE+ART+HANDKERCHIEF+VASE&LH_Sold=1&LH_Complete=1&_sop=13",
-          "condition": "New (Other)",
-          "sourceQuery": "specific",
-          "matchConfidence": "medium"
-        },
-        {
-          "title": "MILLEFIORI Murano Glass DECORATIVE Handkerchief Vase ITALIAN ART GLASS Handmade",
-          "price": { "value": "72.95", "currency": "USD" },
-          "shippingLabel": "+$6.67 delivery",
-          "soldDate": "2026-03-08",
-          "soldDateLabel": "Sold Mar 8, 2026",
-          "thumbnailUrl": null,
-          "itemWebUrl": "https://www.ebay.com/sch/i.html?_nkw=MILLEFIORI+Murano+Glass+DECORATIVE+Handkerchief+Vase+ITALIAN+ART+GLASS+Handmade&LH_Sold=1&LH_Complete=1&_sop=13",
-          "condition": "New (Other)",
-          "sourceQuery": "specific",
-          "matchConfidence": "medium"
-        },
         {
           "ebayItemId": "236704988974",
           "title": "MCM Venini Ribbon Art Glass Murano Italy Latticino Fazzoletto Handkerchief Vase",
