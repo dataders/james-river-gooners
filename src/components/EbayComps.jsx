@@ -1,8 +1,4 @@
-import { buildEbaySoldSearches, normalizeEbaySoldMatches } from '../utils/ebayComps'
-
-function compThumb(comp, item) {
-  return comp.thumbnailUrl || item.images?.[0] || ''
-}
+import { buildEbaySoldSearches, getEbayCompThumbnail, normalizeEbaySoldMatches } from '../utils/ebayComps'
 
 export function EbayComps({ item, soldComps }) {
   const searches = buildEbaySoldSearches(item)
@@ -27,33 +23,36 @@ export function EbayComps({ item, soldComps }) {
       </div>
       <div className="ebay-comp-list">
         {soldResults.length > 0 ? (
-          soldResults.slice(0, 3).map((comp, index) => (
-            <a
-              key={`${comp.itemWebUrl}:${index}`}
-              href={comp.itemWebUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ebay-comp-card ebay-comp-card-sold"
-            >
-              <div className="ebay-comp-thumb" aria-hidden="true">
-                {compThumb(comp, item) ? (
-                  <img src={compThumb(comp, item)} alt="" loading="lazy" />
-                ) : (
-                  <span>eBay</span>
-                )}
-              </div>
-              <div className="ebay-comp-body">
-                <div className="ebay-comp-topline">
-                  <span className="ebay-comp-price">{comp.priceLabel}</span>
-                  {comp.dateLabel && <span className="ebay-comp-date">{comp.dateLabel}</span>}
+          soldResults.slice(0, 3).map((comp, index) => {
+            const thumbnail = getEbayCompThumbnail(comp, item)
+            return (
+              <a
+                key={`${comp.itemWebUrl}:${index}`}
+                href={comp.itemWebUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ebay-comp-card ebay-comp-card-sold"
+              >
+                <div className="ebay-comp-thumb" aria-hidden="true">
+                  {thumbnail ? (
+                    <img src={thumbnail} alt="" loading="lazy" />
+                  ) : (
+                    <span>eBay</span>
+                  )}
                 </div>
-                <div className="ebay-comp-query">{comp.title}</div>
-                <div className="ebay-comp-meta">
-                  {[comp.condition, comp.shippingLabel].filter(Boolean).join(' · ')}
+                <div className="ebay-comp-body">
+                  <div className="ebay-comp-topline">
+                    <span className="ebay-comp-price">{comp.priceLabel}</span>
+                    {comp.dateLabel && <span className="ebay-comp-date">{comp.dateLabel}</span>}
+                  </div>
+                  <div className="ebay-comp-query">{comp.title}</div>
+                  <div className="ebay-comp-meta">
+                    {[comp.condition, comp.shippingLabel].filter(Boolean).join(' · ')}
+                  </div>
                 </div>
-              </div>
-            </a>
-          ))
+              </a>
+            )
+          })
         ) : (
           sourceUrl && (
             <a
