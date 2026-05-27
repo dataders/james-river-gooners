@@ -11,6 +11,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pyarrow.parquet as pq
 
@@ -33,6 +34,7 @@ DATE_PATTERNS = (
     "%m/%d/%Y %H:%M:%S",
     "%m/%d/%Y %I:%M:%S %p",
 )
+AUCTION_TZ = ZoneInfo("America/New_York")
 
 
 def read_manual_urls() -> list[str]:
@@ -72,8 +74,8 @@ def parse_end_date(value: str) -> datetime | None:
         try:
             parsed = datetime.strptime(cleaned, pattern)
             if parsed.tzinfo is not None:
-                return parsed.astimezone(timezone.utc).replace(tzinfo=None)
-            return parsed
+                return parsed.astimezone(timezone.utc)
+            return parsed.replace(tzinfo=AUCTION_TZ).astimezone(timezone.utc)
         except ValueError:
             continue
     return None
@@ -96,7 +98,7 @@ def is_closed(path: Path) -> bool:
     end_date = parquet_end_date(path)
     if end_date is None:
         return False
-    return end_date <= datetime.now()
+    return end_date <= datetime.now(timezone.utc)
 
 
 def archive_file(path: Path) -> None:
@@ -106,14 +108,58 @@ def archive_file(path: Path) -> None:
     print(f"Archived closed auction data: {path.name}")
 
 
+def parquet_first_value(path: Path, column: str) -> str:
+    try:
+        table = pq.read_table(path, columns=[column])
+    except Exception:
+        return ""
+
+    values = table.column(column).to_pylist()
+    for value in values:
+        if value is not None:
+            return str(value)
+    return ""
+
+
+def manifest_entry_for_file(path: Path, archived: bool) -> dict:
+    item_count = 0
+    try:
+        item_count = pq.ParquetFile(path).metadata.num_rows
+    except Exception:
+        pass
+
+    item_dir = "archive/items" if archived else "items"
+    return {
+        "safeId": path.stem,
+        "title": parquet_first_value(path, "auctionTitle"),
+        "endDate": parquet_first_value(path, "auctionEndDate"),
+        "scrapedAt": parquet_first_value(path, "scrapedAt"),
+        "itemCount": item_count,
+        "itemsPath": f"data/{item_dir}/{path.name}",
+    }
+
+
+def manifest_sort_key(entry: dict) -> tuple[datetime, str]:
+    parsed = parse_end_date(str(entry.get("endDate", "")))
+    return parsed or datetime.max.replace(tzinfo=timezone.utc), entry.get("title") or entry.get("safeId", "")
+
+
+def build_manifest(paths: list[Path], archived: bool) -> dict:
+    entries = [manifest_entry_for_file(path, archived) for path in paths]
+    entries.sort(key=manifest_sort_key)
+    return {"auctions": entries}
+
+
 def update_manifests() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    active_ids = sorted(p.stem for p in ITEMS_DIR.glob("*.parquet"))
-    archive_ids = sorted(p.stem for p in ARCHIVE_ITEMS_DIR.glob("*.parquet"))
-    MANIFEST_PATH.write_text(json.dumps(active_ids, indent=2) + "\n")
-    ARCHIVE_MANIFEST_PATH.write_text(json.dumps(archive_ids, indent=2) + "\n")
-    print(f"Active manifest: {len(active_ids)} auctions")
-    print(f"Archive manifest: {len(archive_ids)} auctions")
+    active_paths = sorted(ITEMS_DIR.glob("*.parquet")) if ITEMS_DIR.exists() else []
+    archive_paths = sorted(ARCHIVE_ITEMS_DIR.glob("*.parquet")) if ARCHIVE_ITEMS_DIR.exists() else []
+    active_manifest = build_manifest(active_paths, archived=False)
+    archive_manifest = build_manifest(archive_paths, archived=True)
+    MANIFEST_PATH.write_text(json.dumps(active_manifest, indent=2) + "\n")
+    ARCHIVE_MANIFEST_PATH.write_text(json.dumps(archive_manifest, indent=2) + "\n")
+    print(f"Active manifest: {len(active_manifest['auctions'])} auctions")
+    print(f"Archive manifest: {len(archive_manifest['auctions'])} auctions")
 
 
 def archive_closed_and_stale(current_candidate_ids: set[str]) -> None:

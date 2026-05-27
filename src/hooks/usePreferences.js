@@ -94,7 +94,9 @@ export function usePreferences() {
 
   return {
     ...prefs,
+    toggleIncluded,
     toggleExcluded,
+    clearIncluded,
     hideAll,
     showAll,
     setSearchQuery,

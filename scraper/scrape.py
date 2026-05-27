@@ -6,8 +6,8 @@ Fetches auction item data from the Maxanet platform and outputs clean JSON.
 Usage: python scrape.py <auction_url>
 """
 
+import argparse
 import json
-import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -215,7 +215,7 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     }
 
 
-def scrape_auction(auction_url: str) -> None:
+def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None) -> None:
     """Main scrape function for a single auction."""
     auction_id = extract_auction_id(auction_url)
     safe_id = sanitize_auction_id(auction_id)
@@ -286,11 +286,27 @@ def scrape_auction(auction_url: str) -> None:
     pq.write_table(table, items_path, compression="snappy")
     print(f"\nWrote {len(all_items)} items to {items_path}")
 
+    if snapshot_to_motherduck is None:
+        from motherduck import should_snapshot_to_motherduck
+        snapshot_to_motherduck = should_snapshot_to_motherduck()
+
+    if snapshot_to_motherduck:
+        from motherduck import append_listing_snapshots
+        snapshot_count = append_listing_snapshots(all_items, auction_url)
+        print(f"Appended {snapshot_count} listing snapshots to MotherDuck")
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Scrape one Cannon's auction")
+    parser.add_argument("auction_url", help="Full Cannon's auction URL")
+    parser.add_argument(
+        "--motherduck",
+        action="store_true",
+        help="Append listing snapshots to MotherDuck after the Parquet file is written",
+    )
+    return parser.parse_args(argv)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python scrape.py <auction_url>")
-        print("Example: python scrape.py 'https://bid.cannonsauctions.com/Public/Auction/AuctionItems?AuctionId=...'")
-        sys.exit(1)
-
-    scrape_auction(sys.argv[1])
+    args = parse_args(sys.argv[1:])
+    scrape_auction(args.auction_url, snapshot_to_motherduck=args.motherduck or None)

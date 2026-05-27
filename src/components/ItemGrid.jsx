@@ -10,21 +10,24 @@ const breakpointColumns = {
   800: 2,
 }
 
-export function ItemGrid({ items, onItemClick }) {
-  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
+export function ItemGrid({ items, isFavorite, onToggleFavorite, onItemClick }) {
+  const [visibleState, setVisibleState] = useState({ items, visibleCount: BATCH_SIZE })
   const sentinelRef = useRef(null)
 
-  // Reset visible count when items change (filter/search)
-  useEffect(() => {
-    setVisibleCount(BATCH_SIZE)
-  }, [items])
+  const visibleCount = visibleState.items === items ? visibleState.visibleCount : BATCH_SIZE
 
   // Intersection observer for infinite scroll
   const observerCallback = useCallback((entries) => {
     if (entries[0].isIntersecting) {
-      setVisibleCount(prev => Math.min(prev + BATCH_SIZE, items.length))
+      setVisibleState(prev => {
+        const currentCount = prev.items === items ? prev.visibleCount : BATCH_SIZE
+        return {
+          items,
+          visibleCount: Math.min(currentCount + BATCH_SIZE, items.length),
+        }
+      })
     }
-  }, [items.length])
+  }, [items])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -49,7 +52,13 @@ export function ItemGrid({ items, onItemClick }) {
         columnClassName="masonry-column"
       >
         {visibleItems.map(item => (
-          <ItemCard key={item.id} item={item} onItemClick={onItemClick} />
+          <ItemCard
+            key={`${item.auctionSafeId}:${item.id}`}
+            item={item}
+            isFavorite={isFavorite(item)}
+            onToggleFavorite={onToggleFavorite}
+            onItemClick={onItemClick}
+          />
         ))}
       </Masonry>
       {visibleCount < items.length && (

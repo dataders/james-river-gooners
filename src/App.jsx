@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
+import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { filterItems, getGroupedCategories } from './utils/filters'
@@ -12,6 +13,7 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
 
 export default function App() {
+  const [showArchived, setShowArchived] = useState(false)
   const {
     auctions,
     excludedAuctions,
@@ -19,7 +21,9 @@ export default function App() {
     items,
     loading,
     error,
-  } = useAuctionData()
+    archiveLoading,
+    archiveError,
+  } = useAuctionData(showArchived)
 
   const {
     excludedCategories,
@@ -31,6 +35,7 @@ export default function App() {
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
+  const { isFavorite, toggleFavorite } = useFavorites()
 
   const [minPrice, setMinPrice] = useState(null)
   const [maxPrice, setMaxPrice] = useState(null)
@@ -85,14 +90,24 @@ export default function App() {
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <p className="tagline">A better way to browse Cannon's Auctions</p>
-        <label className="local-toggle">
-          <input
-            type="checkbox"
-            checked={localOnly}
-            onChange={e => setLocalOnly(e.target.checked)}
-          />
-          <span>Richmond area only</span>
-        </label>
+        <div className="view-toggles">
+          <label className="local-toggle">
+            <input
+              type="checkbox"
+              checked={localOnly}
+              onChange={e => setLocalOnly(e.target.checked)}
+            />
+            <span>Richmond area only</span>
+          </label>
+          <label className="local-toggle">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={e => setShowArchived(e.target.checked)}
+            />
+            <span>Archived auctions</span>
+          </label>
+        </div>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <RangeFilters
           items={visibleItems}
@@ -114,6 +129,12 @@ export default function App() {
           excludedAuctions={excludedAuctions}
           onToggle={toggleAuction}
         />
+        {archiveLoading && (
+          <div className="inline-status">Loading archived auctions...</div>
+        )}
+        {archiveError && (
+          <div className="inline-error">Archived auctions failed to load: {archiveError}</div>
+        )}
         <FilterBar
           groupedCategories={groupedCategories}
           excludedCategories={excludedCategories}
@@ -130,12 +151,22 @@ export default function App() {
         {loading ? (
           <div className="loading">Loading auction items...</div>
         ) : (
-          <ItemGrid items={filteredItems} onItemClick={setSelectedItem} />
+          <ItemGrid
+            items={filteredItems}
+            isFavorite={isFavorite}
+            onToggleFavorite={toggleFavorite}
+            onItemClick={setSelectedItem}
+          />
         )}
       </main>
 
       {selectedItem && (
-        <ItemDetail item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <ItemDetail
+          item={selectedItem}
+          isFavorite={isFavorite(selectedItem)}
+          onToggleFavorite={toggleFavorite}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
     </div>
   )

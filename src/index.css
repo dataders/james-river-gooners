@@ -479,6 +479,16 @@ body {
   opacity: 0.5;
   margin-left: 1px;
 }
+.filter-chip.archived {
+  border-style: dashed;
+}
+.archive-mark {
+  font-size: 0.6rem;
+  color: var(--accent);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
 /* Item grid */
 .item-grid-wrapper {
@@ -504,6 +514,7 @@ body {
 
 /* Item card */
 .item-card {
+  position: relative;
   display: block;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -517,6 +528,38 @@ body {
 .item-card:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.favorite-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: scale(1.05);
+}
+.favorite-button.active {
+  color: var(--green);
+  border-color: rgba(100, 255, 218, 0.5);
+}
+.item-card > .favorite-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
 .item-image {
@@ -600,7 +643,14 @@ body {
   color: var(--accent);
 }
 
-/* Local toggle */
+.view-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+/* View toggles */
 .local-toggle {
   display: inline-flex;
   align-items: center;
@@ -608,7 +658,6 @@ body {
   font-size: 0.85rem;
   color: var(--text-muted);
   cursor: pointer;
-  margin-bottom: 8px;
 }
 .local-toggle input[type="checkbox"] {
   appearance: none;
@@ -638,6 +687,18 @@ body {
 .local-toggle input[type="checkbox"]:checked::after {
   transform: translateX(16px);
   background: #fff;
+}
+
+.inline-error {
+  color: var(--accent);
+  font-size: 0.75rem;
+  margin: -2px 0 8px;
+}
+
+.inline-status {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin: -2px 0 8px;
 }
 
 /* Detail overlay & panel */
@@ -751,6 +812,17 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 4px;
+}
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.detail-title-row .detail-title {
+  flex: 1;
+}
+.detail-favorite {
+  flex: 0 0 auto;
 }
 
 .detail-category {

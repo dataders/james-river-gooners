@@ -1,8 +1,13 @@
 import { timeRemaining } from '../utils/time'
 
-export function ItemCard({ item, onItemClick }) {
+export function ItemCard({ item, isFavorite, onToggleFavorite, onItemClick }) {
   const imgSrc = item.images?.[0] || null
   const remaining = timeRemaining(item.endDate)
+
+  const toggleFavorite = (event) => {
+    event.stopPropagation()
+    onToggleFavorite(item)
+  }
 
   return (
     <div
@@ -12,6 +17,14 @@ export function ItemCard({ item, onItemClick }) {
       onClick={() => onItemClick(item)}
       onKeyDown={(e) => { if (e.key === 'Enter') onItemClick(item) }}
     >
+      <button
+        type="button"
+        className={`favorite-button${isFavorite ? ' active' : ''}`}
+        aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
+        onClick={toggleFavorite}
+      >
+        {isFavorite ? '★' : '☆'}
+      </button>
       <div className="item-image">
         {imgSrc ? (
           <img src={imgSrc} alt={item.title} loading="lazy" />
