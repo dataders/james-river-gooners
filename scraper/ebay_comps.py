@@ -36,6 +36,7 @@ DEFAULT_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 )
 DEFAULT_AGENT_BROWSER_COMMAND = "npm exec --yes agent-browser@0.27.0 --"
+SOLDCOMPS_API_URL = "https://api.sold-comps.com/v1/scrape"
 
 STOP_WORDS = {
     "and",
@@ -403,6 +404,40 @@ def sold_date_from_label(label: str) -> str | None:
     return None
 
 
+def date_from_iso(value: str | None) -> str | None:
+    if not value:
+        return None
+    cleaned = str(value).strip()
+    if cleaned.endswith("Z"):
+        cleaned = f"{cleaned[:-1]}+00:00"
+    try:
+        return datetime.fromisoformat(cleaned).date().isoformat()
+    except ValueError:
+        return None
+
+
+def sold_date_label_from_iso(value: str | None) -> str:
+    sold_date = date_from_iso(value)
+    if not sold_date:
+        return ""
+    try:
+        parsed = datetime.strptime(sold_date, "%Y-%m-%d").date()
+    except ValueError:
+        return ""
+    return f"Sold {parsed.strftime('%b')} {parsed.day}, {parsed.year}"
+
+
+def shipping_label(value) -> str:
+    if value in (None, ""):
+        return ""
+    amount = price_amount(str(value))
+    if amount is None:
+        return text_value(value)
+    if Decimal(amount) == 0:
+        return "Free shipping"
+    return f"+${amount} shipping"
+
+
 def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -> list[dict]:
     from bs4 import BeautifulSoup
 
@@ -455,6 +490,86 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
             break
 
     return matches
+
+
+def soldcomps_item_match(item: dict, source_query: str) -> dict | None:
+    item_web_url = canonical_ebay_item_url(text_value(item.get("url") or item.get("itemUrl") or item.get("itemWebUrl")))
+    if not item_web_url:
+        return None
+
+    title = text_value(item.get("title"))
+    price_value = price_amount(text_value(item.get("soldPrice") or item.get("price") or item.get("priceValue")))
+    if not title or not price_value:
+        return None
+
+    ended_at = text_value(item.get("endedAt") or item.get("soldAt") or item.get("soldDate"))
+    return {
+        "ebay_item_id": text_value(item.get("itemId") or item.get("ebayItemId")) or extract_ebay_item_id(item_web_url),
+        "title": title,
+        "price_value": price_value,
+        "price_currency": text_value(item.get("soldCurrency") or item.get("currency"), "USD"),
+        "shipping_label": shipping_label(item.get("shippingPrice") or item.get("shippingCost") or item.get("shipping")),
+        "sold_date": date_from_iso(ended_at),
+        "sold_date_label": sold_date_label_from_iso(ended_at),
+        "thumbnail_url": text_value(item.get("imageUrl") or item.get("thumbnailUrl") or item.get("image")),
+        "item_web_url": item_web_url,
+        "condition": text_value(item.get("condition")),
+        "source_query": source_query,
+        "match_confidence": "medium",
+    }
+
+
+def soldcomps_sold_matches(
+    session,
+    search: dict,
+    api_key: str | None = None,
+    max_matches: int = 3,
+    timeout: int = 30,
+) -> dict | None:
+    api_key = api_key or os.environ.get("SOLDCOMPS_API_KEY")
+    if not api_key:
+        return None
+
+    response = session.get(
+        os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
+        params={"keyword": search["query"]},
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+            "User-Agent": "james-river-gooners/1.0",
+        },
+        timeout=timeout,
+    )
+    if response.status_code >= 400:
+        return {
+            "status": "error",
+            "warning": f"SoldComps API returned HTTP {response.status_code}.",
+            "matches": [],
+        }
+
+    payload = response.json()
+    raw_items = payload.get("items") or payload.get("results") or []
+    matches = []
+    seen = set()
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            continue
+        match = soldcomps_item_match(raw_item, source_query=search["kind"])
+        if not match:
+            continue
+        key = match["item_web_url"]
+        if key in seen:
+            continue
+        seen.add(key)
+        matches.append(match)
+        if len(matches) >= max_matches:
+            break
+
+    return {
+        "status": "ok" if matches else "no_results",
+        "warning": search.get("warning") or "",
+        "matches": matches,
+    }
 
 
 def agent_browser_env() -> dict:
@@ -572,6 +687,10 @@ def fetch_sold_matches(
     max_matches: int = 3,
     browser_runner=run_agent_browser,
 ) -> dict:
+    provider_result = soldcomps_sold_matches(session, search, max_matches=max_matches, timeout=timeout)
+    if provider_result is not None:
+        return provider_result
+
     response = session.get(
         search["url"],
         headers={
