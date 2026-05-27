@@ -14,6 +14,8 @@ import argparse
 import json
 import os
 import re
+import shlex
+import subprocess
 import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -33,6 +35,7 @@ DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 )
+DEFAULT_AGENT_BROWSER_COMMAND = "npm exec --yes agent-browser@11.9.0 --"
 
 STOP_WORDS = {
     "and",
@@ -454,7 +457,109 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
     return matches
 
 
-def fetch_sold_matches(session, search: dict, timeout: int = 25, max_matches: int = 3) -> dict:
+def agent_browser_env() -> dict:
+    allowed = {
+        "CI",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "PATH",
+        "RUNNER_TEMP",
+        "RUNNER_TOOL_CACHE",
+        "SHELL",
+        "TMP",
+        "TMPDIR",
+        "TEMP",
+        "USER",
+    }
+    env = {key: value for key, value in os.environ.items() if key in allowed and value}
+    env.setdefault("npm_config_cache", str(Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "npm-agent-browser"))
+    return env
+
+
+def run_agent_browser(args: list[str], timeout: int = 45) -> str:
+    command = shlex.split(os.environ.get("GOONERS_AGENT_BROWSER_COMMAND", DEFAULT_AGENT_BROWSER_COMMAND))
+    result = subprocess.run(
+        command + args,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=agent_browser_env(),
+    )
+    return result.stdout.strip()
+
+
+def agent_browser_html(url: str, browser_runner=run_agent_browser) -> str:
+    browser_runner(["open", url], timeout=45)
+    try:
+        browser_runner(["wait", "li.s-item, .s-card"], timeout=30)
+    except Exception:
+        pass
+    try:
+        return html_from_browser_output(browser_runner(["eval", "document.documentElement.outerHTML"], timeout=45))
+    finally:
+        try:
+            browser_runner(["close"], timeout=10)
+        except Exception:
+            pass
+
+
+def html_from_browser_output(output: str) -> str:
+    cleaned = output.strip()
+    if not cleaned:
+        return ""
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, str):
+        return parsed
+    if isinstance(parsed, dict):
+        for key in ("result", "value", "output", "text", "data"):
+            if isinstance(parsed.get(key), str):
+                return parsed[key]
+
+    html_start = cleaned.lower().find("<html")
+    if html_start < 0:
+        html_start = cleaned.lower().find("<!doctype")
+    return cleaned[html_start:] if html_start >= 0 else cleaned
+
+
+def browser_sold_matches(search: dict, max_matches: int = 3, browser_runner=run_agent_browser) -> dict:
+    try:
+        html = agent_browser_html(search["url"], browser_runner=browser_runner)
+    except Exception as exc:
+        return {
+            "status": "blocked",
+            "warning": f"eBay HTTP fetch was blocked and agent-browser fallback failed: {exc}",
+            "matches": [],
+        }
+
+    if "Access Denied" in html or "Service Unavailable" in html:
+        return {
+            "status": "blocked",
+            "warning": "eBay blocked both HTTP and browser fallback fetches.",
+            "matches": [],
+        }
+
+    matches = parse_sold_search_html(html, source_query=search["kind"], max_matches=max_matches)
+    return {
+        "status": "ok" if matches else "no_results",
+        "warning": search.get("warning") or "",
+        "matches": matches,
+    }
+
+
+def fetch_sold_matches(
+    session,
+    search: dict,
+    timeout: int = 25,
+    max_matches: int = 3,
+    browser_runner=run_agent_browser,
+) -> dict:
     response = session.get(
         search["url"],
         headers={
@@ -465,6 +570,10 @@ def fetch_sold_matches(session, search: dict, timeout: int = 25, max_matches: in
         timeout=timeout,
     )
     if response.status_code in {403, 429, 503}:
+        if os.environ.get("GOONERS_EBAY_BROWSER_FALLBACK", "1").lower() in {"1", "true", "yes", "on"}:
+            result = browser_sold_matches(search, max_matches=max_matches, browser_runner=browser_runner)
+            if result["status"] != "blocked":
+                return result
         return {
             "status": "blocked",
             "warning": f"eBay search returned HTTP {response.status_code}; stopping this ingestion run.",

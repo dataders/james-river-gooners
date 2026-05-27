@@ -12,6 +12,7 @@ from ebay_comps import (
     comp_rows_for_item,
     ensure_comp_tables,
     extract_ebay_item_id,
+    fetch_sold_matches,
     ingest_ebay_comps,
     normalize_match_row,
     parse_sold_search_html,
@@ -133,6 +134,40 @@ class EbayCompExportTest(unittest.TestCase):
         self.assertEqual(matches[0]["price_value"], "99.00")
         self.assertEqual(matches[0]["shipping_label"], "+$21.75 delivery")
         self.assertEqual(matches[0]["condition"], "Pre-Owned")
+
+    def test_fetch_sold_matches_falls_back_to_agent_browser_on_block(self):
+        html = """
+        <li class="s-item">
+          <a class="s-item__link" href="https://www.ebay.com/itm/177917908706">
+            <div class="s-item__title">Vintage Rosenthal crackle glaze vase</div>
+          </a>
+          <span class="s-item__price">$99.00</span>
+        </li>
+        """
+        session = Mock()
+        session.get.return_value = Mock(status_code=403, text="Access Denied")
+        calls = []
+
+        def browser_runner(args, **_kwargs):
+            calls.append(args)
+            if args[0] == "eval":
+                return html
+            return ""
+
+        result = fetch_sold_matches(
+            session,
+            {
+                "kind": "specific",
+                "query": "Rosenthal vase",
+                "url": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+vase&LH_Sold=1",
+                "warning": "",
+            },
+            browser_runner=browser_runner,
+        )
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["matches"][0]["item_web_url"], "https://www.ebay.com/itm/177917908706")
+        self.assertTrue(any(call[0] == "open" for call in calls))
 
     def test_comp_rows_for_item_records_no_results_without_fake_match(self):
         rows = comp_rows_for_item(
