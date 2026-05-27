@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { timeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
 
-export function ItemDetail({ item, isFavorite, onToggleFavorite, onClose }) {
+export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
@@ -106,7 +106,7 @@ export function ItemDetail({ item, isFavorite, onToggleFavorite, onClose }) {
             </a>
           )}
 
-          <EbayComps item={item} />
+          <EbayComps item={item} soldComps={ebayComps[item.id]} />
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import {
   buildEbaySoldSearches,
   buildEbaySoldSearchUrl,
   compactItemText,
+  getEbayCompKey,
 } from './ebayComps.js'
 
 test('buildEbaySoldSearchUrl targets eBay sold and completed results', () => {
@@ -15,6 +16,13 @@ test('buildEbaySoldSearchUrl targets eBay sold and completed results', () => {
   assert.equal(url.searchParams.get('LH_Sold'), '1')
   assert.equal(url.searchParams.get('LH_Complete'), '1')
   assert.equal(url.searchParams.get('_sop'), '13')
+})
+
+test('getEbayCompKey matches auction and item ids', () => {
+  assert.equal(
+    getEbayCompKey({ auctionSafeId: 'abc', id: '123' }),
+    'abc:123'
+  )
 })
 
 test('buildEbaySoldSearches keeps model-like terms for electronics', () => {
