@@ -31,7 +31,9 @@ jobs:
       - name: Scrape auction(s)
         run: |
           cd scraper
-          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Dry run: skipping MotherDuck listing snapshot writes"
+          elif [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
             export GOONERS_MOTHERDUCK_SNAPSHOTS=1
           fi
           if [ -n "${{ inputs.auction_url }}" ]; then
