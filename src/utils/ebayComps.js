@@ -138,6 +138,10 @@ export function normalizeEbaySoldMatches(soldComps) {
     ))
 }
 
+export function getEbayCompThumbnail(comp, item) {
+  return comp?.thumbnailUrl || item?.images?.[0] || ''
+}
+
 export function buildEbaySoldSearches(item) {
   const text = compactItemText(item)
   const tokens = meaningfulTokens(text)
