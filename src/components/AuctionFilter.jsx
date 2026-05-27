@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 function shortTitle(title) {
   // Extract the meaningful part: "03/18/26: Gallery Consignments | ..." -> "03/18 Gallery Consignments"
-  const match = title.match(/^(\d{2}\/\d{2})\/\d{2}:\s*(.+?)(?:\s*[|\-]\s*(?:Cannon|Online|Richmond|Henrico|Providence).*)?$/i)
+  const match = title.match(/^(\d{2}\/\d{2})\/\d{2}:\s*(.+?)(?:\s*[|-]\s*(?:Cannon|Online|Richmond|Henrico|Providence).*)?$/i)
   if (match) {
     return `${match[1]} ${match[2]}`
   }
@@ -34,11 +34,12 @@ export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
             {shown.map(a => (
               <button
                 key={a.safeId}
-                className="filter-chip shown"
+                className={`filter-chip shown${a.archived ? ' archived' : ''}`}
                 onClick={() => onToggle(a.safeId)}
                 title={a.title}
               >
                 {shortTitle(a.title)}
+                {a.archived && <span className="archive-mark">archived</span>}
                 <span className="chip-count">{a.totalItems}</span>
               </button>
             ))}
@@ -49,12 +50,13 @@ export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
                 {hidden.map(a => (
                   <button
                     key={a.safeId}
-                    className="filter-chip hidden"
+                    className={`filter-chip hidden${a.archived ? ' archived' : ''}`}
                     onClick={() => onToggle(a.safeId)}
                     title={a.title}
                   >
                     <span className="x-mark">✕</span>
                     {shortTitle(a.title)}
+                    {a.archived && <span className="archive-mark">archived</span>}
                     <span className="chip-count">{a.totalItems}</span>
                   </button>
                 ))}

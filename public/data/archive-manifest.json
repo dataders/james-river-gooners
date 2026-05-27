@@ -1,10 +1,68 @@
-[
-  "1R-xpYyFq2BouWpPwzWQcw",
-  "26925bY6MOivsz3zKue93A",
-  "MmwrCfPOyubVzrgFK3d1gQ",
-  "UHLOX1ptnkWnJ4itLwtDJQ",
-  "UJdlFuhSHbhiiKDGyQklpQ",
-  "bLkOiYnlcePwcQwm8L25cw",
-  "d7DYU8ApwA_e4vae0MYlgw",
-  "w0NiWkUBBgZyQ5zYw2NHBA"
-]
+{
+  "auctions": [
+    {
+      "safeId": "bLkOiYnlcePwcQwm8L25cw",
+      "title": "03/16/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:07:35.417102+00:00",
+      "itemCount": 363,
+      "itemsPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.parquet"
+    },
+    {
+      "safeId": "MmwrCfPOyubVzrgFK3d1gQ",
+      "title": "03/18/26: Gallery Consignments | Firearms | Gold and Graded Coins | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:07:28.491757+00:00",
+      "itemCount": 827,
+      "itemsPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.parquet"
+    },
+    {
+      "safeId": "UJdlFuhSHbhiiKDGyQklpQ",
+      "title": "03/19/26: Online Only Estate Auction | Woodfield Rd | Richmond VA 23234- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:08:10.802814+00:00",
+      "itemCount": 351,
+      "itemsPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.parquet"
+    },
+    {
+      "safeId": "26925bY6MOivsz3zKue93A",
+      "title": "03/19/26: Suter's Furniture | Sterling Silver | Online Estate Auction | Hickoryridge Road | Henrico VA 23238- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:07:40.056347+00:00",
+      "itemCount": 159,
+      "itemsPath": "data/archive/items/26925bY6MOivsz3zKue93A.parquet"
+    },
+    {
+      "safeId": "1R-xpYyFq2BouWpPwzWQcw",
+      "title": "03/24/26: Prestigious Estate in Earlysville, VA 22936 Presented by Acorn Estate Liquidators- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:08:03.136649+00:00",
+      "itemCount": 1187,
+      "itemsPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.parquet"
+    },
+    {
+      "safeId": "w0NiWkUBBgZyQ5zYw2NHBA",
+      "title": "03/25/26: Classic Rolls-Royce | Gold Coins and Sterling Silver | Estate Collectibles and Objets d'Art | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:08:39.459157+00:00",
+      "itemCount": 1004,
+      "itemsPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.parquet"
+    },
+    {
+      "safeId": "d7DYU8ApwA_e4vae0MYlgw",
+      "title": "03/26/26:  Fine Jewelry, Sterling Silver, Collectibles | Aga's Consignments LLC Warehouse Auction | Providence Forge VA 23140- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:08:46.296255+00:00",
+      "itemCount": 304,
+      "itemsPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.parquet"
+    },
+    {
+      "safeId": "UHLOX1ptnkWnJ4itLwtDJQ",
+      "title": "04/01/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-05-27T02:09:02.071088+00:00",
+      "itemCount": 829,
+      "itemsPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.parquet"
+    }
+  ]
+}

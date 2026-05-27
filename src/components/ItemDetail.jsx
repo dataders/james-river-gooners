@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react'
 import { timeRemaining } from '../utils/time'
 
-export function ItemDetail({ item, onClose }) {
-  const [imgIndex, setImgIndex] = useState(0)
-
-  // Reset image index when item changes
-  useEffect(() => {
-    setImgIndex(0)
-  }, [item?.id])
+export function ItemDetail({ item, isFavorite, onToggleFavorite, onClose }) {
+  const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
+  const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
   // Close on Escape
   useEffect(() => {
@@ -27,10 +23,25 @@ export function ItemDetail({ item, onClose }) {
   if (!item) return null
 
   const images = item.images || []
+  const maxImgIndex = Math.max(images.length - 1, 0)
+  const imgIndex = imageState.itemKey === itemKey
+    ? Math.min(imageState.imgIndex, maxImgIndex)
+    : 0
   const remaining = timeRemaining(item.endDate)
 
-  const prev = () => setImgIndex(i => (i - 1 + images.length) % images.length)
-  const next = () => setImgIndex(i => (i + 1) % images.length)
+  const setCurrentImgIndex = (updater) => {
+    setImageState(prevState => {
+      const currentIndex = prevState.itemKey === itemKey
+        ? Math.min(prevState.imgIndex, maxImgIndex)
+        : 0
+      const rawIndex = typeof updater === 'function' ? updater(currentIndex) : updater
+      const nextIndex = Math.max(0, Math.min(rawIndex, maxImgIndex))
+      return { itemKey, imgIndex: nextIndex }
+    })
+  }
+
+  const prev = () => setCurrentImgIndex(i => (i - 1 + images.length) % images.length)
+  const next = () => setCurrentImgIndex(i => (i + 1) % images.length)
 
   return (
     <div className="detail-overlay" onClick={onClose}>
@@ -49,7 +60,7 @@ export function ItemDetail({ item, onClose }) {
                     <span
                       key={i}
                       className={`carousel-dot${i === imgIndex ? ' active' : ''}`}
-                      onClick={() => setImgIndex(i)}
+                      onClick={() => setCurrentImgIndex(i)}
                     />
                   ))}
                 </div>
@@ -59,7 +70,17 @@ export function ItemDetail({ item, onClose }) {
         )}
 
         <div className="detail-body">
-          <h2 className="detail-title">{item.title}</h2>
+          <div className="detail-title-row">
+            <h2 className="detail-title">{item.title}</h2>
+            <button
+              type="button"
+              className={`favorite-button detail-favorite${isFavorite ? ' active' : ''}`}
+              aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
+              onClick={() => onToggleFavorite(item)}
+            >
+              {isFavorite ? '★' : '☆'}
+            </button>
+          </div>
           <div className="detail-category">{item.rawCategory || item.category}</div>
 
           <div className="detail-bid-row">

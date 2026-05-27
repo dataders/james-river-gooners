@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       auction_url:
-        description: 'Full Cannon''s auction URL (or leave empty to re-scrape all existing auctions)'
+        description: 'Full Cannon''s auction URL (or leave empty to discover and scrape current auctions)'
         required: false
         type: string
       dry_run:
@@ -27,27 +27,28 @@ jobs:
       - uses: astral-sh/setup-uv@v4
 
       - name: Scrape auction(s)
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
         run: |
           cd scraper
+          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            export GOONERS_MOTHERDUCK_SNAPSHOTS=1
+          fi
           if [ -n "${{ inputs.auction_url }}" ]; then
             echo "Scraping single auction..."
-            uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-              python scrape.py "${{ inputs.auction_url }}"
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+              python3 scrape.py "${{ inputs.auction_url }}"
           else
             echo "Re-scraping all auctions from manifest..."
-            uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-              python rescrape_all.py
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+              python3 rescrape_all.py
           fi
 
-      - name: Update manifest
+      - name: Rebuild manifests
         run: |
-          node -e "
-          const fs = require('fs');
-          const dir = 'public/data/items';
-          const files = fs.readdirSync(dir).filter(f => f.endsWith('.parquet')).map(f => f.replace('.parquet', ''));
-          fs.writeFileSync('public/data/manifest.json', JSON.stringify(files, null, 2));
-          console.log('Manifest updated:', files.length, 'auctions');
-          "
+          cd scraper
+          uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+            python3 -c "from rescrape_all import update_manifests; update_manifests()"
 
       - name: Commit and push
         if: ${{ inputs.dry_run != 'true' }}

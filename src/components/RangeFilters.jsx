@@ -237,5 +237,3 @@ export function RangeFilters({
     </div>
   )
 }
-
-export { hoursUntil }

@@ -2,3 +2,4 @@ requests
 beautifulsoup4
 pyarrow
 pyyaml
+duckdb==1.5.2

@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import initWasm, { readParquet } from 'parquet-wasm'
 import { isLocalAuction } from '../utils/locality'
+import { normalizeManifest } from '../utils/manifest'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -20,62 +21,121 @@ async function fetchParquetAsObjects(url) {
   return table.toArray().map(row => row.toJSON())
 }
 
-export function useAuctionData() {
-  const [allItems, setAllItems] = useState([])
-  const [auctions, setAuctions] = useState([])
+function dataUrl(path) {
+  return `${BASE}${path.replace(/^\//, '')}`
+}
+
+function normalizeRows(results, archived) {
+  const items = []
+  const auctionMap = {}
+
+  for (const rows of results) {
+    for (const row of rows) {
+      if (typeof row.images === 'string') {
+        try { row.images = JSON.parse(row.images) } catch { row.images = [] }
+      }
+      // Convert BigInt values from Arrow to regular numbers
+      if (typeof row.lotNumber === 'bigint') row.lotNumber = Number(row.lotNumber)
+      if (typeof row.totalBids === 'bigint') row.totalBids = Number(row.totalBids)
+      if (typeof row.currentBid === 'bigint') row.currentBid = Number(row.currentBid)
+      row.archived = archived
+      items.push(row)
+
+      const sid = row.auctionSafeId
+      if (sid && !auctionMap[sid]) {
+        auctionMap[sid] = {
+          safeId: sid,
+          id: row.auctionId,
+          title: row.auctionTitle,
+          endDate: row.auctionEndDate,
+          scrapedAt: row.scrapedAt,
+          archived,
+          isLocal: isLocalAuction(row.auctionTitle),
+          totalItems: 0,
+        }
+      }
+      if (sid) auctionMap[sid].totalItems++
+    }
+  }
+
+  return { items, auctions: Object.values(auctionMap) }
+}
+
+async function fetchDataset(manifestPath, { archived = false } = {}) {
+  const manifestResp = await fetch(dataUrl(manifestPath))
+  if (!manifestResp.ok) {
+    throw new Error(`Failed to load ${manifestPath}: ${manifestResp.status}`)
+  }
+  const manifest = await manifestResp.json()
+  const entries = normalizeManifest(manifest, { archived })
+  const results = await Promise.all(entries.map(entry =>
+    fetchParquetAsObjects(dataUrl(entry.itemsPath))
+  ))
+  return normalizeRows(results, archived)
+}
+
+export function useAuctionData(includeArchived = false) {
+  const [activeItems, setActiveItems] = useState([])
+  const [activeAuctions, setActiveAuctions] = useState([])
+  const [archiveItems, setArchiveItems] = useState([])
+  const [archiveAuctions, setArchiveAuctions] = useState([])
+  const [archiveLoaded, setArchiveLoaded] = useState(false)
+  const archiveLoadingRef = useRef(false)
   const [excludedAuctions, setExcludedAuctions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [archiveError, setArchiveError] = useState(null)
 
   useEffect(() => {
-    // Fetch manifest to discover parquet files
-    fetch(`${BASE}data/manifest.json`)
-      .then(r => r.json())
-      .then(safeIds =>
-        Promise.all(safeIds.map(id =>
-          fetchParquetAsObjects(`${BASE}data/items/${id}.parquet`)
-        ))
-      )
-      .then(results => {
-        const items = []
-        const auctionMap = {}
-
-        for (const rows of results) {
-          for (const row of rows) {
-            if (typeof row.images === 'string') {
-              try { row.images = JSON.parse(row.images) } catch { row.images = [] }
-            }
-            // Convert BigInt values from Arrow to regular numbers
-            if (typeof row.lotNumber === 'bigint') row.lotNumber = Number(row.lotNumber)
-            if (typeof row.totalBids === 'bigint') row.totalBids = Number(row.totalBids)
-            if (typeof row.currentBid === 'bigint') row.currentBid = Number(row.currentBid)
-            items.push(row)
-
-            const sid = row.auctionSafeId
-            if (sid && !auctionMap[sid]) {
-              auctionMap[sid] = {
-                safeId: sid,
-                id: row.auctionId,
-                title: row.auctionTitle,
-                endDate: row.auctionEndDate,
-                scrapedAt: row.scrapedAt,
-                isLocal: isLocalAuction(row.auctionTitle),
-                totalItems: 0,
-              }
-            }
-            if (sid) auctionMap[sid].totalItems++
-          }
-        }
-
-        setAllItems(items)
-        setAuctions(Object.values(auctionMap))
+    let cancelled = false
+    fetchDataset('data/manifest.json')
+      .then(({ items, auctions }) => {
+        if (cancelled) return
+        setActiveItems(items)
+        setActiveAuctions(auctions)
         setLoading(false)
       })
       .catch(e => {
+        if (cancelled) return
         setError(e.message)
         setLoading(false)
       })
+    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (!includeArchived || archiveLoaded || archiveError || archiveLoadingRef.current) return
+
+    let cancelled = false
+    archiveLoadingRef.current = true
+    fetchDataset('data/archive-manifest.json', { archived: true })
+      .then(({ items, auctions }) => {
+        if (cancelled) return
+        setArchiveItems(items)
+        setArchiveAuctions(auctions)
+        setArchiveLoaded(true)
+        archiveLoadingRef.current = false
+      })
+      .catch(e => {
+        if (cancelled) return
+        setArchiveError(e.message)
+        archiveLoadingRef.current = false
+      })
+    return () => {
+      cancelled = true
+      archiveLoadingRef.current = false
+    }
+  }, [includeArchived, archiveLoaded, archiveError])
+
+  const allItems = useMemo(
+    () => includeArchived ? [...activeItems, ...archiveItems] : activeItems,
+    [activeItems, archiveItems, includeArchived]
+  )
+
+  const auctions = useMemo(
+    () => includeArchived ? [...activeAuctions, ...archiveAuctions] : activeAuctions,
+    [activeAuctions, archiveAuctions, includeArchived]
+  )
 
   const items = useMemo(() => {
     if (excludedAuctions.length === 0) return allItems
@@ -96,6 +156,8 @@ export function useAuctionData() {
     toggleAuction,
     items,
     loading,
+    archiveLoading: includeArchived && !archiveLoaded && !archiveError,
     error,
+    archiveError,
   }
 }
