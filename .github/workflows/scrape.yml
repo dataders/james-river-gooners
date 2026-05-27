@@ -24,6 +24,7 @@ jobs:
     env:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
       MOTHERDUCK_READ_SCALING_TOKEN: ${{ secrets.MOTHERDUCK_READ_SCALING_TOKEN }}
+      SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 

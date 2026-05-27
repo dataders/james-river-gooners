@@ -16,6 +16,7 @@ from ebay_comps import (
     ingest_ebay_comps,
     normalize_match_row,
     parse_sold_search_html,
+    soldcomps_sold_matches,
     write_public_exports,
 )
 
@@ -168,6 +169,51 @@ class EbayCompExportTest(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["matches"][0]["item_web_url"], "https://www.ebay.com/itm/177917908706")
         self.assertTrue(any(call[0] == "open" for call in calls))
+
+    def test_soldcomps_response_maps_to_real_sold_matches(self):
+        response = Mock(status_code=200)
+        response.json.return_value = {
+            "items": [
+                {
+                    "itemId": "177917908706",
+                    "title": "Vintage Rosenthal crackle glaze vase",
+                    "soldPrice": "99.00",
+                    "soldCurrency": "USD",
+                    "shippingPrice": "21.75",
+                    "endedAt": "2026-03-04T18:42:00.000Z",
+                    "url": "https://www.ebay.com/itm/177917908706",
+                    "condition": "Pre-Owned",
+                    "imageUrl": "https://i.ebayimg.com/example.jpg",
+                },
+                {
+                    "itemId": "not-real",
+                    "title": "Bad row",
+                    "soldPrice": "1.00",
+                    "url": "https://www.ebay.com/sch/i.html?_nkw=bad",
+                },
+            ]
+        }
+        session = Mock()
+        session.get.return_value = response
+
+        result = soldcomps_sold_matches(
+            session,
+            {
+                "kind": "specific",
+                "query": "Rosenthal vase",
+                "url": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+vase&LH_Sold=1",
+            },
+            api_key="test-key",
+            max_matches=3,
+        )
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["matches"][0]["price_value"], "99.00")
+        self.assertEqual(result["matches"][0]["shipping_label"], "+$21.75 shipping")
+        self.assertEqual(result["matches"][0]["sold_date"], "2026-03-04")
+        self.assertEqual(result["matches"][0]["thumbnail_url"], "https://i.ebayimg.com/example.jpg")
+        session.get.assert_called_once()
+        self.assertEqual(session.get.call_args.kwargs["headers"]["Authorization"], "Bearer test-key")
 
     def test_comp_rows_for_item_records_no_results_without_fake_match(self):
         rows = comp_rows_for_item(
