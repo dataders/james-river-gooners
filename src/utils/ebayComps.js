@@ -88,6 +88,56 @@ export function getEbayCompKey(item) {
   return `${item.auctionSafeId || ''}:${item.id}`
 }
 
+export function isEbayItemUrl(value) {
+  if (!value) return false
+
+  try {
+    const url = new URL(value)
+    const hostname = url.hostname.toLowerCase()
+    if (hostname !== 'ebay.com' && !hostname.endsWith('.ebay.com')) return false
+
+    const segments = url.pathname.split('/').filter(Boolean)
+    const itemIndex = segments.indexOf('itm')
+    if (itemIndex < 0) return false
+
+    return segments.slice(itemIndex + 1).some(segment => /^\d{9,}$/.test(segment))
+  } catch {
+    return false
+  }
+}
+
+function formatSoldCompPrice(comp) {
+  if (comp.soldPrice) return comp.soldPrice
+  if (!comp.price?.value) return ''
+
+  const value = Number(comp.price.value)
+  if (comp.price.currency === 'USD' && Number.isFinite(value)) {
+    return `$${value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
+  }
+
+  return `${comp.price.value} ${comp.price.currency || ''}`.trim()
+}
+
+export function normalizeEbaySoldMatches(soldComps) {
+  return (soldComps?.matches || soldComps?.results || [])
+    .map(comp => ({
+      ...comp,
+      priceLabel: formatSoldCompPrice(comp),
+      dateLabel: comp.soldDateLabel || comp.soldDate || '',
+      thumbnailUrl: comp.thumbnailUrl || comp.imageUrl || '',
+      itemWebUrl: comp.itemWebUrl || comp.url || '',
+      shippingLabel: comp.shippingLabel || comp.shipping || '',
+    }))
+    .filter(comp => (
+      comp.title &&
+      comp.priceLabel &&
+      isEbayItemUrl(comp.itemWebUrl)
+    ))
+}
+
 export function buildEbaySoldSearches(item) {
   const text = compactItemText(item)
   const tokens = meaningfulTokens(text)
