@@ -84,6 +84,10 @@ export function buildEbaySoldSearchUrl(query) {
   return `${EBAY_SEARCH_URL}?${params.toString()}`
 }
 
+export function getEbayCompKey(item) {
+  return `${item.auctionSafeId || ''}:${item.id}`
+}
+
 export function buildEbaySoldSearches(item) {
   const text = compactItemText(item)
   const tokens = meaningfulTokens(text)

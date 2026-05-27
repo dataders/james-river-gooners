@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
+import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
@@ -44,6 +45,7 @@ export default function App() {
   const [minHours, setMinHours] = useState(null)
   const [maxHours, setMaxHours] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
+  const ebayComps = useEbayComps(selectedItem?.auctionSafeId)
   const [localOnly, setLocalOnly] = useState(false)
 
   const localAuctionIds = useMemo(() => {
@@ -163,6 +165,7 @@ export default function App() {
       {selectedItem && (
         <ItemDetail
           item={selectedItem}
+          ebayComps={ebayComps}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={toggleFavorite}
           onClose={() => setSelectedItem(null)}

@@ -966,11 +966,41 @@ body {
   margin-bottom: 2px;
 }
 
+.ebay-comp-topline {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.ebay-comp-price {
+  color: var(--green);
+  font-size: 0.95rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.ebay-comp-date {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-align: right;
+}
+
 .ebay-comp-query {
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 650;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.ebay-comp-meta {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.25;
+  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 
