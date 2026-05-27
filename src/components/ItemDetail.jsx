@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { timeRemaining } from '../utils/time'
+import { EbayComps } from './EbayComps'
 
 export function ItemDetail({ item, isFavorite, onToggleFavorite, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
@@ -104,6 +105,8 @@ export function ItemDetail({ item, isFavorite, onToggleFavorite, onClose }) {
               Open on Cannon's
             </a>
           )}
+
+          <EbayComps item={item} />
         </div>
       </div>
     </div>
