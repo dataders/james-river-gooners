@@ -150,7 +150,7 @@ class EbayCompExportTest(unittest.TestCase):
 
         def browser_runner(args, **_kwargs):
             calls.append(args)
-            if args[0] == "eval":
+            if args[:2] == ["get", "html"] or args[0] == "eval":
                 return html
             return ""
 
