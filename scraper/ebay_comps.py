@@ -281,9 +281,12 @@ def build_ebay_sold_searches(item: dict) -> list[dict]:
         token for token in tokens
         if re.search(r"[A-Za-z]\d|\d[A-Za-z]|[-/]\d", token) and len(token) >= 4
     ]
-    broad_tokens = [token for token in tokens if not re.match(r"^\d+$", token)][:7]
-    specific_tokens = dedupe_words(tokens[:4] + model_tokens)[:8]
-    category_tokens = meaningful_tokens(f"{item.get('rawCategory') or item.get('category') or ''} {text}")[:7]
+    # Keep queries short — eBay sold-listing searches return nothing for long,
+    # over-specific keyword strings. Funnel from a precise query down to broad
+    # fallbacks so an item that misses on the specific query can still match.
+    broad_tokens = [token for token in tokens if not re.match(r"^\d+$", token)][:3]
+    specific_tokens = dedupe_words(tokens[:4] + model_tokens)[:5]
+    category_tokens = meaningful_tokens(f"{item.get('rawCategory') or item.get('category') or ''} {text}")[:4]
 
     candidates = [
         {"kind": "specific", "label": "Specific match", "query": " ".join(specific_tokens)},
@@ -1118,7 +1121,7 @@ def fetch_direct(
     data_dir: Path = DATA_DIR,
     output_dir: Path = EBAY_COMPS_DIR,
     limit: int = DEFAULT_LIMIT,
-    queries_per_item: int = 1,
+    queries_per_item: int = 3,
     max_matches: int = 3,
     stale_hours: int = DEFAULT_STALE_HOURS,
     include_archived: bool = False,
@@ -1186,7 +1189,10 @@ def fetch_direct(
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
             if result["status"] == "ok":
+                # Got comps from this query — no need to spend further requests
+                # on the broader fallback queries for this item.
                 item_status = "ok"
+                break
             if result["status"] == "blocked":
                 summary["blocked"] = True
                 print(result["warning"])
@@ -1242,7 +1248,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--limit", type=int, default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT))
     )
-    fetch_parser.add_argument("--queries-per-item", type=int, default=1)
+    fetch_parser.add_argument("--queries-per-item", type=int, default=3)
     fetch_parser.add_argument("--max-matches", type=int, default=3)
     fetch_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
     fetch_parser.add_argument("--auction-safe-id", default=None)
