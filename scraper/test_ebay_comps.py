@@ -13,12 +13,14 @@ from ebay_comps import (
     comp_rows_for_item,
     ensure_comp_tables,
     extract_ebay_item_id,
+    fetch_direct,
     fetch_sold_matches,
     ingest_ebay_comps,
     jitter_sleep,
     normalize_match_row,
     parse_sold_search_html,
     soldcomps_sold_matches,
+    stale_direct_keys,
     write_public_exports,
 )
 
@@ -465,6 +467,191 @@ class FetchSoldMatchesAntiBlockingTest(unittest.TestCase):
 
         self.assertEqual(session.get.call_count, 1)
         self.assertEqual(result["status"], "blocked")
+
+
+class StaleDiretKeysTest(unittest.TestCase):
+    def test_returns_fresh_keys_from_existing_json(self):
+        fresh_ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        payload = {
+            "items": {
+                "item-1": {"fetchedAt": fresh_ts, "matches": []},
+                "item-2": {"fetchedAt": fresh_ts, "matches": []},
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "auction-1.json").write_text(json.dumps(payload))
+            keys = stale_direct_keys(output_dir, stale_hours=168)
+
+        self.assertIn("auction-1:item-1", keys)
+        self.assertIn("auction-1:item-2", keys)
+
+    def test_excludes_stale_entries(self):
+        old_ts = "2000-01-01T00:00:00Z"
+        payload = {"items": {"item-1": {"fetchedAt": old_ts, "matches": []}}}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "auction-1.json").write_text(json.dumps(payload))
+            keys = stale_direct_keys(output_dir, stale_hours=168)
+
+        self.assertNotIn("auction-1:item-1", keys)
+
+    def test_returns_empty_when_stale_hours_is_zero(self):
+        fresh_ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        payload = {"items": {"item-1": {"fetchedAt": fresh_ts}}}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "auction-1.json").write_text(json.dumps(payload))
+            keys = stale_direct_keys(output_dir, stale_hours=0)
+
+        self.assertEqual(keys, set())
+
+
+class FetchDirectTest(unittest.TestCase):
+    def _make_data_dir(self, tmpdir: str) -> Path:
+        pyarrow = __import__("pyarrow")
+        parquet = __import__("pyarrow.parquet").parquet
+
+        data_dir = Path(tmpdir) / "public" / "data"
+        items_dir = data_dir / "items"
+        items_dir.mkdir(parents=True)
+        parquet.write_table(
+            pyarrow.Table.from_pylist([
+                {
+                    "id": "item-1",
+                    "lotNumber": 840,
+                    "title": "Lot - 840",
+                    "description": "Rosenthal crackle glaze hand-painted ceramic vase",
+                    "currentBid": 37.0,
+                    "totalBids": 6,
+                    "endDate": "2026-05-27 8:28:00 PM",
+                    "images": "[]",
+                    "category": "China & Pottery",
+                    "rawCategory": "China & Pottery",
+                    "detailUrl": "https://example.test/item",
+                    "auctionId": "auction-raw",
+                    "auctionSafeId": "auction-1",
+                    "auctionTitle": "Estate Auction",
+                    "auctionEndDate": "2026-05-27 8:28:00 PM",
+                    "scrapedAt": "2026-05-27T12:00:00+00:00",
+                }
+            ]),
+            items_dir / "auction-1.parquet",
+        )
+        (data_dir / "manifest.json").write_text(json.dumps({
+            "auctions": [{"safeId": "auction-1", "itemsPath": "data/items/auction-1.parquet"}]
+        }))
+        return data_dir
+
+    def test_writes_json_files_directly_without_motherduck(self):
+        html = """
+        <li class="s-item">
+          <a class="s-item__link" href="https://www.ebay.com/itm/177917908706">
+            <div class="s-item__title">Vintage Rosenthal crackle glaze vase</div>
+          </a>
+          <span class="s-item__price">$99.00</span>
+        </li>
+        """
+        session = Mock()
+        session.get.return_value = Mock(status_code=200, text=html)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = self._make_data_dir(tmpdir)
+            output_dir = Path(tmpdir) / "ebay-comps"
+
+            summary = fetch_direct(
+                data_dir=data_dir,
+                output_dir=output_dir,
+                limit=10,
+                request_session=session,
+                sleep_seconds=0,
+                stale_hours=0,
+            )
+
+            self.assertEqual(summary["items_attempted"], 1)
+            self.assertEqual(summary["matches"], 1)
+            self.assertFalse(summary["blocked"])
+
+            output_file = output_dir / "auction-1.json"
+            self.assertTrue(output_file.exists())
+            data = json.loads(output_file.read_text())
+            self.assertIn("item-1", data["items"])
+            match = data["items"]["item-1"]["matches"][0]
+            self.assertEqual(match["itemWebUrl"], "https://www.ebay.com/itm/177917908706")
+            self.assertEqual(match["price"]["value"], "99.00")
+
+    def test_skips_fresh_items_based_on_existing_json(self):
+        fresh_ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        session = Mock()
+        session.get.return_value = Mock(status_code=200, text="")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = self._make_data_dir(tmpdir)
+            output_dir = Path(tmpdir) / "ebay-comps"
+            output_dir.mkdir()
+            (output_dir / "auction-1.json").write_text(json.dumps({
+                "items": {"item-1": {"fetchedAt": fresh_ts, "matches": []}}
+            }))
+
+            summary = fetch_direct(
+                data_dir=data_dir,
+                output_dir=output_dir,
+                limit=10,
+                request_session=session,
+                sleep_seconds=0,
+                stale_hours=168,
+            )
+
+        self.assertEqual(summary["items_attempted"], 0)
+        session.get.assert_not_called()
+
+    def test_dry_run_does_not_write_files(self):
+        html = """
+        <li class="s-item">
+          <a class="s-item__link" href="https://www.ebay.com/itm/177917908706">
+            <div class="s-item__title">Vintage Rosenthal vase</div>
+          </a>
+          <span class="s-item__price">$99.00</span>
+        </li>
+        """
+        session = Mock()
+        session.get.return_value = Mock(status_code=200, text=html)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = self._make_data_dir(tmpdir)
+            output_dir = Path(tmpdir) / "ebay-comps"
+
+            fetch_direct(
+                data_dir=data_dir,
+                output_dir=output_dir,
+                limit=10,
+                request_session=session,
+                sleep_seconds=0,
+                stale_hours=0,
+                dry_run=True,
+            )
+
+        self.assertFalse(output_dir.exists())
+
+    def test_stops_on_block_and_reports_it(self):
+        session = Mock()
+        session.get.return_value = Mock(status_code=403, text="Access Denied")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = self._make_data_dir(tmpdir)
+            output_dir = Path(tmpdir) / "ebay-comps"
+
+            with patch.dict("os.environ", {"GOONERS_EBAY_BROWSER_FALLBACK": "0"}):
+                summary = fetch_direct(
+                    data_dir=data_dir,
+                    output_dir=output_dir,
+                    limit=10,
+                    request_session=session,
+                    sleep_seconds=0,
+                    stale_hours=0,
+                )
+
+        self.assertTrue(summary["blocked"])
 
 
 if __name__ == "__main__":
