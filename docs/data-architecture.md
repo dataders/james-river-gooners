@@ -121,8 +121,15 @@ These are tracked targets, not yet fully implemented:
   derived into the manifest *and* rebuilt in the frontend. The manifest should
   be the single source of auction-level facts; rows should carry only
   `auctionSafeId` as a foreign key. (Refactor phase 4.)
-- **eBay comps still require a warehouse to be produced** (the `export` step
-  reads MotherDuck). Target: comps accumulate in the static JSON itself, with
-  the warehouse as an optional mirror like listings. (Refactor phase 3.)
 - **`data/ebay-comps/` has no manifest.** The frontend guesses URLs by safeId
   and tolerates 404s. Target: add a comps manifest. (Refactor phase 4.)
+
+### Resolved
+
+- ~~eBay comps require a warehouse to be produced.~~ Comps now accumulate
+  directly in the per-auction JSON via `ebay_comps.py fetch-direct`: each run
+  refreshes a rate-limited subset, merges results into the existing files, and
+  records every attempt under `attempts` so already-tried items are not
+  re-fetched until they go stale. MotherDuck is an optional mirror behind
+  `SnapshotSink`, enabled only when `GOONERS_MOTHERDUCK_SNAPSHOTS` is set. The
+  read-model files are schema version 2 (`source: "scraper"`). (Phase 3.)
