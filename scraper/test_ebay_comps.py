@@ -2,7 +2,6 @@ import json
 import tempfile
 import unittest
 from datetime import datetime, timezone
-from decimal import Decimal
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -15,93 +14,141 @@ from ebay_comps import (
     extract_ebay_item_id,
     fetch_direct,
     fetch_sold_matches,
-    ingest_ebay_comps,
+    fresh_comp_keys_from_files,
     jitter_sleep,
+    merge_comp_files,
     normalize_match_row,
     parse_sold_search_html,
     soldcomps_sold_matches,
-    stale_direct_keys,
-    write_public_exports,
+    utc_now_text,
 )
 
 
-class EbayCompExportTest(unittest.TestCase):
-    def test_ingest_ebay_comps_reads_manifest_and_writes_matches(self):
-        duckdb = __import__("duckdb")
-        pyarrow = __import__("pyarrow")
-        parquet = __import__("pyarrow.parquet").parquet
+_SOLD_ITEM_HTML = """
+<li class="s-item">
+  <a class="s-item__link" href="https://www.ebay.com/itm/177917908706">
+    <div class="s-item__title">Vintage Rosenthal crackle glaze vase</div>
+  </a>
+  <span class="s-item__price">$99.00</span>
+  <span class="s-item__title--tagblock"><span>Sold Mar 4, 2026</span></span>
+</li>
+"""
 
-        html = """
-        <li class="s-item">
-          <a class="s-item__link" href="https://www.ebay.com/itm/177917908706">
-            <div class="s-item__title">Vintage Rosenthal crackle glaze vase</div>
-          </a>
-          <span class="s-item__price">$99.00</span>
-          <span class="s-item__title--tagblock"><span>Sold Mar 4, 2026</span></span>
-        </li>
-        """
-        response = Mock(status_code=200, text=html)
+
+def _write_single_item_manifest(data_dir: Path) -> None:
+    pyarrow = __import__("pyarrow")
+    parquet = __import__("pyarrow.parquet").parquet
+    items_dir = data_dir / "items"
+    items_dir.mkdir(parents=True, exist_ok=True)
+    parquet.write_table(
+        pyarrow.Table.from_pylist([
+            {
+                "id": "item-1",
+                "lotNumber": 840,
+                "title": "Lot - 840",
+                "description": "Rosenthal crackle glaze hand-painted ceramic vase",
+                "currentBid": 37.0,
+                "totalBids": 6,
+                "endDate": "2026-05-27 8:28:00 PM",
+                "images": "[]",
+                "category": "China & Pottery",
+                "rawCategory": "China & Pottery",
+                "detailUrl": "https://example.test/item",
+                "auctionId": "auction-raw",
+                "auctionSafeId": "auction-1",
+                "auctionTitle": "Estate Auction",
+                "auctionEndDate": "2026-05-27 8:28:00 PM",
+                "scrapedAt": "2026-05-27T12:00:00+00:00",
+            }
+        ]),
+        items_dir / "auction-1.parquet",
+    )
+    (data_dir / "manifest.json").write_text(json.dumps({
+        "auctions": [{"safeId": "auction-1", "itemsPath": "data/items/auction-1.parquet"}]
+    }))
+
+
+class FetchDirectAccumulatorTest(unittest.TestCase):
+    def test_accumulates_matches_into_json_without_a_warehouse(self):
         session = Mock()
-        session.get.return_value = response
+        session.get.return_value = Mock(status_code=200, text=_SOLD_ITEM_HTML)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            public_dir = Path(tmpdir) / "public"
-            data_dir = public_dir / "data"
-            items_dir = data_dir / "items"
-            items_dir.mkdir(parents=True)
-            parquet.write_table(
-                pyarrow.Table.from_pylist([
-                    {
-                        "id": "item-1",
-                        "lotNumber": 840,
-                        "title": "Lot - 840",
-                        "description": "Rosenthal crackle glaze hand-painted ceramic vase",
-                        "currentBid": 37.0,
-                        "totalBids": 6,
-                        "endDate": "2026-05-27 8:28:00 PM",
-                        "images": "[]",
-                        "category": "China & Pottery",
-                        "rawCategory": "China & Pottery",
-                        "detailUrl": "https://example.test/item",
-                        "auctionId": "auction-raw",
-                        "auctionSafeId": "auction-1",
-                        "auctionTitle": "Estate Auction",
-                        "auctionEndDate": "2026-05-27 8:28:00 PM",
-                        "scrapedAt": "2026-05-27T12:00:00+00:00",
+            data_dir = Path(tmpdir) / "data"
+            _write_single_item_manifest(data_dir)
+            output_dir = data_dir / "ebay-comps"
+            output_dir.mkdir(parents=True)
+            # An existing comp from a prior run that is NOT in the manifest this
+            # run; the accumulator must preserve it untouched.
+            (output_dir / "auction-1.json").write_text(json.dumps({
+                "schemaVersion": 2,
+                "generatedAt": "2026-05-01T00:00:00Z",
+                "marketplaceId": "EBAY_US",
+                "source": "scraper",
+                "items": {
+                    "item-existing": {
+                        "status": "ok",
+                        "matches": [{
+                            "title": "Older comp",
+                            "price": {"value": "5.00", "currency": "USD"},
+                            "itemWebUrl": "https://www.ebay.com/itm/111111111",
+                        }],
                     }
-                ]),
-                items_dir / "auction-1.parquet",
-            )
-            (data_dir / "manifest.json").write_text(json.dumps({
-                "auctions": [{
-                    "safeId": "auction-1",
-                    "itemsPath": "data/items/auction-1.parquet",
-                }]
+                },
+                "attempts": {"item-existing": {"fetchedAt": "2026-05-01T00:00:00Z", "status": "ok"}},
             }))
-            db_path = str(Path(tmpdir) / "comps.duckdb")
 
-            with patch.dict("os.environ", {"MOTHERDUCK_TOKEN": "test-token"}):
-                summary = ingest_ebay_comps(
-                    database=db_path,
-                    data_dir=data_dir,
-                    limit=1,
-                    request_session=session,
-                    sleep_seconds=0,
-                    stale_hours=0,
-                )
+            summary = fetch_direct(
+                data_dir=data_dir,
+                output_dir=output_dir,
+                limit=1,
+                stale_hours=0,
+                sleep_seconds=0,
+                mirror_to_warehouse=False,
+                request_session=session,
+            )
 
-            con = duckdb.connect(db_path)
-            try:
-                rows = con.execute(
-                    "select auction_safe_id, item_id, price_value, item_web_url from public_auction_comps"
-                ).fetchall()
-            finally:
-                con.close()
+            data = json.loads((output_dir / "auction-1.json").read_text())
 
         self.assertEqual(summary["items_attempted"], 1)
         self.assertEqual(summary["matches"], 1)
-        self.assertEqual(rows, [("auction-1", "item-1", Decimal("99.00"), "https://www.ebay.com/itm/177917908706")])
+        self.assertEqual(summary["files_written"], 1)
+        # Existing comp preserved, new match merged in.
+        self.assertIn("item-existing", data["items"])
+        self.assertEqual(data["items"]["item-1"]["matches"][0]["price"]["value"], "99.00")
+        self.assertEqual(data["attempts"]["item-1"]["status"], "ok")
+        self.assertEqual(data["source"], "scraper")
 
+    def test_skips_items_that_were_fetched_recently(self):
+        session = Mock()
+        session.get.return_value = Mock(status_code=200, text=_SOLD_ITEM_HTML)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir) / "data"
+            _write_single_item_manifest(data_dir)
+            output_dir = data_dir / "ebay-comps"
+            output_dir.mkdir(parents=True)
+            (output_dir / "auction-1.json").write_text(json.dumps({
+                "schemaVersion": 2,
+                "items": {},
+                "attempts": {"item-1": {"fetchedAt": utc_now_text(), "status": "no_results"}},
+            }))
+
+            summary = fetch_direct(
+                data_dir=data_dir,
+                output_dir=output_dir,
+                limit=5,
+                stale_hours=24,
+                sleep_seconds=0,
+                mirror_to_warehouse=False,
+                request_session=session,
+            )
+
+        self.assertEqual(summary["items_attempted"], 0)
+        session.get.assert_not_called()
+
+
+class EbayCompExportTest(unittest.TestCase):
     def test_extract_ebay_item_id_from_item_urls(self):
         self.assertEqual(
             extract_ebay_item_id("https://www.ebay.com/itm/Vintage-Rosenthal/177917908706?hash=abc"),
@@ -344,31 +391,48 @@ class EbayCompExportTest(unittest.TestCase):
         self.assertEqual(item["matches"][0]["itemWebUrl"], "https://www.ebay.com/itm/177917908706")
         self.assertEqual(item["matches"][0]["price"], {"value": "99.00", "currency": "USD"})
 
-    def test_write_public_exports_removes_stale_files_when_rows_exist(self):
-        exports = build_public_exports(
-            [
-                {
-                    "auction_safe_id": "auction-1",
-                    "item_id": "item-1",
-                    "item_web_url": "https://www.ebay.com/itm/177917908706",
-                    "title": "Vintage Rosenthal vase",
-                    "price_value": "99.00",
-                    "price_currency": "USD",
-                }
-            ],
-            generated_at="2026-05-27T12:00:00Z",
-        )
-
+    def test_merge_comp_files_drops_items_whose_latest_fetch_found_no_match(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            (output_dir / "stale.json").write_text("{}")
+            (output_dir / "auction-1.json").write_text(json.dumps({
+                "schemaVersion": 2,
+                "items": {
+                    "item-1": {"status": "ok", "matches": [{"title": "Old"}]},
+                    "item-2": {"status": "ok", "matches": [{"title": "Keep me"}]},
+                },
+                "attempts": {},
+            }))
 
-            written = write_public_exports(exports, output_dir)
+            written = merge_comp_files(
+                new_exports={},
+                attempts={"auction-1": {"item-1": {"fetchedAt": "now", "status": "no_results"}}},
+                output_dir=output_dir,
+                generated_at="2026-05-27T12:00:00Z",
+            )
 
-            self.assertEqual(written, 1)
-            self.assertFalse((output_dir / "stale.json").exists())
             data = json.loads((output_dir / "auction-1.json").read_text())
-            self.assertEqual(data["items"]["item-1"]["matches"][0]["price"]["value"], "99.00")
+
+        self.assertEqual(written, 1)
+        self.assertNotIn("item-1", data["items"])  # no fresh match -> dropped
+        self.assertIn("item-2", data["items"])  # untouched item preserved
+        self.assertEqual(data["attempts"]["item-1"]["status"], "no_results")
+
+    def test_fresh_comp_keys_from_files_reads_attempts_and_items(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            (output_dir / "auction-1.json").write_text(json.dumps({
+                "items": {"item-old": {"fetchedAt": "2020-01-01T00:00:00Z"}},
+                "attempts": {
+                    "item-fresh": {"fetchedAt": utc_now_text(), "status": "no_results"},
+                    "item-stale": {"fetchedAt": "2020-01-01T00:00:00Z", "status": "ok"},
+                },
+            }))
+
+            fresh = fresh_comp_keys_from_files(output_dir, stale_hours=24)
+
+        self.assertIn("auction-1:item-fresh", fresh)
+        self.assertNotIn("auction-1:item-stale", fresh)
+        self.assertNotIn("auction-1:item-old", fresh)
 
 
 _SEARCH = {
@@ -481,7 +545,7 @@ class StaleDiretKeysTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
             (output_dir / "auction-1.json").write_text(json.dumps(payload))
-            keys = stale_direct_keys(output_dir, stale_hours=168)
+            keys = fresh_comp_keys_from_files(output_dir, stale_hours=168)
 
         self.assertIn("auction-1:item-1", keys)
         self.assertIn("auction-1:item-2", keys)
@@ -492,7 +556,7 @@ class StaleDiretKeysTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
             (output_dir / "auction-1.json").write_text(json.dumps(payload))
-            keys = stale_direct_keys(output_dir, stale_hours=168)
+            keys = fresh_comp_keys_from_files(output_dir, stale_hours=168)
 
         self.assertNotIn("auction-1:item-1", keys)
 
@@ -502,7 +566,7 @@ class StaleDiretKeysTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
             (output_dir / "auction-1.json").write_text(json.dumps(payload))
-            keys = stale_direct_keys(output_dir, stale_hours=0)
+            keys = fresh_comp_keys_from_files(output_dir, stale_hours=0)
 
         self.assertEqual(keys, set())
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-Export eBay sold-comps from MotherDuck into the static GitHub Pages read model.
+Fetch eBay sold-comps into the static GitHub Pages read model.
 
-The scraper/write side can populate either:
-- public_auction_comps: a public read model view/table with one row per match
-- ebay_comp_snapshots: an append-only raw table with compatible columns
-
-This command is read-only from MotherDuck's perspective, so it can run with a
-read-scaling token.
+The per-auction JSON files under public/data/ebay-comps/ are the source of
+truth for comps and are accumulated incrementally: each run refreshes a
+rate-limited subset of items and merges the results into the existing files.
+MotherDuck (or any warehouse behind scraper/warehouse.py) is an OPTIONAL
+mirror, written only when a warehouse is configured - it is never required to
+produce the read model. See docs/data-architecture.md.
 """
 
 import argparse
@@ -937,113 +937,6 @@ def load_manifest_items(
     return items
 
 
-def fresh_comp_keys(connection, stale_hours: int = DEFAULT_STALE_HOURS) -> set[str]:
-    if stale_hours <= 0:
-        return set()
-    ensure_comp_tables(connection)
-    rows = connection.execute(
-        f"""
-        select distinct auction_safe_id, item_id, source_query
-        from {SNAPSHOT_TABLE}
-        where fetched_at >= now() - interval '{int(stale_hours)} hours'
-        """
-    ).fetchall()
-    return {f"{auction_id}:{item_id}:{source_query}" for auction_id, item_id, source_query in rows}
-
-
-def search_key(item: dict, search: dict) -> str:
-    return f"{text_value(item.get('auctionSafeId'))}:{text_value(item.get('id'))}:{search.get('kind')}"
-
-
-def ingest_ebay_comps(
-    database: str | None = None,
-    data_dir: Path = DATA_DIR,
-    limit: int = DEFAULT_LIMIT,
-    queries_per_item: int = 1,
-    max_matches: int = 3,
-    stale_hours: int = DEFAULT_STALE_HOURS,
-    include_archived: bool = False,
-    auction_safe_id: str | None = None,
-    dry_run: bool = False,
-    sleep_seconds: float = 1.0,
-    request_session=None,
-    _rand=random.uniform,
-) -> dict:
-    if limit <= 0:
-        return {"items_attempted": 0, "queries_attempted": 0, "rows_written": 0, "matches": 0, "blocked": False}
-
-    import requests
-    import warehouse
-
-    connection = None
-    known_fresh_keys = set()
-    if not dry_run:
-        connection = warehouse.connect(database, "ingest eBay comps into MotherDuck")
-        ensure_comp_tables(connection)
-        known_fresh_keys = fresh_comp_keys(connection, stale_hours=stale_hours)
-
-    session = request_session or requests.Session()
-    summary = {
-        "items_attempted": 0,
-        "queries_attempted": 0,
-        "rows_written": 0,
-        "matches": 0,
-        "blocked": False,
-    }
-
-    try:
-        for item in load_manifest_items(
-            data_dir=data_dir,
-            include_archived=include_archived,
-            auction_safe_id=auction_safe_id,
-        ):
-            searches = build_ebay_sold_searches(item)[:queries_per_item]
-            pending_searches = [search for search in searches if search_key(item, search) not in known_fresh_keys]
-            if not pending_searches:
-                continue
-
-            if summary["items_attempted"] >= limit:
-                break
-            summary["items_attempted"] += 1
-
-            for search in pending_searches:
-                result = fetch_sold_matches(session, search, max_matches=max_matches)
-                rows = comp_rows_for_item(
-                    item,
-                    search,
-                    result["matches"],
-                    status=result["status"],
-                    warning=result.get("warning"),
-                )
-                summary["queries_attempted"] += 1
-                summary["matches"] += len(result["matches"])
-
-                if dry_run:
-                    summary["rows_written"] += len(rows)
-                else:
-                    summary["rows_written"] += insert_comp_rows(connection, rows)
-
-                if result["status"] == "blocked":
-                    summary["blocked"] = True
-                    print(result["warning"])
-                    return summary
-
-                if sleep_seconds > 0:
-                    jitter_sleep(sleep_seconds, _rand=_rand)
-    finally:
-        if connection is not None:
-            connection.close()
-
-    print(
-        "eBay comp ingestion: "
-        f"{summary['items_attempted']} items, "
-        f"{summary['queries_attempted']} queries, "
-        f"{summary['matches']} matches, "
-        f"{summary['rows_written']} rows {'planned' if dry_run else 'written'}"
-    )
-    return summary
-
-
 def normalize_match_row(row: dict) -> tuple[str, str, dict] | None:
     item_web_url = text_value(row.get("item_web_url"))
     title = text_value(row.get("title"))
@@ -1087,10 +980,10 @@ def build_public_exports(rows: list[dict], generated_at: str | None = None) -> d
 
         auction_safe_id, item_id, match = normalized
         auction_export = exports.setdefault(auction_safe_id, {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "generatedAt": generated_at,
             "marketplaceId": "EBAY_US",
-            "source": "motherduck",
+            "source": "scraper",
             "items": {},
         })
         item_export = auction_export["items"].setdefault(item_id, {
@@ -1106,123 +999,119 @@ def build_public_exports(rows: list[dict], generated_at: str | None = None) -> d
     return exports
 
 
-def write_public_exports(exports: dict[str, dict], output_dir: Path = EBAY_COMPS_DIR) -> int:
-    if not exports:
-        return 0
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    for stale_path in output_dir.glob("*.json"):
-        stale_path.unlink()
-
-    for auction_safe_id, payload in sorted(exports.items()):
-        path = output_dir / f"{auction_safe_id}.json"
-        path.write_text(json.dumps(payload, indent=2) + "\n")
-
-    return len(exports)
+def write_comp_file(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
-def row_dicts(cursor) -> list[dict]:
-    columns = [column[0] for column in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-
-def query_source_table(connection, table_name: str) -> list[dict]:
-    column_sql = ", ".join(EXPORT_COLUMNS)
-    if table_name == SNAPSHOT_TABLE:
-        query = f"""
-            select {column_sql}
-            from (
-              select
-                {column_sql},
-                dense_rank() over (
-                  partition by auction_safe_id, item_id, source_query
-                  order by fetched_at desc
-                ) as fetch_rank
-              from {table_name}
-              where item_web_url is not null
-            )
-            where fetch_rank = 1
-            order by auction_safe_id, item_id, sold_date desc nulls last, title
-        """
-    else:
-        query = f"""
-            select {column_sql}
-            from {table_name}
-            where item_web_url is not null
-            order by auction_safe_id, item_id, sold_date desc nulls last, title
-        """
-    return row_dicts(connection.execute(query))
-
-
-def table_exists(connection, table_name: str) -> bool:
-    rows = connection.execute(
-        """
-        select 1
-        from information_schema.tables
-        where table_name = ?
-        limit 1
-        """,
-        [table_name],
-    ).fetchall()
-    return bool(rows)
-
-
-def export_from_motherduck(
-    database: str | None = None,
-    output_dir: Path = EBAY_COMPS_DIR,
-    allow_missing: bool = False,
-) -> int:
-    import warehouse
-
-    connection = warehouse.connect(database, "export eBay comps from MotherDuck")
+def load_comp_file(path: Path) -> dict | None:
     try:
-        source_table = None
-        for candidate in (PUBLIC_VIEW, SNAPSHOT_TABLE):
-            if table_exists(connection, candidate):
-                source_table = candidate
-                break
-
-        if source_table is None:
-            if allow_missing:
-                print(f"No {PUBLIC_VIEW} or {SNAPSHOT_TABLE} table found; leaving existing eBay comp files unchanged")
-                return 0
-            raise RuntimeError(f"No {PUBLIC_VIEW} or {SNAPSHOT_TABLE} table found in MotherDuck")
-
-        rows = query_source_table(connection, source_table)
-    finally:
-        connection.close()
-
-    exports = build_public_exports(rows)
-    written = write_public_exports(exports, output_dir)
-    print(f"Exported {written} auction eBay comp files from {source_table}")
-    return written
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
 
 
-def stale_direct_keys(output_dir: Path, stale_hours: int) -> set[str]:
-    """Return set of 'auction_safe_id:item_id' keys that have fresh comps in the JSON files."""
+def empty_comp_export(generated_at: str) -> dict:
+    return {
+        "schemaVersion": 2,
+        "generatedAt": generated_at,
+        "marketplaceId": "EBAY_US",
+        "source": "scraper",
+        "items": {},
+        "attempts": {},
+    }
+
+
+def parse_fetched_at(value: str) -> float | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def fresh_comp_keys_from_files(output_dir: Path, stale_hours: int) -> set[str]:
+    """Return ``{auction_safe_id:item_id}`` for items fetched within stale_hours.
+
+    Reads the ``attempts`` map (v2 files) and falls back to ``items`` fetch
+    times (v1 files) so already-tried items - including ones that found no
+    match - are not re-fetched until they go stale.
+    """
     if stale_hours <= 0:
         return set()
     fresh = set()
     cutoff = datetime.now(timezone.utc).timestamp() - stale_hours * 3600
     for json_path in output_dir.glob("*.json"):
-        try:
-            payload = json.loads(json_path.read_text())
-        except Exception:
+        payload = load_comp_file(json_path)
+        if not payload:
             continue
-        auction_safe_id = json_path.stem
-        for item_id, item_data in payload.get("items", {}).items():
-            fetched_at_str = item_data.get("fetchedAt", "")
-            if not fetched_at_str:
-                continue
-            try:
-                fetched_at = datetime.fromisoformat(
-                    fetched_at_str.replace("Z", "+00:00")
-                ).timestamp()
-            except ValueError:
-                continue
-            if fetched_at >= cutoff:
-                fresh.add(f"{auction_safe_id}:{item_id}")
+        safe_id = json_path.stem
+        records = {}
+        records.update(payload.get("items", {}))
+        records.update(payload.get("attempts", {}))
+        for item_id, record in records.items():
+            fetched_at = parse_fetched_at(record.get("fetchedAt", ""))
+            if fetched_at is not None and fetched_at >= cutoff:
+                fresh.add(f"{safe_id}:{item_id}")
     return fresh
+
+
+def merge_comp_files(
+    new_exports: dict[str, dict],
+    attempts: dict[str, dict[str, dict]],
+    output_dir: Path,
+    generated_at: str,
+) -> int:
+    """Merge freshly fetched comps into the per-auction JSON read model.
+
+    Only auctions touched this run are rewritten; existing files for untouched
+    auctions are left exactly as they are. Within a touched auction, freshly
+    matched items replace their prior entry, items whose latest fetch found no
+    match are dropped, and every attempted item records its fetch time under
+    ``attempts`` so it is not re-fetched until it goes stale.
+    """
+    touched = set(new_exports) | set(attempts)
+    written = 0
+    for safe_id in sorted(touched):
+        path = output_dir / f"{safe_id}.json"
+        payload = load_comp_file(path) or empty_comp_export(generated_at)
+        payload.setdefault("items", {})
+        payload.setdefault("attempts", {})
+        payload["schemaVersion"] = 2
+        payload["source"] = "scraper"
+        payload["generatedAt"] = generated_at
+
+        new_items = new_exports.get(safe_id, {}).get("items", {})
+        for item_id, entry in new_items.items():
+            payload["items"][item_id] = entry
+
+        for item_id, attempt in attempts.get(safe_id, {}).items():
+            payload["attempts"][item_id] = attempt
+            if item_id not in new_items:
+                payload["items"].pop(item_id, None)
+
+        write_comp_file(path, payload)
+        written += 1
+    return written
+
+
+def mirror_rows_to_warehouse(rows: list[dict]) -> int:
+    """Best-effort append of comp rows to the optional warehouse mirror."""
+    if not rows:
+        return 0
+    try:
+        from warehouse import get_sink
+
+        sink = get_sink()
+        if sink is None:
+            return 0
+        mirrored = sink.append_comp_snapshots(rows)
+        print(f"Mirrored {mirrored} eBay comp rows to the warehouse")
+        return mirrored
+    except Exception as exc:  # mirror is optional; never fail the read-model build
+        print(f"Warehouse mirror skipped: {exc}")
+        return 0
 
 
 def fetch_direct(
@@ -1236,114 +1125,134 @@ def fetch_direct(
     auction_safe_id: str | None = None,
     dry_run: bool = False,
     sleep_seconds: float = 1.0,
+    mirror_to_warehouse: bool | None = None,
     request_session=None,
     _rand=random.uniform,
 ) -> dict:
-    """Fetch eBay sold comps and write JSON files directly, without MotherDuck."""
+    """Fetch eBay sold comps and accumulate them into the static JSON read model.
+
+    The per-auction JSON files are the source of truth; the warehouse is an
+    optional mirror written only when one is configured (``MOTHERDUCK_TOKEN``
+    present, or ``mirror_to_warehouse=True``). No warehouse is required.
+    """
     import requests
 
+    summary = {
+        "items_attempted": 0,
+        "queries_attempted": 0,
+        "matches": 0,
+        "blocked": False,
+        "files_written": 0,
+    }
     if limit <= 0:
-        return {"items_attempted": 0, "queries_attempted": 0, "matches": 0, "blocked": False}
+        return summary
 
-    known_fresh = stale_direct_keys(output_dir, stale_hours) if not dry_run else set()
+    known_fresh = set() if dry_run else fresh_comp_keys_from_files(output_dir, stale_hours)
     session = request_session or requests.Session()
+    generated_at = utc_now_text()
     all_rows: list[dict] = []
-    summary = {"items_attempted": 0, "queries_attempted": 0, "matches": 0, "blocked": False}
+    attempts: dict[str, dict[str, dict]] = {}
 
     for item in load_manifest_items(
         data_dir=data_dir,
         include_archived=include_archived,
         auction_safe_id=auction_safe_id,
     ):
-        item_key = f"{text_value(item.get('auctionSafeId'))}:{text_value(item.get('id'))}"
+        safe_id = text_value(item.get("auctionSafeId"))
+        item_id = text_value(item.get("id"))
+        if f"{safe_id}:{item_id}" in known_fresh:
+            continue
+
         searches = build_ebay_sold_searches(item)[:queries_per_item]
-        pending = [s for s in searches if f"{item_key}" not in known_fresh]
-        if not pending:
+        if not searches:
             continue
 
         if summary["items_attempted"] >= limit:
             break
         summary["items_attempted"] += 1
 
-        for search in pending:
+        item_status = "no_results"
+        for search in searches:
             result = fetch_sold_matches(session, search, max_matches=max_matches)
             rows = comp_rows_for_item(
                 item,
                 search,
                 result["matches"],
                 status=result["status"],
+                fetched_at=generated_at,
                 warning=result.get("warning"),
             )
             summary["queries_attempted"] += 1
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
-
+            if result["status"] == "ok":
+                item_status = "ok"
             if result["status"] == "blocked":
                 summary["blocked"] = True
                 print(result["warning"])
                 break
-
             if sleep_seconds > 0:
                 jitter_sleep(sleep_seconds, _rand=_rand)
+
+        if safe_id and item_id and not summary["blocked"]:
+            attempts.setdefault(safe_id, {})[item_id] = {
+                "fetchedAt": generated_at,
+                "status": item_status,
+            }
 
         if summary["blocked"]:
             break
 
-    if not dry_run:
-        exports = build_public_exports(all_rows)
-        written = write_public_exports(exports, output_dir)
+    if dry_run:
         print(
-            f"eBay comp direct fetch: {summary['items_attempted']} items, "
-            f"{summary['queries_attempted']} queries, "
-            f"{summary['matches']} matches, {written} auction files written"
-        )
-    else:
-        print(
-            f"eBay comp direct fetch (dry run): {summary['items_attempted']} items, "
+            f"eBay comp fetch (dry run): {summary['items_attempted']} items, "
             f"{summary['queries_attempted']} queries planned"
         )
+        return summary
 
+    new_exports = build_public_exports(all_rows, generated_at)
+    summary["files_written"] = merge_comp_files(new_exports, attempts, output_dir, generated_at)
+
+    if mirror_to_warehouse is None:
+        from motherduck import should_snapshot_to_motherduck
+        mirror_to_warehouse = should_snapshot_to_motherduck()
+    if mirror_to_warehouse:
+        mirror_rows_to_warehouse(all_rows)
+
+    print(
+        f"eBay comp fetch: {summary['items_attempted']} items, "
+        f"{summary['queries_attempted']} queries, {summary['matches']} matches, "
+        f"{summary['files_written']} auction files updated"
+    )
     return summary
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export eBay comps from MotherDuck")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    export_parser = subparsers.add_parser("export", help="Export static eBay comp JSON from MotherDuck")
-    export_parser.add_argument("--database", default=None, help="DuckDB/MotherDuck database string")
-    export_parser.add_argument("--output-dir", type=Path, default=EBAY_COMPS_DIR)
-    export_parser.add_argument(
-        "--allow-missing",
-        action="store_true",
-        help="Exit successfully when the MotherDuck comp table/view does not exist yet",
+    parser = argparse.ArgumentParser(
+        description="Fetch eBay sold comps into the static read model"
     )
-
-    ingest_parser = subparsers.add_parser("ingest", help="Fetch eBay sold comps and append snapshots to MotherDuck")
-    ingest_parser.add_argument("--database", default=None, help="DuckDB/MotherDuck database string")
-    ingest_parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
-    ingest_parser.add_argument("--limit", type=int, default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT)))
-    ingest_parser.add_argument("--queries-per-item", type=int, default=1)
-    ingest_parser.add_argument("--max-matches", type=int, default=3)
-    ingest_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
-    ingest_parser.add_argument("--auction-safe-id", default=None)
-    ingest_parser.add_argument("--include-archived", action="store_true")
-    ingest_parser.add_argument("--dry-run", action="store_true")
-    ingest_parser.add_argument("--sleep-seconds", type=float, default=1.0)
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
     fetch_parser = subparsers.add_parser(
         "fetch-direct",
-        help="Fetch eBay sold comps and write JSON files directly (no MotherDuck required)",
+        help="Fetch eBay sold comps and accumulate them into JSON (warehouse optional)",
     )
     fetch_parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     fetch_parser.add_argument("--output-dir", type=Path, default=EBAY_COMPS_DIR)
-    fetch_parser.add_argument("--limit", type=int, default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT)))
+    fetch_parser.add_argument(
+        "--limit", type=int, default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT))
+    )
     fetch_parser.add_argument("--queries-per-item", type=int, default=1)
     fetch_parser.add_argument("--max-matches", type=int, default=3)
     fetch_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
     fetch_parser.add_argument("--auction-safe-id", default=None)
     fetch_parser.add_argument("--include-archived", action="store_true")
     fetch_parser.add_argument("--dry-run", action="store_true")
+    fetch_parser.add_argument(
+        "--no-mirror",
+        action="store_true",
+        help="Do not mirror snapshots to the warehouse even when a token is present",
+    )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
 
     return parser.parse_args(argv)
@@ -1351,26 +1260,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
-    if args.command == "export":
-        export_from_motherduck(
-            database=args.database,
-            output_dir=args.output_dir,
-            allow_missing=args.allow_missing,
-        )
-    elif args.command == "ingest":
-        ingest_ebay_comps(
-            database=args.database,
-            data_dir=args.data_dir,
-            limit=args.limit,
-            queries_per_item=args.queries_per_item,
-            max_matches=args.max_matches,
-            stale_hours=args.stale_hours,
-            include_archived=args.include_archived,
-            auction_safe_id=args.auction_safe_id,
-            dry_run=args.dry_run,
-            sleep_seconds=args.sleep_seconds,
-        )
-    elif args.command == "fetch-direct":
+    if args.command == "fetch-direct":
         fetch_direct(
             data_dir=args.data_dir,
             output_dir=args.output_dir,
@@ -1382,6 +1272,7 @@ def main(argv: list[str] | None = None) -> int:
             auction_safe_id=args.auction_safe_id,
             dry_run=args.dry_run,
             sleep_seconds=args.sleep_seconds,
+            mirror_to_warehouse=False if args.no_mirror else None,
         )
     return 0
 
