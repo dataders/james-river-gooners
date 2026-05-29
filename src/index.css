@@ -1029,6 +1029,60 @@ body {
   margin-top: 4px;
 }
 
+/* Arsenal Trivia */
+.trivia-card {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.trivia-card:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.trivia-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+
+.trivia-question {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.trivia-answer {
+  font-size: 0.85rem;
+  color: var(--green);
+  font-weight: 500;
+  line-height: 1.4;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  animation: trivia-reveal 0.2s ease-out;
+}
+
+.trivia-tap-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@keyframes trivia-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Mobile responsive */
 @media (max-width: 600px) {
   .app-header {
