@@ -1,6 +1,6 @@
 import { useState } from 'react'
+import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, extractCompPrices, calcMedian } from '../utils/roiCalc'
 import { normalizeEbaySoldMatches } from '../utils/ebayComps'
-import { extractCompPrices, calcMedian, calcMaxBid, COST_MULTIPLIER } from '../utils/roiCalc'
 
 const fmt = v => `$${Math.round(v).toLocaleString()}`
 

@@ -107,8 +107,8 @@ export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite,
             </a>
           )}
 
-          <EbayComps item={item} soldComps={ebayComps[item.id]} />
           <RoiCalculator soldComps={ebayComps[item.id]} />
+          <EbayComps item={item} soldComps={ebayComps[item.id]} />
         </div>
       </div>
     </div>

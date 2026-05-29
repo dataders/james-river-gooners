@@ -645,6 +645,24 @@ body {
   margin-top: 2px;
 }
 
+.item-roi-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 3px;
+}
+
+.item-roi-max {
+  color: var(--green);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.item-roi-cost {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
 /* Scroll sentinel */
 .scroll-sentinel {
   height: 1px;
@@ -705,6 +723,26 @@ body {
 .local-toggle input[type="checkbox"]:checked::after {
   transform: translateX(16px);
   background: #fff;
+}
+
+.deals-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.deals-toggle.active {
+  background: color-mix(in srgb, var(--green) 15%, var(--chip-bg));
+  border-color: var(--green);
+  color: var(--green);
+  font-weight: 700;
 }
 
 .inline-error {
