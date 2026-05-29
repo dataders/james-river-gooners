@@ -23,16 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
-      MOTHERDUCK_READ_SCALING_TOKEN: ${{ secrets.MOTHERDUCK_READ_SCALING_TOKEN }}
       SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - name: Scrape auction(s)
         run: |
@@ -58,45 +53,22 @@ jobs:
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
             python -c "from rescrape_all import update_manifests; update_manifests()"
 
-      - name: Install agent-browser Playwright deps
+      - name: Refresh eBay comps
         run: |
-          npm exec --yes agent-browser@0.27.0 -- install
-        env:
-          npm_config_cache: ${{ runner.temp }}/npm-agent-browser
-          AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
-
-      - name: Ingest eBay comps into MotherDuck
-        env:
-          npm_config_cache: ${{ runner.temp }}/npm-agent-browser
-          AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
-          AGENT_BROWSER_SESSION: gooners-ebay-comps
-        run: |
-          if [ -z "${MOTHERDUCK_TOKEN:-}" ]; then
-            echo "Skipping eBay comp ingestion because MOTHERDUCK_TOKEN is not configured"
-            exit 0
-          fi
           cd scraper
+          # The static JSON read model is the source of truth; MotherDuck is an
+          # optional mirror, enabled only when a token is configured.
+          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            export GOONERS_MOTHERDUCK_SNAPSHOTS=1
+          fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            echo "Dry run: planning eBay comp ingestion without MotherDuck writes"
+            echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
-              python ebay_comps.py ingest --dry-run --limit 1 --sleep-seconds 0
+              python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0
           else
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
-              python ebay_comps.py ingest --limit "${GOONERS_EBAY_COMPS_LIMIT:-50}"
+              python ebay_comps.py fetch-direct --limit "${GOONERS_EBAY_COMPS_LIMIT:-50}"
           fi
-
-      - name: Export eBay comps from MotherDuck
-        run: |
-          if [ -n "${MOTHERDUCK_READ_SCALING_TOKEN:-}" ]; then
-            export MOTHERDUCK_TOKEN="${MOTHERDUCK_READ_SCALING_TOKEN}"
-          fi
-          if [ -z "${MOTHERDUCK_TOKEN:-}" ]; then
-            echo "Skipping eBay comp export because MOTHERDUCK_TOKEN is not configured"
-            exit 0
-          fi
-          cd scraper
-          uv run --with 'duckdb==1.5.2' \
-            python ebay_comps.py export --allow-missing
 
       - name: Commit and push
         if: ${{ inputs.dry_run != 'true' }}
