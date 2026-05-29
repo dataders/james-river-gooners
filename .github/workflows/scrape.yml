@@ -83,6 +83,22 @@ jobs:
           uv run --with 'duckdb==1.5.2' \
             python ebay_comps.py export --allow-missing
 
+      - name: Fetch eBay comps directly (no MotherDuck)
+        run: |
+          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            echo "Skipping direct fetch — MotherDuck pipeline already ran"
+            exit 0
+          fi
+          cd scraper
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Dry run: planning direct eBay comp fetch"
+            uv run --with requests --with beautifulsoup4 --with pyarrow \
+              python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0
+          else
+            uv run --with requests --with beautifulsoup4 --with pyarrow \
+              python ebay_comps.py fetch-direct --limit "${GOONERS_EBAY_COMPS_LIMIT:-50}"
+          fi
+
       - name: Commit and push
         if: ${{ inputs.dry_run != 'true' }}
         run: |
