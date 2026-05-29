@@ -516,6 +516,38 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
     return matches
 
 
+# TEMPORARY DIAGNOSTIC: records what eBay actually returned on a no_results/blocked
+# fetch so we can tell selector drift from a soft-block. Remove once the parser is fixed.
+_DEBUG_MARKERS = (
+    "s-item",
+    "s-card",
+    "srp-results",
+    "srp-river-results",
+    "brwrvr__item-card",
+    "su-card-container",
+    "srp-controls",
+    "/itm/",
+    "captcha",
+    "Pardon Our Interruption",
+    "Checking your browser",
+    "splashui",
+    "Enter the characters",
+    "Access Denied",
+)
+
+
+def page_debug_signature(html: str, fetched_via: str, http_status=None) -> dict:
+    html = html or ""
+    import re as _re
+    m = _re.search(r"<title[^>]*>([^<]*)</title>", html, _re.IGNORECASE)
+    return {
+        "fetchedVia": fetched_via,
+        "httpStatus": http_status,
+        "bytes": len(html),
+        "title": (m.group(1).strip()[:160] if m else ""),
+        "markers": [marker for marker in _DEBUG_MARKERS if marker in html],
+    }
+
 def soldcomps_item_match(item: dict, source_query: str) -> dict | None:
     item_web_url = canonical_ebay_item_url(text_value(item.get("url") or item.get("itemUrl") or item.get("itemWebUrl")))
     if not item_web_url:
@@ -694,12 +726,14 @@ def browser_sold_matches(search: dict, max_matches: int = 3, browser_runner=run_
             "status": "blocked",
             "warning": "eBay blocked both HTTP and browser fallback fetches.",
             "matches": [],
+            "debug": page_debug_signature(html, fetched_via="browser"),
         }
 
     matches = parse_sold_search_html(html, source_query=search["kind"], max_matches=max_matches)
     return {
         "status": "ok" if matches else "no_results",
         "warning": search.get("warning") or "",
+        "debug": page_debug_signature(html, fetched_via="browser"),
         "matches": matches,
     }
 
@@ -755,6 +789,7 @@ def fetch_sold_matches(
         "status": "ok" if matches else "no_results",
         "warning": search.get("warning") or "",
         "matches": matches,
+        "debug": page_debug_signature(response.text, fetched_via="http", http_status=response.status_code),
     }
 
 
@@ -1175,6 +1210,7 @@ def fetch_direct(
         summary["items_attempted"] += 1
 
         item_status = "no_results"
+        last_debug = None  # TEMPORARY DIAGNOSTIC: signature of the last non-ok page
         for search in searches:
             result = fetch_sold_matches(session, search, max_matches=max_matches)
             rows = comp_rows_for_item(
@@ -1188,6 +1224,8 @@ def fetch_direct(
             summary["queries_attempted"] += 1
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
+            if result.get("debug"):
+                last_debug = {"queryKind": search.get("kind"), "query": search.get("query"), **result["debug"]}
             if result["status"] == "ok":
                 # Got comps from this query — no need to spend further requests
                 # on the broader fallback queries for this item.
@@ -1201,10 +1239,13 @@ def fetch_direct(
                 jitter_sleep(sleep_seconds, _rand=_rand)
 
         if safe_id and item_id and not summary["blocked"]:
-            attempts.setdefault(safe_id, {})[item_id] = {
+            entry = {
                 "fetchedAt": generated_at,
                 "status": item_status,
             }
+            if item_status != "ok" and last_debug:
+                entry["debug"] = last_debug  # TEMPORARY DIAGNOSTIC
+            attempts.setdefault(safe_id, {})[item_id] = entry
 
         if summary["blocked"]:
             break
