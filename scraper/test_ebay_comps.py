@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from ebay_comps import (
+    USER_AGENTS,
     append_ebay_comp_snapshots,
     build_public_exports,
     comp_rows_for_item,
@@ -14,6 +15,7 @@ from ebay_comps import (
     extract_ebay_item_id,
     fetch_sold_matches,
     ingest_ebay_comps,
+    jitter_sleep,
     normalize_match_row,
     parse_sold_search_html,
     soldcomps_sold_matches,
@@ -365,6 +367,104 @@ class EbayCompExportTest(unittest.TestCase):
             self.assertFalse((output_dir / "stale.json").exists())
             data = json.loads((output_dir / "auction-1.json").read_text())
             self.assertEqual(data["items"]["item-1"]["matches"][0]["price"]["value"], "99.00")
+
+
+_SEARCH = {
+    "kind": "specific",
+    "query": "Rosenthal vase",
+    "url": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+vase&LH_Sold=1",
+    "warning": "",
+}
+_ITEM_HTML = """
+<li class="s-item">
+  <a class="s-item__link" href="https://www.ebay.com/itm/177917908706">
+    <div class="s-item__title">Vintage Rosenthal crackle glaze vase</div>
+  </a>
+  <span class="s-item__price">$99.00</span>
+</li>
+"""
+
+
+class JitterSleepTest(unittest.TestCase):
+    def test_calls_sleep_with_half_to_two_and_half_x_range(self):
+        recorded = []
+        jitter_sleep(2.0, _rand=lambda lo, hi: recorded.append((lo, hi)) or lo)
+        self.assertEqual(len(recorded), 1)
+        lo, hi = recorded[0]
+        self.assertAlmostEqual(lo, 1.0)
+        self.assertAlmostEqual(hi, 5.0)
+
+    def test_skips_sleep_when_base_is_zero(self):
+        calls = []
+        jitter_sleep(0, _rand=lambda lo, hi: calls.append((lo, hi)) or 0)
+        self.assertEqual(calls, [])
+
+    def test_skips_sleep_when_base_is_negative(self):
+        calls = []
+        jitter_sleep(-1.0, _rand=lambda lo, hi: calls.append((lo, hi)) or 0)
+        self.assertEqual(calls, [])
+
+
+class FetchSoldMatchesAntiBlockingTest(unittest.TestCase):
+    def test_uses_random_user_agent_from_pool(self):
+        session = Mock()
+        captured = []
+
+        def capture(*args, **kwargs):
+            captured.append(kwargs.get("headers", {}).get("User-Agent", ""))
+            return Mock(status_code=200, text=_ITEM_HTML)
+
+        session.get.side_effect = capture
+
+        fetch_sold_matches(session, _SEARCH, _choice=lambda lst: lst[2])
+        self.assertEqual(captured[0], USER_AGENTS[2])
+
+    def test_env_override_takes_precedence_over_pool(self):
+        session = Mock()
+        captured = []
+
+        def capture(*args, **kwargs):
+            captured.append(kwargs.get("headers", {}).get("User-Agent", ""))
+            return Mock(status_code=200, text=_ITEM_HTML)
+
+        session.get.side_effect = capture
+
+        with patch.dict("os.environ", {"GOONERS_EBAY_USER_AGENT": "CustomBot/1.0"}):
+            fetch_sold_matches(session, _SEARCH, _choice=lambda lst: lst[0])
+
+        self.assertEqual(captured[0], "CustomBot/1.0")
+
+    def test_retries_once_on_429_and_succeeds(self):
+        session = Mock()
+        session.get.side_effect = [
+            Mock(status_code=429, text="Too Many Requests"),
+            Mock(status_code=200, text=_ITEM_HTML),
+        ]
+
+        result = fetch_sold_matches(session, _SEARCH, _rand=lambda lo, hi: 0)
+
+        self.assertEqual(session.get.call_count, 2)
+        self.assertNotEqual(result["status"], "blocked")
+
+    def test_marks_blocked_when_both_429_attempts_fail(self):
+        session = Mock()
+        session.get.return_value = Mock(status_code=429, text="Too Many Requests")
+
+        with patch.dict("os.environ", {"GOONERS_EBAY_BROWSER_FALLBACK": "0"}):
+            result = fetch_sold_matches(session, _SEARCH, _rand=lambda lo, hi: 0)
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(session.get.call_count, 2)
+
+    def test_does_not_retry_on_403(self):
+        session = Mock()
+        session.get.return_value = Mock(status_code=403, text="Access Denied")
+
+        with patch.dict("os.environ", {"GOONERS_EBAY_BROWSER_FALLBACK": "0"}):
+            result = fetch_sold_matches(session, _SEARCH, _rand=lambda lo, hi: 0)
+
+        self.assertEqual(session.get.call_count, 1)
+        self.assertEqual(result["status"], "blocked")
 
 
 if __name__ == "__main__":
