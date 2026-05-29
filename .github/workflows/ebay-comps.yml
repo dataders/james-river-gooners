@@ -1,0 +1,86 @@
+name: Refresh eBay Comps
+
+# Comps-only workflow: fetches eBay sold-comp prices and updates the static
+# JSON read model under public/data/ebay-comps/. Does NOT re-scrape auctions or
+# rebuild manifests — use the "Scrape Auction Data" workflow for that.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Test only — fetch but do not commit'
+        required: false
+        type: boolean
+        default: false
+      limit:
+        description: 'Max number of items to fetch comps for'
+        required: false
+        type: string
+        default: '50'
+
+permissions:
+  contents: write
+
+jobs:
+  comps:
+    runs-on: ubuntu-latest
+    env:
+      MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+      SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install agent-browser Playwright deps
+        run: |
+          npm exec --yes agent-browser@0.27.0 -- install
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-agent-browser
+          AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
+
+      - name: Refresh eBay comps
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-agent-browser
+          AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
+          AGENT_BROWSER_SESSION: gooners-ebay-comps
+        run: |
+          cd scraper
+          # The static JSON read model is the source of truth; MotherDuck is an
+          # optional mirror, enabled only when a token is configured.
+          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            export GOONERS_MOTHERDUCK_SNAPSHOTS=1
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Dry run: planning eBay comp fetch without writes"
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+              python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0
+          else
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+              python ebay_comps.py fetch-direct --limit "${{ inputs.limit }}"
+          fi
+
+      - name: Commit and push
+        if: ${{ inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/ebay-comps/
+          if git diff --staged --quiet; then
+            echo "No eBay comp changes to commit"
+            exit 0
+          fi
+          git commit -m "data: refresh eBay comps [$(date -u +%Y-%m-%dT%H:%M)]"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push failed; rebasing on origin/main before retry ${attempt}"
+            git fetch origin main
+            git rebase origin/main
+          done
+          git push
