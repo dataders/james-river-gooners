@@ -5,3 +5,5 @@ dist/
 .astro/
 __pycache__/
 *.local
+playwright-report/
+test-results/

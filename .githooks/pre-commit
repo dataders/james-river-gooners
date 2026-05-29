@@ -1,0 +1,11 @@
+#!/bin/sh
+# Pre-commit: lint + unit tests (fast). E2E runs in CI via test.yml.
+set -e
+
+echo "Running lint..."
+npm run lint
+
+echo "Running unit tests..."
+npm run test:unit
+
+echo "Pre-commit checks passed."
