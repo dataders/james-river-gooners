@@ -1045,6 +1045,115 @@ body {
   margin-top: 4px;
 }
 
+/* ROI Calculator */
+.roi-calc {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.roi-calc-header {
+  margin-bottom: 12px;
+}
+
+.roi-calc-header h3 {
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.roi-comps-line {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.roi-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.roi-comp-value {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.roi-comp-count {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.roi-margin-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.roi-slider-group {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+
+.roi-margin-slider {
+  accent-color: var(--green);
+  cursor: pointer;
+  flex: 1;
+}
+
+.roi-margin-pct {
+  color: var(--green);
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 34px;
+  text-align: right;
+}
+
+.roi-results {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 10px;
+}
+
+.roi-result-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+}
+
+.roi-result-label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.roi-result-value {
+  color: var(--green);
+  font-size: 1.15rem;
+  font-weight: 850;
+}
+
+.roi-result-cost {
+  color: var(--text);
+}
+
+.roi-footnote {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
 /* Arsenal Trivia */
 .trivia-card {
   margin-bottom: 10px;

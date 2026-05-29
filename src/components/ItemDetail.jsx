@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { timeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
+import { RoiCalculator } from './RoiCalculator'
 
 export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
@@ -107,6 +108,7 @@ export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite,
           )}
 
           <EbayComps item={item} soldComps={ebayComps[item.id]} />
+          <RoiCalculator soldComps={ebayComps[item.id]} />
         </div>
       </div>
     </div>
