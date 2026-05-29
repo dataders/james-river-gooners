@@ -653,7 +653,7 @@ body {
 }
 
 .item-roi-max {
-  color: var(--green);
+  color: var(--gold);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -739,9 +739,9 @@ body {
 }
 
 .deals-toggle.active {
-  background: color-mix(in srgb, var(--green) 15%, var(--chip-bg));
-  border-color: var(--green);
-  color: var(--green);
+  background: color-mix(in srgb, var(--gold) 15%, var(--chip-bg));
+  border-color: var(--gold);
+  color: var(--gold);
   font-weight: 700;
 }
 
@@ -1140,13 +1140,13 @@ body {
 }
 
 .roi-margin-slider {
-  accent-color: var(--green);
+  accent-color: var(--gold);
   cursor: pointer;
   flex: 1;
 }
 
 .roi-margin-pct {
-  color: var(--green);
+  color: var(--gold);
   font-size: 0.85rem;
   font-weight: 700;
   min-width: 34px;
@@ -1178,7 +1178,7 @@ body {
 }
 
 .roi-result-value {
-  color: var(--green);
+  color: var(--gold);
   font-size: 1.15rem;
   font-weight: 850;
 }

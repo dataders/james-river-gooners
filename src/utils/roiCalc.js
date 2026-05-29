@@ -1,4 +1,4 @@
-import { normalizeEbaySoldMatches } from './ebayComps'
+import { normalizeEbaySoldMatches } from './ebayComps.js'
 
 const BUYERS_PREMIUM = 0.20
 const SALES_TAX = 0.06
