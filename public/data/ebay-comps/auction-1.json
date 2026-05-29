@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-29T19:02:40Z",
+  "marketplaceId": "EBAY_US",
+  "source": "motherduck",
+  "items": {
+    "item-1": {
+      "status": "ok",
+      "query": "Rosenthal crackle glaze hand-painted",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+crackle+glaze+hand-painted&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-29T16:27:56Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "177917908706",
+          "title": "Vintage Rosenthal crackle glaze vase",
+          "price": {
+            "value": "99.00",
+            "currency": "USD"
+          },
+          "itemWebUrl": "https://www.ebay.com/itm/177917908706",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  }
+}
