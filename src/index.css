@@ -13,7 +13,7 @@
   --text-muted: #9a7a7a;
   --accent: #ef0107;
   --accent-hover: #ff4040;
-  --green: #c8a84b;
+  --gold: #c8a84b;
   --chip-bg: #3d0505;
   --chip-excluded: #2a1a1a;
   --radius: 10px;
@@ -28,7 +28,7 @@
     --text-muted: #7a5555;
     --accent: #ef0107;
     --accent-hover: #c50005;
-    --green: #9c824a;
+    --gold: #9c824a;
     --chip-bg: #ffe8e8;
     --chip-excluded: #f0e0e0;
   }
@@ -42,7 +42,7 @@
   --text-muted: #9a7a7a;
   --accent: #ef0107;
   --accent-hover: #ff4040;
-  --green: #c8a84b;
+  --gold: #c8a84b;
   --chip-bg: #3d0505;
   --chip-excluded: #2a1a1a;
 }
@@ -55,7 +55,7 @@
   --text-muted: #7a5555;
   --accent: #ef0107;
   --accent-hover: #c50005;
-  --green: #9c824a;
+  --gold: #9c824a;
   --chip-bg: #ffe8e8;
   --chip-excluded: #f0e0e0;
 }
@@ -89,11 +89,24 @@ body {
   border-top: 3px solid var(--accent);
 }
 
-.header-top {
+.header-banner {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 2px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.banner-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+.banner-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .logo {
@@ -101,6 +114,15 @@ body {
   font-weight: 800;
   color: var(--accent);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tagline {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 2px 0 0;
 }
 
 .theme-toggle {
@@ -116,12 +138,6 @@ body {
 }
 .theme-toggle:hover {
   border-color: var(--accent);
-}
-
-.tagline {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 12px;
 }
 
 .data-freshness {
@@ -152,7 +168,7 @@ body {
 
 .range-value {
   font-weight: 400;
-  color: var(--green);
+  color: var(--gold);
   font-size: 0.8rem;
 }
 
@@ -222,10 +238,10 @@ body {
   pointer-events: auto;
 }
 .range-slider-lo::-webkit-slider-thumb {
-  background: var(--green);
+  background: var(--gold);
 }
 .range-slider-lo::-moz-range-thumb {
-  background: var(--green);
+  background: var(--gold);
 }
 
 .range-bounds {
@@ -410,7 +426,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--green);
+  color: var(--gold);
 }
 .filter-label-text.hidden-label {
   color: var(--accent);
@@ -460,16 +476,16 @@ body {
 }
 .filter-chip.shown {
   background: var(--chip-bg);
-  border-color: rgba(200, 168, 75, 0.4);
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
 }
 .filter-chip.hidden {
-  background: rgba(255, 107, 107, 0.08);
-  border-color: rgba(255, 107, 107, 0.2);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
   color: #777;
   text-decoration: line-through;
 }
 .filter-chip.hidden:hover {
-  border-color: var(--green);
+  border-color: var(--gold);
   text-decoration: none;
 }
 .x-mark {
@@ -553,8 +569,8 @@ body {
   transform: scale(1.05);
 }
 .favorite-button.active {
-  color: var(--green);
-  border-color: rgba(200, 168, 75, 0.5);
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
 }
 .item-card > .favorite-button {
   position: absolute;
@@ -613,7 +629,7 @@ body {
 }
 
 .item-bid {
-  color: var(--green);
+  color: var(--gold);
   font-weight: 700;
   font-size: 0.9rem;
 }
@@ -753,7 +769,7 @@ body {
 /* Carousel */
 .detail-carousel {
   position: relative;
-  background: #111;
+  background: var(--bg);
 }
 .detail-carousel img {
   width: 100%;
@@ -841,7 +857,7 @@ body {
 }
 
 .detail-bid {
-  color: var(--green);
+  color: var(--gold);
   font-weight: 700;
   font-size: 1.2rem;
 }
@@ -903,7 +919,7 @@ body {
 }
 
 .ebay-comps-all {
-  color: var(--green);
+  color: var(--gold);
   font-size: 0.75rem;
   font-weight: 700;
   text-decoration: none;
@@ -921,7 +937,7 @@ body {
 .ebay-comps-search {
   border: 1px solid var(--border);
   border-radius: 8px;
-  color: var(--green);
+  color: var(--gold);
   display: block;
   font-size: 0.78rem;
   font-weight: 750;
@@ -930,7 +946,7 @@ body {
 }
 
 .ebay-comps-search:hover {
-  border-color: var(--green);
+  border-color: var(--gold);
   text-decoration: underline;
 }
 
@@ -949,7 +965,7 @@ body {
 }
 
 .ebay-comp-card:hover {
-  border-color: var(--green);
+  border-color: var(--gold);
   transform: translateY(-1px);
 }
 
@@ -978,7 +994,7 @@ body {
 }
 
 .ebay-comp-label {
-  color: var(--green);
+  color: var(--gold);
   font-size: 0.72rem;
   font-weight: 800;
   margin-bottom: 2px;
@@ -993,7 +1009,7 @@ body {
 }
 
 .ebay-comp-price {
-  color: var(--green);
+  color: var(--gold);
   font-size: 0.95rem;
   font-weight: 850;
   white-space: nowrap;
@@ -1064,7 +1080,7 @@ body {
 
 .trivia-answer {
   font-size: 0.85rem;
-  color: var(--green);
+  color: var(--gold);
   font-weight: 500;
   line-height: 1.4;
   border-top: 1px solid var(--border);
@@ -1088,8 +1104,12 @@ body {
   .app-header {
     padding: 12px 0 8px;
   }
+  .banner-icon {
+    width: 44px;
+    height: 44px;
+  }
   .logo {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
   .filter-pill {
     padding: 4px 10px;
