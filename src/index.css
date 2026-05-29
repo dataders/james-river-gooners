@@ -679,6 +679,27 @@ body {
   color: var(--accent);
 }
 
+.no-deals-message {
+  text-align: center;
+  padding: 48px 24px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.no-deals-message p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+.no-deals-message p:first-child {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.no-deals-hint {
+  font-size: 0.875rem !important;
+  line-height: 1.5;
+}
+
 .view-toggles {
   display: flex;
   flex-wrap: wrap;
@@ -1462,5 +1483,9 @@ body {
   }
   .detail-panel {
     width: 100vw;
+  }
+  .item-roi-row {
+    flex-wrap: wrap;
+    gap: 1px 4px;
   }
 }
