@@ -1209,6 +1209,114 @@ def export_from_motherduck(
     return written
 
 
+def stale_direct_keys(output_dir: Path, stale_hours: int) -> set[str]:
+    """Return set of 'auction_safe_id:item_id' keys that have fresh comps in the JSON files."""
+    if stale_hours <= 0:
+        return set()
+    fresh = set()
+    cutoff = datetime.now(timezone.utc).timestamp() - stale_hours * 3600
+    for json_path in output_dir.glob("*.json"):
+        try:
+            payload = json.loads(json_path.read_text())
+        except Exception:
+            continue
+        auction_safe_id = json_path.stem
+        for item_id, item_data in payload.get("items", {}).items():
+            fetched_at_str = item_data.get("fetchedAt", "")
+            if not fetched_at_str:
+                continue
+            try:
+                fetched_at = datetime.fromisoformat(
+                    fetched_at_str.replace("Z", "+00:00")
+                ).timestamp()
+            except ValueError:
+                continue
+            if fetched_at >= cutoff:
+                fresh.add(f"{auction_safe_id}:{item_id}")
+    return fresh
+
+
+def fetch_direct(
+    data_dir: Path = DATA_DIR,
+    output_dir: Path = EBAY_COMPS_DIR,
+    limit: int = DEFAULT_LIMIT,
+    queries_per_item: int = 1,
+    max_matches: int = 3,
+    stale_hours: int = DEFAULT_STALE_HOURS,
+    include_archived: bool = False,
+    auction_safe_id: str | None = None,
+    dry_run: bool = False,
+    sleep_seconds: float = 1.0,
+    request_session=None,
+    _rand=random.uniform,
+) -> dict:
+    """Fetch eBay sold comps and write JSON files directly, without MotherDuck."""
+    import requests
+
+    if limit <= 0:
+        return {"items_attempted": 0, "queries_attempted": 0, "matches": 0, "blocked": False}
+
+    known_fresh = stale_direct_keys(output_dir, stale_hours) if not dry_run else set()
+    session = request_session or requests.Session()
+    all_rows: list[dict] = []
+    summary = {"items_attempted": 0, "queries_attempted": 0, "matches": 0, "blocked": False}
+
+    for item in load_manifest_items(
+        data_dir=data_dir,
+        include_archived=include_archived,
+        auction_safe_id=auction_safe_id,
+    ):
+        item_key = f"{text_value(item.get('auctionSafeId'))}:{text_value(item.get('id'))}"
+        searches = build_ebay_sold_searches(item)[:queries_per_item]
+        pending = [s for s in searches if f"{item_key}" not in known_fresh]
+        if not pending:
+            continue
+
+        if summary["items_attempted"] >= limit:
+            break
+        summary["items_attempted"] += 1
+
+        for search in pending:
+            result = fetch_sold_matches(session, search, max_matches=max_matches)
+            rows = comp_rows_for_item(
+                item,
+                search,
+                result["matches"],
+                status=result["status"],
+                warning=result.get("warning"),
+            )
+            summary["queries_attempted"] += 1
+            summary["matches"] += len(result["matches"])
+            all_rows.extend(rows)
+
+            if result["status"] == "blocked":
+                summary["blocked"] = True
+                print(result["warning"])
+                break
+
+            if sleep_seconds > 0:
+                jitter_sleep(sleep_seconds, _rand=_rand)
+
+        if summary["blocked"]:
+            break
+
+    if not dry_run:
+        exports = build_public_exports(all_rows)
+        written = write_public_exports(exports, output_dir)
+        print(
+            f"eBay comp direct fetch: {summary['items_attempted']} items, "
+            f"{summary['queries_attempted']} queries, "
+            f"{summary['matches']} matches, {written} auction files written"
+        )
+    else:
+        print(
+            f"eBay comp direct fetch (dry run): {summary['items_attempted']} items, "
+            f"{summary['queries_attempted']} queries planned"
+        )
+
+    return summary
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export eBay comps from MotherDuck")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1234,6 +1342,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     ingest_parser.add_argument("--dry-run", action="store_true")
     ingest_parser.add_argument("--sleep-seconds", type=float, default=1.0)
 
+    fetch_parser = subparsers.add_parser(
+        "fetch-direct",
+        help="Fetch eBay sold comps and write JSON files directly (no MotherDuck required)",
+    )
+    fetch_parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    fetch_parser.add_argument("--output-dir", type=Path, default=EBAY_COMPS_DIR)
+    fetch_parser.add_argument("--limit", type=int, default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT)))
+    fetch_parser.add_argument("--queries-per-item", type=int, default=1)
+    fetch_parser.add_argument("--max-matches", type=int, default=3)
+    fetch_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
+    fetch_parser.add_argument("--auction-safe-id", default=None)
+    fetch_parser.add_argument("--include-archived", action="store_true")
+    fetch_parser.add_argument("--dry-run", action="store_true")
+    fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
+
     return parser.parse_args(argv)
 
 
@@ -1249,6 +1372,19 @@ def main(argv: list[str] | None = None) -> int:
         ingest_ebay_comps(
             database=args.database,
             data_dir=args.data_dir,
+            limit=args.limit,
+            queries_per_item=args.queries_per_item,
+            max_matches=args.max_matches,
+            stale_hours=args.stale_hours,
+            include_archived=args.include_archived,
+            auction_safe_id=args.auction_safe_id,
+            dry_run=args.dry_run,
+            sleep_seconds=args.sleep_seconds,
+        )
+    elif args.command == "fetch-direct":
+        fetch_direct(
+            data_dir=args.data_dir,
+            output_dir=args.output_dir,
             limit=args.limit,
             queries_per_item=args.queries_per_item,
             max_matches=args.max_matches,
