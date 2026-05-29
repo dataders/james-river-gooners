@@ -44,4 +44,5 @@ GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --wi
 - Use `duckdb==1.5.2` for MotherDuck writes
 - Category normalization mapping is in `scraper/categories.py`
 - GitHub Pages base path: `/james-river-gooners/`
+- Live site URL: https://gooners.anders.omg.lol/
 - Never use pip/pip3 — always use uv
