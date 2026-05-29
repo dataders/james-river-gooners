@@ -62,24 +62,20 @@ export function usePreferences() {
     setPrefs(prev => ({ ...prev, searchQuery: query }))
   }, [])
 
-  const setMinPrice = useCallback((value) => {
-    setPrefs(prev => { const next = { ...prev, minPrice: value }; savePrefs(next); return next })
+  const setNumericPreference = useCallback((key, value) => {
+    setPrefs(prev => {
+      const next = { ...prev, [key]: value }
+      savePrefs(next)
+      return next
+    })
   }, [])
-  const setMaxPrice = useCallback((value) => {
-    setPrefs(prev => { const next = { ...prev, maxPrice: value }; savePrefs(next); return next })
-  }, [])
-  const setMinBids = useCallback((value) => {
-    setPrefs(prev => { const next = { ...prev, minBids: value }; savePrefs(next); return next })
-  }, [])
-  const setMaxBids = useCallback((value) => {
-    setPrefs(prev => { const next = { ...prev, maxBids: value }; savePrefs(next); return next })
-  }, [])
-  const setMinHours = useCallback((value) => {
-    setPrefs(prev => { const next = { ...prev, minHours: value }; savePrefs(next); return next })
-  }, [])
-  const setMaxHours = useCallback((value) => {
-    setPrefs(prev => { const next = { ...prev, maxHours: value }; savePrefs(next); return next })
-  }, [])
+
+  const setMinPrice = useCallback((value) => setNumericPreference('minPrice', value), [setNumericPreference])
+  const setMaxPrice = useCallback((value) => setNumericPreference('maxPrice', value), [setNumericPreference])
+  const setMinBids = useCallback((value) => setNumericPreference('minBids', value), [setNumericPreference])
+  const setMaxBids = useCallback((value) => setNumericPreference('maxBids', value), [setNumericPreference])
+  const setMinHours = useCallback((value) => setNumericPreference('minHours', value), [setNumericPreference])
+  const setMaxHours = useCallback((value) => setNumericPreference('maxHours', value), [setNumericPreference])
 
   const setLocalOnly = useCallback((value) => {
     setPrefs(prev => {

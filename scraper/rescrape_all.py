@@ -11,10 +11,10 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import pyarrow.parquet as pq
 
+from dates import parse_auction_datetime_utc
 from discover import discover_current_auction_urls
 from scrape import DATA_DIR, ITEMS_DIR, extract_auction_id, sanitize_auction_id
 
@@ -23,18 +23,6 @@ URLS_FILE = Path(__file__).resolve().parent / "auction_urls.txt"
 ARCHIVE_ITEMS_DIR = DATA_DIR / "archive" / "items"
 MANIFEST_PATH = DATA_DIR / "manifest.json"
 ARCHIVE_MANIFEST_PATH = DATA_DIR / "archive-manifest.json"
-
-DATE_PATTERNS = (
-    "%Y-%m-%dT%H:%M:%S.%f%z",
-    "%Y-%m-%dT%H:%M:%S%z",
-    "%Y-%m-%dT%H:%M:%S.%f",
-    "%Y-%m-%dT%H:%M:%S",
-    "%Y-%m-%d %I:%M:%S %p",
-    "%Y-%m-%d %H:%M:%S",
-    "%m/%d/%Y %H:%M:%S",
-    "%m/%d/%Y %I:%M:%S %p",
-)
-AUCTION_TZ = ZoneInfo("America/New_York")
 
 
 def read_manual_urls() -> list[str]:
@@ -65,20 +53,7 @@ def dedupe_urls(urls: list[str]) -> list[str]:
 
 
 def parse_end_date(value: str) -> datetime | None:
-    if not value:
-        return None
-    cleaned = value.strip()
-    if cleaned.endswith("Z"):
-        cleaned = f"{cleaned[:-1]}+0000"
-    for pattern in DATE_PATTERNS:
-        try:
-            parsed = datetime.strptime(cleaned, pattern)
-            if parsed.tzinfo is not None:
-                return parsed.astimezone(timezone.utc)
-            return parsed.replace(tzinfo=AUCTION_TZ).astimezone(timezone.utc)
-        except ValueError:
-            continue
-    return None
+    return parse_auction_datetime_utc(value)
 
 
 def parquet_end_date(path: Path) -> datetime | None:
