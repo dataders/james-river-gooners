@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "motherduck": {
+      "command": "uvx",
+      "args": ["mcp-server-motherduck"],
+      "env": {
+        "motherduck_token": "${MOTHERDUCK_TOKEN}"
+      }
+    },
     "playwright": {
       "command": "npx",
       "args": ["@playwright/mcp@latest", "--headless"],
