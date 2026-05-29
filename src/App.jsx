@@ -5,6 +5,7 @@ import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { filterItems, getGroupedCategories } from './utils/filters'
+import { isDeal } from './utils/roiCalc'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
@@ -46,8 +47,11 @@ export default function App() {
   const [minHours, setMinHours] = useState(null)
   const [maxHours, setMaxHours] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
-  const ebayComps = useEbayComps(selectedItem?.auctionSafeId)
+  const [bestDeals, setBestDeals] = useState(false)
   const [localOnly, setLocalOnly] = useState(false)
+
+  const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
+  const allComps = useEbayComps(auctionSafeIds)
 
   const localAuctionIds = useMemo(() => {
     const ids = new Set()
@@ -80,6 +84,13 @@ export default function App() {
     () => preFilteredItems.filter(item => !excludedCategories.includes(item.rawCategory)),
     [preFilteredItems, excludedCategories]
   )
+
+  const displayItems = useMemo(() => {
+    if (!bestDeals) return filteredItems
+    return filteredItems.filter(item =>
+      isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
+    )
+  }, [filteredItems, bestDeals, allComps])
 
   if (error) {
     return <div className="error">Error: {error}</div>
@@ -114,6 +125,13 @@ export default function App() {
             />
             <span>Archived auctions</span>
           </label>
+          <button
+            type="button"
+            className={`deals-toggle${bestDeals ? ' active' : ''}`}
+            onClick={() => setBestDeals(v => !v)}
+          >
+            Best deals only
+          </button>
         </div>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <RangeFilters
@@ -159,7 +177,8 @@ export default function App() {
           <div className="loading">Loading auction items...</div>
         ) : (
           <ItemGrid
-            items={filteredItems}
+            items={displayItems}
+            allComps={allComps}
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
             onItemClick={setSelectedItem}
@@ -170,7 +189,7 @@ export default function App() {
       {selectedItem && (
         <ItemDetail
           item={selectedItem}
-          ebayComps={ebayComps}
+          ebayComps={allComps[selectedItem.auctionSafeId] || {}}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={toggleFavorite}
           onClose={() => setSelectedItem(null)}

@@ -10,7 +10,7 @@ const breakpointColumns = {
   800: 2,
 }
 
-export function ItemGrid({ items, isFavorite, onToggleFavorite, onItemClick }) {
+export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, onItemClick }) {
   const [visibleState, setVisibleState] = useState({ items, visibleCount: BATCH_SIZE })
   const sentinelRef = useRef(null)
 
@@ -55,6 +55,7 @@ export function ItemGrid({ items, isFavorite, onToggleFavorite, onItemClick }) {
           <ItemCard
             key={`${item.auctionSafeId}:${item.id}`}
             item={item}
+            itemComps={allComps[item.auctionSafeId]?.[item.id]}
             isFavorite={isFavorite(item)}
             onToggleFavorite={onToggleFavorite}
             onItemClick={onItemClick}
