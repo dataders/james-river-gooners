@@ -193,6 +193,16 @@ export default function App() {
           <div className="loading">Loading auction items...</div>
         ) : showDeals ? (
           <DealsPanel items={visibleItems} allComps={allComps} />
+        ) : bestDeals && displayItems.length === 0 ? (
+          <div className="no-deals-message">
+            <div className="item-count">0 items</div>
+            <p>No best deals found.</p>
+            <p className="no-deals-hint">
+              Deal detection requires eBay sold-comp data. Most current auction items
+              haven&apos;t been priced yet — try again after the next scraper run, or
+              enable <strong>Archived auctions</strong> to see deals from past sales.
+            </p>
+          </div>
         ) : (
           <ItemGrid
             items={displayItems}
