@@ -877,13 +877,9 @@ def append_ebay_comp_snapshots(rows: list[dict], database: str | None = None) ->
     if not rows:
         return 0
 
-    target_database = database or os.environ.get("MOTHERDUCK_DATABASE", "md:")
-    if target_database.startswith("md:") and not os.environ.get("MOTHERDUCK_TOKEN"):
-        raise RuntimeError("MOTHERDUCK_TOKEN is required to append eBay comps to MotherDuck")
+    import warehouse
 
-    import duckdb
-
-    connection = duckdb.connect(target_database)
+    connection = warehouse.connect(database, "append eBay comps to MotherDuck")
     try:
         ensure_comp_tables(connection)
         return insert_comp_rows(connection, rows)
@@ -976,17 +972,13 @@ def ingest_ebay_comps(
     if limit <= 0:
         return {"items_attempted": 0, "queries_attempted": 0, "rows_written": 0, "matches": 0, "blocked": False}
 
-    target_database = database or os.environ.get("MOTHERDUCK_DATABASE", "md:")
-    if not dry_run and target_database.startswith("md:") and not os.environ.get("MOTHERDUCK_TOKEN"):
-        raise RuntimeError("MOTHERDUCK_TOKEN is required to ingest eBay comps into MotherDuck")
-
-    import duckdb
     import requests
+    import warehouse
 
     connection = None
     known_fresh_keys = set()
     if not dry_run:
-        connection = duckdb.connect(target_database)
+        connection = warehouse.connect(database, "ingest eBay comps into MotherDuck")
         ensure_comp_tables(connection)
         known_fresh_keys = fresh_comp_keys(connection, stale_hours=stale_hours)
 
@@ -1180,12 +1172,9 @@ def export_from_motherduck(
     output_dir: Path = EBAY_COMPS_DIR,
     allow_missing: bool = False,
 ) -> int:
-    if not os.environ.get("MOTHERDUCK_TOKEN"):
-        raise RuntimeError("MOTHERDUCK_TOKEN is required to export eBay comps from MotherDuck")
+    import warehouse
 
-    import duckdb
-
-    connection = duckdb.connect(database or os.environ.get("MOTHERDUCK_DATABASE", "md:"))
+    connection = warehouse.connect(database, "export eBay comps from MotherDuck")
     try:
         source_table = None
         for candidate in (PUBLIC_VIEW, SNAPSHOT_TABLE):

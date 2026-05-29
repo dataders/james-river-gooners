@@ -131,17 +131,16 @@ def row_values(row: dict) -> tuple:
 
 
 def append_listing_snapshots(items: list[dict], source_url: str, database: str | None = None) -> int:
-    if not os.environ.get("MOTHERDUCK_TOKEN"):
-        raise RuntimeError("MOTHERDUCK_TOKEN is required when MotherDuck snapshots are enabled")
+    import warehouse
+
+    database = warehouse.resolve_database(database)
+    warehouse.require_motherduck_token(database, "snapshot listings to MotherDuck")
 
     rows = rows_for_snapshots(items, source_url)
     if not rows:
         return 0
 
-    import duckdb
-
-    database = database or os.environ.get("MOTHERDUCK_DATABASE", "md:")
-    connection = duckdb.connect(database)
+    connection = warehouse.connect(database, "snapshot listings to MotherDuck")
     try:
         connection.execute(CREATE_TABLE_SQL)
         connection.executemany(INSERT_SNAPSHOT_SQL, [row_values(row) for row in rows])
