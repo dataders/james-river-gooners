@@ -1,14 +1,5 @@
 import { test, expect } from '@playwright/test'
-
-async function waitForLoad(page) {
-  await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
-}
-
-async function getItemCount(page) {
-  const text = await page.locator('.item-count').textContent()
-  const match = text.match(/^(\d+) items/)
-  return match ? parseInt(match[1], 10) : 0
-}
+import { waitForLoad, getItemCount } from './helpers.js'
 
 test.describe('Filters', () => {
   test.beforeEach(async ({ page }) => {
@@ -108,5 +99,70 @@ test.describe('Filters', () => {
     await expect(checkbox).toBeChecked()
     await checkbox.click()
     await expect(checkbox).not.toBeChecked()
+  })
+
+  test('"Richmond area only" item count is a subset of the total', async ({ page }) => {
+    const totalBefore = await getItemCount(page)
+    test.skip(totalBefore === 0, 'No items loaded — skipping Richmond-only count test')
+
+    const checkbox = page.locator('label.local-toggle', { hasText: 'Richmond area only' })
+      .locator('input[type="checkbox"]')
+    await checkbox.click()
+    await page.waitForTimeout(200)
+
+    const localCount = await getItemCount(page)
+    expect(localCount).toBeLessThanOrEqual(totalBefore)
+
+    // Restore
+    await checkbox.click()
+    await page.waitForTimeout(200)
+    expect(await getItemCount(page)).toBe(totalBefore)
+  })
+
+  test('excluding an auction via chip reduces item count', async ({ page }) => {
+    const totalBefore = await getItemCount(page)
+    test.skip(totalBefore === 0, 'No items loaded — skipping auction chip test')
+
+    // Open the auctions filter panel
+    await page.locator('button.auction-filter-toggle').click()
+    const chips = page.locator('.auction-filter-body .filter-chip.shown')
+    const chipCount = await chips.count()
+    test.skip(chipCount < 2, 'Need ≥2 auctions to test exclusion')
+
+    // Exclude the first auction
+    await chips.first().click()
+    await page.waitForTimeout(200)
+    const countAfterExclude = await getItemCount(page)
+    expect(countAfterExclude).toBeLessThan(totalBefore)
+
+    // Re-include it (now it's a hidden chip)
+    await page.locator('.auction-filter-body .filter-chip.hidden').first().click()
+    await page.waitForTimeout(200)
+    expect(await getItemCount(page)).toBe(totalBefore)
+  })
+
+  test('toggling a single category chip excludes that category', async ({ page }) => {
+    const totalBefore = await getItemCount(page)
+    test.skip(totalBefore === 0, 'No items loaded — skipping category chip test')
+
+    // Open categories panel and expand the first group
+    await page.locator('button.filter-bar-toggle').click()
+    await page.locator('.filter-group-toggle').first().click()
+
+    // Get the first shown chip and click it to exclude
+    const chip = page.locator('.filter-group-body .filter-chip.shown').first()
+    await expect(chip).toBeVisible()
+    await chip.click()
+    await page.waitForTimeout(200)
+
+    expect(await getItemCount(page)).toBeLessThan(totalBefore)
+
+    // Restore via "show all"
+    const showAllBtn = page.locator('button.filter-bar-toggle').locator('text=show all')
+    if (await showAllBtn.isVisible()) {
+      await showAllBtn.click()
+      await page.waitForTimeout(200)
+      expect(await getItemCount(page)).toBe(totalBefore)
+    }
   })
 })

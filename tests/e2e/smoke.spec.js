@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test'
-
-// Wait for the app to finish loading Parquet data (WASM + fetch)
-async function waitForLoad(page) {
-  await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
-}
+import { waitForLoad, getItemCount } from './helpers.js'
 
 test.describe('Smoke — basic app structure', () => {
   test.beforeEach(async ({ page }) => {
@@ -44,9 +40,42 @@ test.describe('Smoke — basic app structure', () => {
 
   test('item count is shown after load', async ({ page }) => {
     await waitForLoad(page)
-    const countEl = page.locator('.item-count')
-    await expect(countEl).toBeVisible()
-    const text = await countEl.textContent()
-    expect(text).toMatch(/^\d+ items/)
+    await expect(page.locator('.item-count')).toBeVisible()
+    expect(await getItemCount(page)).toBeGreaterThan(0)
+  })
+})
+
+test.describe('Arsenal Trivia card', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+  })
+
+  test('trivia card is visible', async ({ page }) => {
+    await expect(page.locator('.trivia-card')).toBeVisible()
+  })
+
+  test('shows question and tap hint before reveal', async ({ page }) => {
+    await expect(page.locator('.trivia-question')).toBeVisible()
+    await expect(page.locator('.trivia-tap-hint')).toBeVisible()
+    await expect(page.locator('.trivia-answer')).toBeHidden()
+  })
+
+  test('clicking trivia reveals answer and hides hint', async ({ page }) => {
+    await page.locator('.trivia-card').click()
+    await expect(page.locator('.trivia-answer')).toBeVisible()
+    await expect(page.locator('.trivia-tap-hint')).toBeHidden()
+  })
+
+  test('clicking again hides the answer', async ({ page }) => {
+    await page.locator('.trivia-card').click()
+    await page.locator('.trivia-card').click()
+    await expect(page.locator('.trivia-answer')).toBeHidden()
+    await expect(page.locator('.trivia-tap-hint')).toBeVisible()
+  })
+
+  test('trivia card has aria-expanded that reflects reveal state', async ({ page }) => {
+    await expect(page.locator('.trivia-card')).toHaveAttribute('aria-expanded', 'false')
+    await page.locator('.trivia-card').click()
+    await expect(page.locator('.trivia-card')).toHaveAttribute('aria-expanded', 'true')
   })
 })
