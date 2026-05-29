@@ -35,6 +35,8 @@ GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --wi
 - Maxanet API needs session cookies + `X-Requested-With: XMLHttpRequest`; `GetAuctionItems` returns HTML fragments (not JSON); `GetCategories` returns JSON
 - `rescrape_all.py` auto-discovers auctions; `scraper/auction_urls.txt` is a manual fallback only
 - Category normalization: `scraper/categories.py` + `scraper/category_mappings.yml`
-- MotherDuck: appends to `listing_snapshots` table; `MOTHERDUCK_TOKEN` must stay out of committed files; use `duckdb==1.5.2`
+- MotherDuck: appends to `listing_snapshots` table in `my_db`; both tokens must stay out of committed files; use `duckdb==1.5.2`
+  - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server
+  - `MOTHERDUCK_READ_TOKEN` — read-scaling token; safe to expose to browsers/CDN; used in GitHub Actions as `MOTHERDUCK_READ_SCALING_TOKEN` secret for eBay comps export
 - GitHub Pages base path: `/james-river-gooners/` (vite.config sets `base: '/'` for local dev)
 - Arrow `BigInt` fields (`lotNumber`, `totalBids`, `currentBid`) must be converted to `Number` after Parquet deserialization
