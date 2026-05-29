@@ -1,35 +1,5 @@
 import { useState, useCallback } from 'react'
-
-const STORAGE_KEY = 'gooners-preferences'
-
-const DEFAULT_PREFS = {
-  includedCategories: [], // empty = all
-  excludedCategories: [],
-  searchQuery: '',
-}
-
-function loadPrefs() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      return { ...DEFAULT_PREFS, ...JSON.parse(stored) }
-    }
-  } catch {
-    // ignore
-  }
-  return { ...DEFAULT_PREFS }
-}
-
-function savePrefs(prefs) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      includedCategories: prefs.includedCategories,
-      excludedCategories: prefs.excludedCategories,
-    }))
-  } catch {
-    // ignore
-  }
-}
+import { loadPrefs, savePrefs } from '../utils/prefs'
 
 export function usePreferences() {
   const [prefs, setPrefs] = useState(loadPrefs)
@@ -92,6 +62,29 @@ export function usePreferences() {
     setPrefs(prev => ({ ...prev, searchQuery: query }))
   }, [])
 
+  const makeNumericSetter = (key) => (value) => {
+    setPrefs(prev => {
+      const next = { ...prev, [key]: value }
+      savePrefs(next)
+      return next
+    })
+  }
+
+  const setMinPrice = useCallback(makeNumericSetter('minPrice'), [])
+  const setMaxPrice = useCallback(makeNumericSetter('maxPrice'), [])
+  const setMinBids = useCallback(makeNumericSetter('minBids'), [])
+  const setMaxBids = useCallback(makeNumericSetter('maxBids'), [])
+  const setMinHours = useCallback(makeNumericSetter('minHours'), [])
+  const setMaxHours = useCallback(makeNumericSetter('maxHours'), [])
+
+  const setLocalOnly = useCallback((value) => {
+    setPrefs(prev => {
+      const next = { ...prev, localOnly: value }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   return {
     ...prefs,
     toggleIncluded,
@@ -100,5 +93,12 @@ export function usePreferences() {
     hideAll,
     showAll,
     setSearchQuery,
+    setMinPrice,
+    setMaxPrice,
+    setMinBids,
+    setMaxBids,
+    setMinHours,
+    setMaxHours,
+    setLocalOnly,
   }
 }

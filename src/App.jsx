@@ -32,24 +32,31 @@ export default function App() {
   const {
     excludedCategories,
     searchQuery,
+    minPrice,
+    maxPrice,
+    minBids,
+    maxBids,
+    minHours,
+    maxHours,
+    localOnly,
     toggleExcluded,
     hideAll,
     showAll,
     setSearchQuery,
+    setMinPrice,
+    setMaxPrice,
+    setMinBids,
+    setMaxBids,
+    setMinHours,
+    setMaxHours,
+    setLocalOnly,
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { isFavorite, toggleFavorite } = useFavorites()
 
-  const [minPrice, setMinPrice] = useState(null)
-  const [maxPrice, setMaxPrice] = useState(null)
-  const [minBids, setMinBids] = useState(null)
-  const [maxBids, setMaxBids] = useState(null)
-  const [minHours, setMinHours] = useState(null)
-  const [maxHours, setMaxHours] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
   const [bestDeals, setBestDeals] = useState(false)
-  const [localOnly, setLocalOnly] = useState(false)
   const [showDeals, setShowDeals] = useState(false)
 
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
