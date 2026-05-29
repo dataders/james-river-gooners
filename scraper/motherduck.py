@@ -2,21 +2,11 @@ import json
 import os
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+
+from dates import parse_auction_datetime
 
 
 SNAPSHOT_TABLE = "listing_snapshots"
-AUCTION_TZ = ZoneInfo("America/New_York")
-DATE_PATTERNS = (
-    "%Y-%m-%dT%H:%M:%S.%f%z",
-    "%Y-%m-%dT%H:%M:%S%z",
-    "%Y-%m-%dT%H:%M:%S.%f",
-    "%Y-%m-%dT%H:%M:%S",
-    "%Y-%m-%d %I:%M:%S %p",
-    "%Y-%m-%d %H:%M:%S",
-    "%m/%d/%Y %H:%M:%S",
-    "%m/%d/%Y %I:%M:%S %p",
-)
 
 CREATE_TABLE_SQL = f"""
 create table if not exists {SNAPSHOT_TABLE} (
@@ -87,23 +77,7 @@ def images_text(value) -> str:
 
 
 def timestamp_value(value):
-    if not value:
-        return None
-    if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=AUCTION_TZ)
-
-    cleaned = str(value).strip()
-    if cleaned.endswith("Z"):
-        cleaned = f"{cleaned[:-1]}+0000"
-
-    for pattern in DATE_PATTERNS:
-        try:
-            parsed = datetime.strptime(cleaned, pattern)
-            return parsed if parsed.tzinfo else parsed.replace(tzinfo=AUCTION_TZ)
-        except ValueError:
-            continue
-
-    return None
+    return parse_auction_datetime(value)
 
 
 def rows_for_snapshots(items: list[dict], source_url: str) -> list[dict]:
