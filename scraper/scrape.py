@@ -29,6 +29,35 @@ def sanitize_auction_id(auction_id: str) -> str:
     return auction_id.replace("+", "-").replace("/", "_").replace("=", "")
 
 
+def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
+    """Return {item_id: (currentBid, totalBids)} from an existing Parquet file."""
+    if not path.exists():
+        return {}
+    import pyarrow.parquet as pq
+    try:
+        table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
+        return {
+            row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
+            for row in table.to_pylist()
+        }
+    except Exception:
+        return {}
+
+
+def has_bid_changes(new_items: list[dict], existing_bids: dict[str, tuple[float, int]]) -> bool:
+    """Return True if any bid amount, bid count, or item set differs from the stored snapshot."""
+    if not existing_bids:
+        return True
+    new_ids = {item["id"] for item in new_items}
+    if new_ids != set(existing_bids):
+        return True
+    return any(
+        (float(item.get("currentBid") or 0), int(item.get("totalBids") or 0))
+        != existing_bids.get(item["id"])
+        for item in new_items
+    )
+
+
 def extract_auction_id(url: str) -> str:
     """Extract AuctionId parameter from a Cannon's auction URL."""
     parsed = urlparse(url)
@@ -262,6 +291,13 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     for cat, count in sorted(cat_counts.items(), key=lambda x: -x[1]):
         print(f"  {cat}: {count}")
 
+    # Skip write if nothing has changed since the last scrape
+    items_path = ITEMS_DIR / f"{safe_id}.parquet"
+    existing_bids = load_existing_bids(items_path)
+    if not has_bid_changes(all_items, existing_bids):
+        print(f"\nNo bid changes detected; skipping write for {safe_id}")
+        return {"changed": False}
+
     # Write items as Parquet with embedded auction metadata
     import pyarrow as pa
     import pyarrow.parquet as pq
@@ -282,7 +318,6 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         item["scrapedAt"] = scraped_at
 
     table = pa.Table.from_pylist(all_items)
-    items_path = ITEMS_DIR / f"{safe_id}.parquet"
     pq.write_table(table, items_path, compression="snappy")
     print(f"\nWrote {len(all_items)} items to {items_path}")
 
@@ -294,6 +329,8 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         from motherduck import append_listing_snapshots
         snapshot_count = append_listing_snapshots(all_items, auction_url)
         print(f"Appended {snapshot_count} listing snapshots to MotherDuck")
+
+    return {"changed": True}
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
