@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, extractCompPrices, calcMedian } from '../utils/roiCalc'
+import { calcMaxBid, COST_MULTIPLIER, extractCompPrices, calcMedian, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { normalizeEbaySoldMatches } from '../utils/ebayComps'
 
 const fmt = v => `$${Math.round(v).toLocaleString()}`
 
 export function RoiCalculator({ soldComps }) {
-  const [margin, setMargin] = useState(30)
+  const [margin, setMargin] = useState(DEFAULT_MARGIN * 100)
 
   const normalized = normalizeEbaySoldMatches(soldComps)
   const prices = extractCompPrices(normalized)
