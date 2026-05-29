@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cannon's Auctions Dashboard</title>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18",
+    "react-dom/client": "https://esm.sh/react-dom@18/client"
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d0d;
+    color: #f0f0f0;
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import { useState, useEffect, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
+
+const BASE = 'https://dataders.github.io/james-river-gooners/';
+
+const css = `
+  :root {
+    --red: #E8102B;
+    --dark-red: #7a0018;
+    --gold: #FBBA34;
+    --bg: #0d0d0d;
+    --card: #181818;
+    --card2: #1f1f1f;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #777;
+    --green: #22c55e;
+  }
+
+  .shell { display: flex; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    background: linear-gradient(135deg, var(--dark-red), var(--red));
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,.6);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-icon { font-size: 1.8rem; }
+  .topbar-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+  .topbar-sub { font-size: .72rem; opacity: .75; margin-top: 2px; }
+  .live-dot {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: .72rem; color: rgba(255,255,255,.7);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
+
+  .content { flex: 1; max-width: 900px; margin: 0 auto; padding: 20px 16px; width: 100%; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; position: relative; overflow: hidden;
+  }
+  .stat::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent, var(--red));
+  }
+  .stat .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+  .stat .val { font-size: 1.9rem; font-weight: 800; line-height: 1; color: var(--accent, var(--text)); }
+  .stat .hint { font-size: .7rem; color: var(--muted); margin-top: 4px; }
+
+  .section-title {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* bar chart */
+  .chart { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .bars { display: flex; gap: 4px; align-items: flex-end; height: 80px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+  .bar-col { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+  .bar-fill {
+    width: 100%; border-radius: 4px 4px 0 0;
+    background: linear-gradient(to top, var(--dark-red), var(--red));
+    min-height: 4px; transition: opacity .15s; cursor: default; position: relative;
+  }
+  .bar-fill:hover { opacity: .8; }
+  .bar-fill:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--card2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 8px; font-size: .68rem; white-space: nowrap; z-index: 5; pointer-events: none;
+  }
+  .bar-lbl { font-size: .58rem; color: var(--muted); white-space: nowrap; }
+
+  /* auction list */
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .auction {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px;
+    display: grid; grid-template-columns: 48px 1fr auto;
+    align-items: center; gap: 12px;
+    transition: border-color .15s, background .15s; cursor: default;
+  }
+  .auction:hover { border-color: var(--red); background: var(--card2); }
+  .badge {
+    background: var(--dark-red); border-radius: 8px;
+    padding: 6px 4px; text-align: center;
+  }
+  .badge .num { font-size: 1.35rem; font-weight: 800; color: var(--gold); line-height: 1; }
+  .badge .wday { font-size: .58rem; text-transform: uppercase; color: rgba(255,255,255,.6); letter-spacing: .04em; }
+  .info .title {
+    font-size: .85rem; font-weight: 600; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .info .meta { font-size: .7rem; color: var(--muted); margin-top: 3px; }
+  .countdown { font-size: .68rem; color: var(--gold); font-weight: 600; }
+  .lots { text-align: right; }
+  .lots .n { font-size: 1.25rem; font-weight: 700; color: var(--gold); }
+  .lots .lbl { font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  .loading { text-align: center; padding: 60px 20px; color: var(--muted); font-size: .9rem; }
+  .err { text-align: center; padding: 60px 20px; color: var(--red); font-size: .85rem; }
+
+  .footer { text-align: center; padding: 24px 16px; color: var(--muted); font-size: .68rem; }
+
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .bar-lbl { display: none; }
+  }
+`;
+
+function useNow(interval = 10000) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), interval);
+    return () => clearInterval(t);
+  }, [interval]);
+  return now;
+}
+
+function parseEnd(str) {
+  // "2026-05-31 6:18:00 PM" → Date
+  const [date, time, ampm] = str.split(' ');
+  return new Date(`${date}T${time} ${ampm}`);
+}
+
+function countdown(endDate, now) {
+  const diff = endDate - now;
+  if (diff <= 0) return 'Ended';
+  const h = Math.floor(diff / 3600000);
+  if (h < 24) return `${h}h left`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h left`;
+}
+
+function cleanTitle(raw) {
+  // Strip "- Cannon's Online Auctions, LLC" suffix and leading "MM/DD/YY: "
+  return raw
+    .replace(/\s*[-–]\s*Cannon['']s Online Auctions,?\s*LLC\s*$/i, '')
+    .replace(/^\d{2}\/\d{2}\/\d{2,4}:\s*/, '')
+    .trim();
+}
+
+function StatCard({ label, value, hint, accent }) {
+  return (
+    <div className="stat" style={{ '--accent': accent }}>
+      <div className="lbl">{label}</div>
+      <div className="val">{value}</div>
+      {hint && <div className="hint">{hint}</div>}
+    </div>
+  );
+}
+
+function BarChart({ auctions }) {
+  const max = Math.max(...auctions.map(a => a.itemCount));
+  return (
+    <div className="chart">
+      <div className="section-title" style={{ marginBottom: 12 }}>Items per auction</div>
+      <div className="bars">
+        {auctions.map(a => {
+          const d = parseEnd(a.endDate);
+          const lbl = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const pct = Math.max(4, (a.itemCount / max) * 100);
+          return (
+            <div className="bar-wrap" key={a.safeId}>
+              <div className="bar-col">
+                <div
+                  className="bar-fill"
+                  style={{ height: `${pct}%` }}
+                  data-tip={`${lbl} · ${a.itemCount} lots`}
+                />
+              </div>
+              <div className="bar-lbl">{lbl.replace(' ', '\n')}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AuctionRow({ auction, now }) {
+  const d = parseEnd(auction.endDate);
+  const title = cleanTitle(auction.title);
+  const endTime = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const endDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return (
+    <div className="auction">
+      <div className="badge">
+        <div className="num">{d.getDate()}</div>
+        <div className="wday">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+      </div>
+      <div className="info">
+        <div className="title">{title}</div>
+        <div className="meta">
+          Closes {endDay} @ {endTime} &nbsp;·&nbsp;
+          <span className="countdown">{countdown(d, now)}</span>
+        </div>
+      </div>
+      <div className="lots">
+        <div className="n">{auction.itemCount.toLocaleString()}</div>
+        <div className="lbl">lots</div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [auctions, setAuctions] = useState(null);
+  const [error, setError] = useState(null);
+  const [scrapedAt, setScrapedAt] = useState(null);
+  const now = useNow(30000);
+
+  useEffect(() => {
+    fetch(BASE + 'data/manifest.json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(({ auctions: list }) => {
+        const sorted = [...list].sort((a, b) => parseEnd(a.endDate) - parseEnd(b.endDate));
+        setAuctions(sorted);
+        const latest = list.reduce((m, a) => a.scrapedAt > m ? a.scrapedAt : m, '');
+        setScrapedAt(latest ? new Date(latest) : null);
+      })
+      .catch(e => setError(e.message));
+  }, []);
+
+  const totalItems = auctions ? auctions.reduce((s, a) => s + a.itemCount, 0) : 0;
+  const nextClose = auctions?.[0];
+
+  return (
+    <div className="shell">
+      <style>{css}</style>
+      <div className="topbar">
+        <div className="topbar-icon">🏛️</div>
+        <div>
+          <div className="topbar-title">Cannon's Auctions</div>
+          <div className="topbar-sub">James River Gooners · Richmond VA</div>
+        </div>
+        <div className="live-dot">
+          <div className="dot" />
+          {scrapedAt
+            ? `Updated ${scrapedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+            : 'Live'}
+        </div>
+      </div>
+
+      <div className="content">
+        {error && <div className="err">Failed to load: {error}</div>}
+        {!auctions && !error && <div className="loading">Loading auction data…</div>}
+
+        {auctions && (
+          <>
+            <div className="stats" style={{ marginBottom: 20 }}>
+              <StatCard label="Active Auctions" value={auctions.length} hint="closing soon" accent="var(--gold)" />
+              <StatCard label="Total Lots" value={totalItems.toLocaleString()} hint="across all auctions" accent="var(--red)" />
+              <StatCard
+                label="Next Closing"
+                value={nextClose ? countdown(parseEnd(nextClose.endDate), now) : '—'}
+                hint={nextClose ? cleanTitle(nextClose.title).split('|')[0].trim().slice(0, 30) + '…' : ''}
+                accent="var(--green)"
+              />
+              <StatCard
+                label="Avg Lot Size"
+                value={Math.round(totalItems / auctions.length).toLocaleString()}
+                hint="lots per auction"
+                accent="#60a5fa"
+              />
+            </div>
+
+            <div className="section-title" style={{ marginBottom: 10 }}>Lot distribution</div>
+            <BarChart auctions={auctions} />
+
+            <div className="section-title" style={{ marginBottom: 10 }}>Upcoming auctions</div>
+            <div className="list">
+              {auctions.map(a => <AuctionRow key={a.safeId} auction={a} now={now} />)}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="footer">
+        Data scraped from Maxanet · auto-refreshes hourly via GitHub Actions ·{' '}
+        <a href="https://dataders.github.io/james-river-gooners/" target="_blank" rel="noreferrer"
+           style={{ color: 'var(--red)', textDecoration: 'none' }}>
+          Open full app ↗
+        </a>
+      </div>
+    </div>
+  );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
