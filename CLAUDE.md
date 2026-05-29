@@ -1,47 +1,40 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project
-
-A better browsing UI for Cannon's Auctions (Richmond VA). Scraped auction data served as a React SPA on GitHub Pages.
+Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet data → Parquet files → React SPA on GitHub Pages.
 
 ## Architecture
 
-Two components:
-- **Scraper** (`scraper/`): Python scripts that discover current Cannon's auctions, fetch Maxanet item HTML, normalize categories, and write Parquet under `public/data/`
-- **Frontend** (`src/`): Vite + React SPA with masonry grid, auction/category/range/search filtering, archived browsing, favorites, and infinite scroll
+**Scraper** (`scraper/`) — Python scripts: discover auctions, fetch Maxanet HTML fragments, normalize categories, write Parquet to `public/data/`.
 
-Data flow: Maxanet HTML API -> Python scraper -> Parquet files + manifests in `public/data/` -> GitHub Pages -> React reads manifests and Parquet in the browser.
+**Frontend** (`src/`) — Vite + React 19 SPA. Reads Parquet in-browser via `parquet-wasm` + `apache-arrow`. Masonry grid, filtering (auction/category/price/search), favorites, infinite scroll, dark mode.
 
-Active auctions live in `public/data/items/` and `public/data/manifest.json`. Closed/stale auctions live in `public/data/archive/items/` and `public/data/archive-manifest.json`; the frontend loads them only when the Archived auctions toggle is enabled.
+**Data layout:**
+- Active: `public/data/manifest.json` + `public/data/items/*.parquet`
+- Archived: `public/data/archive-manifest.json` + `public/data/archive/items/*.parquet` (loaded only when archive toggle is on)
 
 ## Commands
 
 ```bash
 # Frontend
-npm run dev          # Start dev server
-npm run build        # Production build to dist/
-npm run preview      # Preview production build
+npm run dev       # dev server
+npm run build     # production build → dist/
+npm run lint      # eslint
 
-# Scraper (requires full auction URL with all query params)
-cd scraper
+# Scraper — run from scraper/
 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml python3 rescrape_all.py
-uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml python3 scrape.py "<auction_url>"
+uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml python3 scrape.py "<full_auction_url>"
 
-# Optional MotherDuck snapshot append
-GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' python3 scrape.py "<auction_url>"
+# Optional MotherDuck snapshot (requires MOTHERDUCK_TOKEN env var)
+GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' python3 scrape.py "<full_auction_url>"
 ```
 
-## Key Details
+## Key Constraints
 
-- Maxanet API requires session cookies + `X-Requested-With: XMLHttpRequest` header
-- The `GetAuctionItems` endpoint returns HTML fragments, not JSON
-- The `GetCategories` endpoint returns JSON
-- Auction URLs must include all query params (AuctionId, Title, etc.) or Maxanet redirects to homepage
-- `scraper/rescrape_all.py` discovers current auctions first; `scraper/auction_urls.txt` is comments-only by default and should be used only as a manual fallback
-- MotherDuck snapshots are optional and append to `listing_snapshots` only when `GOONERS_MOTHERDUCK_SNAPSHOTS=1` or `--motherduck` is set; keep `MOTHERDUCK_TOKEN` in the environment, never in committed files
-- Use `duckdb==1.5.2` for MotherDuck writes
-- Category normalization mapping is in `scraper/categories.py`
-- GitHub Pages base path: `/james-river-gooners/`
-- Never use pip/pip3 — always use uv
+- Never use pip/pip3 — always `uv`
+- Auction URLs must include all query params (`AuctionId`, `Title`, etc.) — Maxanet redirects to homepage without them
+- Maxanet API needs session cookies + `X-Requested-With: XMLHttpRequest`; `GetAuctionItems` returns HTML fragments (not JSON); `GetCategories` returns JSON
+- `rescrape_all.py` auto-discovers auctions; `scraper/auction_urls.txt` is a manual fallback only
+- Category normalization: `scraper/categories.py` + `scraper/category_mappings.yml`
+- MotherDuck: appends to `listing_snapshots` table; `MOTHERDUCK_TOKEN` must stay out of committed files; use `duckdb==1.5.2`
+- GitHub Pages base path: `/james-river-gooners/` (vite.config sets `base: '/'` for local dev)
+- Arrow `BigInt` fields (`lotNumber`, `totalBids`, `currentBid`) must be converted to `Number` after Parquet deserialization
