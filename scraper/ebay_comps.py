@@ -13,6 +13,7 @@ read-scaling token.
 import argparse
 import json
 import os
+import random
 import re
 import shlex
 import subprocess
@@ -37,6 +38,16 @@ DEFAULT_USER_AGENT = (
 )
 DEFAULT_AGENT_BROWSER_COMMAND = "npm exec --yes agent-browser@0.27.0 --"
 SOLDCOMPS_API_URL = "https://api.sold-comps.com/v1/scrape"
+BLOCK_BACKOFF_MIN = 30.0
+BLOCK_BACKOFF_MAX = 90.0
+USER_AGENTS = [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:124.0) Gecko/20100101 Firefox/124.0",
+]
 
 STOP_WORDS = {
     "and",
@@ -197,6 +208,16 @@ def text_value(value, default: str = "") -> str:
 
 def normalize_spaces(value: str) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
+
+
+def random_user_agent(_choice=random.choice) -> str:
+    return _choice(USER_AGENTS)
+
+
+def jitter_sleep(base_seconds: float, _rand=random.uniform) -> None:
+    if base_seconds <= 0:
+        return
+    sleep(_rand(base_seconds * 0.5, base_seconds * 2.5))
 
 
 def compact_item_text(item: dict) -> str:
@@ -686,20 +707,27 @@ def fetch_sold_matches(
     timeout: int = 25,
     max_matches: int = 3,
     browser_runner=run_agent_browser,
+    _rand=random.uniform,
+    _choice=random.choice,
 ) -> dict:
     provider_result = soldcomps_sold_matches(session, search, max_matches=max_matches, timeout=timeout)
     if provider_result is not None:
         return provider_result
 
-    response = session.get(
-        search["url"],
-        headers={
-            "User-Agent": os.environ.get("GOONERS_EBAY_USER_AGENT", DEFAULT_USER_AGENT),
+    def _request_headers():
+        ua = os.environ.get("GOONERS_EBAY_USER_AGENT") or random_user_agent(_choice=_choice)
+        return {
+            "User-Agent": ua,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
-        },
-        timeout=timeout,
-    )
+        }
+
+    response = session.get(search["url"], headers=_request_headers(), timeout=timeout)
+
+    if response.status_code == 429:
+        sleep(_rand(BLOCK_BACKOFF_MIN, BLOCK_BACKOFF_MAX))
+        response = session.get(search["url"], headers=_request_headers(), timeout=timeout)
+
     if response.status_code in {403, 429, 503}:
         browser_warning = ""
         if os.environ.get("GOONERS_EBAY_BROWSER_FALLBACK", "1").lower() in {"1", "true", "yes", "on"}:
@@ -943,6 +971,7 @@ def ingest_ebay_comps(
     dry_run: bool = False,
     sleep_seconds: float = 1.0,
     request_session=None,
+    _rand=random.uniform,
 ) -> dict:
     if limit <= 0:
         return {"items_attempted": 0, "queries_attempted": 0, "rows_written": 0, "matches": 0, "blocked": False}
@@ -1008,7 +1037,7 @@ def ingest_ebay_comps(
                     return summary
 
                 if sleep_seconds > 0:
-                    sleep(sleep_seconds)
+                    jitter_sleep(sleep_seconds, _rand=_rand)
     finally:
         if connection is not None:
             connection.close()
