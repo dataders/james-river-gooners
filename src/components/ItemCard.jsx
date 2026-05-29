@@ -1,8 +1,13 @@
 import { timeRemaining } from '../utils/time'
+import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 
-export function ItemCard({ item, isFavorite, onToggleFavorite, onItemClick }) {
+export function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, onItemClick }) {
   const imgSrc = item.images?.[0] || null
   const remaining = timeRemaining(item.endDate)
+
+  const compMedian = getCompMedianPrice(itemComps)
+  const maxBid = compMedian != null ? calcMaxBid(compMedian, DEFAULT_MARGIN) : null
+  const totalCost = maxBid != null ? Math.round(maxBid * COST_MULTIPLIER) : null
 
   const toggleFavorite = (event) => {
     event.stopPropagation()
@@ -39,6 +44,12 @@ export function ItemCard({ item, isFavorite, onToggleFavorite, onItemClick }) {
           <span className="item-bid">${item.currentBid.toLocaleString()}</span>
           <span className="item-bids">{item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}</span>
         </div>
+        {maxBid != null && (
+          <div className="item-roi-row">
+            <span className="item-roi-max">Max ${Math.round(maxBid)}</span>
+            <span className="item-roi-cost">All-in ${totalCost}</span>
+          </div>
+        )}
         {remaining && <div className="item-time">{remaining}</div>}
       </div>
     </div>
