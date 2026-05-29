@@ -5,6 +5,7 @@ import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { filterItems, getGroupedCategories } from './utils/filters'
+import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
@@ -92,6 +93,7 @@ export default function App() {
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <p className="tagline">A better way to browse Cannon's Auctions</p>
+        <ArsenalTrivia />
         <div className="view-toggles">
           <label className="local-toggle">
             <input
