@@ -89,11 +89,24 @@ body {
   border-top: 3px solid var(--accent);
 }
 
-.header-top {
+.header-banner {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 2px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.banner-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+.banner-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .logo {
@@ -101,6 +114,15 @@ body {
   font-weight: 800;
   color: var(--accent);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tagline {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 2px 0 0;
 }
 
 .theme-toggle {
@@ -116,12 +138,6 @@ body {
 }
 .theme-toggle:hover {
   border-color: var(--accent);
-}
-
-.tagline {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 12px;
 }
 
 .data-freshness {
@@ -1088,8 +1104,12 @@ body {
   .app-header {
     padding: 12px 0 8px;
   }
+  .banner-icon {
+    width: 44px;
+    height: 44px;
+  }
   .logo {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
   .filter-pill {
     padding: 4px 10px;
