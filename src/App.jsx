@@ -6,6 +6,7 @@ import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { isDeal } from './utils/roiCalc'
+import { DealsPanel } from './components/DealsPanel'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
@@ -49,6 +50,7 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState(null)
   const [bestDeals, setBestDeals] = useState(false)
   const [localOnly, setLocalOnly] = useState(false)
+  const [showDeals, setShowDeals] = useState(false)
 
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds)
@@ -132,6 +134,13 @@ export default function App() {
           >
             Best deals only
           </button>
+          <button
+            type="button"
+            className={`deals-toggle${showDeals ? ' active' : ''}`}
+            onClick={() => setShowDeals(v => !v)}
+          >
+            Deals view
+          </button>
         </div>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <RangeFilters
@@ -175,6 +184,8 @@ export default function App() {
       <main>
         {loading ? (
           <div className="loading">Loading auction items...</div>
+        ) : showDeals ? (
+          <DealsPanel items={visibleItems} allComps={allComps} />
         ) : (
           <ItemGrid
             items={displayItems}
