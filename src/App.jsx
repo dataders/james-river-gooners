@@ -88,7 +88,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-top">
-          <h1 className="logo">Gooners</h1>
+          <h1 className="logo">🔴 Gooners</h1>
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <p className="tagline">A better way to browse Cannon's Auctions</p>

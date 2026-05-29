@@ -5,58 +5,59 @@
 }
 
 :root {
-  --bg: #0f0f1a;
-  --surface: #1a1a2e;
-  --border: #2a2a3e;
-  --text: #e8e8f0;
-  --text-muted: #888;
-  --accent: #e94560;
-  --accent-hover: #ff6b81;
-  --green: #64ffda;
-  --chip-bg: #0f3460;
-  --chip-excluded: #333;
+  /* Arsenal FC dark theme — Gunners red, dark red backgrounds, gold accents */
+  --bg: #0d0101;
+  --surface: #1a0505;
+  --border: #3d0f0f;
+  --text: #f5e6e6;
+  --text-muted: #9a7a7a;
+  --accent: #ef0107;
+  --accent-hover: #ff4040;
+  --green: #c8a84b;
+  --chip-bg: #3d0505;
+  --chip-excluded: #2a1a1a;
   --radius: 10px;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f5f5f9;
+    --bg: #fff5f5;
     --surface: #ffffff;
-    --border: #dcdce8;
-    --text: #1a1a2e;
-    --text-muted: #666;
-    --accent: #e94560;
-    --accent-hover: #c73050;
-    --green: #0d7c5f;
-    --chip-bg: #dde6ff;
-    --chip-excluded: #e8e8e8;
+    --border: #f0d0d0;
+    --text: #1a0505;
+    --text-muted: #7a5555;
+    --accent: #ef0107;
+    --accent-hover: #c50005;
+    --green: #9c824a;
+    --chip-bg: #ffe8e8;
+    --chip-excluded: #f0e0e0;
   }
 }
 
 [data-theme="dark"] {
-  --bg: #0f0f1a;
-  --surface: #1a1a2e;
-  --border: #2a2a3e;
-  --text: #e8e8f0;
-  --text-muted: #888;
-  --accent: #e94560;
-  --accent-hover: #ff6b81;
-  --green: #64ffda;
-  --chip-bg: #0f3460;
-  --chip-excluded: #333;
+  --bg: #0d0101;
+  --surface: #1a0505;
+  --border: #3d0f0f;
+  --text: #f5e6e6;
+  --text-muted: #9a7a7a;
+  --accent: #ef0107;
+  --accent-hover: #ff4040;
+  --green: #c8a84b;
+  --chip-bg: #3d0505;
+  --chip-excluded: #2a1a1a;
 }
 
 [data-theme="light"] {
-  --bg: #f5f5f9;
+  --bg: #fff5f5;
   --surface: #ffffff;
-  --border: #dcdce8;
-  --text: #1a1a2e;
-  --text-muted: #666;
-  --accent: #e94560;
-  --accent-hover: #c73050;
-  --green: #0d7c5f;
-  --chip-bg: #dde6ff;
-  --chip-excluded: #e8e8e8;
+  --border: #f0d0d0;
+  --text: #1a0505;
+  --text-muted: #7a5555;
+  --accent: #ef0107;
+  --accent-hover: #c50005;
+  --green: #9c824a;
+  --chip-bg: #ffe8e8;
+  --chip-excluded: #f0e0e0;
 }
 
 html {
@@ -85,6 +86,7 @@ body {
   background: var(--bg);
   padding: 16px 0 12px;
   border-bottom: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
 }
 
 .header-top {
@@ -458,7 +460,7 @@ body {
 }
 .filter-chip.shown {
   background: var(--chip-bg);
-  border-color: rgba(100, 255, 218, 0.3);
+  border-color: rgba(200, 168, 75, 0.4);
 }
 .filter-chip.hidden {
   background: rgba(255, 107, 107, 0.08);
@@ -552,7 +554,7 @@ body {
 }
 .favorite-button.active {
   color: var(--green);
-  border-color: rgba(100, 255, 218, 0.5);
+  border-color: rgba(200, 168, 75, 0.5);
 }
 .item-card > .favorite-button {
   position: absolute;
