@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-29T20:53:03Z",
+  "generatedAt": "2026-05-29T22:57:09Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {},
@@ -19,6 +19,10 @@
     },
     "48979844": {
       "fetchedAt": "2026-05-29T20:53:03Z",
+      "status": "no_results"
+    },
+    "48979892": {
+      "fetchedAt": "2026-05-29T22:57:09Z",
       "status": "no_results"
     }
   }
