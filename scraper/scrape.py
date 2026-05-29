@@ -326,9 +326,11 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         snapshot_to_motherduck = should_snapshot_to_motherduck()
 
     if snapshot_to_motherduck:
-        from motherduck import append_listing_snapshots
-        snapshot_count = append_listing_snapshots(all_items, auction_url)
-        print(f"Appended {snapshot_count} listing snapshots to MotherDuck")
+        from warehouse import get_sink
+        sink = get_sink()
+        if sink is not None:
+            snapshot_count = sink.append_listing_snapshots(all_items, auction_url)
+            print(f"Appended {snapshot_count} listing snapshots to the warehouse")
 
     return {"changed": True}
 
