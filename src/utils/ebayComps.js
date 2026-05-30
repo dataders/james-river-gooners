@@ -138,8 +138,16 @@ export function normalizeEbaySoldMatches(soldComps) {
     ))
 }
 
-export function getEbayCompThumbnail(comp, item) {
-  return comp?.thumbnailUrl || item?.images?.[0] || ''
+export function hasEbayComps(soldComps) {
+  return normalizeEbaySoldMatches(soldComps).length > 0
+}
+
+export function getEbayCompThumbnail(comp) {
+  // Only ever show the comp's own eBay photo. Never fall back to the auction
+  // item's image — doing so made every comp appear to show the Cannon's lot
+  // photo instead of the actual eBay listing. When no eBay thumbnail was
+  // captured, callers render a placeholder instead.
+  return comp?.thumbnailUrl || ''
 }
 
 export function buildEbaySoldSearches(item) {

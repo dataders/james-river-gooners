@@ -6,6 +6,7 @@ import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { isDeal } from './utils/roiCalc'
+import { hasEbayComps } from './utils/ebayComps'
 import { DealsPanel } from './components/DealsPanel'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { AuctionFilter } from './components/AuctionFilter'
@@ -39,6 +40,7 @@ export default function App() {
     minHours,
     maxHours,
     localOnly,
+    hasComp,
     toggleExcluded,
     hideAll,
     showAll,
@@ -50,6 +52,7 @@ export default function App() {
     setMinHours,
     setMaxHours,
     setLocalOnly,
+    setHasComp,
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
@@ -95,11 +98,19 @@ export default function App() {
   )
 
   const displayItems = useMemo(() => {
-    if (!bestDeals) return filteredItems
-    return filteredItems.filter(item =>
-      isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
-    )
-  }, [filteredItems, bestDeals, allComps])
+    let result = filteredItems
+    if (hasComp) {
+      result = result.filter(item =>
+        hasEbayComps(allComps[item.auctionSafeId]?.[item.id])
+      )
+    }
+    if (bestDeals) {
+      result = result.filter(item =>
+        isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
+      )
+    }
+    return result
+  }, [filteredItems, hasComp, bestDeals, allComps])
 
   if (error) {
     return <div className="error">Error: {error}</div>
@@ -148,6 +159,13 @@ export default function App() {
           >
             Deals view
           </button>
+          <button
+            type="button"
+            className={`deals-toggle${hasComp ? ' active' : ''}`}
+            onClick={() => setHasComp(!hasComp)}
+          >
+            Has comp
+          </button>
         </div>
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
         <RangeFilters
@@ -192,7 +210,7 @@ export default function App() {
         {loading ? (
           <div className="loading">Loading auction items...</div>
         ) : showDeals ? (
-          <DealsPanel items={visibleItems} allComps={allComps} />
+          <DealsPanel items={visibleItems} allComps={allComps} onItemClick={setSelectedItem} />
         ) : bestDeals && displayItems.length === 0 ? (
           <div className="no-deals-message">
             <div className="item-count">0 items</div>

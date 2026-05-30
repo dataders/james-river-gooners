@@ -24,7 +24,7 @@ export function EbayComps({ item, soldComps }) {
       <div className="ebay-comp-list">
         {soldResults.length > 0 ? (
           soldResults.slice(0, 3).map((comp, index) => {
-            const thumbnail = getEbayCompThumbnail(comp, item)
+            const thumbnail = getEbayCompThumbnail(comp)
             return (
               <a
                 key={`${comp.itemWebUrl}:${index}`}

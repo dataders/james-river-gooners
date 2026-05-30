@@ -61,16 +61,11 @@ test('normalizeEbaySoldMatches keeps only priced matches with real item links', 
   assert.equal(matches[0].itemWebUrl, 'https://www.ebay.com/itm/177917908706')
 })
 
-test('tester eBay comps keep sold prices, direct item links, and image fallback', () => {
+test('tester eBay comps keep sold prices and direct item links', () => {
   const fixture = JSON.parse(readFileSync(
     new URL('../../public/data/ebay-comps/XgTddU43tCQrk0_gjgUuBA.json', import.meta.url),
     'utf8'
   ))
-  const itemImages = {
-    48996412: ['https://s3.amazonaws.com/prod.maxanet.auction/Can399/Inventory32580409/840_a-19749813-33aa-4a2a-bdfe-9c43d6799732-350x350.jpg'],
-    48996451: ['https://s3.amazonaws.com/prod.maxanet.auction/Can399/Inventory32580448/879_a-be3c28ce-666e-4ca2-88ef-9145797c7220-350x350.jpg'],
-    48996549: ['https://s3.amazonaws.com/prod.maxanet.auction/Can399/Inventory32580546/908_a-67d55f1b-7709-42b9-8a64-0a6b64d598d3-350x350.jpg'],
-  }
 
   assert.equal(fixture.source, 'motherduck')
   assert.deepEqual(Object.keys(fixture.items).sort(), ['48996412', '48996451', '48996549'])
@@ -82,9 +77,22 @@ test('tester eBay comps keep sold prices, direct item links, and image fallback'
     for (const match of matches) {
       assert.match(match.priceLabel, /^\$\d/)
       assert.equal(isEbayItemUrl(match.itemWebUrl), true)
-      assert.ok(getEbayCompThumbnail(match, { images: itemImages[itemId] }))
     }
   }
+})
+
+test('getEbayCompThumbnail returns the comp photo and never the auction image', () => {
+  const auctionItem = { images: ['https://example.com/cannons-lot.jpg'] }
+
+  // Real eBay thumbnail is used as-is.
+  assert.equal(
+    getEbayCompThumbnail({ thumbnailUrl: 'https://i.ebayimg.com/x.jpg' }, auctionItem),
+    'https://i.ebayimg.com/x.jpg'
+  )
+
+  // No eBay thumbnail → empty string, NOT the auction item's photo.
+  assert.equal(getEbayCompThumbnail({}, auctionItem), '')
+  assert.equal(getEbayCompThumbnail(null), '')
 })
 
 test('buildEbaySoldSearches keeps model-like terms for electronics', () => {
