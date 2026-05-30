@@ -40,3 +40,10 @@ GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --wi
   - `MOTHERDUCK_READ_TOKEN` — read-scaling token; safe to expose to browsers/CDN; used in GitHub Actions as `MOTHERDUCK_READ_SCALING_TOKEN` secret for eBay comps export
 - GitHub Pages base path: `/james-river-gooners/` (vite.config sets `base: '/'` for local dev)
 - Arrow `BigInt` fields (`lotNumber`, `totalBids`, `currentBid`) must be converted to `Number` after Parquet deserialization
+
+## CI / PR Monitoring
+
+After pushing a branch and opening a PR, always call `mcp__github__subscribe_pr_activity` for that PR, then actively follow through on every `<github-webhook-activity>` event that arrives:
+- CI failure → diagnose, fix, push, re-check until green
+- Review comment → address or ask the user if ambiguous
+- Do NOT just say "I'm watching" and go quiet — each event requires a visible response and action
