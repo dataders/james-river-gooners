@@ -788,7 +788,7 @@ class BackfillBudgetTest(unittest.TestCase):
             out = Path(tmp)
             today = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             # Per-auction file: attempts keyed by item id, "queries" = requests spent.
-            write_comp_file(out / "PRE.json", {
+            ebay_comps.write_comp_file(out / "PRE.json", {
                 "schemaVersion": 2, "items": {},
                 "attempts": {"x": {"fetchedAt": today, "status": "no_results",
                                    "queries": 1998}}})
@@ -823,7 +823,7 @@ class BackfillBudgetTest(unittest.TestCase):
             out = Path(tmp)
             old = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat().replace(
                 "+00:00", "Z")
-            write_comp_file(out / "A.json", {
+            ebay_comps.write_comp_file(out / "A.json", {
                 "schemaVersion": 2, "items": {},
                 "attempts": {"0": {"fetchedAt": old, "status": "no_results",
                                    "queries": 2}}})
