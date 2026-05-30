@@ -3,19 +3,36 @@
 # Add companies here to onboard them; the scraper reads this at runtime.
 #
 # Find company IDs at: https://hibid.com/company/{id}/{slug}
+#
+# catalog_ids: optional list of known active catalog IDs. When present, the
+# scraper uses these directly and skips the company-page discovery request
+# (which is blocked by HiBid's bot protection on CI runners). Update this list
+# each time auctions roll over — closed auctions are archived automatically
+# by rescrape_all.py based on their end dates.
 
 companies:
   - id: 79243
     slug: emerald_ventures
     name: "Emerald Ventures"
     location: "Richmond, VA"
+    catalog_ids:
+      - 739418   # May 31 Stamps & Postal History
+      - 739431   # Jun 6 Sports Card & Comics
+      - 739720   # Jun 7 Weekly Stamp
+      - 739442   # Jun 7 Coin and Paper Money
+      - 743703   # Jun 14 Weekly Stamp
+      - 745663   # Jun 21 Weekly Stamp
+      - 745666   # Jun 21 Graded & Raw Coin
 
   - id: 138254
     slug: past_chapters
     name: "Past Chapters"
     location: "Midlothian, VA"
+    catalog_ids:
+      - 744897   # Vintage Galore! Gaming, Disney, Music, Cards, Action Figures
 
   - id: 78672
     slug: peoples_auction
     name: "Peoples Auction"
     location: "Chesapeake, VA"
+    # No active catalogs — discovery will run when one appears
