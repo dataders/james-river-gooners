@@ -1,12 +1,21 @@
 import { useState } from 'react'
 
-function shortTitle(title) {
-  // Extract the meaningful part: "03/18/26: Gallery Consignments | ..." -> "03/18 Gallery Consignments"
+const SOURCE_LABELS = {
+  cannons: null, // no prefix — Cannon's is the default context
+  emerald_ventures: 'Emerald',
+  past_chapters: 'Past Chapters',
+  peoples_auction: 'Peoples',
+}
+
+function shortTitle(title, source) {
+  // Cannon's format: "03/18/26: Gallery Consignments | ..." -> "03/18 Gallery Consignments"
   const match = title.match(/^(\d{2}\/\d{2})\/\d{2}:\s*(.+?)(?:\s*[|-]\s*(?:Cannon|Online|Richmond|Henrico|Providence).*)?$/i)
   if (match) {
     return `${match[1]} ${match[2]}`
   }
-  return title.slice(0, 40)
+  const prefix = SOURCE_LABELS[source]
+  const truncated = title.slice(0, prefix ? 32 : 40)
+  return prefix ? `${prefix}: ${truncated}` : truncated
 }
 
 export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
@@ -38,7 +47,7 @@ export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
                 onClick={() => onToggle(a.safeId)}
                 title={a.title}
               >
-                {shortTitle(a.title)}
+                {shortTitle(a.title, a.source)}
                 {a.archived && <span className="archive-mark">archived</span>}
                 <span className="chip-count">{a.totalItems}</span>
               </button>
@@ -55,7 +64,7 @@ export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
                     title={a.title}
                   >
                     <span className="x-mark">✕</span>
-                    {shortTitle(a.title)}
+                    {shortTitle(a.title, a.source)}
                     {a.archived && <span className="archive-mark">archived</span>}
                     <span className="chip-count">{a.totalItems}</span>
                   </button>

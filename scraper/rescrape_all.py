@@ -17,6 +17,7 @@ import pyarrow.parquet as pq
 from dates import parse_auction_datetime_utc
 from discover import discover_current_auction_urls
 from scrape import DATA_DIR, ITEMS_DIR, extract_auction_id, sanitize_auction_id
+from scrape_hibid import discover_hibid_specs, hibid_safe_id, extract_catalog_id
 
 
 URLS_FILE = Path(__file__).resolve().parent / "auction_urls.txt"
@@ -114,6 +115,7 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
         "scrapedAt": parquet_first_value(path, "scrapedAt"),
         "itemCount": item_count,
         "itemsPath": f"data/{item_dir}/{path.name}",
+        "source": parquet_first_value(path, "source"),
     }
     if path.with_suffix(".ndjson").exists():
         entry["ndjsonPath"] = f"data/{item_dir}/{path.stem}.ndjson"
@@ -156,48 +158,87 @@ def archive_closed_and_stale(current_candidate_ids: set[str]) -> None:
 
 
 def main():
-    print("Discovering current auctions...")
+    # --- Maxanet discovery ---
+    print("Discovering Maxanet (Cannon's) auctions...")
     try:
         discovered_urls = discover_current_auction_urls()
     except Exception as exc:
-        print(f"Discovery failed: {exc}")
+        print(f"  Maxanet discovery failed: {exc}")
         discovered_urls = []
 
     manual_urls = read_manual_urls()
     if discovered_urls:
-        urls = discovered_urls
-        print(f"Discovered {len(discovered_urls)} current auctions")
+        maxanet_urls = discovered_urls
+        print(f"  Discovered {len(discovered_urls)} Maxanet auctions")
     else:
-        urls = manual_urls
-        print(f"Falling back to {len(manual_urls)} configured auction URLs")
+        maxanet_urls = manual_urls
+        print(f"  Falling back to {len(manual_urls)} configured URLs")
 
-    urls = dedupe_urls(urls)
-    if not urls:
+    maxanet_urls = dedupe_urls(maxanet_urls)
+
+    # --- HiBid discovery ---
+    print("\nDiscovering HiBid auctions...")
+    try:
+        hibid_specs = discover_hibid_specs()
+        print(f"  Found {len(hibid_specs)} HiBid catalogs")
+    except Exception as exc:
+        print(f"  HiBid discovery failed: {exc}")
+        hibid_specs = []
+
+    total = len(maxanet_urls) + len(hibid_specs)
+    if total == 0:
         print("No auction URLs found")
         sys.exit(0)
 
-    current_candidate_ids = {
-        sanitize_auction_id(extract_auction_id(url))
-        for url in urls
-    }
+    # Build set of current safe IDs for archiving stale files
+    current_candidate_ids: set[str] = set()
+    for url in maxanet_urls:
+        try:
+            current_candidate_ids.add(sanitize_auction_id(extract_auction_id(url)))
+        except ValueError:
+            pass
+    for spec in hibid_specs:
+        cid = extract_catalog_id(spec["catalog_url"])
+        if cid:
+            current_candidate_ids.add(hibid_safe_id(cid))
 
-    print(f"Re-scraping {len(urls)} auctions...")
-    failures = []
+    print(f"\nRe-scraping {total} auctions ({len(maxanet_urls)} Maxanet, {len(hibid_specs)} HiBid)...")
+    failures: list[str] = []
+    i = 0
+    cwd = Path(__file__).resolve().parent
 
-    for i, url in enumerate(urls, 1):
+    # Maxanet auctions
+    for url in maxanet_urls:
+        i += 1
         print(f"\n{'='*60}")
-        print(f"[{i}/{len(urls)}] {url[:80]}...")
+        print(f"[{i}/{total}] Maxanet: {url[:80]}")
         print(f"{'='*60}")
-        result = subprocess.run(
-            [sys.executable, "scrape.py", url],
-            cwd=Path(__file__).resolve().parent,
-        )
+        result = subprocess.run([sys.executable, "scrape.py", url], cwd=cwd)
         if result.returncode != 0:
             print(f"FAILED: {url[:80]}")
             failures.append(url)
 
+    # HiBid auctions
+    for spec in hibid_specs:
+        i += 1
+        print(f"\n{'='*60}")
+        print(f"[{i}/{total}] HiBid ({spec['company_name']}): {spec['catalog_url']}")
+        print(f"{'='*60}")
+        result = subprocess.run(
+            [
+                sys.executable, "scrape_hibid.py",
+                spec["catalog_url"],
+                "--source", spec["source_slug"],
+                "--company", spec["company_name"],
+            ],
+            cwd=cwd,
+        )
+        if result.returncode != 0:
+            print(f"FAILED: {spec['catalog_url']}")
+            failures.append(spec["catalog_url"])
+
     print(f"\n{'='*60}")
-    print(f"Done: {len(urls) - len(failures)}/{len(urls)} succeeded")
+    print(f"Done: {total - len(failures)}/{total} succeeded")
     archive_closed_and_stale(current_candidate_ids)
     if failures:
         print(f"Failed ({len(failures)}):")

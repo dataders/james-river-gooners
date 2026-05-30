@@ -1,0 +1,21 @@
+# Richmond-area HiBid auction companies to include in the aggregator.
+# Excludes real-estate-only houses (Dudley Resources, Virginia Auction Co, etc.).
+# Add companies here to onboard them; the scraper reads this at runtime.
+#
+# Find company IDs at: https://hibid.com/company/{id}/{slug}
+
+companies:
+  - id: 79243
+    slug: emerald_ventures
+    name: "Emerald Ventures"
+    location: "Richmond, VA"
+
+  - id: 138254
+    slug: past_chapters
+    name: "Past Chapters"
+    location: "Midlothian, VA"
+
+  - id: 78672
+    slug: peoples_auction
+    name: "Peoples Auction"
+    location: "Chesapeake, VA"
