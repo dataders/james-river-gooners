@@ -581,16 +581,19 @@ def soldcomps_sold_matches(
     if not api_key:
         return None
 
-    response = session.get(
-        os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
-        params={"keyword": search["query"]},
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Accept": "application/json",
-            "User-Agent": "james-river-gooners/1.0",
-        },
-        timeout=timeout,
-    )
+    try:
+        response = session.get(
+            os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
+            params={"keyword": search["query"]},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json",
+                "User-Agent": "james-river-gooners/1.0",
+            },
+            timeout=timeout,
+        )
+    except OSError:
+        return None
     if response.status_code >= 400:
         return {
             "status": "error",
@@ -1256,6 +1259,7 @@ def fetch_direct(
     daily_pacing: bool = True,
     stale_hours: int = DEFAULT_STALE_HOURS,
     skip_attempted: bool = False,
+    skip_categories: frozenset[str] | None = None,
     include_archived: bool = False,
     auction_safe_id: str | None = None,
     dry_run: bool = False,
@@ -1316,6 +1320,8 @@ def fetch_direct(
         safe_id = text_value(item.get("auctionSafeId"))
         item_id = text_value(item.get("id"))
         if f"{safe_id}:{item_id}" in known_fresh:
+            continue
+        if skip_categories and item.get("category") in skip_categories:
             continue
 
         searches = build_ebay_sold_searches(item)[:queries_per_item]
@@ -1446,6 +1452,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "ones — spends budget only on never-tried items, for backfilling.",
     )
     fetch_parser.add_argument("--auction-safe-id", default=None)
+    fetch_parser.add_argument(
+        "--skip-categories",
+        default=os.environ.get("GOONERS_EBAY_COMPS_SKIP_CATEGORIES", ""),
+        help="Comma-separated broad category groups to skip entirely "
+        "(e.g. 'Collectibles,Jewelry & Watches,Coins & Currency,China & Glass'). "
+        "Also reads GOONERS_EBAY_COMPS_SKIP_CATEGORIES env var.",
+    )
     fetch_parser.add_argument("--include-archived", action="store_true")
     fetch_parser.add_argument("--dry-run", action="store_true")
     fetch_parser.add_argument(
@@ -1512,6 +1525,11 @@ def smoke(
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     if args.command == "fetch-direct":
+        skip_categories = (
+            frozenset(c.strip() for c in args.skip_categories.split(",") if c.strip())
+            if args.skip_categories
+            else None
+        )
         fetch_direct(
             data_dir=args.data_dir,
             output_dir=args.output_dir,
@@ -1523,6 +1541,7 @@ def main(argv: list[str] | None = None) -> int:
             daily_pacing=not args.no_daily_pacing,
             stale_hours=args.stale_hours,
             skip_attempted=args.skip_attempted,
+            skip_categories=skip_categories,
             include_archived=args.include_archived,
             auction_safe_id=args.auction_safe_id,
             dry_run=args.dry_run,
