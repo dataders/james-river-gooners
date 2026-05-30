@@ -26,6 +26,9 @@ uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml python
 
 # Optional MotherDuck snapshot (requires MOTHERDUCK_TOKEN env var)
 GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' python3 scrape.py "<full_auction_url>"
+
+# Optional CLIP embeddings (first run downloads ~350 MB of model weights)
+GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with sentence-transformers --with pillow python3 scrape.py "<full_auction_url>"
 ```
 
 ## Key Constraints
@@ -38,6 +41,7 @@ GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --wi
 - MotherDuck: appends to `listing_snapshots` table in `my_db`; both tokens must stay out of committed files; use `duckdb==1.5.2`
   - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server
   - `MOTHERDUCK_READ_TOKEN` — read-scaling token; safe to expose to browsers/CDN; used in GitHub Actions as `MOTHERDUCK_READ_SCALING_TOKEN` secret for eBay comps export
+- CLIP embeddings: `GOONERS_EMBEDDINGS=1` triggers `embed.py` after each scrape; writes `{safe_id}.embeddings` binary alongside `.ndjson`; manifest gains `embeddingsPath`; requires `sentence-transformers` + `pillow`; model cached in `~/.cache/huggingface` after first download
 - GitHub Pages base path: `/james-river-gooners/` (vite.config sets `base: '/'` for local dev)
 - Arrow `BigInt` fields (`lotNumber`, `totalBids`, `currentBid`) must be converted to `Number` after Parquet deserialization
 

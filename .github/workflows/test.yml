@@ -33,7 +33,7 @@ jobs:
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-            --with 'duckdb==1.5.2' --with pytest python -m pytest -q
+            --with 'duckdb==1.5.2' --with numpy --with pytest python -m pytest -q
 
   e2e:
     name: E2E tests (Playwright)
