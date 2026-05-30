@@ -1,6 +1,8 @@
 import json
 import tempfile
 import unittest
+
+import ebay_comps
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -741,144 +743,126 @@ class FetchDirectTest(unittest.TestCase):
         self.assertTrue(summary["blocked"])
 
 
+class BackfillBudgetTest(unittest.TestCase):
+    """Shared request budget, daily pacing, skip-attempted, end-date priority."""
+
+    @staticmethod
+    def _item(item_id, title="Vintage Fenton Glass Vase", safe_id="A",
+              end="2026-05-31 6:19:00 PM"):
+        return {
+            "auctionSafeId": safe_id,
+            "id": str(item_id),
+            "title": f"{title} {item_id}",
+            "auctionEndDate": end,
+        }
+
+    def test_max_queries_caps_requests(self):
+        items = [self._item(i) for i in range(10)]
+        calls = {"n": 0}
+
+        def fake(session, search, max_matches=3):
+            calls["n"] += 1
+            return {"status": "no_results", "matches": [], "warning": None}
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.load_manifest_items", return_value=items), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+            summary = ebay_comps.fetch_direct(
+                output_dir=Path(tmp), limit=100, queries_per_item=2, max_queries=5,
+                monthly_budget=0, stale_hours=0, sleep_seconds=0,
+                mirror_to_warehouse=False,
+            )
+        # 10 items x 2 queries would be 20 requests; the cap holds it to 5.
+        self.assertEqual(calls["n"], 5)
+        self.assertEqual(summary["queries_attempted"], 5)
+
+    def test_monthly_budget_derived_from_read_model(self):
+        items = [self._item(i) for i in range(10)]
+
+        def fake(session, search, max_matches=3):
+            return {"status": "no_results", "matches": [], "warning": None}
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.load_manifest_items", return_value=items), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+            out = Path(tmp)
+            today = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            # Per-auction file: attempts keyed by item id, "queries" = requests spent.
+            write_comp_file(out / "PRE.json", {
+                "schemaVersion": 2, "items": {},
+                "attempts": {"x": {"fetchedAt": today, "status": "no_results",
+                                   "queries": 1998}}})
+            summary = ebay_comps.fetch_direct(
+                output_dir=out, limit=100, queries_per_item=2, monthly_budget=2000,
+                daily_pacing=False, stale_hours=0, sleep_seconds=0,
+                mirror_to_warehouse=False,
+            )
+        self.assertEqual(summary["queries_attempted"], 2)  # only 2 of 2000 left
+
+    def test_daily_pacing_spreads_budget_across_month(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # May has 31 days; from the 30th, 2 days remain -> ceil(2000/2) = 1000.
+            now = datetime(2026, 5, 30, 12, 0, tzinfo=timezone.utc)
+            cap_active, limit = ebay_comps.resolve_query_budget(
+                Path(tmp), monthly_budget=2000, max_queries=0, daily_pacing=True, now=now)
+        self.assertTrue(cap_active)
+        self.assertEqual(limit, 1000)
+
+    def test_skip_attempted_overrides_staleness(self):
+        from datetime import timedelta
+
+        called = {"n": 0}
+
+        def fake(session, search, max_matches=3):
+            called["n"] += 1
+            return {"status": "ok", "matches": [{"ebayItemId": "9"}], "warning": None}
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.load_manifest_items", return_value=[self._item(0)]), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+            out = Path(tmp)
+            old = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat().replace(
+                "+00:00", "Z")
+            write_comp_file(out / "A.json", {
+                "schemaVersion": 2, "items": {},
+                "attempts": {"0": {"fetchedAt": old, "status": "no_results",
+                                   "queries": 2}}})
+            summary = ebay_comps.fetch_direct(
+                output_dir=out, limit=10, queries_per_item=2, monthly_budget=0,
+                stale_hours=168, skip_attempted=True, sleep_seconds=0,
+                mirror_to_warehouse=False,
+            )
+        self.assertEqual(called["n"], 0)  # stale, but already attempted -> skipped
+        self.assertEqual(summary["items_attempted"], 0)
+
+    def test_prioritizes_soonest_ending_auction(self):
+        later = self._item("l", title="Distinctive Walnut Dresser Antique",
+                           safe_id="LATE", end="2026-06-30 6:00:00 PM")
+        sooner = self._item("s", title="Distinctive Brass Telescope Antique",
+                            safe_id="SOON", end="2026-06-01 6:00:00 PM")
+        seen = []
+
+        def fake(session, search, max_matches=3):
+            seen.append(search.get("query", ""))
+            return {"status": "ok", "matches": [{"ebayItemId": "1"}], "warning": None}
+
+        # Reverse-priority input order proves sorting (not input order) drives it.
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.load_manifest_items", return_value=[later, sooner]), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+            ebay_comps.fetch_direct(
+                output_dir=Path(tmp), limit=1, queries_per_item=1, monthly_budget=0,
+                stale_hours=0, sleep_seconds=0, mirror_to_warehouse=False,
+            )
+        self.assertTrue(any("telescope" in q.lower() for q in seen))
+        self.assertFalse(any("dresser" in q.lower() for q in seen))
+
+    def test_auction_end_sort_key_orders_and_handles_missing(self):
+        soon = ebay_comps.auction_end_sort_key({"auctionEndDate": "2026-05-31 6:19:00 PM"})
+        late = ebay_comps.auction_end_sort_key({"auctionEndDate": "2026-06-04 6:09:00 PM"})
+        missing = ebay_comps.auction_end_sort_key({"auctionEndDate": ""})
+        self.assertLess(soon, late)
+        self.assertLess(late, missing)
+
 if __name__ == "__main__":
     unittest.main()
-
-
-# --- backfill: shared request budget, pacing, skip-attempted, priority --------
-
-def _budget_item(item_id, title="Vintage Fenton Glass Vase", safe_id="A",
-                 end="2026-05-31 6:19:00 PM"):
-    return {
-        "auctionSafeId": safe_id,
-        "id": str(item_id),
-        "title": f"{title} {item_id}",
-        "auctionEndDate": end,
-    }
-
-
-def test_fetch_direct_max_queries_caps_requests(tmp_path, monkeypatch):
-    """The per-run request cap stops the run regardless of remaining items."""
-    monkeypatch.setattr(
-        ebay_comps, "load_manifest_items", lambda **_: [_budget_item(i) for i in range(10)]
-    )
-    calls = {"n": 0}
-
-    def fake_fetch(session, search, max_matches=3):
-        calls["n"] += 1
-        return {"status": "no_results", "matches": [], "warning": None}
-
-    monkeypatch.setattr(ebay_comps, "fetch_sold_matches", fake_fetch)
-    out_dir = tmp_path / "comps"
-    out_dir.mkdir()
-    summary = ebay_comps.fetch_direct(
-        data_dir=tmp_path, output_dir=out_dir, limit=100, queries_per_item=2,
-        max_queries=5, monthly_budget=0, stale_hours=0, sleep_seconds=0,
-        mirror_to_warehouse=False,
-    )
-    assert calls["n"] == 5  # 10 items x 2 queries would be 20; cap holds it to 5
-    assert summary["queries_attempted"] == 5
-
-
-def test_fetch_direct_monthly_budget_derived_from_read_model(tmp_path, monkeypatch):
-    """Prior requests recorded in the read model count against the shared cap."""
-    from datetime import datetime, timezone
-
-    out_dir = tmp_path / "comps"
-    out_dir.mkdir()
-    today = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    # Per-auction file: attempts are keyed by item id; "queries" is requests spent.
-    ebay_comps.write_comp_file(
-        out_dir / "PRE.json",
-        {"schemaVersion": 2, "items": {},
-         "attempts": {"x": {"fetchedAt": today, "status": "no_results", "queries": 1998}}},
-    )
-    monkeypatch.setattr(
-        ebay_comps, "load_manifest_items", lambda **_: [_budget_item(i) for i in range(10)]
-    )
-
-    def fake_fetch(session, search, max_matches=3):
-        return {"status": "no_results", "matches": [], "warning": None}
-
-    monkeypatch.setattr(ebay_comps, "fetch_sold_matches", fake_fetch)
-    summary = ebay_comps.fetch_direct(
-        data_dir=tmp_path, output_dir=out_dir, limit=100, queries_per_item=2,
-        monthly_budget=2000, daily_pacing=False, stale_hours=0, sleep_seconds=0,
-        mirror_to_warehouse=False,
-    )
-    assert summary["queries_attempted"] == 2  # only 2 of the 2000 left this month
-
-
-def test_resolve_query_budget_spreads_evenly_with_daily_pacing(tmp_path):
-    from datetime import datetime, timezone
-
-    out_dir = tmp_path / "comps"
-    out_dir.mkdir()
-    # May has 31 days; from the 30th there are 2 days left -> ceil(2000/2) = 1000.
-    now = datetime(2026, 5, 30, 12, 0, tzinfo=timezone.utc)
-    cap_active, limit = ebay_comps.resolve_query_budget(
-        out_dir, monthly_budget=2000, max_queries=0, daily_pacing=True, now=now
-    )
-    assert cap_active is True
-    assert limit == 1000
-
-
-def test_fetch_direct_skip_attempted_overrides_staleness(tmp_path, monkeypatch):
-    """skip_attempted skips any previously-tried item, even a stale no_results."""
-    from datetime import datetime, timedelta, timezone
-
-    out_dir = tmp_path / "comps"
-    out_dir.mkdir()
-    old = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat().replace("+00:00", "Z")
-    ebay_comps.write_comp_file(
-        out_dir / "A.json",
-        {"schemaVersion": 2, "items": {},
-         "attempts": {"0": {"fetchedAt": old, "status": "no_results", "queries": 2}}},
-    )
-    monkeypatch.setattr(ebay_comps, "load_manifest_items", lambda **_: [_budget_item(0)])
-    called = {"n": 0}
-
-    def fake_fetch(session, search, max_matches=3):
-        called["n"] += 1
-        return {"status": "ok", "matches": [{"ebayItemId": "9"}], "warning": None}
-
-    monkeypatch.setattr(ebay_comps, "fetch_sold_matches", fake_fetch)
-    summary = ebay_comps.fetch_direct(
-        data_dir=tmp_path, output_dir=out_dir, limit=10, queries_per_item=2,
-        monthly_budget=0, stale_hours=168, skip_attempted=True, sleep_seconds=0,
-        mirror_to_warehouse=False,
-    )
-    assert called["n"] == 0  # 90-day-old attempt is stale but still skipped
-    assert summary["items_attempted"] == 0
-
-
-def test_fetch_direct_prioritizes_soonest_ending(tmp_path, monkeypatch):
-    """With a one-item budget, the soonest-ending auction's lot goes first."""
-    later = _budget_item("l", title="Distinctive Walnut Dresser Antique",
-                         safe_id="LATE", end="2026-06-30 6:00:00 PM")
-    sooner = _budget_item("s", title="Distinctive Brass Telescope Antique",
-                          safe_id="SOON", end="2026-06-01 6:00:00 PM")
-    # Reverse-priority input order proves sorting (not input order) drives it.
-    monkeypatch.setattr(ebay_comps, "load_manifest_items", lambda **_: [later, sooner])
-    seen = []
-
-    def fake_fetch(session, search, max_matches=3):
-        seen.append(search.get("query", ""))
-        return {"status": "ok", "matches": [{"ebayItemId": "1"}], "warning": None}
-
-    monkeypatch.setattr(ebay_comps, "fetch_sold_matches", fake_fetch)
-    out_dir = tmp_path / "comps"
-    out_dir.mkdir()
-    ebay_comps.fetch_direct(
-        data_dir=tmp_path, output_dir=out_dir, limit=1, queries_per_item=1,
-        monthly_budget=0, stale_hours=0, sleep_seconds=0, mirror_to_warehouse=False,
-    )
-    assert any("telescope" in q.lower() for q in seen)
-    assert not any("dresser" in q.lower() for q in seen)
-
-
-def test_auction_end_sort_key_orders_and_handles_missing():
-    soon = ebay_comps.auction_end_sort_key({"auctionEndDate": "2026-05-31 6:19:00 PM"})
-    late = ebay_comps.auction_end_sort_key({"auctionEndDate": "2026-06-04 6:09:00 PM"})
-    missing = ebay_comps.auction_end_sort_key({"auctionEndDate": ""})
-    assert soon < late < missing
