@@ -121,6 +121,33 @@ These are tracked targets, not yet fully implemented:
   derived into the manifest *and* rebuilt in the frontend. The manifest should
   be the single source of auction-level facts; rows should carry only
   `auctionSafeId` as a foreign key. (Refactor phase 4.)
+
+  *Why this matters (it is not about size).* The auction-level columns
+  (`auctionTitle`, `auctionEndDate`, `auctionId`) are Parquet
+  dictionary-encoded, so duplicating them across every row costs ~0.5% of file
+  bytes — removing them is not a meaningful space win. The real cost is a
+  **latent consistency trap.** Two copies of each fact exist: one stamped onto
+  every row in `scrape.py`, and one the manifest *derives by reading only row 0*
+  (`rescrape_all.py` → `parquet_first_value`). The whole system rests on an
+  unenforced invariant — *"every row in a file carries identical auction
+  metadata"* — which holds today only because each scrape recomputes the values
+  once and rewrites the entire file in a single loop.
+
+  It breaks the moment any code writes a *subset* of rows. Concretely: if a
+  future write-skipping optimization (the `has_bid_changes` short-circuit is
+  already a step in that direction) ever appends new lots — e.g. an auctioneer
+  extends the close time and adds 50 lots stamped with the new `auctionEndDate`
+  while the original rows keep the old one — the file becomes internally
+  inconsistent. The manifest still reads row 0 (stale), while a detail card
+  rendered from a newer row shows the updated time. The two disagree **silently
+  — no exception, no failing test.**
+
+  - *Full fix (phase 4):* store auction facts only in the manifest; rows carry
+    `auctionSafeId` alone. No row 0 to trust, no copies to keep in sync.
+  - *Cheap mitigation (no schema break):* have `manifest_entry_for_file` assert
+    that the auction-metadata column is uniform across the file instead of
+    blindly reading row 0. ~5 lines; converts silent divergence into a loud
+    failure while keeping the current schema.
 - **eBay comps still require a warehouse to be produced** (the `export` step
   reads MotherDuck). Target: comps accumulate in the static JSON itself, with
   the warehouse as an optional mirror like listings. (Refactor phase 3.)
