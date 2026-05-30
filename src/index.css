@@ -84,24 +84,29 @@ body {
   top: 0;
   z-index: 100;
   background: var(--bg);
-  padding: 16px 0 12px;
+  padding: 8px 0 8px;
   border-bottom: 1px solid var(--border);
   border-top: 3px solid var(--accent);
+  transition: transform 0.25s ease;
+}
+
+.app-header.header-hidden {
+  transform: translateY(-100%);
 }
 
 .header-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .banner-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
 .banner-text {
@@ -110,7 +115,7 @@ body {
 }
 
 .logo {
-  font-size: 1.6rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: var(--accent);
   margin: 0;
@@ -120,9 +125,9 @@ body {
 }
 
 .tagline {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
-  margin: 2px 0 0;
+  margin: 1px 0 0;
 }
 
 .theme-toggle {
@@ -1218,17 +1223,26 @@ body {
 
 /* Arsenal Trivia */
 .trivia-card {
-  margin-bottom: 10px;
-  padding: 12px 14px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
   background: var(--surface);
   border: 1px solid var(--accent);
   border-left: 4px solid var(--accent);
   border-radius: var(--radius);
-  cursor: pointer;
   user-select: none;
   transition: background 0.15s, border-color 0.15s;
 }
-.trivia-card:hover {
+
+.trivia-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.trivia-header:hover {
+  background: none;
+}
+.trivia-card:has(.trivia-body:hover) {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
@@ -1238,7 +1252,21 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent);
-  margin-bottom: 5px;
+}
+
+.trivia-chevron {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  line-height: 1;
+}
+.trivia-chevron-closed {
+  transform: rotate(-180deg);
+}
+
+.trivia-body {
+  cursor: pointer;
+  margin-top: 6px;
 }
 
 .trivia-question {
