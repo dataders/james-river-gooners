@@ -7,6 +7,13 @@ const FAR_KEYWORDS = [
   'fredericksburg',
   'roanoke',
   'harrisonburg',
+  'gordonsville',
+  'orange county',
+  'culpeper',
+  'louisa',
+  'emporia',
+  'south hill',
+  'chase city',
 ]
 
 export function isLocalAuction(title) {

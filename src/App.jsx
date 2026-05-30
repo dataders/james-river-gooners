@@ -4,6 +4,7 @@ import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
+import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { isDeal } from './utils/roiCalc'
 import { hasEbayComps } from './utils/ebayComps'
@@ -57,6 +58,7 @@ export default function App() {
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { isFavorite, toggleFavorite } = useFavorites()
+  const headerVisible = useHeaderVisible()
 
   const [selectedItem, setSelectedItem] = useState(null)
   const [bestDeals, setBestDeals] = useState(false)
@@ -118,7 +120,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
+      <header className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
         <div className="header-banner">
           <img src="/apple-touch-icon.png" className="banner-icon" alt="" aria-hidden="true" />
           <div className="banner-text">
