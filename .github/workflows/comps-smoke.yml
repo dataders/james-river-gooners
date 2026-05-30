@@ -1,0 +1,57 @@
+name: eBay Comps Smoke Test
+
+# Canary check: fetches eBay sold comps for a single real auction item and
+# fails if it can't produce a match. This guards against the comp pipeline
+# silently regressing to all-no_results (selector drift, eBay soft-blocks, a
+# lapsed SoldComps API key, etc.). It writes nothing to the repo.
+#
+# It is intentionally NOT a required check on every PR — it depends on the live
+# eBay / SoldComps response, so it runs on a schedule and on demand instead of
+# blocking unrelated PRs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'How many items to try (a match on any one passes)'
+        required: false
+        type: string
+        default: '1'
+  schedule:
+    - cron: '0 7 * * 1'  # weekly, Monday 07:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      # If set, the SoldComps API is used first; otherwise the HTML scraper
+      # (with the agent-browser fallback) is exercised.
+      SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install agent-browser Playwright deps
+        run: |
+          npm exec --yes agent-browser@0.27.0 -- install
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-agent-browser
+          AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
+
+      - name: Smoke-test eBay comp fetch
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-agent-browser
+          AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
+          AGENT_BROWSER_SESSION: gooners-ebay-comps
+        run: |
+          cd scraper
+          uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+            python ebay_comps.py smoke --limit "${{ inputs.limit || '1' }}"

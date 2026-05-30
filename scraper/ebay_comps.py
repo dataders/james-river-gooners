@@ -1261,7 +1261,58 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
 
+    smoke_parser = subparsers.add_parser(
+        "smoke",
+        help="CI canary: fetch comps for a few items and fail if none match.",
+    )
+    smoke_parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    smoke_parser.add_argument("--limit", type=int, default=1)
+    smoke_parser.add_argument("--queries-per-item", type=int, default=3)
+    smoke_parser.add_argument("--include-archived", action="store_true")
+    smoke_parser.add_argument("--sleep-seconds", type=float, default=1.0)
+
     return parser.parse_args(argv)
+
+
+def smoke(
+    data_dir: Path = DATA_DIR,
+    limit: int = 1,
+    queries_per_item: int = 3,
+    include_archived: bool = False,
+    sleep_seconds: float = 1.0,
+    request_session=None,
+) -> int:
+    """Fetch comps for ``limit`` items into a throwaway dir and report whether
+    any produced a real eBay sold-comp match. Returns 0 on at least one match,
+    1 otherwise — suitable as a CI exit code. Writes nothing to the repo."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        summary = fetch_direct(
+            data_dir=data_dir,
+            output_dir=Path(tmp),
+            limit=limit,
+            queries_per_item=queries_per_item,
+            stale_hours=0,  # never skip — we want a fresh fetch every run
+            include_archived=include_archived,
+            sleep_seconds=sleep_seconds,
+            mirror_to_warehouse=False,
+            request_session=request_session,
+        )
+
+    matches = summary.get("matches", 0)
+    print(
+        f"smoke: items_attempted={summary.get('items_attempted', 0)} "
+        f"matches={matches} blocked={summary.get('blocked', False)}"
+    )
+    if matches >= 1:
+        print("SMOKE OK: found at least one eBay sold-comp match.")
+        return 0
+    if summary.get("blocked"):
+        print("SMOKE FAIL: eBay blocked the fetch (HTTP + browser fallback).")
+    else:
+        print("SMOKE FAIL: no eBay sold-comp match found for any attempted item.")
+    return 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1279,6 +1330,14 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             sleep_seconds=args.sleep_seconds,
             mirror_to_warehouse=False if args.no_mirror else None,
+        )
+    elif args.command == "smoke":
+        return smoke(
+            data_dir=args.data_dir,
+            limit=args.limit,
+            queries_per_item=args.queries_per_item,
+            include_archived=args.include_archived,
+            sleep_seconds=args.sleep_seconds,
         )
     return 0
 

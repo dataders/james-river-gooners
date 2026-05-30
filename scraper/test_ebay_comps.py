@@ -19,6 +19,7 @@ from ebay_comps import (
     merge_comp_files,
     normalize_match_row,
     parse_sold_search_html,
+    smoke,
     soldcomps_sold_matches,
     utc_now_text,
 )
@@ -146,6 +147,28 @@ class FetchDirectAccumulatorTest(unittest.TestCase):
 
         self.assertEqual(summary["items_attempted"], 0)
         session.get.assert_not_called()
+
+
+class SmokeTest(unittest.TestCase):
+    _EMPTY_HTML = "<html><head><title>Rosenthal | eBay</title></head><body>no results</body></html>"
+
+    def test_returns_zero_when_a_match_is_found(self):
+        session = Mock()
+        session.get.return_value = Mock(status_code=200, text=_SOLD_ITEM_HTML)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir) / "data"
+            _write_single_item_manifest(data_dir)
+            code = smoke(data_dir=data_dir, limit=1, sleep_seconds=0, request_session=session)
+        self.assertEqual(code, 0)
+
+    def test_returns_one_when_no_match_is_found(self):
+        session = Mock()
+        session.get.return_value = Mock(status_code=200, text=self._EMPTY_HTML)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir) / "data"
+            _write_single_item_manifest(data_dir)
+            code = smoke(data_dir=data_dir, limit=1, sleep_seconds=0, request_session=session)
+        self.assertEqual(code, 1)
 
 
 class EbayCompExportTest(unittest.TestCase):
