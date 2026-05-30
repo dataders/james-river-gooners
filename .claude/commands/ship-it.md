@@ -16,4 +16,9 @@ Run the full quality gate, then commit, push, and open a PR for the current bran
    - A short title (under 70 chars)
    - A body that lists what changed and includes a test plan checklist
 
+7. **Subscribe and monitor CI** — call `mcp__github__subscribe_pr_activity` for the new PR. Then actively respond to every `<github-webhook-activity>` event that arrives:
+   - CI failure → diagnose, fix, push, re-check; do not stop until all checks are green
+   - Review comment → address it or ask the user if ambiguous
+   - Do NOT just say "I'm watching" and go silent — each event requires a visible response and action
+
 If any step fails, stop, explain what failed, and wait for the user to decide how to proceed. Do not skip or bypass any step.
