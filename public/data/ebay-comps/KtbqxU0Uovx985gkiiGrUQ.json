@@ -1,13 +1,72 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "48994656": {
+      "status": "ok",
+      "query": "Group of assorted dolls",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+assorted+dolls&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "277669802658",
+          "title": "Vintage Group of 4 Doll Purses Various Sizes & Designs Beaded Mesh Knitted",
+          "price": {
+            "value": "25.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$26.47 shipping",
+          "soldDate": "2026-05-17",
+          "soldDateLabel": "Sold May 17, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/277669802658",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137111676979",
+          "title": "Vintage Group of 4 Doll Purses Various Sizes & Designs",
+          "price": {
+            "value": "6.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$36.63 shipping",
+          "soldDate": "2026-04-25",
+          "soldDateLabel": "Sold Apr 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137111676979",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358425385550",
+          "title": "GROUP OF 14 BARBIES - ALL WITHOUT BOXES ~ NEW & USED ASSORTMENT ~ FOR REGINA",
+          "price": {
+            "value": "108.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$115.63 shipping",
+          "soldDate": "2026-04-08",
+          "soldDateLabel": "Sold Apr 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358425385550",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "48994770": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "48994656": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }

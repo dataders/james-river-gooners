@@ -1,9 +1,225 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "49012894": {
+      "status": "ok",
+      "query": "Microsoft Xbox 360 console",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Microsoft+Xbox+360+console&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "800033328478",
+          "title": "Microsoft Xbox 360 E Console 250GB Bundle W/ 21 Games, Kinect, Controller",
+          "price": {
+            "value": "152.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$21.50 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/800033328478",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "127875952996",
+          "title": "Black Xbox 360 Slim 250GB Console w/ OEM Controller & 6 Games TESTED",
+          "price": {
+            "value": "79.73",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$30.07 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127875952996",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "287334573982",
+          "title": "Xbox 360 Kinect Star Wars Ltd Edition R2D2 320GB CIB Sealed Game +6 Extras Lot",
+          "price": {
+            "value": "499.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.42 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/287334573982",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49012661": {
+      "status": "ok",
+      "query": "Two sterling silver bracelets",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Two+sterling+silver+bracelets&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "187584484712",
+          "title": "Silver Tube 10K Gold Beads Bracelet Vintage Sterling Two Tone Ethnic Filigree",
+          "price": {
+            "value": "169.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$19.90 shipping",
+          "soldDate": "2025-11-26",
+          "soldDateLabel": "Sold Nov 26, 2025",
+          "itemWebUrl": "https://www.ebay.com/itm/187584484712",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "187869074295",
+          "title": "Sterling Silver 14K Gold Vintage Bracelet Ornate Men's Women Statement Two Tone",
+          "price": {
+            "value": "349.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$25.00 shipping",
+          "soldDate": "2025-12-24",
+          "soldDateLabel": "Sold Dec 24, 2025",
+          "itemWebUrl": "https://www.ebay.com/itm/187869074295",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "187948373167",
+          "title": "Vintage Sterling Silver 10K Gold Bead Tubular Bracelet Minimalist Two Toned 90s",
+          "price": {
+            "value": "149.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$19.90 shipping",
+          "soldDate": "2026-02-06",
+          "soldDateLabel": "Sold Feb 6, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/187948373167",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49012562": {
+      "status": "ok",
+      "query": "10K gold necklace diamond",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=10K+gold+necklace+diamond&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "303201232648",
+          "title": "10K Yellow Gold Tanzanite & Diamond Heart Pendant necklace, 18\"/Collar de Oro",
+          "price": {
+            "value": "185.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$30.78 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/303201232648",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "236648675447",
+          "title": "26in 4.6mm 12.35grams 10k Gold Diamond Cut Curb Link Chain",
+          "price": {
+            "value": "925.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$65.90 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236648675447",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "318345973967",
+          "title": "$1,800 10K Gold .25CT Natural White Diamond Cluster Letter \"I\" Slide Necklace",
+          "price": {
+            "value": "128.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$13.99 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318345973967",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49012815": {
+      "status": "ok",
+      "query": "Large assortment of vintage",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Large+assortment+of+vintage&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "800001777285",
+          "title": "Large lot of Buttons Vintage Shirt buttons 4-hole & 2-hole Various colors",
+          "price": {
+            "value": "10.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.90 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/800001777285",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "177983197765",
+          "title": "Large Lot Of VTG  Button Collection Estate Sale-New Old Stock-Over 200 BUTTONS",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.98 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/177983197765",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "357104919969",
+          "title": "Color Street Nail Strips**CREME/MATTE** ***LARGE Assortment Of Colors!!!***",
+          "price": {
+            "value": "3.94",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/357104919969",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "49012540": {
       "fetchedAt": "2026-05-29T20:53:03Z",
@@ -160,6 +376,22 @@
     "49012655": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "49012894": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49012661": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49012562": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49012815": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }

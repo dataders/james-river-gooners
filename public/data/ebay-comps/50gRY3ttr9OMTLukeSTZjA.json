@@ -1,9 +1,593 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "49014189": {
+      "status": "ok",
+      "query": "Patchwork quilt floral patterns",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Patchwork+quilt+floral+patterns&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "335606996202",
+          "title": "Essential Home FLORAL Patchwork Twin Quilt 66\" x 86\" LYNDALL Pattern NEW",
+          "price": {
+            "value": "25.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.95 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/335606996202",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397968372688",
+          "title": "Handmade Patchwork Mahalo Quilt Pattern Floral Hand Quilted 64 x 82 Cutter FLAWS",
+          "price": {
+            "value": "49.88",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$14.95 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397968372688",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "226690351081",
+          "title": "Vintage Lone Star Pattern Quilt 64x78\" Handmade Floral Patchwork Blanket",
+          "price": {
+            "value": "129.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/226690351081",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014073": {
+      "status": "ok",
+      "query": "White wooden cabinet two",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=White+wooden+cabinet+two&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "296497634254",
+          "title": "HOMCOM Freestanding Storage Cabinet w/ Two Shelves Wooden Sideboard - White",
+          "price": {
+            "value": "87.45",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$130.81 shipping",
+          "soldDate": "2026-05-20",
+          "soldDateLabel": "Sold May 20, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/296497634254",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "334866137826",
+          "title": "Wooden Cabinet 3 Shelves Double Door Bathroom Storage Floor Organizer white",
+          "price": {
+            "value": "50.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/334866137826",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206093988912",
+          "title": "Small White Wooden Corner Cabinet Shelf with 2 Doors Cottage Cozy",
+          "price": {
+            "value": "37.98",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.52 shipping",
+          "soldDate": "2026-03-01",
+          "soldDateLabel": "Sold Mar 1, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206093988912",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014118": {
+      "status": "ok",
+      "query": "Antique wooden trunk metal",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Antique+wooden+trunk+metal&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "389923833071",
+          "title": "Antique Steamer Trunk Wardrobe Chest Blue with Drawers Hinge Door Travel Theme",
+          "price": {
+            "value": "70.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$26.40 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389923833071",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206288019418",
+          "title": "Black Antique Style Wooden Storage Chest Trunk Hinged Lid Metal Handles 16x12x9",
+          "price": {
+            "value": "20.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.69 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206288019418",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397566264239",
+          "title": "Vintage Wooden Dome Top Storage Trunk Checkered Monogrammed Canvas Cedar Chest A",
+          "price": {
+            "value": "465.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$84.98 shipping",
+          "soldDate": "2026-05-24",
+          "soldDateLabel": "Sold May 24, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397566264239",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014302": {
+      "status": "ok",
+      "query": "Craftsman 6.5HP rear tine",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Craftsman+6.5HP+rear+tine&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "296397790582",
+          "title": "Owner\u2019s Manual Sears Craftsman 6.5 HP  19\u201d Rear Tine Tiller -Model 917.293320",
+          "price": {
+            "value": "18.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$17.47 shipping",
+          "soldDate": "2026-05-23",
+          "soldDateLabel": "Sold May 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/296397790582",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "297153704222",
+          "title": "Owner\u2019s Manual Sears Craftsman 6.5 HP 17\u201d Rear Tine Tiller - Model 917.296030",
+          "price": {
+            "value": "19.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$16.93 shipping",
+          "soldDate": "2026-04-14",
+          "soldDateLabel": "Sold Apr 14, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/297153704222",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "223624395110",
+          "title": "Carburetor Carb for Sears Craftsman LCT 17 INCH Rear Tine Tiller 917.299080",
+          "price": {
+            "value": "16.98",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$17.40 shipping",
+          "soldDate": "2026-03-02",
+          "soldDateLabel": "Sold Mar 2, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/223624395110",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014060": {
+      "status": "ok",
+      "query": "J.C. Higgins .22 bolt",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=J.C.+Higgins+.22+bolt&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "356705098335",
+          "title": "Suspension Control Arm Wishbone Pinch Bolt - fits Vauxhall Astra J, Zafira C  x2",
+          "price": {
+            "value": "108.08",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$81.31 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/356705098335",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "130801442160",
+          "title": "HEAD GASKET SET & BOLTS C2 C3 C4 206 207 307 1007 1.4 16V ET3J4 KFU 2003 on VRS",
+          "price": {
+            "value": "379.46",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$129.49 shipping",
+          "soldDate": "2026-03-30",
+          "soldDateLabel": "Sold Mar 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/130801442160",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "200675561217",
+          "title": "CITROEN C2 C3 C4 1.4L (ET3J4) - HEAD BOLT SET - VHBS 9030",
+          "price": {
+            "value": "105.03",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$113.43 shipping",
+          "soldDate": "2026-04-23",
+          "soldDateLabel": "Sold Apr 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/200675561217",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014389": {
+      "status": "ok",
+      "query": "Wood cast iron garden",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Wood+cast+iron+garden&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "175119355992",
+          "title": "Patio Park Garden Bench Porch Path Chair Furniture Cast Iron Hardwood New",
+          "price": {
+            "value": "139.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/175119355992",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "256936459563",
+          "title": "Genuine Cast Iron Wood Garden Bench Doll Scale Miniature New & Unassembled",
+          "price": {
+            "value": "31.97",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/256936459563",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "317979792084",
+          "title": "48\" Hardwood Slotted Steel Cast Iron Frame Outdoor Patio Garden Bench Park Seat",
+          "price": {
+            "value": "81.98",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/317979792084",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014069": {
+      "status": "ok",
+      "query": "Group of Powhatan County",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+Powhatan+County&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "277759850125",
+          "title": "Oswego County Group of 9 railroad Bond Coupons  Oswego,Constantia, Hastings &",
+          "price": {
+            "value": "6.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$1.32 shipping",
+          "soldDate": "2026-03-02",
+          "soldDateLabel": "Sold Mar 2, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/277759850125",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "127794222711",
+          "title": "Group of 4 Different County Sheriff\u2019s Dept. Uniform Patches #1 Oregon",
+          "price": {
+            "value": "17.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.97 shipping",
+          "soldDate": "2026-04-12",
+          "soldDateLabel": "Sold Apr 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127794222711",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "317842211030",
+          "title": "PC4989 OH Ohio Barnesville Group of Boys Teacher Belmont County Postcard RPPC",
+          "price": {
+            "value": "7.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$2.25 shipping",
+          "soldDate": "2026-04-13",
+          "soldDateLabel": "Sold Apr 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/317842211030",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014355": {
+      "status": "ok",
+      "query": "two concrete planters floral",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=two+concrete+planters+floral&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "318339808022",
+          "title": "Vtg Gray Weathered Concrete Tabletop Planter/Cachepot, Sculpted Rose Rim, 8x4.5\u201d",
+          "price": {
+            "value": "38.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$16.40 shipping",
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318339808022",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "167714041993",
+          "title": "DETAILED OLD WEATHERED WORN VINTAGE CEMENT/CONCRETE GARDEN PLANTER 10 1/4 TALL",
+          "price": {
+            "value": "149.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$64.50 shipping",
+          "soldDate": "2026-03-27",
+          "soldDateLabel": "Sold Mar 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/167714041993",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "389641833259",
+          "title": "Large 18 Inch Round Concrete Pot - Durable & Weather Resistant for Home & Patio",
+          "price": {
+            "value": "142.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-03-04",
+          "soldDateLabel": "Sold Mar 4, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389641833259",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014181": {
+      "status": "ok",
+      "query": "Patchwork quilt green multicolored",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Patchwork+quilt+green+multicolored&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "366313083525",
+          "title": "Target Patchwork Quilted Jacket Women's L Black History Month Multicolor",
+          "price": {
+            "value": "20.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.67 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366313083525",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "398005710549",
+          "title": "Vintage Handmade Patchwork Quilt - Bright Green & Orange Floral - Approx. 64.5\"",
+          "price": {
+            "value": "125.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$17.62 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/398005710549",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "177440932095",
+          "title": "20pc 10x10\" Floral Fabric Squares Bundle Polyester for Quilting & Patchwork",
+          "price": {
+            "value": "13.90",
+            "currency": "USD"
+          },
+          "soldDate": "2026-01-06",
+          "soldDateLabel": "Sold Jan 6, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/177440932095",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014318": {
+      "status": "ok",
+      "query": "Hitachi direct drive turntable HT-556",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Hitachi+direct+drive+turntable+HT-556&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "206294099032",
+          "title": "Hitachi Direct Drive Turntable HT-350 Great Cosmetic And Working Condition Japan",
+          "price": {
+            "value": "159.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$41.99 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206294099032",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168408418652",
+          "title": "Hitachi HT-460 Direct Drive Auto Turntable Record Player. Tested-See description",
+          "price": {
+            "value": "300.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$61.01 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168408418652",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "178117882627",
+          "title": "Hitachi Direct Drive Turntable HT-350 Excellent Shape TESTED",
+          "price": {
+            "value": "125.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$27.50 shipping",
+          "soldDate": "2026-05-12",
+          "soldDateLabel": "Sold May 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/178117882627",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014357": {
+      "status": "ok",
+      "query": "Three stoneware jugs one",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Three+stoneware+jugs+one&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "117113455583",
+          "title": "ANTIQUE PRIMITIVE BLUE COBALT FLOWER STONEWARE ONE GALLON JUG",
+          "price": {
+            "value": "120.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$87.50 shipping",
+          "soldDate": "2026-05-24",
+          "soldDateLabel": "Sold May 24, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/117113455583",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397848479789",
+          "title": "Antique Large Unmarked Stoneware Jug Unknown Maker",
+          "price": {
+            "value": "40.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$50.07 shipping",
+          "soldDate": "2026-04-26",
+          "soldDateLabel": "Sold Apr 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397848479789",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "157937263850",
+          "title": "jug Early Jug one pint size great shape",
+          "price": {
+            "value": "150.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$56.53 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157937263850",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "49014056": {
       "fetchedAt": "2026-05-29T20:53:03Z",
@@ -168,6 +752,50 @@
     "49014281": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "49014189": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014073": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014118": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014302": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014060": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014389": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014069": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014355": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014181": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014318": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014357": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }

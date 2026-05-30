@@ -1,9 +1,703 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "49004218": {
+      "status": "ok",
+      "query": "Fenton blue opalescent hobnail",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Fenton+blue+opalescent+hobnail&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "389837080286",
+          "title": "Vintage Fenton Hobnail Blue Opalescent Fan Vase Ruffled Edge 4\"",
+          "price": {
+            "value": "80.52",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$235.72 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389837080286",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "236653698464",
+          "title": "Fenton Blue Opalescent Hobnail Perfume Vanity Bottle",
+          "price": {
+            "value": "226.61",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$332.15 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236653698464",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "117211097152",
+          "title": "Vintage Fenton Aqua Blue Opaline Opalescent Glass Hobnail Crimp Mini Vase 3 3/4\u201d",
+          "price": {
+            "value": "90.84",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$184.86 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/117211097152",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004383": {
+      "status": "ok",
+      "query": "Three ceramic duck wall",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Three+ceramic+duck+wall&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "257496994842",
+          "title": "A Set of Three Graduated Ceramic Flying Ducks, Wall Hanging - Wooden Framed",
+          "price": {
+            "value": "26.91",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$33.98 shipping",
+          "soldDate": "2026-05-08",
+          "soldDateLabel": "Sold May 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257496994842",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397760659236",
+          "title": "Three Flying Ducks Ceramic Wall Art New In Excellent Condition No Damage",
+          "price": {
+            "value": "115.55",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$37.03 shipping",
+          "soldDate": "2026-03-30",
+          "soldDateLabel": "Sold Mar 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397760659236",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "127779450370",
+          "title": "Vintage Ducks Mallards In Flight 2 Wall Hangings Ceramic",
+          "price": {
+            "value": "23.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.90 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127779450370",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004829": {
+      "status": "ok",
+      "query": "Vintage Schiaparelli signed brooch",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+Schiaparelli+signed+brooch&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "178161903469",
+          "title": "Schiaparelli Brooch True Vintage Signed PEACOCK BLUE Borealis FAB Rhinestone",
+          "price": {
+            "value": "375.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$13.33 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/178161903469",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206284223284",
+          "title": "Schiaparelli Signed Vintage Multicolor Glass Flower Brooch Pin, Cluster",
+          "price": {
+            "value": "134.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.97 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206284223284",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168370515311",
+          "title": "Vintage Signed SCHIAPARELLI Watermelon Rhinestone Silver Leaf Brooch Pin 1950s",
+          "price": {
+            "value": "102.50",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-19",
+          "soldDateLabel": "Sold May 19, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168370515311",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004744": {
+      "status": "ok",
+      "query": "Hand-painted welcome plaques by",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Hand-painted+welcome+plaques+by&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "225781034675",
+          "title": "Vintage WELCOME FRIENDS hanging Plaque with Geese and Flowers By Trinity Pottery",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$26.72 shipping",
+          "soldDate": "2026-05-19",
+          "soldDateLabel": "Sold May 19, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/225781034675",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267583358973",
+          "title": "*SoCal Fires Fundraiser* Vintage Hand Painted Welcome Wall Sign",
+          "price": {
+            "value": "6.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$16.17 shipping",
+          "soldDate": "2026-03-01",
+          "soldDateLabel": "Sold Mar 1, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267583358973",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168382505141",
+          "title": "Set of Two - Hand Painted Bluebird and Roses Miniature Heart Plaques",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$22.19 shipping",
+          "soldDate": "2026-05-18",
+          "soldDateLabel": "Sold May 18, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168382505141",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004745": {
+      "status": "ok",
+      "query": "Hand painted decorative welcome",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Hand+painted+decorative+welcome&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "397818743548",
+          "title": "Artisan Hand Painted Welcome Sign Door Hanging Adorable Fawn Deer OOAK",
+          "price": {
+            "value": "105.75",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$269.61 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397818743548",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267658866642",
+          "title": "2000 Hallmark Keepsake Mini Ornament Welcoming Angel In box",
+          "price": {
+            "value": "27.70",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$155.00 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267658866642",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "317873352149",
+          "title": "25\u201d WELCOME TO PARADISE TOUCAN SIGN WALL ART TIKI DECOR",
+          "price": {
+            "value": "125.89",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$264.27 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/317873352149",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004254": {
+      "status": "ok",
+      "query": "Hand-painted glass fairy lamp 90s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Hand-painted+glass+fairy+lamp+90s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "327179709484",
+          "title": "Set of two Vintage Frosted Glass Fairy Lamps with Floral Decals.",
+          "price": {
+            "value": "99.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.26 shipping",
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/327179709484",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "336589579682",
+          "title": "Vintage Westmoreland Wakefield Blue Glass Fairy Lamp w/ Hand Painted Flowers",
+          "price": {
+            "value": "217.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$21.05 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/336589579682",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358610763659",
+          "title": "Fenton Glass Handpainted Fairy Lamp",
+          "price": {
+            "value": "200.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.67 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358610763659",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004737": {
+      "status": "ok",
+      "query": "Hand-painted slate plaques featuring",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Hand-painted+slate+plaques+featuring&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "137155999966",
+          "title": "Title:Hand Painted Ireland Slate Stone Cottage Landscape Plaque Spiddal 8.25\"",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$51.75 shipping",
+          "soldDate": "2026-05-13",
+          "soldDateLabel": "Sold May 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137155999966",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306807579067",
+          "title": "Bluebird Garden Plaque Hand Painted Slate Welcome Sign Indoor Outdoor",
+          "price": {
+            "value": "17.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$30.97 shipping",
+          "soldDate": "2026-03-28",
+          "soldDateLabel": "Sold Mar 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306807579067",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358259364297",
+          "title": "Vintage Hand Painted Celtic Slate by Joan Moore | Irish Cottage Scene | Wall Art",
+          "price": {
+            "value": "26.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$37.67 shipping",
+          "soldDate": "2026-05-20",
+          "soldDateLabel": "Sold May 20, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358259364297",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004712": {
+      "status": "ok",
+      "query": "Vintage Knights of Pythias",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+Knights+of+Pythias&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "365435695202",
+          "title": "vintage large silver & brass colored Knights of Pythias fraternal medal or badge",
+          "price": {
+            "value": "9.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$30.48 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/365435695202",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "114660486606",
+          "title": "Knights of Pythias Patch - 2.75 x 2.25 - Vintage",
+          "price": {
+            "value": "8.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$1.65 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/114660486606",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137344164851",
+          "title": "Vintage 10k Gold Knights Of Pythias 25 Year Veteran Pin, 20, 25, 30, 35 Years",
+          "price": {
+            "value": "65.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$37.95 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137344164851",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004441": {
+      "status": "ok",
+      "query": "Babbacombe Pottery hand-decorated ceramic",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Babbacombe+Pottery+hand-decorated+ceramic&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "306717846005",
+          "title": "Vintage English Babbacombe Pottery Ceramic Tuxedo Cat String Holder w/ Scissors",
+          "price": {
+            "value": "60.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.00 shipping",
+          "soldDate": "2026-03-20",
+          "soldDateLabel": "Sold Mar 20, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306717846005",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306953689077",
+          "title": "Vtg Babbacombe Pottery Wall Hanging String Holder 8\" Tall  Excellent Shape",
+          "price": {
+            "value": "110.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306953689077",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "157869979844",
+          "title": "NEW VINTAGE  CERAMIC FOX STRING & SCISSORS HOLDER by BABBACOMBE DEVON, ENGLAND",
+          "price": {
+            "value": "119.95",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-16",
+          "soldDateLabel": "Sold May 16, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157869979844",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004599": {
+      "status": "ok",
+      "query": "New tag a large",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=New+tag+a+large&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "306946737038",
+          "title": "The North Face Origins Fleece Neon Green Men\u2019s L NWT MSRP $189 New W Tags Zip-up",
+          "price": {
+            "value": "64.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306946737038",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "366388220857",
+          "title": "The North Face Thermoball Lightweight Men's Puffer Jacket Black Size L New Tags",
+          "price": {
+            "value": "125.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366388220857",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "136914868972",
+          "title": "Pendleton Timberline Wool Blend Plaid Shirt Jacket (Pick a Size) New w/ Tags",
+          "price": {
+            "value": "129.97",
+            "currency": "USD"
+          },
+          "soldDate": "2026-01-21",
+          "soldDateLabel": "Sold Jan 21, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/136914868972",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004925": {
+      "status": "ok",
+      "query": "Blue rhinestone jewelry assortment 60s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Blue+rhinestone+jewelry+assortment+60s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "287152164027",
+          "title": "1950-60's Prong Set Rhinestone Necklace Jewelry Bundle Light Blue Clear Crystal",
+          "price": {
+            "value": "25.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-03-08",
+          "soldDateLabel": "Sold Mar 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/287152164027",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168411652077",
+          "title": "Vintage Gold Tone Blue & Green Rhinestone Metal Mesh Bracelet 1950s-60s Jewelry",
+          "price": {
+            "value": "49.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.42 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168411652077",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "362393592017",
+          "title": "1000 VINTAGE GLASS ASSORTED SIZE COLOR RIVOLI RHINESTONES - JEWELRY REPAIR S202c",
+          "price": {
+            "value": "14.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.95 shipping",
+          "soldDate": "2026-05-21",
+          "soldDateLabel": "Sold May 21, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/362393592017",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49005133": {
+      "status": "ok",
+      "query": "Painted concrete fox statue",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Painted+concrete+fox+statue&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "357897653798",
+          "title": "Sleeping Fox statue - solid concrete handmade cement sculpture decor",
+          "price": {
+            "value": "35.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.54 shipping",
+          "soldDate": "2026-04-13",
+          "soldDateLabel": "Sold Apr 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/357897653798",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "147067457796",
+          "title": "Fox 5.5\u201d Statue Figurine House or Garden Distressed Patina Signed Ken Levoli",
+          "price": {
+            "value": "28.95",
+            "currency": "USD"
+          },
+          "soldDate": "2026-03-31",
+          "soldDateLabel": "Sold Mar 31, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/147067457796",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "377016848149",
+          "title": "Realistic Fox Figurine Garden Yard Ornament Lawn Decor 7.5in Animal Statue Resin",
+          "price": {
+            "value": "24.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.50 shipping",
+          "soldDate": "2026-03-21",
+          "soldDateLabel": "Sold Mar 21, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/377016848149",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004909": {
+      "status": "ok",
+      "query": "Green blue rhinestone jewelry 70s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Green+blue+rhinestone+jewelry+70s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "205979512639",
+          "title": "VINTAGE 70\u2019S BLACK GREEN & BLUE GLASS & CRYSTAL GLASS RHINESTONE BROOCH PIN",
+          "price": {
+            "value": "13.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.49 shipping",
+          "soldDate": "2026-03-12",
+          "soldDateLabel": "Sold Mar 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/205979512639",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "336512891800",
+          "title": "Vintage Blue Green Flower Bead Necklace 60s/70s 50\" Long Retro Costume Jewelry",
+          "price": {
+            "value": "19.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$4.99 shipping",
+          "soldDate": "2026-04-05",
+          "soldDateLabel": "Sold Apr 5, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/336512891800",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168411652077",
+          "title": "Vintage Gold Tone Blue & Green Rhinestone Metal Mesh Bracelet 1950s-60s Jewelry",
+          "price": {
+            "value": "49.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.01 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168411652077",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "49004759": {
       "fetchedAt": "2026-05-29T20:53:03Z",
@@ -80,6 +774,58 @@
     "49005280": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "49004218": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004383": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004829": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004744": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004745": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004254": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004737": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004712": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004441": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004599": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004925": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49005133": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004909": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }

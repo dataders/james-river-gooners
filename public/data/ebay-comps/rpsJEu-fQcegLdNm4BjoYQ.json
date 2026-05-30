@@ -1,9 +1,115 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T06:36:55Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "49002471": {
+      "status": "ok",
+      "query": "Painted wooden cutout of",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Painted+wooden+cutout+of&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "127414740270",
+          "title": "Love Decorations Set Of 13 Wooden Cutouts Covering Most Seasons And Holidays",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127414740270",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "286929647986",
+          "title": "Wooden cutout of a running horse painted with an American flag design",
+          "price": {
+            "value": "5.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.14 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/286929647986",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "326469527715",
+          "title": "Wooden Nested Serving Trays - Set of 5 Unfinished Trays with Cut-Out Handles for",
+          "price": {
+            "value": "29.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-19",
+          "soldDateLabel": "Sold May 19, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/326469527715",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002489": {
+      "status": "ok",
+      "query": "Costume Olof set a",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Costume+Olof+set+a&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "800038882243",
+          "title": "7 Piece Renaissance Costume Set Cospplay Set Leather Elf Costume Medieval Set",
+          "price": {
+            "value": "176.20",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/800038882243",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "376647043641",
+          "title": "Love Hurts Nurse Costume Set Detachable Garters Nipple Covers to Match Size L/XL",
+          "price": {
+            "value": "30.21",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$29.66 shipping",
+          "soldDate": "2026-04-24",
+          "soldDateLabel": "Sold Apr 24, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/376647043641",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "366110861558",
+          "title": "4Pcs LifeGuard Costume Set Include Fanny Pack Inflatable Float Whistle Key Float",
+          "price": {
+            "value": "40.24",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$31.47 shipping",
+          "soldDate": "2026-03-17",
+          "soldDateLabel": "Sold Mar 17, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366110861558",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "49002474": {
       "fetchedAt": "2026-05-29T20:53:03Z",
@@ -88,6 +194,14 @@
     "49002465": {
       "fetchedAt": "2026-05-30T06:36:55Z",
       "status": "no_results"
+    },
+    "49002471": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49002489": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }
