@@ -25,7 +25,7 @@ function buildDeal(item, itemComps) {
   return { median: Math.round(median), maxBid: Math.round(maxBid), allIn, margin }
 }
 
-export function DealsPanel({ items, allComps }) {
+export function DealsPanel({ items, allComps, onItemClick }) {
   const [maxHours, setMaxHours] = useState(48)
 
   const deals = useMemo(() => {
@@ -75,6 +75,7 @@ export function DealsPanel({ items, allComps }) {
               maxBid={maxBid}
               allIn={allIn}
               margin={margin}
+              onItemClick={onItemClick}
             />
           ))}
         </div>
@@ -83,13 +84,21 @@ export function DealsPanel({ items, allComps }) {
   )
 }
 
-function DealCard({ item, median, maxBid, allIn, margin }) {
+function DealCard({ item, median, maxBid, allIn, margin, onItemClick }) {
   const imgSrc = item.images?.[0] || null
   const remaining = timeRemaining(item.endDate)
   const marginPct = Math.round(margin * 100)
+  const clickable = typeof onItemClick === 'function'
+  const open = () => clickable && onItemClick(item)
 
   return (
-    <div className="deal-card">
+    <div
+      className={`deal-card${clickable ? ' deal-card--clickable' : ''}`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={open}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter') open() } : undefined}
+    >
       <div className="deal-card-image">
         {imgSrc ? (
           <img src={imgSrc} alt={item.title} loading="lazy" />
@@ -130,6 +139,7 @@ function DealCard({ item, median, maxBid, allIn, margin }) {
             target="_blank"
             rel="noopener noreferrer"
             className="deal-cannons-link"
+            onClick={(e) => e.stopPropagation()}
           >
             View on Cannon's
           </a>
