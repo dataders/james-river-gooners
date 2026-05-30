@@ -180,37 +180,61 @@ def discover_company_catalogs(
 
 
 def discover_hibid_specs(sources_file: Path | None = None) -> list[dict]:
-    """Return {catalog_url, source_slug, company_name} for all active non-RE auctions."""
+    """Return {catalog_url, source_slug, company_name} for all active non-RE auctions.
+
+    When a company entry has catalog_ids, those are used directly without fetching
+    the company page (which is blocked by HiBid's bot protection on CI runners).
+    Companies without catalog_ids fall back to live company-page discovery.
+    """
     if sources_file is None:
         sources_file = SOURCES_FILE
 
     with open(sources_file) as f:
         config = yaml.safe_load(f)
 
-    session = create_session()
     all_specs: list[dict] = []
+    needs_discovery: list[dict] = []
 
     for company in config.get("companies", []):
-        company_id = company["id"]
         slug = company["slug"]
         name = company["name"]
+        hardcoded_ids = company.get("catalog_ids") or []
 
-        print(f"  Discovering {name} (HiBid #{company_id})...")
-        catalogs = discover_company_catalogs(session, company_id)
+        if hardcoded_ids:
+            print(f"  {name}: using {len(hardcoded_ids)} hardcoded catalog(s)")
+            for catalog_id in hardcoded_ids:
+                catalog_url = f"{HIBID_BASE}/catalog/{catalog_id}/"
+                all_specs.append({
+                    "catalog_url": catalog_url,
+                    "safe_id": hibid_safe_id(catalog_id),
+                    "source_slug": slug,
+                    "company_name": name,
+                    "title": "",
+                })
+        else:
+            needs_discovery.append(company)
 
-        for cat in catalogs:
-            if is_real_estate_auction(cat.get("title", "")):
-                print(f"    Skipping real estate: {cat['title'][:60]}")
-                continue
-            catalog_url = f"{HIBID_BASE}/catalog/{cat['catalog_id']}/"
-            all_specs.append({
-                "catalog_url": catalog_url,
-                "safe_id": hibid_safe_id(cat["catalog_id"]),
-                "source_slug": slug,
-                "company_name": name,
-                "title": cat["title"],
-            })
-            print(f"    Found: {cat['title'][:60]}")
+    if needs_discovery:
+        session = create_session()
+        for company in needs_discovery:
+            company_id = company["id"]
+            slug = company["slug"]
+            name = company["name"]
+            print(f"  Discovering {name} (HiBid #{company_id})...")
+            catalogs = discover_company_catalogs(session, company_id)
+            for cat in catalogs:
+                if is_real_estate_auction(cat.get("title", "")):
+                    print(f"    Skipping real estate: {cat['title'][:60]}")
+                    continue
+                catalog_url = f"{HIBID_BASE}/catalog/{cat['catalog_id']}/"
+                all_specs.append({
+                    "catalog_url": catalog_url,
+                    "safe_id": hibid_safe_id(cat["catalog_id"]),
+                    "source_slug": slug,
+                    "company_name": name,
+                    "title": cat["title"],
+                })
+                print(f"    Found: {cat['title'][:60]}")
 
     return all_specs
 
