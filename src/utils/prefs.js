@@ -11,6 +11,7 @@ export const DEFAULT_PREFS = {
   minHours: null,
   maxHours: null,
   localOnly: false,
+  hasComp: false,
 }
 
 const PERSISTED_KEYS = [
@@ -23,6 +24,7 @@ const PERSISTED_KEYS = [
   'minHours',
   'maxHours',
   'localOnly',
+  'hasComp',
 ]
 
 export function loadPrefs() {

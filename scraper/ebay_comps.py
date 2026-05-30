@@ -393,6 +393,33 @@ def first_attr(element, selectors: tuple[str, ...], attr: str) -> str:
     return ""
 
 
+def first_image_url(element) -> str:
+    """Return the eBay thumbnail URL for a search-result card.
+
+    eBay lazy-loads result images, so the real URL often lives in ``data-src``
+    or ``srcset`` while ``src`` holds a 1x1 spacer/data-URI placeholder. Try the
+    common image elements and attributes, preferring a concrete https URL.
+    """
+    selectors = (
+        ".s-item__image-img",
+        ".s-card__image",
+        ".s-item__image img",
+        "img",
+    )
+    for selector in selectors:
+        for img in element.select(selector):
+            for attr in ("src", "data-src", "data-defer-load"):
+                value = str(img.get(attr) or "")
+                if value.startswith("http"):
+                    return value
+            srcset = str(img.get("srcset") or "")
+            if srcset:
+                first = srcset.split(",")[0].strip().split(" ")[0]
+                if first.startswith("http"):
+                    return first
+    return ""
+
+
 def price_amount(value: str) -> str | None:
     text = normalize_spaces(value)
     match = re.search(r"([0-9][0-9,]*(?:\.[0-9]{2})?)", text)
@@ -490,9 +517,7 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
             continue
 
         sold_label = sold_label_from_card(card)
-        image_url = first_attr(card, (".s-item__image-img[src]", "img[src]"), "src")
-        if image_url.startswith("data:"):
-            image_url = ""
+        image_url = first_image_url(card)
 
         matches.append({
             "ebay_item_id": ebay_item_id,

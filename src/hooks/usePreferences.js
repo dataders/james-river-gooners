@@ -85,6 +85,14 @@ export function usePreferences() {
     })
   }, [])
 
+  const setHasComp = useCallback((value) => {
+    setPrefs(prev => {
+      const next = { ...prev, hasComp: value }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   return {
     ...prefs,
     toggleIncluded,
@@ -100,5 +108,6 @@ export function usePreferences() {
     setMinHours,
     setMaxHours,
     setLocalOnly,
+    setHasComp,
   }
 }
