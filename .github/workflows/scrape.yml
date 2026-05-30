@@ -81,8 +81,17 @@ jobs:
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
               python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0
           else
+            # Backfill mode: spend only on items without comps yet, soonest-ending
+            # auctions first, capped by the shared monthly budget (paced daily).
+            # Every run — hourly or the manual "Refresh eBay Comps" workflow —
+            # draws from the same 2,000-request/month pool, derived from the read
+            # model itself, so the pipeline never exceeds the SoldComps quota.
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
-              python ebay_comps.py fetch-direct --limit "${GOONERS_EBAY_COMPS_LIMIT:-50}"
+              python ebay_comps.py fetch-direct \
+                --skip-attempted \
+                --queries-per-item 2 \
+                --monthly-budget "${GOONERS_EBAY_COMPS_MONTHLY_BUDGET:-2000}" \
+                --limit "${GOONERS_EBAY_COMPS_LIMIT:-2000}"
           fi
 
       - name: Commit and push
