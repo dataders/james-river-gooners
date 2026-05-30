@@ -6,6 +6,7 @@ import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
+import { useSearch } from './hooks/useSearch'
 import { isDeal } from './utils/roiCalc'
 import { hasEbayComps } from './utils/ebayComps'
 import { DealsPanel } from './components/DealsPanel'
@@ -87,10 +88,16 @@ export default function App() {
     [items, localOnly, localAuctionIds]
   )
 
+  const searchIndex = useSearch(visibleItems)
+  const searchIds = useMemo(() => {
+    if (!searchQuery) return null
+    return new Set(searchIndex.search(searchQuery).map(r => r.id))
+  }, [searchIndex, searchQuery])
+
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
   const preFilteredItems = useMemo(
-    () => filterItems(visibleItems, { excludedCategories: [], searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }),
-    [visibleItems, searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours]
+    () => filterItems(visibleItems, { excludedCategories: [], searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }),
+    [visibleItems, searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours]
   )
 
   const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
