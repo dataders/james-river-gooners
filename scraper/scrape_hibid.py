@@ -545,12 +545,10 @@ def scrape_hibid_auction(
         print(f"  No bid changes; skipping write for {safe_id}")
         return {"changed": False}
 
-    # Write Parquet
     ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     scraped_at_str = scraped_at.isoformat()
 
     for item in all_items:
-        item["images"] = json.dumps(item["images"])
         item["auctionId"] = catalog_id
         item["auctionSafeId"] = safe_id
         item["auctionTitle"] = auction_title
@@ -558,6 +556,15 @@ def scrape_hibid_auction(
         item["scrapedAt"] = scraped_at_str
         item["source"] = source_slug
 
+    # Write NDJSON (images as real array)
+    ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
+    ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]
+    ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
+    print(f"  Wrote {len(all_items)} items → {ndjson_path.name}")
+
+    # Write Parquet (images stringified for Arrow compatibility)
+    for item in all_items:
+        item["images"] = json.dumps(item["images"])
     table = pa.Table.from_pylist(all_items)
     pq.write_table(table, items_path, compression="snappy")
     print(f"  Wrote {len(all_items)} items → {items_path.name}")
