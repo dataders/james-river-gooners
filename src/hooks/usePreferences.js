@@ -1,8 +1,26 @@
 import { useState, useCallback } from 'react'
 import { loadPrefs, savePrefs } from '../utils/prefs'
+import { syncUrlParam } from '../utils/urlState'
+
+function loadInitialPrefs() {
+  const saved = loadPrefs()
+  const p = new URLSearchParams(window.location.search)
+  const merged = { ...saved }
+  if (p.has('q')) merged.searchQuery = p.get('q') || ''
+  if (p.has('min')) merged.minPrice = Number(p.get('min'))
+  if (p.has('max')) merged.maxPrice = Number(p.get('max'))
+  if (p.has('minBids')) merged.minBids = Number(p.get('minBids'))
+  if (p.has('maxBids')) merged.maxBids = Number(p.get('maxBids'))
+  if (p.has('minHrs')) merged.minHours = Number(p.get('minHrs'))
+  if (p.has('maxHrs')) merged.maxHours = Number(p.get('maxHrs'))
+  if (p.has('cat')) merged.excludedCategories = p.getAll('cat')
+  if (p.has('local')) merged.localOnly = p.get('local') === '1'
+  if (p.has('hasComp')) merged.hasComp = p.get('hasComp') === '1'
+  return merged
+}
 
 export function usePreferences() {
-  const [prefs, setPrefs] = useState(loadPrefs)
+  const [prefs, setPrefs] = useState(loadInitialPrefs)
 
   const toggleIncluded = useCallback((category) => {
     setPrefs(prev => {
@@ -30,6 +48,7 @@ export function usePreferences() {
       }
       const next = { ...prev, excludedCategories: excluded }
       savePrefs(next)
+      syncUrlParam('cat', next.excludedCategories)
       return next
     })
   }, [])
@@ -43,6 +62,7 @@ export function usePreferences() {
   }, [])
 
   const hideAll = useCallback((allCategories) => {
+    syncUrlParam('cat', allCategories)
     setPrefs(prev => {
       const next = { ...prev, excludedCategories: [...allCategories] }
       savePrefs(next)
@@ -51,6 +71,7 @@ export function usePreferences() {
   }, [])
 
   const showAll = useCallback(() => {
+    syncUrlParam('cat', [])
     setPrefs(prev => {
       const next = { ...prev, excludedCategories: [] }
       savePrefs(next)
@@ -59,10 +80,12 @@ export function usePreferences() {
   }, [])
 
   const setSearchQuery = useCallback((query) => {
+    syncUrlParam('q', query)
     setPrefs(prev => ({ ...prev, searchQuery: query }))
   }, [])
 
-  const setNumericPreference = useCallback((key, value) => {
+  const setNumericPreference = useCallback((key, urlKey, value) => {
+    syncUrlParam(urlKey, value)
     setPrefs(prev => {
       const next = { ...prev, [key]: value }
       savePrefs(next)
@@ -70,14 +93,15 @@ export function usePreferences() {
     })
   }, [])
 
-  const setMinPrice = useCallback((value) => setNumericPreference('minPrice', value), [setNumericPreference])
-  const setMaxPrice = useCallback((value) => setNumericPreference('maxPrice', value), [setNumericPreference])
-  const setMinBids = useCallback((value) => setNumericPreference('minBids', value), [setNumericPreference])
-  const setMaxBids = useCallback((value) => setNumericPreference('maxBids', value), [setNumericPreference])
-  const setMinHours = useCallback((value) => setNumericPreference('minHours', value), [setNumericPreference])
-  const setMaxHours = useCallback((value) => setNumericPreference('maxHours', value), [setNumericPreference])
+  const setMinPrice = useCallback((value) => setNumericPreference('minPrice', 'min', value), [setNumericPreference])
+  const setMaxPrice = useCallback((value) => setNumericPreference('maxPrice', 'max', value), [setNumericPreference])
+  const setMinBids = useCallback((value) => setNumericPreference('minBids', 'minBids', value), [setNumericPreference])
+  const setMaxBids = useCallback((value) => setNumericPreference('maxBids', 'maxBids', value), [setNumericPreference])
+  const setMinHours = useCallback((value) => setNumericPreference('minHours', 'minHrs', value), [setNumericPreference])
+  const setMaxHours = useCallback((value) => setNumericPreference('maxHours', 'maxHrs', value), [setNumericPreference])
 
   const setLocalOnly = useCallback((value) => {
+    syncUrlParam('local', value)
     setPrefs(prev => {
       const next = { ...prev, localOnly: value }
       savePrefs(next)
@@ -86,6 +110,7 @@ export function usePreferences() {
   }, [])
 
   const setHasComp = useCallback((value) => {
+    syncUrlParam('hasComp', value)
     setPrefs(prev => {
       const next = { ...prev, hasComp: value }
       savePrefs(next)
