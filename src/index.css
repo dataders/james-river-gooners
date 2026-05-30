@@ -995,6 +995,13 @@ body {
   padding-top: 16px;
 }
 
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .detail-link {
   display: inline-block;
   padding: 10px 20px;
@@ -1008,6 +1015,21 @@ body {
 }
 .detail-link:hover {
   background: var(--accent-hover);
+}
+
+.detail-copy-link {
+  padding: 10px 20px;
+  background: var(--bg-secondary);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.detail-copy-link:hover {
+  background: var(--border);
 }
 
 .ebay-comps {
