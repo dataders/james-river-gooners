@@ -4,36 +4,40 @@
       "safeId": "NxlGR1rzSa43pZm8BUveUQ",
       "title": "05/31/26: Colonial Heights VA Online Estate Auction | 09 Pontiac G6 GT | Antiques and Collectibles- Cannon's Online Auctions, LLC",
       "endDate": "2026-05-31 6:19:00 PM",
-      "scrapedAt": "2026-05-30T18:02:42.508646+00:00",
+      "scrapedAt": "2026-05-30T20:05:40.951916+00:00",
       "itemCount": 286,
       "itemsPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.ndjson"
     },
     {
       "safeId": "hT_S_DZDYuxrkjyAGwm8Lw",
       "title": "06/01/26: DNA Auction Group | Lifetime Collection of Vintage Costume Jewelry | Estate Goods and Chattels | Antiques | Schroeder Rd, Powhatan VA 23139- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-01 9:59:00 PM",
-      "scrapedAt": "2026-05-30T18:03:55.902069+00:00",
+      "scrapedAt": "2026-05-30T20:06:12.934726+00:00",
       "itemCount": 1164,
       "itemsPath": "data/items/hT_S_DZDYuxrkjyAGwm8Lw.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/hT_S_DZDYuxrkjyAGwm8Lw.ndjson"
     },
     {
       "safeId": "50gRY3ttr9OMTLukeSTZjA",
       "title": "06/02/26: The Estate of Allen & Carol Cook by Tom Jones Auctions, Powhatan County VA 23139- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-02 8:12:00 PM",
-      "scrapedAt": "2026-05-30T18:07:22.319168+00:00",
+      "scrapedAt": "2026-05-30T20:06:55.613493+00:00",
       "itemCount": 409,
       "itemsPath": "data/items/50gRY3ttr9OMTLukeSTZjA.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/50gRY3ttr9OMTLukeSTZjA.ndjson"
     },
     {
       "safeId": "ueFwkKYNsqFLAllnYAFdcw",
       "title": "06/03/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-03 8:18:00 PM",
-      "scrapedAt": "2026-05-30T18:08:59.027320+00:00",
+      "scrapedAt": "2026-05-30T20:07:22.306799+00:00",
       "itemCount": 796,
       "itemsPath": "data/items/ueFwkKYNsqFLAllnYAFdcw.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/ueFwkKYNsqFLAllnYAFdcw.ndjson"
     },
     {
@@ -43,15 +47,17 @@
       "scrapedAt": "2026-05-30T13:24:41.049727+00:00",
       "itemCount": 37,
       "itemsPath": "data/items/rpsJEu-fQcegLdNm4BjoYQ.parquet",
+      "source": "",
       "ndjsonPath": "data/items/rpsJEu-fQcegLdNm4BjoYQ.ndjson"
     },
     {
       "safeId": "Gb1d9TSVzPoNpFRycmPhSQ",
       "title": "06/05/26:  Evolving Lifestyle, Dinwiddie, VA, 23841- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-05 5:36:00 PM",
-      "scrapedAt": "2026-05-30T18:11:20.496640+00:00",
+      "scrapedAt": "2026-05-30T20:07:52.047683+00:00",
       "itemCount": 146,
       "itemsPath": "data/items/Gb1d9TSVzPoNpFRycmPhSQ.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/Gb1d9TSVzPoNpFRycmPhSQ.ndjson"
     },
     {
@@ -61,6 +67,7 @@
       "scrapedAt": "2026-05-30T02:43:13.710224+00:00",
       "itemCount": 223,
       "itemsPath": "data/items/vIgvMk-ow4F5FT9vYFpABw.parquet",
+      "source": "",
       "ndjsonPath": "data/items/vIgvMk-ow4F5FT9vYFpABw.ndjson"
     },
     {
@@ -70,24 +77,27 @@
       "scrapedAt": "2026-05-30T06:30:01.537463+00:00",
       "itemCount": 500,
       "itemsPath": "data/items/TSEnhqADosMhcgC3rM6KNw.parquet",
+      "source": "",
       "ndjsonPath": "data/items/TSEnhqADosMhcgC3rM6KNw.ndjson"
     },
     {
       "safeId": "C1XI_s2IvMt5WfqzOkCflA",
       "title": "06/09/26: Acorn Estate Liquidators at Gordonsville, VA 22942 Orange County, VA- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-09 7:28:48 PM",
-      "scrapedAt": "2026-05-30T18:12:12.577847+00:00",
+      "scrapedAt": "2026-05-30T20:08:18.983392+00:00",
       "itemCount": 445,
       "itemsPath": "data/items/C1XI_s2IvMt5WfqzOkCflA.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/C1XI_s2IvMt5WfqzOkCflA.ndjson"
     },
     {
       "safeId": "kv5GFVm_PLi6WqCrpWFtew",
       "title": "06/10/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-10 8:04:00 PM",
-      "scrapedAt": "2026-05-30T18:13:46.225411+00:00",
+      "scrapedAt": "2026-05-30T20:08:45.189151+00:00",
       "itemCount": 739,
       "itemsPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.ndjson"
     },
     {
@@ -97,24 +107,27 @@
       "scrapedAt": "2026-05-30T06:35:12.165206+00:00",
       "itemCount": 269,
       "itemsPath": "data/items/KtbqxU0Uovx985gkiiGrUQ.parquet",
+      "source": "",
       "ndjsonPath": "data/items/KtbqxU0Uovx985gkiiGrUQ.ndjson"
     },
     {
       "safeId": "ZO1ARTsfo5u_cpC34qfAGQ",
       "title": "06/15/26: Henrico County Estate Auction |  Dunkerry Lane | Sandston VA 23150- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-15 5:56:00 PM",
-      "scrapedAt": "2026-05-30T18:16:05.942527+00:00",
+      "scrapedAt": "2026-05-30T20:09:17.163119+00:00",
       "itemCount": 228,
       "itemsPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.ndjson"
     },
     {
       "safeId": "zmIi5q6gqQxSJ8zjILQe5A",
       "title": "06/17/26: Estate Collectibles and Objets d'Art | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-17 5:48:00 PM",
-      "scrapedAt": "2026-05-30T18:16:51.818021+00:00",
+      "scrapedAt": "2026-05-30T20:09:29.233704+00:00",
       "itemCount": 193,
       "itemsPath": "data/items/zmIi5q6gqQxSJ8zjILQe5A.parquet",
+      "source": "cannons",
       "ndjsonPath": "data/items/zmIi5q6gqQxSJ8zjILQe5A.ndjson"
     }
   ]
