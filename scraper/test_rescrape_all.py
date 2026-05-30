@@ -24,11 +24,13 @@ class ManifestEntryTest(unittest.TestCase):
                     "auctionTitle": "Current Estate Auction",
                     "auctionEndDate": "2026-06-01T17:00:00+00:00",
                     "scrapedAt": "2026-05-27T12:00:00+00:00",
+                    "source": "cannons",
                 },
                 {
                     "auctionTitle": "Current Estate Auction",
                     "auctionEndDate": "2026-06-01T17:00:00+00:00",
                     "scrapedAt": "2026-05-27T12:00:00+00:00",
+                    "source": "cannons",
                 },
             ])
             pq.write_table(table, path)
@@ -42,6 +44,7 @@ class ManifestEntryTest(unittest.TestCase):
             "scrapedAt": "2026-05-27T12:00:00+00:00",
             "itemCount": 2,
             "itemsPath": "data/items/safe-id.parquet",
+            "source": "cannons",
         })
 
     def test_archived_manifest_entry_uses_archive_path(self):
