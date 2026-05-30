@@ -30,7 +30,17 @@ def sanitize_auction_id(auction_id: str) -> str:
 
 
 def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
-    """Return {item_id: (currentBid, totalBids)} from an existing Parquet file."""
+    """Return {item_id: (currentBid, totalBids)} from an existing Parquet or NDJSON file."""
+    ndjson_path = path.with_suffix(".ndjson")
+    if ndjson_path.exists():
+        try:
+            rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+            return {
+                row["id"]: (float(row.get("currentBid") or 0), int(row.get("totalBids") or 0))
+                for row in rows
+            }
+        except Exception:
+            pass
     if not path.exists():
         return {}
     import pyarrow.parquet as pq
@@ -298,7 +308,7 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         print(f"\nNo bid changes detected; skipping write for {safe_id}")
         return {"changed": False}
 
-    # Write items as Parquet with embedded auction metadata
+    # Write items with embedded auction metadata
     import pyarrow as pa
     import pyarrow.parquet as pq
 
@@ -308,18 +318,25 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     latest_end = max(end_dates) if end_dates else ""
     scraped_at = datetime.now(timezone.utc).isoformat()
 
-    # Embed auction metadata in each item row
     for item in all_items:
-        item["images"] = json.dumps(item["images"])
         item["auctionId"] = auction_id
         item["auctionSafeId"] = safe_id
         item["auctionTitle"] = auction_title
         item["auctionEndDate"] = latest_end
         item["scrapedAt"] = scraped_at
 
+    # Write NDJSON (images as real array)
+    ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
+    ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]
+    ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
+    print(f"Wrote {len(all_items)} items to {ndjson_path}")
+
+    # Write Parquet (images stringified — Arrow doesn't support list-of-strings natively here)
+    for item in all_items:
+        item["images"] = json.dumps(item["images"])
     table = pa.Table.from_pylist(all_items)
     pq.write_table(table, items_path, compression="snappy")
-    print(f"\nWrote {len(all_items)} items to {items_path}")
+    print(f"Wrote {len(all_items)} items to {items_path}")
 
     if snapshot_to_motherduck is None:
         from motherduck import should_snapshot_to_motherduck
