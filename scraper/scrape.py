@@ -332,6 +332,12 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
     print(f"Wrote {len(all_items)} items to {ndjson_path}")
 
+    # Generate CLIP embeddings (images still arrays at this point)
+    import os
+    if os.environ.get("GOONERS_EMBEDDINGS") == "1":
+        from embed import generate_and_write as _gen_embeddings
+        _gen_embeddings(all_items, items_path, session)
+
     # Write Parquet (images stringified — Arrow doesn't support list-of-strings natively here)
     for item in all_items:
         item["images"] = json.dumps(item["images"])

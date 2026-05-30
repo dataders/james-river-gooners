@@ -65,6 +65,44 @@ class ManifestEntryTest(unittest.TestCase):
 
         self.assertEqual(entry["source"], "")
 
+    def test_manifest_entry_includes_ndjson_path_when_sidecar_exists(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "safe-id.parquet"
+            pq.write_table(pa.Table.from_pylist([
+                {"auctionTitle": "A", "auctionEndDate": "2026-06-01", "scrapedAt": "2026-05-27"},
+            ]), path)
+            path.with_suffix(".ndjson").write_text("{}\n")
+
+            entry = manifest_entry_for_file(path, archived=False)
+
+        self.assertEqual(entry["ndjsonPath"], "data/items/safe-id.ndjson")
+        self.assertNotIn("embeddingsPath", entry)
+
+    def test_manifest_entry_includes_embeddings_path_when_sidecar_exists(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "safe-id.parquet"
+            pq.write_table(pa.Table.from_pylist([
+                {"auctionTitle": "A", "auctionEndDate": "2026-06-01", "scrapedAt": "2026-05-27"},
+            ]), path)
+            path.with_suffix(".embeddings").write_bytes(b"\x00" * 8)
+
+            entry = manifest_entry_for_file(path, archived=False)
+
+        self.assertEqual(entry["embeddingsPath"], "data/items/safe-id.embeddings")
+        self.assertNotIn("ndjsonPath", entry)
+
+    def test_manifest_entry_omits_sidecar_paths_when_no_sidecars(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "safe-id.parquet"
+            pq.write_table(pa.Table.from_pylist([
+                {"auctionTitle": "A", "auctionEndDate": "2026-06-01", "scrapedAt": "2026-05-27"},
+            ]), path)
+
+            entry = manifest_entry_for_file(path, archived=False)
+
+        self.assertNotIn("ndjsonPath", entry)
+        self.assertNotIn("embeddingsPath", entry)
+
     def test_archived_manifest_entry_uses_archive_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "old-id.parquet"
