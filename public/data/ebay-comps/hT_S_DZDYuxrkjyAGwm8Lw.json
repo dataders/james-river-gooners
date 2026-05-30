@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T06:36:55Z",
+  "generatedAt": "2026-05-30T09:16:49Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {},
@@ -51,6 +51,34 @@
     },
     "49005182": {
       "fetchedAt": "2026-05-30T06:36:55Z",
+      "status": "no_results"
+    },
+    "49004750": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    },
+    "49004411": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    },
+    "49005165": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    },
+    "49004919": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    },
+    "49005184": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    },
+    "49004448": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    },
+    "49005280": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
     }
   }
