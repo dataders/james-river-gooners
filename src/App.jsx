@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuctionData, activeLoader } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
@@ -10,6 +10,7 @@ import { useSearch } from './hooks/useSearch'
 import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
 import { hasEbayComps } from './utils/ebayComps'
+import { syncUrlParam } from './utils/urlState'
 import { DealsPanel } from './components/DealsPanel'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { AuctionFilter } from './components/AuctionFilter'
@@ -21,7 +22,9 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
 
 export default function App() {
-  const [showArchived, setShowArchived] = useState(false)
+  const [showArchived, setShowArchived] = useState(
+    () => new URLSearchParams(window.location.search).get('archive') === '1'
+  )
   const {
     auctions,
     excludedAuctions,
@@ -65,8 +68,37 @@ export default function App() {
   const headerVisible = useHeaderVisible()
 
   const [selectedItem, setSelectedItem] = useState(null)
-  const [bestDeals, setBestDeals] = useState(false)
-  const [showDeals, setShowDeals] = useState(false)
+  const [bestDeals, setBestDeals] = useState(
+    () => new URLSearchParams(window.location.search).get('bestDeals') === '1'
+  )
+  const [showDeals, setShowDeals] = useState(
+    () => new URLSearchParams(window.location.search).get('showDeals') === '1'
+  )
+
+  // Deep-link: open item modal once data loads
+  const initialItemKey = useRef(new URLSearchParams(window.location.search).get('item'))
+  const itemDeepLinked = useRef(false)
+  useEffect(() => {
+    if (!initialItemKey.current || loading || itemDeepLinked.current) return
+    itemDeepLinked.current = true
+    const key = initialItemKey.current
+    const colonIdx = key.indexOf(':')
+    if (colonIdx < 0) return
+    const safeId = key.slice(0, colonIdx)
+    const itemId = key.slice(colonIdx + 1)
+    const found = items.find(i => i.auctionSafeId === safeId && String(i.id) === itemId)
+    if (found) setSelectedItem(found)
+  }, [loading, items])
+
+  const handleItemClick = useCallback((item) => {
+    syncUrlParam('item', `${item.auctionSafeId}:${item.id}`)
+    setSelectedItem(item)
+  }, [])
+
+  const handleItemClose = useCallback(() => {
+    syncUrlParam('item', null)
+    setSelectedItem(null)
+  }, [])
 
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds)
@@ -174,21 +206,30 @@ export default function App() {
             <input
               type="checkbox"
               checked={showArchived}
-              onChange={e => setShowArchived(e.target.checked)}
+              onChange={e => {
+              syncUrlParam('archive', e.target.checked)
+              setShowArchived(e.target.checked)
+            }}
             />
             <span>Archived auctions</span>
           </label>
           <button
             type="button"
             className={`deals-toggle${bestDeals ? ' active' : ''}`}
-            onClick={() => setBestDeals(v => !v)}
+            onClick={() => setBestDeals(v => {
+              syncUrlParam('bestDeals', !v)
+              return !v
+            })}
           >
             Best deals only
           </button>
           <button
             type="button"
             className={`deals-toggle${showDeals ? ' active' : ''}`}
-            onClick={() => setShowDeals(v => !v)}
+            onClick={() => setShowDeals(v => {
+              syncUrlParam('showDeals', !v)
+              return !v
+            })}
           >
             Deals view
           </button>
@@ -243,7 +284,7 @@ export default function App() {
         {loading ? (
           <div className="loading">Loading auction items...</div>
         ) : showDeals ? (
-          <DealsPanel items={visibleItems} allComps={allComps} onItemClick={setSelectedItem} />
+          <DealsPanel items={visibleItems} allComps={allComps} onItemClick={handleItemClick} />
         ) : bestDeals && displayItems.length === 0 ? (
           <div className="no-deals-message">
             <div className="item-count">0 items</div>
@@ -260,7 +301,7 @@ export default function App() {
             allComps={allComps}
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
-            onItemClick={setSelectedItem}
+            onItemClick={handleItemClick}
           />
         )}
       </main>
@@ -271,7 +312,7 @@ export default function App() {
           ebayComps={allComps[selectedItem.auctionSafeId] || {}}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={toggleFavorite}
-          onClose={() => setSelectedItem(null)}
+          onClose={handleItemClose}
         />
       )}
     </div>
