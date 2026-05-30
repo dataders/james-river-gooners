@@ -80,6 +80,9 @@ def archive_file(path: Path) -> None:
     ARCHIVE_ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     target = ARCHIVE_ITEMS_DIR / path.name
     path.replace(target)
+    ndjson = path.with_suffix(".ndjson")
+    if ndjson.exists():
+        ndjson.replace(ARCHIVE_ITEMS_DIR / ndjson.name)
     print(f"Archived closed auction data: {path.name}")
 
 
@@ -104,7 +107,7 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
         pass
 
     item_dir = "archive/items" if archived else "items"
-    return {
+    entry = {
         "safeId": path.stem,
         "title": parquet_first_value(path, "auctionTitle"),
         "endDate": parquet_first_value(path, "auctionEndDate"),
@@ -112,6 +115,9 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
         "itemCount": item_count,
         "itemsPath": f"data/{item_dir}/{path.name}",
     }
+    if path.with_suffix(".ndjson").exists():
+        entry["ndjsonPath"] = f"data/{item_dir}/{path.stem}.ndjson"
+    return entry
 
 
 def manifest_sort_key(entry: dict) -> tuple[datetime, str]:

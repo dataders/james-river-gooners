@@ -6,7 +6,8 @@
       "endDate": "2026-05-27 8:28:00 PM",
       "scrapedAt": "2026-05-27T23:07:43.486016+00:00",
       "itemCount": 834,
-      "itemsPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.parquet"
+      "itemsPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.parquet",
+      "ndjsonPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.ndjson"
     },
     {
       "safeId": "bLkOiYnlcePwcQwm8L25cw",
@@ -14,7 +15,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:07:35.417102+00:00",
       "itemCount": 363,
-      "itemsPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.parquet"
+      "itemsPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.parquet",
+      "ndjsonPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.ndjson"
     },
     {
       "safeId": "MmwrCfPOyubVzrgFK3d1gQ",
@@ -22,7 +24,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:07:28.491757+00:00",
       "itemCount": 827,
-      "itemsPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.parquet"
+      "itemsPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.parquet",
+      "ndjsonPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.ndjson"
     },
     {
       "safeId": "UJdlFuhSHbhiiKDGyQklpQ",
@@ -30,7 +33,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:08:10.802814+00:00",
       "itemCount": 351,
-      "itemsPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.parquet"
+      "itemsPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.parquet",
+      "ndjsonPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.ndjson"
     },
     {
       "safeId": "26925bY6MOivsz3zKue93A",
@@ -38,7 +42,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:07:40.056347+00:00",
       "itemCount": 159,
-      "itemsPath": "data/archive/items/26925bY6MOivsz3zKue93A.parquet"
+      "itemsPath": "data/archive/items/26925bY6MOivsz3zKue93A.parquet",
+      "ndjsonPath": "data/archive/items/26925bY6MOivsz3zKue93A.ndjson"
     },
     {
       "safeId": "1R-xpYyFq2BouWpPwzWQcw",
@@ -46,7 +51,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:08:03.136649+00:00",
       "itemCount": 1187,
-      "itemsPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.parquet"
+      "itemsPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.parquet",
+      "ndjsonPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.ndjson"
     },
     {
       "safeId": "w0NiWkUBBgZyQ5zYw2NHBA",
@@ -54,7 +60,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:08:39.459157+00:00",
       "itemCount": 1004,
-      "itemsPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.parquet"
+      "itemsPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.parquet",
+      "ndjsonPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.ndjson"
     },
     {
       "safeId": "d7DYU8ApwA_e4vae0MYlgw",
@@ -62,7 +69,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:08:46.296255+00:00",
       "itemCount": 304,
-      "itemsPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.parquet"
+      "itemsPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.parquet",
+      "ndjsonPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.ndjson"
     },
     {
       "safeId": "UHLOX1ptnkWnJ4itLwtDJQ",
@@ -70,7 +78,8 @@
       "endDate": "",
       "scrapedAt": "2026-05-27T02:09:02.071088+00:00",
       "itemCount": 829,
-      "itemsPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.parquet"
+      "itemsPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.parquet",
+      "ndjsonPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.ndjson"
     }
   ]
 }

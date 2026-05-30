@@ -774,6 +774,25 @@ body {
   font-weight: 700;
 }
 
+.loader-bench {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  background: var(--chip-bg);
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: monospace;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.loader-bench:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
 .inline-error {
   color: var(--accent);
   font-size: 0.75rem;

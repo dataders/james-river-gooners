@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useAuctionData } from './hooks/useAuctionData'
+import { useAuctionData, activeLoader } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
@@ -26,6 +26,7 @@ export default function App() {
     toggleAuction,
     items,
     loading,
+    loadTimeMs,
     error,
     archiveLoading,
     archiveError,
@@ -131,6 +132,18 @@ export default function App() {
         </div>
         <ArsenalTrivia />
         <div className="view-toggles">
+          <button
+            type="button"
+            className="loader-bench"
+            title="Switch loader and reload"
+            onClick={() => {
+              const url = new URL(window.location.href)
+              url.searchParams.set('loader', activeLoader === 'ndjson' ? 'parquet' : 'ndjson')
+              window.location.href = url.toString()
+            }}
+          >
+            {activeLoader}{loadTimeMs != null ? ` · ${loadTimeMs}ms` : ''}
+          </button>
           <label className="local-toggle">
             <input
               type="checkbox"
