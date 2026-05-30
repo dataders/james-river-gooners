@@ -124,12 +124,14 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
     ;({ items, auctions } = normalizeRowsParquet(results, archived))
   }
 
-  return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
+  const embeddingPaths = entries.flatMap(e => e.embeddingsPath ? [e.embeddingsPath] : [])
+  return { items, auctions, embeddingPaths, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 export function useAuctionData(includeArchived = false) {
   const [activeItems, setActiveItems] = useState([])
   const [activeAuctions, setActiveAuctions] = useState([])
+  const [activeEmbeddingPaths, setActiveEmbeddingPaths] = useState([])
   const [archiveItems, setArchiveItems] = useState([])
   const [archiveAuctions, setArchiveAuctions] = useState([])
   const [archiveLoaded, setArchiveLoaded] = useState(false)
@@ -143,10 +145,11 @@ export function useAuctionData(includeArchived = false) {
   useEffect(() => {
     let cancelled = false
     fetchDataset('data/manifest.json')
-      .then(({ items, auctions, loadTimeMs }) => {
+      .then(({ items, auctions, embeddingPaths, loadTimeMs }) => {
         if (cancelled) return
         setActiveItems(items)
         setActiveAuctions(auctions)
+        setActiveEmbeddingPaths(embeddingPaths)
         setLoadTimeMs(loadTimeMs)
         setLoading(false)
       })
@@ -209,6 +212,7 @@ export function useAuctionData(includeArchived = false) {
     excludedAuctions,
     toggleAuction,
     items,
+    embeddingPaths: activeEmbeddingPaths,
     loading,
     loadTimeMs,
     archiveLoading: includeArchived && !archiveLoaded && !archiveError,
