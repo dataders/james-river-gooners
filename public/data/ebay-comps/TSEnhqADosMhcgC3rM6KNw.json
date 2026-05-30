@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-30T09:16:49Z",
+  "marketplaceId": "EBAY_US",
+  "source": "scraper",
+  "items": {},
+  "attempts": {
+    "48995349": {
+      "fetchedAt": "2026-05-30T09:16:49Z",
+      "status": "no_results"
+    }
+  }
+}
