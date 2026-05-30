@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-29T22:57:09Z",
+  "generatedAt": "2026-05-30T02:46:47Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {},
@@ -87,6 +87,74 @@
     },
     "48944308": {
       "fetchedAt": "2026-05-29T22:57:09Z",
+      "status": "no_results"
+    },
+    "48944356": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944360": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944369": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944370": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944367": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944368": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944353": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944388": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944357": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944363": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944320": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944376": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944361": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944366": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944362": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944364": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
+      "status": "no_results"
+    },
+    "48944365": {
+      "fetchedAt": "2026-05-30T02:46:47Z",
       "status": "no_results"
     }
   }
