@@ -7,10 +7,17 @@
 #   2. lets gh pick up credentials from the GH_TOKEN env var (set in the
 #      Claude Code on the web UI) — no interactive login required
 #
+# Runs in ASYNC mode: the JSON directive below tells Claude Code to start the
+# session immediately and run this script in the background. Faster startup, at
+# the cost of a brief window where gh may not be ready yet.
+#
 # Fail-soft by design: a missing token or a failed install logs a warning and
 # returns 0 so the session still starts.
 
 set -uo pipefail
+
+# Tell the harness to run this hook asynchronously (must be the first stdout line).
+echo '{"async": true, "asyncTimeout": 300000}'
 
 log() { echo "[session-start] $*"; }
 
