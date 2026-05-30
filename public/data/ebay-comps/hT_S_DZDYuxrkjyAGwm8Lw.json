@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -696,6 +696,752 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "49004927": {
+      "status": "ok",
+      "query": "Vintage black rhinestone jewelry 70s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+black+rhinestone+jewelry+70s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "366238407522",
+          "title": "1950-70s - LOT of MID-CENTURY VINTAGE MULTICOLOR RHINESTONES STATEMENT JEWELRY",
+          "price": {
+            "value": "29.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$20.00 shipping",
+          "soldDate": "2026-03-08",
+          "soldDateLabel": "Sold Mar 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366238407522",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397645004630",
+          "title": "VINTAGE 60's 70's COSTUME JEWELRY LOT 44pcs TRIFARI ART MONET BSK SARAH COV CORO",
+          "price": {
+            "value": "139.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$36.94 shipping",
+          "soldDate": "2026-03-01",
+          "soldDateLabel": "Sold Mar 1, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397645004630",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206220772255",
+          "title": "LOT OF 5 VINTAGE 70\u2019S CRYSTAL GLASS RHINESTONE BEAD ADJUSTABLE COCKTAIL RINGS",
+          "price": {
+            "value": "9.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$14.38 shipping",
+          "soldDate": "2026-04-26",
+          "soldDateLabel": "Sold Apr 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206220772255",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004156": {
+      "status": "ok",
+      "query": "Fenton blue opalescent hobnail",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Fenton+blue+opalescent+hobnail&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "358538405975",
+          "title": "Vintage Fenton Ruffled Blue Opalescent Hobnail Glass Candy Dish FREE SHIPPING",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.65 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358538405975",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "389837080286",
+          "title": "Vintage Fenton Hobnail Blue Opalescent Fan Vase Ruffled Edge 4\"",
+          "price": {
+            "value": "15.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.35 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389837080286",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "287343820932",
+          "title": "Fenton Diamond Lace Blue Opalescent Hobnail Crimped Bowl Rare Excellent",
+          "price": {
+            "value": "149.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/287343820932",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004600": {
+      "status": "ok",
+      "query": "New tag a large",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=New+tag+a+large&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "306946737038",
+          "title": "The North Face Origins Fleece Neon Green Men\u2019s L NWT MSRP $189 New W Tags Zip-up",
+          "price": {
+            "value": "64.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306946737038",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "366388220857",
+          "title": "The North Face Thermoball Lightweight Men's Puffer Jacket Black Size L New Tags",
+          "price": {
+            "value": "125.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.69 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366388220857",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "136914868972",
+          "title": "Pendleton Timberline Wool Blend Plaid Shirt Jacket (Pick a Size) New w/ Tags",
+          "price": {
+            "value": "129.97",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$15.99 shipping",
+          "soldDate": "2026-01-21",
+          "soldDateLabel": "Sold Jan 21, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/136914868972",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004155": {
+      "status": "ok",
+      "query": "Fenton cranberry opalescent hobnail",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Fenton+cranberry+opalescent+hobnail&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "127864809550",
+          "title": "Fenton Hobnail Cranberry Opalescent Glass Vase Ruffled Edge Pink White 3\u201d VTG",
+          "price": {
+            "value": "26.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.25 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127864809550",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "236827918768",
+          "title": "BeautifulVintage Fenton Cranberry Opalescent Hobnail Bon Bon Ruffled Edge Bowls",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.00 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236827918768",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "277987997311",
+          "title": "The Fenton Cranberry and White Opalescent Hobnail Barber Bottle with Stopper",
+          "price": {
+            "value": "50.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$15.10 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/277987997311",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004923": {
+      "status": "ok",
+      "query": "Rhinestone flower brooch assortment 60s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Rhinestone+flower+brooch+assortment+60s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "117115740478",
+          "title": "Pink & White Enamel 60's Mod Flower Pin Brooch Pink Rhinestone Vintage",
+          "price": {
+            "value": "19.98",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.50 shipping",
+          "soldDate": "2026-04-05",
+          "soldDateLabel": "Sold Apr 5, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/117115740478",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "287286553821",
+          "title": "Lot Of Mostly Vintage Brooches - Silver Gold Tone Rhinestone Variety Bb",
+          "price": {
+            "value": "9.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.61 shipping",
+          "soldDate": "2026-04-26",
+          "soldDateLabel": "Sold Apr 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/287286553821",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "117066318518",
+          "title": "Vintage Unsigned 60's Gold Tone AB Rhinestone Flower Brooch",
+          "price": {
+            "value": "22.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.00 shipping",
+          "soldDate": "2026-03-13",
+          "soldDateLabel": "Sold Mar 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/117066318518",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004756": {
+      "status": "ok",
+      "query": "Group of sterling silver",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+sterling+silver&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "402874871890",
+          "title": "STERLING SILVER FANCY BALL/BEAD BRACELETS - 7\" GROUP OF 2 DIFF. - NICE - ITALY",
+          "price": {
+            "value": "14.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.95 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/402874871890",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206173623258",
+          "title": "LOT Vintage Group of 3 Larimar Pendants In Sterling Silver C7",
+          "price": {
+            "value": "65.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.95 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206173623258",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227096816965",
+          "title": "Small Group of Butterflies MX Pendant 925 Sterling Silver Necklace Chain Mexico",
+          "price": {
+            "value": "21.93",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.00 shipping",
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227096816965",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004965": {
+      "status": "ok",
+      "query": "Antique Art Nouveau gold-tone 1900s",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Antique+Art+Nouveau+gold-tone+1900s&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "389813022469",
+          "title": "Antique Art Nouveau Belt Buckle Gold Tone Brass Woman Portrait Cameo Repouss\u00e9",
+          "price": {
+            "value": "31.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.50 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389813022469",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "198348136165",
+          "title": "Antique Edwardian Lovers Knot Hat Pin 9\" Rose Gold Tone Art Nouveau Celtic 1900s",
+          "price": {
+            "value": "33.63",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$26.90 shipping",
+          "soldDate": "2026-05-16",
+          "soldDateLabel": "Sold May 16, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/198348136165",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "375858026856",
+          "title": "Antique Art Nouveau Gold Tone Hand Mirror & Brush Set Cherub Motif Circa 1900s?",
+          "price": {
+            "value": "38.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.22 shipping",
+          "soldDate": "2026-04-13",
+          "soldDateLabel": "Sold Apr 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/375858026856",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004162": {
+      "status": "ok",
+      "query": "Roseville Pottery Sunflower pattern",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Roseville+Pottery+Sunflower+pattern&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "389925401944",
+          "title": "Roseville Pottery Vase - Sunflower Pattern w/ Two Pointy Handles, small boo-boo",
+          "price": {
+            "value": "99.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.00 shipping",
+          "soldDate": "2026-04-22",
+          "soldDateLabel": "Sold Apr 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389925401944",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168366477719",
+          "title": "Roseville Pottery Sunflower Vase 4908 Green Blue 8.25\u201d c.1930 Art Pottery C12",
+          "price": {
+            "value": "499.95",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-10",
+          "soldDateLabel": "Sold May 10, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168366477719",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "178151654467",
+          "title": "1930's Vintage Roseville Art Pottery Sunflower 5\" Vase",
+          "price": {
+            "value": "300.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$24.00 shipping",
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/178151654467",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004382": {
+      "status": "ok",
+      "query": "Two Corning Ware coffee",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Two+Corning+Ware+coffee&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "389966240066",
+          "title": "Vintage Corning Ware Blue Cornflower Two Quart  Drip Coffee Maker",
+          "price": {
+            "value": "110.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.53 shipping",
+          "soldDate": "2026-05-09",
+          "soldDateLabel": "Sold May 9, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389966240066",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "236649853702",
+          "title": "Vintage Corning Ware Blue Cornflower Coffee Tea Pot Kettle 6 Cup Lot of Two Read",
+          "price": {
+            "value": "49.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-22",
+          "soldDateLabel": "Sold Apr 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236649853702",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397770588634",
+          "title": "TWO Corning Ware French White Coffee Soup Mugs 20 oz Stoneware with lids 3 3/4\"",
+          "price": {
+            "value": "17.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.67 shipping",
+          "soldDate": "2026-04-04",
+          "soldDateLabel": "Sold Apr 4, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397770588634",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49005142": {
+      "status": "ok",
+      "query": "Decorative stone wall plaque",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Decorative+stone+wall+plaque&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "318312939505",
+          "title": "Signed Religious Decor Virgin Mary Stone Relief Plaque Wall Mounted",
+          "price": {
+            "value": "100.71",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$58.77 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318312939505",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137266846615",
+          "title": "Holy Family Holy Water Font 8\" Wall Plaque Resin Stone Religious Decor",
+          "price": {
+            "value": "117.28",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137266846615",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358494429801",
+          "title": "Vintage Indian Hindu Stone Relief Wall Plaque Carved Sandstone 7.5\" Decor",
+          "price": {
+            "value": "448.68",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$40.24 shipping",
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358494429801",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004956": {
+      "status": "ok",
+      "query": "Vintage rhinestone jewelry group 90s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+rhinestone+jewelry+group+90s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "800069454720",
+          "title": "Vintage Craft Rhinestone Salvage Jewelry Lot Pins Rings Bracelets 1.2 LB",
+          "price": {
+            "value": "12.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$17.99 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/800069454720",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "188407609798",
+          "title": "13 PC LOT VINTAGE JEWELRY CLEAR BLUE NECKLACE EARRING RHINESTONE BRACELET BROOCH",
+          "price": {
+            "value": "29.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$18.47 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188407609798",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "198377565141",
+          "title": "LOT OF VINTAGE RHINESTONE JEWELRY",
+          "price": {
+            "value": "29.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$16.92 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/198377565141",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004203": {
+      "status": "ok",
+      "query": "Lefton China hand-painted porcelain",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Lefton+China+hand-painted+porcelain&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "800051417535",
+          "title": "Lefton China Hand Painted St. Joseph Holding Child Jesus Statue Figurine",
+          "price": {
+            "value": "5.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$72.41 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/800051417535",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397969789695",
+          "title": "Lefton China Pinkie And Blue Boy Porcelain Limited Edition Figurine Lot Of 2",
+          "price": {
+            "value": "22.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$123.57 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397969789695",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137281802250",
+          "title": "Vtg 1993 Lefton Old Point Loma 1855 Lighthouse Ceramic Figurine San Diego CA",
+          "price": {
+            "value": "33.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$116.05 shipping",
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137281802250",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004878": {
+      "status": "ok",
+      "query": "Vintage pink clear rhinestone 60s.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+pink+clear+rhinestone+60s.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "127785094110",
+          "title": "Vtg \u201850-\u201860s Pink Rhinestone /Crystal Bead Cluster Pin Brooch Clip Earrings Set",
+          "price": {
+            "value": "39.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$4.97 shipping",
+          "soldDate": "2026-04-02",
+          "soldDateLabel": "Sold Apr 2, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127785094110",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "336578501078",
+          "title": "Vintage Pink Glass Petals & Clear Rhinestone Flower Brooch & Earring Set",
+          "price": {
+            "value": "59.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.99 shipping",
+          "soldDate": "2026-05-11",
+          "soldDateLabel": "Sold May 11, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/336578501078",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "117115740478",
+          "title": "Pink & White Enamel 60's Mod Flower Pin Brooch Pink Rhinestone Vintage",
+          "price": {
+            "value": "19.98",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.50 shipping",
+          "soldDate": "2026-04-05",
+          "soldDateLabel": "Sold Apr 5, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/117115740478",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49004871": {
+      "status": "ok",
+      "query": "Five rhinestone animal brooches",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Five+rhinestone+animal+brooches&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "318362691112",
+          "title": "Lizard Rhinestone Brooch Pin Pink Green Gold 60mm Animal Reptile Theme",
+          "price": {
+            "value": "27.56",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318362691112",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "318251141033",
+          "title": "Huge Lot of 52 Animal Brooches Heavywork Rhinestone & Enamel Jewelry Collection",
+          "price": {
+            "value": "149.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318251141033",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "318240138261",
+          "title": "Lot of 50 Animal Brooch Pins Mixed Styles Rhinestone Enamel Assorted Jewelry",
+          "price": {
+            "value": "149.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318240138261",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -825,6 +1571,62 @@
     },
     "49004909": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49004927": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004156": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004600": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004155": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004923": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004756": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004965": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004162": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004382": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49005142": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004956": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004203": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004878": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49004871": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }

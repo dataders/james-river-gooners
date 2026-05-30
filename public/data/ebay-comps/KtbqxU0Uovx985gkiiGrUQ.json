@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -57,6 +57,59 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "48994555": {
+      "status": "ok",
+      "query": "Two Dunhill tobacco pipes",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Two+Dunhill+tobacco+pipes&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "267681458088",
+          "title": "Vintage Dunhill Shell Briar White Spot Group 3 Smoking Pipe",
+          "price": {
+            "value": "134.55",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$29.98 shipping",
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267681458088",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257461725577",
+          "title": "DUNHILL STANDARD MIXTURE Tin Tobacco BLENDED IN UK - Pipe Pipes Pipe \u70df\u6597",
+          "price": {
+            "value": "11.66",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-17",
+          "soldDateLabel": "Sold Apr 17, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257461725577",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206308288608",
+          "title": "Vintage Dunhill Faded (4)R Estate Tobacco Pipe Made In England Reserved Encor",
+          "price": {
+            "value": "274.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$39.60 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206308288608",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -66,6 +119,10 @@
     },
     "48994656": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48994555": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }

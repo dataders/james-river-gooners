@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -165,6 +165,311 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "48979796": {
+      "status": "ok",
+      "query": "Brown synthetic leather power",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Brown+synthetic+leather+power&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "236604947655",
+          "title": "Horizontal Men Leather Cell Phone Pouch Holster Holder with Belt Clip Cover Case",
+          "price": {
+            "value": "12.94",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.99 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236604947655",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "186384984762",
+          "title": "Magnetic Zipper Wallet Case Cover For Moto G Stylus 5G 2025/ Edge (2025)/G 2025",
+          "price": {
+            "value": "10.68",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/186384984762",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "226413473930",
+          "title": "Belt Clip Loops Shockproof Holster Men PU Leather Holder Phone Case For Phones",
+          "price": {
+            "value": "6.54",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.99 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/226413473930",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979835": {
+      "status": "ok",
+      "query": "Authentic American Reproductions cherry 38\"x21.5\"x46",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Authentic+American+Reproductions+cherry+38%22x21.5%22x46&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "206201900453",
+          "title": "Authentic Antique C.1877 38 Star Colorado American Flag 29 3/4\" x 46 1/4\"",
+          "price": {
+            "value": "1225.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$16.35 shipping",
+          "soldDate": "2026-04-20",
+          "soldDateLabel": "Sold Apr 20, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206201900453",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "406730580460",
+          "title": "GM Authentic *CORVETTE BLVD* RED METAL SIGN 20\" x 3.5\"   NEW",
+          "price": {
+            "value": "4.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.50 shipping",
+          "soldDate": "2026-03-08",
+          "soldDateLabel": "Sold Mar 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/406730580460",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979887": {
+      "status": "ok",
+      "query": "Vintage Victorian jewelry most 10K.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+Victorian+jewelry+most+10K.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "168356290777",
+          "title": "Solid 10k Gold Vintage Victorian Brooch Rings Pendant & 14k Necklace Not Scrap",
+          "price": {
+            "value": "481.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$40.91 shipping",
+          "soldDate": "2026-05-10",
+          "soldDateLabel": "Sold May 10, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168356290777",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "127843263234",
+          "title": "Vintage & Antique Jewelry Lot Rhinestone Art Deco Paste Victorian C Clasp Etc",
+          "price": {
+            "value": "374.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$34.95 shipping",
+          "soldDate": "2026-05-10",
+          "soldDateLabel": "Sold May 10, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127843263234",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206304173176",
+          "title": "Victorian Vintage Gold Filled Mixed Metals Jewelry Lot",
+          "price": {
+            "value": "79.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$17.73 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206304173176",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979670": {
+      "status": "ok",
+      "query": "Vintage Victorian mahogany marble",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+Victorian+mahogany+marble&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "298341402988",
+          "title": "67779 Victorian Oval Marble Top Side Table with Mahogany Base",
+          "price": {
+            "value": "295.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/298341402988",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "336586546036",
+          "title": "Antique Louis XV Commode Floral Inlay Marble Top Brass Victorian Mahogany",
+          "price": {
+            "value": "339.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$193.37 shipping",
+          "soldDate": "2026-05-23",
+          "soldDateLabel": "Sold May 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/336586546036",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "177563166081",
+          "title": "Antique Victorian Eastlake Carved Mahogany Oval Marble Pedestal Parlor Table F27",
+          "price": {
+            "value": "450.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$195.00 shipping",
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/177563166081",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979756": {
+      "status": "ok",
+      "query": "Sterling silver curved baby",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Sterling+silver+curved+baby&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "375247955417",
+          "title": "Vintage Sterling Silver Baby Spoon With Curved Engraved Handle",
+          "price": {
+            "value": "24.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.45 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/375247955417",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "276425781763",
+          "title": "Brand New Tiffany & Co Sterling Silver Curved Handle Loop Baby Spoon & Fork Set",
+          "price": {
+            "value": "345.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.24 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/276425781763",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267489566239",
+          "title": "WEBSTER STERLING SILVER RED RIDING HOOD PATTERN CURVED HANDLE BABY INFANT SPOON",
+          "price": {
+            "value": "55.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.95 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267489566239",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979795": {
+      "status": "ok",
+      "query": "Panasonic SA-AK47 home stereo",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Panasonic+SA-AK47+home+stereo&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "306789210305",
+          "title": "Panasonic SA-AK630 Stereo System Speakers Subwoofer New Remote Antenna",
+          "price": {
+            "value": "299.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$215.87 shipping",
+          "soldDate": "2026-04-08",
+          "soldDateLabel": "Sold Apr 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306789210305",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "318002448373",
+          "title": "Retro Panasonic SA-AK320 Works 5 CD Dual Cassette Radio Home Stereo System",
+          "price": {
+            "value": "87.44",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$100.27 shipping",
+          "soldDate": "2026-04-07",
+          "soldDateLabel": "Sold Apr 7, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318002448373",
+          "condition": "Parts Only",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "327105434542",
+          "title": "Panasonic SA-AK17 CD Stereo System  ***READ DESCRIPTION***",
+          "price": {
+            "value": "59.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$128.37 shipping",
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/327105434542",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -282,6 +587,30 @@
     },
     "48979765": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48979796": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48979835": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48979887": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48979670": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48979756": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48979795": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }

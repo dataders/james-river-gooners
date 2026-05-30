@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -108,6 +108,112 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "49002488": {
+      "status": "ok",
+      "query": "Two large animal costume",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Two+large+animal+costume&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "358222312675",
+          "title": "Monkey Jumpsuit Adult Large XL Costume Jungle Animal Fancy Dress Up Halloween",
+          "price": {
+            "value": "25.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.26 shipping",
+          "soldDate": "2026-05-17",
+          "soldDateLabel": "Sold May 17, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358222312675",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306802240587",
+          "title": "Adult Fluffy Dog Animal Fancy Dress Zoo Ladies Mens Costume M-L New",
+          "price": {
+            "value": "67.24",
+            "currency": "USD"
+          },
+          "soldDate": "2026-03-10",
+          "soldDateLabel": "Sold Mar 10, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306802240587",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "285506116400",
+          "title": "Men`s Cow Costume + Hood Adult Animal All In One Jumpsuit Halloween S - XL",
+          "price": {
+            "value": "26.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.95 shipping",
+          "soldDate": "2026-04-04",
+          "soldDateLabel": "Sold Apr 4, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/285506116400",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002487": {
+      "status": "ok",
+      "query": "Green grinch like costume",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Green+grinch+like+costume&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "136651770890",
+          "title": "Christmas The Grinch Complete Costume Santa Claus Costume Adult (SIZE: L- 2XL).",
+          "price": {
+            "value": "780.46",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/136651770890",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137165391833",
+          "title": "Dr Seuss The Grinch Adult Costume Large 42-44 InSpirit Designs 4pc Set Green",
+          "price": {
+            "value": "694.21",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$122.18 shipping",
+          "soldDate": "2026-03-26",
+          "soldDateLabel": "Sold Mar 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137165391833",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306912366410",
+          "title": "The Green Monster Costume Xmas Santa Grinch Cosplay Outfit Halloween Party Dress",
+          "price": {
+            "value": "503.30",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$126.00 shipping",
+          "soldDate": "2026-05-21",
+          "soldDateLabel": "Sold May 21, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306912366410",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -201,6 +307,14 @@
     },
     "49002489": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49002488": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49002487": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }

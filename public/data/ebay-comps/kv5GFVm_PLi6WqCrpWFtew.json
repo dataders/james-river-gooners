@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-30T13:28:41Z",
+  "marketplaceId": "EBAY_US",
+  "source": "scraper",
+  "items": {
+    "49025572": {
+      "status": "ok",
+      "query": "Wedding edition of Adolf",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Wedding+edition+of+Adolf&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "157650369521",
+          "title": "The Death of Adolf Hitler by Lev Bezymenski 1968 First Edition Hardcover DJ",
+          "price": {
+            "value": "23.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.35 shipping",
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157650369521",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "188014578905",
+          "title": "The Life and Death of Adolf Hitler Robert Payne First Edition Hardback 1973 GAR",
+          "price": {
+            "value": "14.76",
+            "currency": "USD"
+          },
+          "soldDate": "2026-03-29",
+          "soldDateLabel": "Sold Mar 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188014578905",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168173519587",
+          "title": "The Rise and Fall of Adolf Hitler by William L. Shirer HC First Edition  Very Go",
+          "price": {
+            "value": "20.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$20.86 shipping",
+          "soldDate": "2026-03-28",
+          "soldDateLabel": "Sold Mar 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168173519587",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49025513": {
+      "status": "ok",
+      "query": "John M. Barber limited",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=John+M.+Barber+limited&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "257474342496",
+          "title": "Signed Limited Edition 831/950 Print  \u201cBAY COUNTRY MILL\u201d John M Barber",
+          "price": {
+            "value": "45.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$45.41 shipping",
+          "soldDate": "2026-05-15",
+          "soldDateLabel": "Sold May 15, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257474342496",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257468301012",
+          "title": "Signed Limited Edition 833/950 Print  \u201cBAY COUNTRY MILL\u201d John M Barber",
+          "price": {
+            "value": "45.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$45.41 shipping",
+          "soldDate": "2026-04-23",
+          "soldDateLabel": "Sold Apr 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257468301012",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257217594561",
+          "title": "Signed Limited Edition 834/950 Print  \u201cBAY COUNTRY MILL\u201d John M Barber",
+          "price": {
+            "value": "50.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$45.58 shipping",
+          "soldDate": "2026-04-16",
+          "soldDateLabel": "Sold Apr 16, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257217594561",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49025328": {
+      "status": "ok",
+      "query": "Brown upholstered recliner chair",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Brown+upholstered+recliner+chair&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "314922225044",
+          "title": "Big Tall Large Electric Power Lift Recliner Chair Extended Footrest Massage Heat",
+          "price": {
+            "value": "454.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/314922225044",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "136926403215",
+          "title": "Oversized 360\u00b0 Swivel Rocker Recliner Chair for Adults w/ Cup Holder Upholstered",
+          "price": {
+            "value": "325.50",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/136926403215",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "205790614830",
+          "title": "CHITA Swivel Glider Power Recliner,Faux Leather Nursery Chair, FSC Certified",
+          "price": {
+            "value": "649.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-25",
+          "soldDateLabel": "Sold May 25, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/205790614830",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
+  "attempts": {
+    "49025572": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49025513": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49025328": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    }
+  }
+}
