@@ -581,16 +581,19 @@ def soldcomps_sold_matches(
     if not api_key:
         return None
 
-    response = session.get(
-        os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
-        params={"keyword": search["query"]},
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Accept": "application/json",
-            "User-Agent": "james-river-gooners/1.0",
-        },
-        timeout=timeout,
-    )
+    try:
+        response = session.get(
+            os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
+            params={"keyword": search["query"]},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json",
+                "User-Agent": "james-river-gooners/1.0",
+            },
+            timeout=timeout,
+        )
+    except OSError:
+        return None
     if response.status_code >= 400:
         return {
             "status": "error",
