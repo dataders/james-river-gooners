@@ -37,6 +37,16 @@ on:
         required: false
         type: boolean
         default: false
+      skip_categories:
+        description: 'Comma-separated broad category groups to skip (e.g. "Collectibles,Jewelry & Watches,Coins & Currency,China & Glass")'
+        required: false
+        type: string
+        default: ''
+      no_daily_pacing:
+        description: 'Spend full remaining monthly budget in one run instead of spreading across days'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -68,6 +78,7 @@ jobs:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
           AGENT_BROWSER_SESSION: gooners-ebay-comps
+          GOONERS_EBAY_COMPS_SKIP_CATEGORIES: ${{ inputs.skip_categories }}
         run: |
           cd scraper
           # The static JSON read model is the source of truth; MotherDuck is an
@@ -81,19 +92,26 @@ jobs:
           if [ "${{ inputs.refresh_existing }}" = "true" ]; then
             SKIP_FLAG=""
           fi
+          PACING_FLAG=""
+          if [ "${{ inputs.no_daily_pacing }}" = "true" ]; then
+            PACING_FLAG="--no-daily-pacing"
+          fi
+          # skip_categories is passed via GOONERS_EBAY_COMPS_SKIP_CATEGORIES env var
+          # (values may contain spaces, e.g. "Jewelry & Watches"), which ebay_comps.py
+          # reads as the --skip-categories default.
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
               python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0 \
                 --monthly-budget "${{ inputs.monthly_budget }}" \
-                --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG
+                --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG $PACING_FLAG
           else
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
               python ebay_comps.py fetch-direct \
                 --limit "${{ inputs.limit }}" \
                 --max-queries "${{ inputs.max_queries }}" \
                 --monthly-budget "${{ inputs.monthly_budget }}" \
-                --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG
+                --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG $PACING_FLAG
           fi
 
       - name: Commit and push
