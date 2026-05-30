@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -56,6 +56,164 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "48995474": {
+      "status": "ok",
+      "query": "Klaussner buffet 64w 18d",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Klaussner+buffet+64w+18d&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "267643445350",
+          "title": "2026 Hot Wheels '64 Impala STH Case D Super Treasure Hunt New w/protector. Read*",
+          "price": {
+            "value": "60.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.13 shipping",
+          "soldDate": "2026-04-18",
+          "soldDateLabel": "Sold Apr 18, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267643445350",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168203045878",
+          "title": "Hot Wheels 2026 '64 Impala STH Super Treasure Hunt Case D Lowrider w/ Protector",
+          "price": {
+            "value": "65.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.97 shipping",
+          "soldDate": "2026-03-12",
+          "soldDateLabel": "Sold Mar 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168203045878",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "198166379486",
+          "title": "Hot Wheels 2026 '64 Impala Lowrider STH Case D Super Treasure Hunt New w/ Prot",
+          "price": {
+            "value": "65.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.00 shipping",
+          "soldDate": "2026-03-11",
+          "soldDateLabel": "Sold Mar 11, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/198166379486",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48995297": {
+      "status": "ok",
+      "query": "Dewalt DW357 electric 7.25",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Dewalt+DW357+electric+7.25&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "271238451035",
+          "title": "DEWALT 145323-06 Brush Pair for DW705 DW705S DW708 DW744 DW357 DW358 DW359 DW744",
+          "price": {
+            "value": "9.36",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/271238451035",
+          "condition": "Open Box",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137324001121",
+          "title": "DeWalt DW255 VSR Drywall Screwdriver 120V 5300RPM Electric Corded - Tested",
+          "price": {
+            "value": "64.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137324001121",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168247383584",
+          "title": "DeWalt DW236 Corded Electric 1/2\" 13mm VSR Drill + Side Handle 7.8 AMPS",
+          "price": {
+            "value": "39.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.72 shipping",
+          "soldDate": "2026-04-22",
+          "soldDateLabel": "Sold Apr 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168247383584",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48995355": {
+      "status": "ok",
+      "query": "12 cans NAPA CRC",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=12+cans+NAPA+CRC&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "188399813581",
+          "title": "Yoo-hoo Chocolate Drink, 11 Fluid Ounce, 12 Pack Cans New",
+          "price": {
+            "value": "3.67",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188399813581",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397966944314",
+          "title": "Sams Cola Soda Pop, 12 fl oz, 12 Pack Cans Free Shipping",
+          "price": {
+            "value": "3.59",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397966944314",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "188299096452",
+          "title": "Heileman's Old Style LAGER 12 oz. 1950's flat top  - La Crosse, Wisconsin",
+          "price": {
+            "value": "11.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.50 shipping",
+          "soldDate": "2026-04-28",
+          "soldDateLabel": "Sold Apr 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188299096452",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -65,6 +223,18 @@
     },
     "48995419": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48995474": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48995297": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48995355": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }

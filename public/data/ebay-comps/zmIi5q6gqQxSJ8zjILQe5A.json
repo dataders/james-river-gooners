@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -264,6 +264,83 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "48944327": {
+      "status": "ok",
+      "query": "Winchester 121 bolt action Z236287.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Winchester+121+bolt+action+Z236287.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "167633920251",
+          "title": "Vintage Winchester Model 121 Bolt Action Instructions. Youth Deluxe",
+          "price": {
+            "value": "14.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-03-07",
+          "soldDateLabel": "Sold Mar 7, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/167633920251",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48944358": {
+      "status": "ok",
+      "query": "80 Assorted English Japanese OPO1-024",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=80+Assorted+English+Japanese+OPO1-024&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "298321549355",
+          "title": "2013 POKEMON JAPANESE BLACK & WHITE SHINY COLLECTION #024 FULL ART/MEW EX PSA 1",
+          "price": {
+            "value": "129.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$32.00 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/298321549355",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227315332612",
+          "title": "YuGiOh Blazing Dominion BLZD Choose Your Single Cards 1st Edition",
+          "price": {
+            "value": "1.33",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$16.08 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227315332612",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227356323828",
+          "title": "Yugioh 3x Marshmao Yummy Secret Rare 1st Ed DOOD-EN024",
+          "price": {
+            "value": "70.91",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$24.30 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227356323828",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -489,6 +566,14 @@
     },
     "48944393": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48944327": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "48944358": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }
