@@ -130,11 +130,14 @@ export default function App() {
 
   const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery, embeddingPaths)
 
-  // Union of keyword and semantic results; fall back to keyword-only while model loads
+  // Hybrid blend: intersect when both are available so semantic filters keyword false positives.
+  // If keyword finds nothing (semantic-only query like "vintage mid-century"), use semantic alone.
+  // Falls back to keyword-only while the model is still loading.
   const searchIds = useMemo(() => {
     if (!searchQuery) return null
     if (!semanticIds) return miniSearchIds
-    return new Set([...miniSearchIds, ...semanticIds])
+    if (miniSearchIds.size === 0) return semanticIds
+    return new Set([...miniSearchIds].filter(id => semanticIds.has(id)))
   }, [searchQuery, miniSearchIds, semanticIds])
 
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
