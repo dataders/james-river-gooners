@@ -7,6 +7,7 @@ import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
+import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
 import { hasEbayComps } from './utils/ebayComps'
 import { DealsPanel } from './components/DealsPanel'
@@ -26,6 +27,7 @@ export default function App() {
     excludedAuctions,
     toggleAuction,
     items,
+    embeddingPaths,
     loading,
     loadTimeMs,
     error,
@@ -89,10 +91,19 @@ export default function App() {
   )
 
   const searchIndex = useSearch(visibleItems)
-  const searchIds = useMemo(() => {
+  const miniSearchIds = useMemo(() => {
     if (!searchQuery) return null
     return new Set(searchIndex.search(searchQuery).map(r => r.id))
   }, [searchIndex, searchQuery])
+
+  const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery, embeddingPaths)
+
+  // Union of keyword and semantic results; fall back to keyword-only while model loads
+  const searchIds = useMemo(() => {
+    if (!searchQuery) return null
+    if (!semanticIds) return miniSearchIds
+    return new Set([...miniSearchIds, ...semanticIds])
+  }, [searchQuery, miniSearchIds, semanticIds])
 
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
   const preFilteredItems = useMemo(
@@ -189,7 +200,7 @@ export default function App() {
             Has comp
           </button>
         </div>
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <SearchBar value={searchQuery} onChange={setSearchQuery} semanticStatus={semanticStatus} />
         <RangeFilters
           items={visibleItems}
           minPrice={minPrice}
