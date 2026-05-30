@@ -8,7 +8,7 @@ function hoursUntil(endDate) {
  * Filter auction items based on preferences.
  * excludedCategories now contains rawCategory values.
  */
-export function filterItems(items, { excludedCategories, searchQuery, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }) {
+export function filterItems(items, { excludedCategories, searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }) {
   return items.filter(item => {
     // Exclude filter: hide items by rawCategory
     if (excludedCategories.includes(item.rawCategory)) {
@@ -39,12 +39,8 @@ export function filterItems(items, { excludedCategories, searchQuery, minPrice, 
     }
 
     // Search filter
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      const searchable = `${item.title} ${item.description} ${item.rawCategory}`.toLowerCase()
-      if (!searchable.includes(q)) {
-        return false
-      }
+    if (searchIds !== null && searchIds !== undefined && !searchIds.has(item.id)) {
+      return false
     }
 
     return true
