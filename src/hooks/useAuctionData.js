@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import initWasm, { readParquet } from 'parquet-wasm'
 import { isLocalAuction } from '../utils/locality'
 import { normalizeManifest } from '../utils/manifest'
+import { syncUrlParam } from '../utils/urlState'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -136,7 +137,9 @@ export function useAuctionData(includeArchived = false) {
   const [archiveAuctions, setArchiveAuctions] = useState([])
   const [archiveLoaded, setArchiveLoaded] = useState(false)
   const archiveLoadingRef = useRef(false)
-  const [excludedAuctions, setExcludedAuctions] = useState([])
+  const [excludedAuctions, setExcludedAuctions] = useState(() =>
+    new URLSearchParams(window.location.search).getAll('hideAuction')
+  )
   const [loading, setLoading] = useState(true)
   const [loadTimeMs, setLoadTimeMs] = useState(null)
   const [error, setError] = useState(null)
@@ -202,8 +205,9 @@ export function useAuctionData(includeArchived = false) {
   const toggleAuction = (safeId) => {
     setExcludedAuctions(prev => {
       const idx = prev.indexOf(safeId)
-      if (idx >= 0) return prev.filter(id => id !== safeId)
-      return [...prev, safeId]
+      const next = idx >= 0 ? prev.filter(id => id !== safeId) : [...prev, safeId]
+      syncUrlParam('hideAuction', next)
+      return next
     })
   }
 

@@ -5,6 +5,14 @@ import { RoiCalculator } from './RoiCalculator'
 
 export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
   const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
   // Close on Escape
@@ -96,16 +104,21 @@ export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite,
             <div className="detail-description">{item.description}</div>
           )}
 
-          {item.detailUrl && (
-            <a
-              href={item.detailUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="detail-link"
-            >
-              Open on Cannon's
-            </a>
-          )}
+          <div className="detail-actions">
+            {item.detailUrl && (
+              <a
+                href={item.detailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="detail-link"
+              >
+                Open on Cannon's
+              </a>
+            )}
+            <button className="detail-copy-link" onClick={handleCopyLink}>
+              {copied ? 'Copied!' : 'Copy link'}
+            </button>
+          </div>
 
           <RoiCalculator soldComps={ebayComps[item.id]} />
           <EbayComps item={item} soldComps={ebayComps[item.id]} />
