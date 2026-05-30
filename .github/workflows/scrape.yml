@@ -24,10 +24,17 @@ jobs:
     env:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
       SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
+      GOONERS_EMBEDDINGS: '1'
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+
+      - name: Cache HuggingFace CLIP model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-clip-vit-b-32
 
       - uses: actions/setup-node@v5
         with:
@@ -44,10 +51,12 @@ jobs:
           if [ -n "${{ inputs.auction_url }}" ]; then
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+              --with sentence-transformers --with pillow \
               python scrape.py "${{ inputs.auction_url }}"
           else
             echo "Re-scraping all auctions from manifest..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+              --with sentence-transformers --with pillow \
               python rescrape_all.py
           fi
 
