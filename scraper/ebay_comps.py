@@ -11,6 +11,7 @@ produce the read model. See docs/data-architecture.md.
 """
 
 import argparse
+import calendar
 import json
 import os
 import random
@@ -32,6 +33,7 @@ PUBLIC_VIEW = "public_auction_comps"
 SNAPSHOT_TABLE = "ebay_comp_snapshots"
 DEFAULT_LIMIT = 50
 DEFAULT_STALE_HOURS = 7 * 24
+DEFAULT_MONTHLY_BUDGET = 2000  # shared SoldComps request ceiling for the whole pipeline
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
@@ -1034,17 +1036,24 @@ def parse_fetched_at(value: str) -> float | None:
         return None
 
 
-def fresh_comp_keys_from_files(output_dir: Path, stale_hours: int) -> set[str]:
-    """Return ``{auction_safe_id:item_id}`` for items fetched within stale_hours.
+def fresh_comp_keys_from_files(
+    output_dir: Path, stale_hours: int, skip_attempted: bool = False
+) -> set[str]:
+    """Return ``{auction_safe_id:item_id}`` for items already fetched.
 
     Reads the ``attempts`` map (v2 files) and falls back to ``items`` fetch
     times (v1 files) so already-tried items - including ones that found no
-    match - are not re-fetched until they go stale.
+    match - are not re-fetched until they go stale. When ``skip_attempted`` is
+    set, every recorded attempt counts as done regardless of age, so a backfill
+    spends its request budget only on items that have never been tried.
     """
-    if stale_hours <= 0:
+    if skip_attempted:
+        cutoff = float("-inf")  # any recorded attempt, however old, counts
+    elif stale_hours <= 0:
         return set()
+    else:
+        cutoff = datetime.now(timezone.utc).timestamp() - stale_hours * 3600
     fresh = set()
-    cutoff = datetime.now(timezone.utc).timestamp() - stale_hours * 3600
     for json_path in output_dir.glob("*.json"):
         payload = load_comp_file(json_path)
         if not payload:
@@ -1117,13 +1126,111 @@ def mirror_rows_to_warehouse(rows: list[dict]) -> int:
         return 0
 
 
+def auction_end_sort_key(item: dict) -> float:
+    """Sort key putting soonest-ending auctions first.
+
+    Comps are most useful while an item is still biddable, so the budget is
+    spent on auctions that close soonest. Items whose end date can't be parsed
+    sort last so they don't crowd out live, dated lots.
+    """
+    raw = item.get("auctionEndDate") or item.get("endDate")
+    if isinstance(raw, datetime):
+        dt = raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    text = text_value(raw)
+    if not text:
+        return float("inf")
+    parsed = parse_fetched_at(text)
+    if parsed is not None:
+        return parsed
+    # Manifests store human-readable end dates, e.g. "2026-05-31 6:19:00 PM".
+    for fmt in ("%Y-%m-%d %I:%M:%S %p", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc).timestamp()
+        except ValueError:
+            continue
+    return float("inf")
+
+
+def _iter_attempt_records(output_dir: Path):
+    for json_path in output_dir.glob("*.json"):
+        payload = load_comp_file(json_path)
+        if not payload:
+            continue
+        for record in payload.get("attempts", {}).values():
+            yield record
+
+
+def requests_used_in_bucket(output_dir: Path, bucket: str, fmt: str) -> int:
+    """Sum recorded request counts for attempts whose fetch time is in bucket.
+
+    Each attempt records ``queries`` (1 request per query). Older records that
+    predate that field count as 1 — a safe lower bound. The monthly total is the
+    shared budget meter: every run reads it, so the whole pipeline obeys one cap.
+    """
+    used = 0
+    for record in _iter_attempt_records(output_dir):
+        ts = parse_fetched_at(record.get("fetchedAt", ""))
+        if ts is None:
+            continue
+        if datetime.fromtimestamp(ts, timezone.utc).strftime(fmt) != bucket:
+            continue
+        used += int(record.get("queries") or 1)
+    return used
+
+
+def requests_used_in_month(output_dir: Path, now: datetime | None = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    return requests_used_in_bucket(output_dir, now.strftime("%Y-%m"), "%Y-%m")
+
+
+def requests_used_today(output_dir: Path, now: datetime | None = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    return requests_used_in_bucket(output_dir, now.strftime("%Y-%m-%d"), "%Y-%m-%d")
+
+
+def resolve_query_budget(
+    output_dir: Path,
+    monthly_budget: int,
+    max_queries: int,
+    daily_pacing: bool,
+    now: datetime | None = None,
+) -> tuple[bool, int]:
+    """Return ``(cap_active, query_limit)`` for this run.
+
+    Combines the shared monthly ceiling (derived from the read model), optional
+    even daily pacing across the remaining days of the month, and an explicit
+    per-run ``--max-queries`` cap. ``cap_active`` is False only when nothing
+    constrains the run.
+    """
+    now = now or datetime.now(timezone.utc)
+    cap_active = False
+    query_limit = 0
+    if monthly_budget > 0:
+        cap_active = True
+        query_limit = max(0, monthly_budget - requests_used_in_month(output_dir, now))
+        if daily_pacing and query_limit > 0:
+            days_left = max(1, calendar.monthrange(now.year, now.month)[1] - now.day + 1)
+            daily_allowance = -(-query_limit // days_left)  # ceil division
+            remaining_today = max(0, daily_allowance - requests_used_today(output_dir, now))
+            query_limit = min(query_limit, remaining_today)
+    if max_queries > 0:
+        query_limit = min(query_limit, max_queries) if cap_active else max_queries
+        cap_active = True
+    return cap_active, query_limit
+
+
 def fetch_direct(
     data_dir: Path = DATA_DIR,
     output_dir: Path = EBAY_COMPS_DIR,
     limit: int = DEFAULT_LIMIT,
     queries_per_item: int = 3,
     max_matches: int = 3,
+    max_queries: int = 0,
+    monthly_budget: int = 0,
+    daily_pacing: bool = True,
     stale_hours: int = DEFAULT_STALE_HOURS,
+    skip_attempted: bool = False,
     include_archived: bool = False,
     auction_safe_id: str | None = None,
     dry_run: bool = False,
@@ -1150,17 +1257,37 @@ def fetch_direct(
     if limit <= 0:
         return summary
 
-    known_fresh = set() if dry_run else fresh_comp_keys_from_files(output_dir, stale_hours)
+    known_fresh = (
+        set()
+        if dry_run
+        else fresh_comp_keys_from_files(output_dir, stale_hours, skip_attempted=skip_attempted)
+    )
+
+    # A "query" is one SoldComps request. The monthly ceiling is derived from
+    # the read model itself, so every run — hourly refresh or manual backfill —
+    # draws from one shared pool.
+    cap_active, query_limit = resolve_query_budget(
+        output_dir, monthly_budget, max_queries, daily_pacing
+    )
+    if cap_active and query_limit <= 0:
+        print("eBay comp fetch: request budget exhausted for now; nothing to do.")
+        return summary
+
     session = request_session or requests.Session()
     generated_at = utc_now_text()
     all_rows: list[dict] = []
     attempts: dict[str, dict[str, dict]] = {}
 
-    for item in load_manifest_items(
-        data_dir=data_dir,
-        include_archived=include_archived,
-        auction_safe_id=auction_safe_id,
-    ):
+    candidates = sorted(
+        load_manifest_items(
+            data_dir=data_dir,
+            include_archived=include_archived,
+            auction_safe_id=auction_safe_id,
+        ),
+        key=auction_end_sort_key,
+    )
+
+    for item in candidates:
         safe_id = text_value(item.get("auctionSafeId"))
         item_id = text_value(item.get("id"))
         if f"{safe_id}:{item_id}" in known_fresh:
@@ -1172,10 +1299,16 @@ def fetch_direct(
 
         if summary["items_attempted"] >= limit:
             break
+        # Stop before starting an item we can't afford within the request budget.
+        if cap_active and summary["queries_attempted"] >= query_limit:
+            break
         summary["items_attempted"] += 1
 
         item_status = "no_results"
+        item_queries = 0
         for search in searches:
+            if cap_active and summary["queries_attempted"] >= query_limit:
+                break
             result = fetch_sold_matches(session, search, max_matches=max_matches)
             rows = comp_rows_for_item(
                 item,
@@ -1186,6 +1319,7 @@ def fetch_direct(
                 warning=result.get("warning"),
             )
             summary["queries_attempted"] += 1
+            item_queries += 1
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
             if result["status"] == "ok":
@@ -1204,6 +1338,7 @@ def fetch_direct(
             attempts.setdefault(safe_id, {})[item_id] = {
                 "fetchedAt": generated_at,
                 "status": item_status,
+                "queries": item_queries,
             }
 
         if summary["blocked"]:
@@ -1230,6 +1365,12 @@ def fetch_direct(
         f"{summary['queries_attempted']} queries, {summary['matches']} matches, "
         f"{summary['files_written']} auction files updated"
     )
+    if monthly_budget > 0:
+        used = requests_used_in_month(output_dir)
+        print(
+            f"Monthly request budget: {used}/{monthly_budget} used "
+            f"({max(0, monthly_budget - used)} remaining)"
+        )
     return summary
 
 
@@ -1250,7 +1391,35 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     fetch_parser.add_argument("--queries-per-item", type=int, default=3)
     fetch_parser.add_argument("--max-matches", type=int, default=3)
+    fetch_parser.add_argument(
+        "--max-queries",
+        type=int,
+        default=int(os.environ.get("GOONERS_EBAY_COMPS_MAX_QUERIES", "0")),
+        help="Hard cap on SoldComps requests this run (1 query = 1 request). "
+        "0 disables this per-run cap; the monthly budget still applies.",
+    )
+    fetch_parser.add_argument(
+        "--monthly-budget",
+        type=int,
+        default=int(
+            os.environ.get("GOONERS_EBAY_COMPS_MONTHLY_BUDGET", str(DEFAULT_MONTHLY_BUDGET))
+        ),
+        help="Shared monthly request ceiling across all runs (derived from the "
+        "read model). 0 disables it.",
+    )
+    fetch_parser.add_argument(
+        "--no-daily-pacing",
+        action="store_true",
+        help="Spend the remaining monthly budget as fast as available instead "
+        "of spreading it evenly across the remaining days of the month.",
+    )
     fetch_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
+    fetch_parser.add_argument(
+        "--skip-attempted",
+        action="store_true",
+        help="Skip any item ever attempted (even no_results), not just fresh "
+        "ones — spends budget only on never-tried items, for backfilling.",
+    )
     fetch_parser.add_argument("--auction-safe-id", default=None)
     fetch_parser.add_argument("--include-archived", action="store_true")
     fetch_parser.add_argument("--dry-run", action="store_true")
@@ -1324,7 +1493,11 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             queries_per_item=args.queries_per_item,
             max_matches=args.max_matches,
+            max_queries=args.max_queries,
+            monthly_budget=args.monthly_budget,
+            daily_pacing=not args.no_daily_pacing,
             stale_hours=args.stale_hours,
+            skip_attempted=args.skip_attempted,
             include_archived=args.include_archived,
             auction_safe_id=args.auction_safe_id,
             dry_run=args.dry_run,

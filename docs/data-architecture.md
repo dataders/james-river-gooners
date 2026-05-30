@@ -133,3 +133,29 @@ These are tracked targets, not yet fully implemented:
   re-fetched until they go stale. MotherDuck is an optional mirror behind
   `SnapshotSink`, enabled only when `GOONERS_MOTHERDUCK_SNAPSHOTS` is set. The
   read-model files are schema version 2 (`source: "scraper"`). (Phase 3.)
+
+## eBay comps request budget
+
+The SoldComps API is metered (currently **2,000 requests/month**, where one
+request == one search query). The whole pipeline shares that single ceiling —
+both the hourly `scrape.yml` refresh and the manual `ebay-comps.yml` run draw
+from the same pool.
+
+Rather than tracking spend in a separate counter file (which two concurrent
+Actions runs could race on), usage is **derived from the read model itself**:
+each item's `attempts` record carries a `queries` count, and
+`requests_used_in_month()` sums those for the current UTC month across all
+`public/data/ebay-comps/*.json` files. Because every run commits the read model,
+the next run sees the updated total.
+
+`ebay_comps.py fetch-direct` knobs that govern this:
+
+- `--monthly-budget N` (default 2000) — hard stop once the month's requests reach `N`. `0` disables.
+- daily pacing (on by default; `--no-daily-pacing` to disable) — spreads the remaining
+  budget evenly across the remaining days of the month, so a churning catalog gets
+  coverage all month instead of exhausting the budget in the first few days.
+- `--max-queries N` — an additional per-run request cap (`0` = none).
+- `--skip-attempted` — spend only on items never tried before (backfill); without it,
+  items refresh once they pass `--stale-hours`.
+- Candidates are processed **soonest-ending auction first**, so budget lands on lots
+  that are still biddable.
