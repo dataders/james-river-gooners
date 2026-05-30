@@ -18,6 +18,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import requests
 import yaml
 from bs4 import BeautifulSoup
@@ -33,15 +35,15 @@ REQUEST_DELAY = 0.5  # seconds between lot-page fetches
 
 REAL_ESTATE_KEYWORDS = [
     "real estate",
-    " property auction",
+    "property auction",
     "land auction",
     "land sale",
-    " parcel",
-    " acres",
+    "parcel",
+    "acres",
     "foreclosure",
     "tax sale",
     "tax auction",
-    "deed ",
+    "deed",
 ]
 
 
@@ -95,7 +97,7 @@ def _mdyyyy_to_iso(date_str: str) -> str:
     for fmt in ("%m/%d/%Y", "%m/%d/%y"):
         try:
             dt = datetime.strptime(date_str.strip(), fmt)
-            # Assume 11 PM ET as a reasonable auction close time
+            # Fallback close time: 23:00 UTC when no time is scraped from the page
             return dt.replace(hour=23, minute=0, tzinfo=timezone.utc).isoformat()
         except ValueError:
             continue
@@ -273,7 +275,7 @@ def fetch_catalog_lot_links(
             break
         page += 1
 
-    lot_links.sort(key=lambda x: x[1])
+    lot_links.sort(key=lambda x: (x[1] == 0, x[1]))
     return lot_links
 
 
@@ -432,7 +434,6 @@ def fetch_lot_details(
 def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
     if not path.exists():
         return {}
-    import pyarrow.parquet as pq
     try:
         table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
         return {
@@ -464,7 +465,7 @@ def scrape_hibid_auction(
     catalog_url: str,
     source_slug: str,
     company_name: str,
-    snapshot_to_motherduck: bool = False,
+    snapshot_to_motherduck: bool | None = None,
 ) -> dict:
     """Scrape one HiBid catalog and write Parquet. Returns {changed, count}."""
     catalog_id = extract_catalog_id(catalog_url)
@@ -545,9 +546,6 @@ def scrape_hibid_auction(
         return {"changed": False}
 
     # Write Parquet
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
     ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     scraped_at_str = scraped_at.isoformat()
 
@@ -563,6 +561,17 @@ def scrape_hibid_auction(
     table = pa.Table.from_pylist(all_items)
     pq.write_table(table, items_path, compression="snappy")
     print(f"  Wrote {len(all_items)} items → {items_path.name}")
+
+    if snapshot_to_motherduck is None:
+        from motherduck import should_snapshot_to_motherduck
+        snapshot_to_motherduck = should_snapshot_to_motherduck()
+
+    if snapshot_to_motherduck:
+        from warehouse import get_sink
+        sink = get_sink()
+        if sink is not None:
+            snapshot_count = sink.append_listing_snapshots(all_items, catalog_url)
+            print(f"  Appended {snapshot_count} listing snapshots to the warehouse")
 
     return {"changed": True, "count": len(all_items)}
 
@@ -605,5 +614,5 @@ if __name__ == "__main__":
         args.catalog_url,
         source_slug=args.source,
         company_name=args.company or args.source,
-        snapshot_to_motherduck=args.motherduck,
+        snapshot_to_motherduck=args.motherduck or None,
     )

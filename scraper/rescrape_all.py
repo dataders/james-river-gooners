@@ -7,7 +7,6 @@ comments are skipped.
 """
 
 import json
-import re
 import subprocess
 import sys
 from datetime import datetime, timezone

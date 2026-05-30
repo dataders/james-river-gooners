@@ -15,10 +15,13 @@ class IsRealEstateAuctionTest(unittest.TestCase):
         self.assertTrue(is_real_estate_auction("Richmond Real Estate Online Auction"))
 
     def test_property_auction_detected(self):
-        self.assertTrue(is_real_estate_auction("Annual Property Auction - Henrico County"))
+        self.assertTrue(is_real_estate_auction("Henrico County Property Auction"))
 
     def test_acres_detected(self):
         self.assertTrue(is_real_estate_auction("Farm Sale - 40 Acres in Goochland"))
+
+    def test_deed_detected(self):
+        self.assertTrue(is_real_estate_auction("Tax Deed Sale 2026"))
 
     def test_foreclosure_detected(self):
         self.assertTrue(is_real_estate_auction("Bank Foreclosure Liquidation"))
