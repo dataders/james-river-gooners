@@ -101,8 +101,10 @@ test.describe('Card ROI display', () => {
 
     const maxLabel = await roiRows.first().locator('.item-roi-max').textContent()
     const costLabel = await roiRows.first().locator('.item-roi-cost').textContent()
-    expect(maxLabel).toMatch(/^\$\d/)
-    expect(costLabel).toMatch(/^\$\d/)
+    // ItemCard renders "Max $165" / "All-in $210" — assert a dollar amount
+    // appears after the label prefix rather than at the very start.
+    expect(maxLabel).toMatch(/\$\d/)
+    expect(costLabel).toMatch(/\$\d/)
   })
 
   test('All-in cost is always higher than max bid (reflects 1.272x multiplier)', async ({ page }) => {
@@ -197,9 +199,12 @@ test.describe('ROI calculator in detail modal', () => {
     const slider = page.locator('.roi-margin-slider')
     const maxBidBefore = await page.locator('.roi-result-value').first().textContent()
 
-    // Move slider to 0% (break-even) — max bid should be higher than at 30%
+    // Move slider to 0% (break-even) — max bid should be higher than at 30%.
+    // Use the native value setter so React's tracked value updates and onChange
+    // fires; assigning el.value directly is ignored by React (see helpers.js).
     await slider.evaluate(el => {
-      el.value = '0'
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      setter.call(el, '0')
       el.dispatchEvent(new Event('input', { bubbles: true }))
     })
     await page.waitForTimeout(100)

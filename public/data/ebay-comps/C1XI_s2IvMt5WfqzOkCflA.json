@@ -1,9 +1,62 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "49024010": {
+      "status": "ok",
+      "query": "Vintage ship in a",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Vintage+ship+in+a&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "377220061743",
+          "title": "Vintage ship in a bottle, miniature",
+          "price": {
+            "value": "75.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.13 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/377220061743",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "376810848950",
+          "title": "Vtg Philippines FISHING HUT & Ship boat in a Glass Bottle Miniature Handmade",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/376810848950",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "178055533996",
+          "title": "Vintage Ship in a Glass Bottle 1924 Vintage Old Bottle",
+          "price": {
+            "value": "349.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$14.10 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/178055533996",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "49024251": {
       "fetchedAt": "2026-05-30T02:46:47Z",
@@ -28,6 +81,10 @@
     "49024280": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "49024010": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
     }
   }
 }

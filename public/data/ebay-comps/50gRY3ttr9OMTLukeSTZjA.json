@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T12:07:42Z",
+  "generatedAt": "2026-05-30T13:28:41Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -586,6 +586,802 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "49014127": {
+      "status": "ok",
+      "query": "Winchester Limited Edition 2006",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Winchester+Limited+Edition+2006&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "397967670742",
+          "title": "Winchester 2006 Limited Edition Brass Folder Pocket Knife - NIB NOS",
+          "price": {
+            "value": "18.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$30.34 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397967670742",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137160334286",
+          "title": "Winchester 2006 Limited Edition Wildlife Series Ersatz Scrimshaw 3 Knife Set",
+          "price": {
+            "value": "22.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137160334286",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "117193237295",
+          "title": "Winchester 2006 Limited Edition  3.5\u201d Brass Folder Knife In Collectible Tin",
+          "price": {
+            "value": "25.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/117193237295",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014334": {
+      "status": "ok",
+      "query": "Craftsman red tool chest",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Craftsman+red+tool+chest&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "236674061449",
+          "title": "CRAFTSMAN 2000 Series 26-in W x 12.25-in H 3-Drawer Steel Tool Chest (Red)",
+          "price": {
+            "value": "249.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236674061449",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "376575101515",
+          "title": "CRAFTSMAN 26 Inch Wide 3-Drawer Steel Tool Chest Box Ball-Bearing Lockable Red",
+          "price": {
+            "value": "197.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/376575101515",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257448529010",
+          "title": "1985 Vintage RED Craftsman 3 Drawer Portable Chest Top Tool Box  20.5\u201dx8.5\u201dx12\u201d",
+          "price": {
+            "value": "99.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257448529010",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014165": {
+      "status": "ok",
+      "query": "Case XX special limited",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Case+XX+special+limited&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "397698045598",
+          "title": "1977 Case XX 4165 SSP Texas Special Limited Edition Folding Hunter  /5000",
+          "price": {
+            "value": "169.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.80 shipping",
+          "soldDate": "2026-04-30",
+          "soldDateLabel": "Sold Apr 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397698045598",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "188157441948",
+          "title": "CASE XX 1991 Special Limited Edition *1 of 1000* Desert Storm \"HAMMER HEAD\"",
+          "price": {
+            "value": "100.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.00 shipping",
+          "soldDate": "2026-03-18",
+          "soldDateLabel": "Sold Mar 18, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188157441948",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257388512109",
+          "title": "CASE XX USA 6244 SPECIAL LIMITED EDITION SPORTSMAN 2 BLADE KNIFE PRIMECO",
+          "price": {
+            "value": "99.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.75 shipping",
+          "soldDate": "2026-03-03",
+          "soldDateLabel": "Sold Mar 3, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257388512109",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014429": {
+      "status": "ok",
+      "query": "Group of Pyrex glass",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+Pyrex+glass&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "366375623075",
+          "title": "Pyrex Gooseberry Pink Group of 2 Cinderella Bowls Numbers 443 and 444 Pink White",
+          "price": {
+            "value": "151.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$97.35 shipping",
+          "soldDate": "2026-05-08",
+          "soldDateLabel": "Sold May 8, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366375623075",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "406891399281",
+          "title": "Pyrex Gooseberry Pink Group of 2 Cinderella Bowls Numbers 443 and 444 Pink White",
+          "price": {
+            "value": "144.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$58.82 shipping",
+          "soldDate": "2026-05-05",
+          "soldDateLabel": "Sold May 5, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/406891399281",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "126949027144",
+          "title": "Pyrex Gooseberry Pink Group of 2 Cinderella Bowls Numbers 443 and 444 Pink White",
+          "price": {
+            "value": "233.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$75.50 shipping",
+          "soldDate": "2026-04-19",
+          "soldDateLabel": "Sold Apr 19, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/126949027144",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014218": {
+      "status": "ok",
+      "query": "Group of assorted costume",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+assorted+costume&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "267616933101",
+          "title": "Group of 13 Ladies Costume Rings Some Have Gems Various Sizes",
+          "price": {
+            "value": "5.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.06 shipping",
+          "soldDate": "2026-03-29",
+          "soldDateLabel": "Sold Mar 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267616933101",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227340053435",
+          "title": "LARGE GROUP OF ASSORTED PARTS OF SEMI TRUCKS/TRAILERS GROUP AA",
+          "price": {
+            "value": "34.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.00 shipping",
+          "soldDate": "2026-05-12",
+          "soldDateLabel": "Sold May 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227340053435",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "327154869551",
+          "title": "LARGE GROUP OF ASSORTED PARTS OF SEMI TRUCKS/TRAILERS GROUP BB",
+          "price": {
+            "value": "34.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.00 shipping",
+          "soldDate": "2026-05-12",
+          "soldDateLabel": "Sold May 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/327154869551",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014224": {
+      "status": "ok",
+      "query": "Four Longaberger inaugural baskets",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Four+Longaberger+inaugural+baskets&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "257530438953",
+          "title": "Longaberger 2001 Inaugural Basket with Liner Protector & Lid Small 4th of July",
+          "price": {
+            "value": "29.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$39.63 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257530438953",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "147321535875",
+          "title": "Longaberger 2009 Presidential Inaugural Basket Complete Set Lid Liner Tie-on",
+          "price": {
+            "value": "59.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$45.16 shipping",
+          "soldDate": "2026-05-24",
+          "soldDateLabel": "Sold May 24, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/147321535875",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "389104703403",
+          "title": "2001 Longaberger Inaugural Basket with Liner & Protector \u2013 Handwoven USA Patriot",
+          "price": {
+            "value": "42.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$31.83 shipping",
+          "soldDate": "2026-05-03",
+          "soldDateLabel": "Sold May 3, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389104703403",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014383": {
+      "status": "ok",
+      "query": "American Girl Doll Original",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=American+Girl+Doll+Original&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "236845747687",
+          "title": "Vintage 1960's Mattel Barbie American Girl Midge Bend Leg Doll",
+          "price": {
+            "value": "249.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/236845747687",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "157950453031",
+          "title": "American Girl Doll Horse Lover Outfit & Cowgirl Hat Boots Very Good Condition",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157950453031",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137262100260",
+          "title": "FELICITY'S TRAVEL DRESS, CAP AND CHOKER, NEW IN BOX, NRFB",
+          "price": {
+            "value": "140.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/137262100260",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014231": {
+      "status": "ok",
+      "query": "Hen Rooster 440A Rostfrei",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Hen+Rooster+440A+Rostfrei&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "366426227596",
+          "title": "Hen & Rooster German Steel 4.5\" Stag 4 Blade 353L-DS Big Congress knife MINT",
+          "price": {
+            "value": "57.69",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$59.99 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/366426227596",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206015618989",
+          "title": "Vtg Bertram Hen & Rooster Congress Solingen Germany Stag Folding Pocket Knife",
+          "price": {
+            "value": "129.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$24.64 shipping",
+          "soldDate": "2026-03-15",
+          "soldDateLabel": "Sold Mar 15, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/206015618989",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306848607266",
+          "title": "Hen & Rooster HR 5005 Spain Stag Handle Fixed Blade Knife German Steel & Sheath",
+          "price": {
+            "value": "72.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$37.35 shipping",
+          "soldDate": "2026-04-13",
+          "soldDateLabel": "Sold Apr 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306848607266",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014212": {
+      "status": "ok",
+      "query": "Lamp a globe shade",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Lamp+a+globe+shade&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "127700616157",
+          "title": "Vintage 1980's Sticker Lot Speed Shop Race Car Automotive",
+          "price": {
+            "value": "20.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.50 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127700616157",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "177841561253",
+          "title": "NOS 1940s Vintage Speedrag All Purpose Automotive Chamois Speed Rag",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/177841561253",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257144932349",
+          "title": "NOS Genuine Nissan Power Window Motor 80730-89971 RH",
+          "price": {
+            "value": "59.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257144932349",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014247": {
+      "status": "ok",
+      "query": "Royal Albert 18 10",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Royal+Albert+18+10&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "127866050803",
+          "title": "Old Country Roses 46 Piece Service Set by Royal Albert 18/10 Stainless. Vintage",
+          "price": {
+            "value": "200.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$25.00 shipping",
+          "soldDate": "2026-05-23",
+          "soldDateLabel": "Sold May 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127866050803",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227201741023",
+          "title": "Royal Albert Old Country Roses Dessert Spoons Forks 18/10 Flatware W/ Chest 17pc",
+          "price": {
+            "value": "145.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$22.95 shipping",
+          "soldDate": "2026-05-23",
+          "soldDateLabel": "Sold May 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227201741023",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "157922399810",
+          "title": "Royal Albert Old Country Roses 65 Pc 18/10 Stainless Flatware Set",
+          "price": {
+            "value": "170.90",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.00 shipping",
+          "soldDate": "2026-05-23",
+          "soldDateLabel": "Sold May 23, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157922399810",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014219": {
+      "status": "ok",
+      "query": "Group of assorted costume",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+assorted+costume&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "267616933101",
+          "title": "Group of 13 Ladies Costume Rings Some Have Gems Various Sizes",
+          "price": {
+            "value": "5.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.06 shipping",
+          "soldDate": "2026-03-29",
+          "soldDateLabel": "Sold Mar 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267616933101",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168346615588",
+          "title": "Marvel Comics \u2018Spider-Man: The Complete Black Costume Saga Omnibus\u2019 (2024)",
+          "price": {
+            "value": "69.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.97 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168346615588",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227340053435",
+          "title": "LARGE GROUP OF ASSORTED PARTS OF SEMI TRUCKS/TRAILERS GROUP AA",
+          "price": {
+            "value": "34.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.00 shipping",
+          "soldDate": "2026-05-12",
+          "soldDateLabel": "Sold May 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227340053435",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014061": {
+      "status": "ok",
+      "query": "Winchester 255 .22 WMR",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Winchester+255+.22+WMR&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "235650413328",
+          "title": "Winchester Rifle Models 255 & 275 Ejector, .22 Mag.",
+          "price": {
+            "value": "18.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-15",
+          "soldDateLabel": "Sold Apr 15, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/235650413328",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "235633965969",
+          "title": "Winchester Rifle Extractor, Models 255 & 275, .22 Mag. , Used Factory Original",
+          "price": {
+            "value": "18.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-15",
+          "soldDateLabel": "Sold Apr 15, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/235633965969",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "147312910743",
+          "title": "Ruger Single Six 22 Magnum Spare Cylinder .22 Win. Mag. WMR Winchester",
+          "price": {
+            "value": "80.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.95 shipping",
+          "soldDate": "2026-05-16",
+          "soldDateLabel": "Sold May 16, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/147312910743",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014198": {
+      "status": "ok",
+      "query": "W.R. Case Sons Cutlery",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=W.R.+Case+Sons+Cutlery&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "318150366160",
+          "title": "CASE XX KNIVES CUTLERY W.R. CASE & SONS DOOR WELCOME MAT RUG WALL HANGING NEW",
+          "price": {
+            "value": "69.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$13.90 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318150366160",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "298365971154",
+          "title": "CASE KNIFE - W.R. CASE & SONS CUTLERY CO. POCKET KNIFE (ENTER MODEL) (NJL030100)",
+          "price": {
+            "value": "365.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/298365971154",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "127817991448",
+          "title": "CASE XX KNIVES CUTLERY W.R. CASE & SONS DOOR WELCOME MAT RUG WALL HANGING NEW",
+          "price": {
+            "value": "45.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.61 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127817991448",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014187": {
+      "status": "ok",
+      "query": "Yoyo colorful patchwork quilt",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Yoyo+colorful+patchwork+quilt&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "257410616584",
+          "title": "Vintage Yo Yo Quilt Handmade 75x92 Colorful Feedsack Fabrics Full Size Estate",
+          "price": {
+            "value": "209.87",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$21.48 shipping",
+          "soldDate": "2026-05-10",
+          "soldDateLabel": "Sold May 10, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257410616584",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227326995955",
+          "title": "VINTAGE YO YO QUILT HAND MADE 17x17 INCH COLORFUL COTTON FABRICS 64 ROUNDS (03)",
+          "price": {
+            "value": "17.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.45 shipping",
+          "soldDate": "2026-05-09",
+          "soldDateLabel": "Sold May 9, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227326995955",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227326969245",
+          "title": "VINTAGE YO YO QUILT HAND MADE 15x25 INCH COLORFUL COTTON FABRICS 77 ROUNDS (02)",
+          "price": {
+            "value": "23.75",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.45 shipping",
+          "soldDate": "2026-05-09",
+          "soldDateLabel": "Sold May 9, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227326969245",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49014170": {
+      "status": "ok",
+      "query": "Case pocket knife three",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Case+pocket+knife+three&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "257440251025",
+          "title": "MINT 1977 CASE XX 5347 HP STAG STOCKMAN BLUE SCROLL THREE DOT POCKET KNIFE",
+          "price": {
+            "value": "210.49",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.00 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257440251025",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "287353760524",
+          "title": "VINTAGE JOHN PRIMBLE BELKNAP, INC USA 935 THREE BLADE POCKET KNIFE",
+          "price": {
+            "value": "55.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.95 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/287353760524",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "304705254176",
+          "title": "Vtg 1991 Buck 703+ Colt Folding Three Blade Pocket Knife USA",
+          "price": {
+            "value": "39.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$6.95 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/304705254176",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -795,6 +1591,66 @@
     },
     "49014357": {
       "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "49014127": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014334": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014165": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014429": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014218": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014224": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014383": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014231": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014212": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014247": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014219": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014061": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014198": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014187": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
+      "status": "ok"
+    },
+    "49014170": {
+      "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
     }
   }
