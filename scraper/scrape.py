@@ -324,6 +324,7 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         item["auctionTitle"] = auction_title
         item["auctionEndDate"] = latest_end
         item["scrapedAt"] = scraped_at
+        item["source"] = "cannons"
 
     # Write NDJSON (images as real array)
     ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"

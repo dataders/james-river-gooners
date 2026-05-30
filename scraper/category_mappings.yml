@@ -58,6 +58,12 @@ raw_aliases:
     - coca cola
     - longaberger
     - advertising
+    - comics
+    - comic books
+    - trading cards
+    - sports cards
+    - baseball cards
+    - football cards
   Military & Militaria:
     - military gear
     - militaria
@@ -68,6 +74,8 @@ raw_aliases:
     - cutlery
   Stamps:
     - philately
+    - stamps
+    - stamp
   Sports Collectibles:
     - sports collectibles
   Hot Wheels & Models:
@@ -225,6 +233,10 @@ raw_aliases:
     - toys & games
     - gaming
     - plush
+    - action figures
+    - action figure
+    - board games
+    - board game
   Dolls:
     - dolls and doll accessories
     - dolls
@@ -517,3 +529,14 @@ description_keywords:
   lego: [Lego, Toys & Games]
   cookware: [Kitchenware, Home & Kitchen]
   lawn mower: [Lawn & Garden, Lawn & Garden]
+  action figure: [Toys & Games, Toys & Games]
+  comic book: [Collectibles, Collectibles]
+  comic: [Collectibles, Collectibles]
+  trading card: [Collectibles, Collectibles]
+  baseball card: [Collectibles, Collectibles]
+  football card: [Collectibles, Collectibles]
+  sports card: [Collectibles, Collectibles]
+  board game: [Toys & Games, Toys & Games]
+  vinyl record: [Vinyl & CDs, Books & Media]
+  stamp: [Stamps, Collectibles]
+  postal history: [Stamps, Collectibles]
