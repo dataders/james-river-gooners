@@ -11,6 +11,26 @@
       "ndjsonPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.ndjson"
     },
     {
+      "safeId": "hibid_739418",
+      "title": "May 31st, 2026 Stamps & Postal History Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-05-31T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:36:06.379222+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_739418.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_739418.ndjson"
+    },
+    {
+      "safeId": "hibid_744897",
+      "title": "Vintage Galore! Gaming, Disney, Music, Cards, Action Figures | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-05-31T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:38:10.491310+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_744897.parquet",
+      "source": "past_chapters",
+      "ndjsonPath": "data/items/hibid_744897.ndjson"
+    },
+    {
       "safeId": "hT_S_DZDYuxrkjyAGwm8Lw",
       "title": "06/01/26: DNA Auction Group | Lifetime Collection of Vintage Costume Jewelry | Estate Goods and Chattels | Antiques | Schroeder Rd, Powhatan VA 23139- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-01 9:59:00 PM",
@@ -61,6 +81,16 @@
       "ndjsonPath": "data/items/Gb1d9TSVzPoNpFRycmPhSQ.ndjson"
     },
     {
+      "safeId": "hibid_739431",
+      "title": "June 6th, 2026 Sports Card & Comics Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-06T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:38:06.117260+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_739431.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_739431.ndjson"
+    },
+    {
       "safeId": "vIgvMk-ow4F5FT9vYFpABw",
       "title": "06/07/26: Ampleseller Onsite Warehouse Auction, S West St, Petersburg, VA, 23803- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-07 6:55:00 PM",
@@ -69,6 +99,26 @@
       "itemsPath": "data/items/vIgvMk-ow4F5FT9vYFpABw.parquet",
       "source": "",
       "ndjsonPath": "data/items/vIgvMk-ow4F5FT9vYFpABw.ndjson"
+    },
+    {
+      "safeId": "hibid_739442",
+      "title": "June 7th, 2026 Coin and Paper Money Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-07T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:42:44.016516+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_739442.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_739442.ndjson"
+    },
+    {
+      "safeId": "hibid_739720",
+      "title": "June 7th, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-07T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:40:27.106208+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_739720.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_739720.ndjson"
     },
     {
       "safeId": "TSEnhqADosMhcgC3rM6KNw",
@@ -111,6 +161,16 @@
       "ndjsonPath": "data/items/KtbqxU0Uovx985gkiiGrUQ.ndjson"
     },
     {
+      "safeId": "hibid_743703",
+      "title": "June 14th, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-14T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:45:01.673703+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_743703.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_743703.ndjson"
+    },
+    {
       "safeId": "ZO1ARTsfo5u_cpC34qfAGQ",
       "title": "06/15/26: Henrico County Estate Auction |  Dunkerry Lane | Sandston VA 23150- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-15 5:56:00 PM",
@@ -129,6 +189,26 @@
       "itemsPath": "data/items/zmIi5q6gqQxSJ8zjILQe5A.parquet",
       "source": "cannons",
       "ndjsonPath": "data/items/zmIi5q6gqQxSJ8zjILQe5A.ndjson"
+    },
+    {
+      "safeId": "hibid_745666",
+      "title": "June 21st, 2026 Graded & Raw Coin Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-21T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:53:23.082851+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_745666.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_745666.ndjson"
+    },
+    {
+      "safeId": "hibid_745663",
+      "title": "June 21st, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-21T23:00:00+00:00",
+      "scrapedAt": "2026-05-30T23:47:25.963616+00:00",
+      "itemCount": 100,
+      "itemsPath": "data/items/hibid_745663.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_745663.ndjson"
     }
   ]
 }
