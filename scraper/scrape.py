@@ -316,6 +316,7 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         item["auctionTitle"] = auction_title
         item["auctionEndDate"] = latest_end
         item["scrapedAt"] = scraped_at
+        item["source"] = "cannons"
 
     table = pa.Table.from_pylist(all_items)
     pq.write_table(table, items_path, compression="snappy")

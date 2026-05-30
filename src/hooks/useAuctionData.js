@@ -49,6 +49,7 @@ function normalizeRows(results, archived) {
           title: row.auctionTitle,
           endDate: row.auctionEndDate,
           scrapedAt: row.scrapedAt,
+          source: row.source || 'cannons',
           archived,
           isLocal: isLocalAuction(row.auctionTitle),
           totalItems: 0,
