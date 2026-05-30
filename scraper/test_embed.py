@@ -1,3 +1,4 @@
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -42,6 +43,22 @@ class EmbeddingsRoundTripTest(unittest.TestCase):
         float_bytes = 3 * 512 * 4
         tail = data[8 + float_bytes:].decode("utf-8")
         self.assertEqual(json.loads(tail), ids)
+
+
+    def test_read_embeddings_raises_on_truncated_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bad.embeddings"
+            path.write_bytes(b"\x01\x02")  # less than 8 bytes
+            with self.assertRaises(ValueError):
+                read_embeddings(path)
+
+    def test_read_embeddings_raises_on_truncated_body(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bad.embeddings"
+            # Header says 10 items × 512 dims but body is empty
+            path.write_bytes(struct.pack("<II", 10, 512))
+            with self.assertRaises(ValueError):
+                read_embeddings(path)
 
 
 if __name__ == "__main__":
