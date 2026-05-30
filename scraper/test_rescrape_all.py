@@ -47,6 +47,24 @@ class ManifestEntryTest(unittest.TestCase):
             "source": "cannons",
         })
 
+    def test_manifest_entry_source_empty_for_legacy_parquet(self):
+        """Old Parquet files without a source column return source='' gracefully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "legacy-id.parquet"
+            table = pa.Table.from_pylist([
+                {
+                    "auctionTitle": "Old Auction",
+                    "auctionEndDate": "2025-01-01T17:00:00+00:00",
+                    "scrapedAt": "2024-12-30T12:00:00+00:00",
+                    # no 'source' column — simulates pre-HiBid Parquet files
+                },
+            ])
+            pq.write_table(table, path)
+
+            entry = manifest_entry_for_file(path, archived=False)
+
+        self.assertEqual(entry["source"], "")
+
     def test_archived_manifest_entry_uses_archive_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "old-id.parquet"
