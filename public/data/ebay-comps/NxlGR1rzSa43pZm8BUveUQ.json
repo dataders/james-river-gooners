@@ -1,9 +1,172 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "48979694": {
+      "status": "ok",
+      "query": "Ashley Furniture leather love",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Ashley+Furniture+leather+love&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "287049198168",
+          "title": "Dark Brown Leather Love Seat for Sale",
+          "price": {
+            "value": "300.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.15 shipping",
+          "soldDate": "2026-04-06",
+          "soldDateLabel": "Sold Apr 6, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/287049198168",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358446498733",
+          "title": "Ashley Furniture 3 Piece Reclining Sofa Set, Leather/Polyester, Gray/Black/Brown",
+          "price": {
+            "value": "564.90",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.40 shipping",
+          "soldDate": "2026-05-03",
+          "soldDateLabel": "Sold May 3, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/358446498733",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "377184864751",
+          "title": "Signature design by Ashley Altari loveseat in Alloy",
+          "price": {
+            "value": "100.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$2.00 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/377184864751",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979927": {
+      "status": "ok",
+      "query": "Martha Stewart Living patio",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Martha+Stewart+Living+patio&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "127695880010",
+          "title": "Martha Stewart Living Magazines, 1997 Lot of 5 issues with recipe cards.",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$53.60 shipping",
+          "soldDate": "2026-03-01",
+          "soldDateLabel": "Sold Mar 1, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127695880010",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227264024117",
+          "title": "Martha Stewart Living Spring 1991 Growing Season With Intact Recipe Cards - VTG",
+          "price": {
+            "value": "209.25",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$37.24 shipping",
+          "soldDate": "2026-05-09",
+          "soldDateLabel": "Sold May 9, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/227264024117",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "127794148241",
+          "title": "Martha Stewart Living Magazines, 1996 Lot of 5 issues with recipe cards.",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$53.85 shipping",
+          "soldDate": "2026-04-12",
+          "soldDateLabel": "Sold Apr 12, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/127794148241",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48979765": {
+      "status": "ok",
+      "query": "Le Creuset butter dish",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Le+Creuset+butter+dish&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "188151447951",
+          "title": "LE CREUSET Butter Bell / Crock Round - Flame Orange - New",
+          "price": {
+            "value": "65.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.00 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188151447951",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267679543228",
+          "title": "LE CREUSET SIGNATURE STONEWARE COVERED BUTTER DISH CERISE RED",
+          "price": {
+            "value": "31.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.67 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267679543228",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267679531639",
+          "title": "LE CREUSET BUTTER BELL CROCK 6 OZ ENAMEL STONEWARE CERISE RED OMBRE",
+          "price": {
+            "value": "24.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$11.67 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/267679531639",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "48979985": {
       "fetchedAt": "2026-05-29T20:53:03Z",
@@ -108,6 +271,18 @@
     "48979791": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "48979694": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48979927": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48979765": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }

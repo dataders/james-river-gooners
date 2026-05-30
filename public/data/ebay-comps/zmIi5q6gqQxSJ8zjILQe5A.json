@@ -1,9 +1,271 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "48944316": {
+      "status": "ok",
+      "query": "F.I.E. Texas Ranger revolver TR15864.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=F.I.E.+Texas+Ranger+revolver+TR15864.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "272387729956",
+          "title": "F.I.E. T-18 Steel Cylinder Pin for FIE T18 .22 Revolver New Blue PT1801",
+          "price": {
+            "value": "9.90",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.00 shipping",
+          "soldDate": "2026-05-07",
+          "soldDateLabel": "Sold May 7, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/272387729956",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "157628344752",
+          "title": "Factory F.I.E. Buffalo 22 LR SA Revolver Grips with Grip Screw Made in Germany",
+          "price": {
+            "value": "34.89",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$20.00 shipping",
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157628344752",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "167916913897",
+          "title": "Idle Air Control Valve for Ford Ranger 2.3L 4.0L 1995-1997 Lincoln Continental",
+          "price": {
+            "value": "32.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-14",
+          "soldDateLabel": "Sold May 14, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/167916913897",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48944311": {
+      "status": "ok",
+      "query": "Smith Wesson 61-3 pistol B58-133.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Smith+Wesson+61-3+pistol+B58-133.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "157941379071",
+          "title": "MG SMITH WESSON MODEL 59 10* RDs. OLD NEW STOCK.",
+          "price": {
+            "value": "28.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-28",
+          "soldDateLabel": "Sold May 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/157941379071",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "178148933427",
+          "title": "SMITH & WESSON FACTORY  Model 63  owners manual",
+          "price": {
+            "value": "21.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$3.00 shipping",
+          "soldDate": "2026-05-21",
+          "soldDateLabel": "Sold May 21, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/178148933427",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "326830648499",
+          "title": "Factory Original Smith & Wesson Model 60 Manual S&W",
+          "price": {
+            "value": "29.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-15",
+          "soldDateLabel": "Sold May 15, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/326830648499",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48944328": {
+      "status": "ok",
+      "query": "Squires Bingham M-20 semi-automatic 23-896221.",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Squires+Bingham+M-20+semi-automatic+23-896221.&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "188103931303",
+          "title": "For 2025-26 BMW G8X G2X G42 6pc Carbon Fiber Dashboard Interior Console Trim Kit",
+          "price": {
+            "value": "342.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$180.00 shipping",
+          "soldDate": "2026-05-13",
+          "soldDateLabel": "Sold May 13, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/188103931303",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "318327386696",
+          "title": "BMW 1 2 SER F20 F21 F22 F23 M135i M235i N55B30A AUTOMATIC GEARBOX 8601213 8HP45",
+          "price": {
+            "value": "336.40",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$53.07 shipping",
+          "soldDate": "2026-05-24",
+          "soldDateLabel": "Sold May 24, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/318327386696",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "198156136413",
+          "title": "For 2023-24 BMW G8X G2X G42 6pc Carbon Fiber Dashboard Interior Console Trim Kit",
+          "price": {
+            "value": "342.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$200.00 shipping",
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/198156136413",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48944332": {
+      "status": "ok",
+      "query": "Remington Arms Co 34",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Remington+Arms+Co+34&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": "eBay may return limited results for restricted categories.",
+      "matches": [
+        {
+          "ebayItemId": "257465172878",
+          "title": "REMINGTON ARMS CO. of BRIDGEPORT CT. EMPTY 250 SAVAGE KLEANBORE HI-SPEED BOX",
+          "price": {
+            "value": "7.50",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-26",
+          "soldDateLabel": "Sold Apr 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257465172878",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397706765765",
+          "title": "Remington Arms Co Made in USA 12 GA for 2-3/4 or Shorter Shells Barrel",
+          "price": {
+            "value": "225.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-18",
+          "soldDateLabel": "Sold Apr 18, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/397706765765",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257465182589",
+          "title": "REMINGTON ARMS CO of BRIDGEPORT CT, HIGH PRESSURE PROOF LOADS 20GA EMPTY 2PC BOX",
+          "price": {
+            "value": "24.50",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$8.00 shipping",
+          "soldDate": "2026-04-26",
+          "soldDateLabel": "Sold Apr 26, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/257465182589",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "48944393": {
+      "status": "ok",
+      "query": "Nikola Joki\u0107 autographed 15 W943847",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Nikola+Joki%C4%87+autographed+15+W943847&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "168334078959",
+          "title": "Nikola Jokic Denver Signed Autographed Basketball Blue XL Jersey #15",
+          "price": {
+            "value": "179.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-29",
+          "soldDateLabel": "Sold Apr 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/168334078959",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306903907691",
+          "title": "Nikola Jokic Signed Denver Nuggets Jersey XL BAS Beckett Auto MVP #15",
+          "price": {
+            "value": "179.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.04 shipping",
+          "soldDate": "2026-05-18",
+          "soldDateLabel": "Sold May 18, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/306903907691",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "389779571247",
+          "title": "Nikola Jokic Signed Nuggets #15 Custom White NBA Jersey Five Star Cert SWAU COA",
+          "price": {
+            "value": "149.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.88 shipping",
+          "soldDate": "2026-03-28",
+          "soldDateLabel": "Sold Mar 28, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/389779571247",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "48944334": {
       "fetchedAt": "2026-05-29T20:53:03Z",
@@ -208,6 +470,26 @@
     "48944315": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "48944316": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48944311": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48944328": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48944332": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
+    },
+    "48944393": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }

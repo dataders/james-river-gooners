@@ -1,13 +1,71 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T09:16:49Z",
+  "generatedAt": "2026-05-30T12:07:42Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
-  "items": {},
+  "items": {
+    "48995419": {
+      "status": "ok",
+      "query": "Extra large of assorted",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Extra+large+of+assorted&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "377084542474",
+          "title": "PACK OF 3&5 LADIES SHORTS ELASTICATED WOMENS SUMMER CASUAL BEACH PANTS BOTTOMS",
+          "price": {
+            "value": "13.39",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$13.43 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/377084542474",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "327077612507",
+          "title": "Mens Stretch Fleece Shorts Jersey Plain Elasticated Gym Sweat Jogger Jogging",
+          "price": {
+            "value": "9.41",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$39.01 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/327077612507",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "317459626357",
+          "title": "Fruit of the Loom Men's Briefs Underwear White/Color Imperfect XL-2XL-3X-4X-5X",
+          "price": {
+            "value": "14.90",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "itemWebUrl": "https://www.ebay.com/itm/317459626357",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    }
+  },
   "attempts": {
     "48995349": {
       "fetchedAt": "2026-05-30T09:16:49Z",
       "status": "no_results"
+    },
+    "48995419": {
+      "fetchedAt": "2026-05-30T12:07:42Z",
+      "status": "ok"
     }
   }
 }
