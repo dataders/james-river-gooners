@@ -109,8 +109,13 @@ jobs:
             if git push; then
               exit 0
             fi
-            echo "Push failed; rebasing on origin/main before retry ${attempt}"
+            echo "Push rejected (attempt ${attempt}); rebasing on origin/main"
             git fetch origin main
-            git rebase origin/main
+            # -X theirs: auto-resolve binary Parquet conflicts in favour of our
+            # freshly-scraped data when a concurrent commit landed during the run.
+            if ! git rebase -X theirs origin/main; then
+              git rebase --abort
+              exit 1
+            fi
           done
           git push
