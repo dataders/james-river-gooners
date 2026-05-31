@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 
-// Wait for the Parquet/WASM data pipeline to finish
+// Wait for the ndjson data pipeline to finish
 export async function waitForLoad(page) {
   await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
 }
