@@ -567,6 +567,13 @@ def scrape_hibid_auction(
     existing_bids = load_existing_bids(items_path)
     if not has_bid_changes(all_items, existing_bids):
         print(f"  No bid changes; skipping write for {safe_id}")
+        import os
+        if os.environ.get("GOONERS_EMBEDDINGS") == "1":
+            emb_path = items_path.with_suffix(".embeddings")
+            if not emb_path.exists():
+                print(f"  Embeddings missing for {safe_id}; generating now")
+                from embed import generate_and_write as _gen_embeddings
+                _gen_embeddings(all_items, items_path, None)
         return {"changed": False}
 
     ITEMS_DIR.mkdir(parents=True, exist_ok=True)
@@ -585,6 +592,12 @@ def scrape_hibid_auction(
     ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]
     ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
     print(f"  Wrote {len(all_items)} items → {ndjson_path.name}")
+
+    # Generate CLIP embeddings (images still arrays at this point)
+    import os
+    if os.environ.get("GOONERS_EMBEDDINGS") == "1":
+        from embed import generate_and_write as _gen_embeddings
+        _gen_embeddings(all_items, items_path, None)
 
     # Write Parquet (images stringified for Arrow compatibility)
     for item in all_items:
