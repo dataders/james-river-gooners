@@ -11,6 +11,12 @@ export function SearchBar({ value, onChange, semanticStatus }) {
     timeoutRef.current = setTimeout(() => onChange(val), 200)
   }
 
+  const handleClear = () => {
+    clearTimeout(timeoutRef.current)
+    setLocalValue('')
+    onChange('')
+  }
+
   return (
     <div className="search-bar-wrap">
       <input
@@ -21,14 +27,32 @@ export function SearchBar({ value, onChange, semanticStatus }) {
         onChange={handleChange}
       />
       {semanticStatus === 'loading' && (
-        <span className="semantic-badge semantic-badge--loading" title="Downloading AI search model (~40 MB, cached after first load)">
+        <span
+          className="semantic-badge semantic-badge--loading"
+          style={localValue ? { right: 38 } : undefined}
+          title="Downloading AI search model (~40 MB, cached after first load)"
+        >
           AI ↓
         </span>
       )}
       {semanticStatus === 'ready' && (
-        <span className="semantic-badge semantic-badge--ready" title="Semantic (CLIP) search active">
+        <span
+          className="semantic-badge semantic-badge--ready"
+          style={localValue ? { right: 38 } : undefined}
+          title="Semantic (CLIP) search active"
+        >
           AI ✓
         </span>
+      )}
+      {localValue && (
+        <button
+          type="button"
+          className="search-clear"
+          aria-label="Clear search"
+          onClick={handleClear}
+        >
+          ×
+        </button>
       )}
     </div>
   )
