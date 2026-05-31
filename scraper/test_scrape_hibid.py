@@ -1,5 +1,11 @@
+import os
+import sys
+import tempfile
 import unittest
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from pathlib import Path
+from unittest import mock
 
 from scrape_hibid import (
     extract_catalog_id,
@@ -108,6 +114,110 @@ class ParseRelativeCloseTimeTest(unittest.TestCase):
         # The caller strips the trailing dash before passing to this function
         result = parse_relative_close_time("2d 0h 0m ", self.base)
         self.assertEqual(result, "2026-05-29T14:00:00+00:00")
+
+
+class HibidEmbeddingsTest(unittest.TestCase):
+    """GOONERS_EMBEDDINGS=1 triggers generate_and_write on both the no-bid-changes
+    early return and the normal changed-data write path."""
+
+    _CATALOG_URL = "https://hibid.com/catalog/123456/test-auction/"
+    _LOT_ITEM = {
+        "id": "hibid_99001",
+        "lotNumber": 1,
+        "title": "Vintage Chair",
+        "description": "Oak ladder-back",
+        "currentBid": 25.0,
+        "totalBids": 3,
+        "endDate": "2026-06-01T23:00:00+00:00",
+        "images": [],
+        "category": "Furniture",
+        "detailUrl": "https://hibid.com/lot/99001/",
+        "source": "past_chapters",
+        "auctionId": "123456",
+        "auctionSafeId": "hibid_123456",
+        "auctionTitle": "Test Auction",
+        "auctionEndDate": "2026-06-01T23:00:00+00:00",
+        "scrapedAt": "2026-05-31T00:00:00+00:00",
+    }
+
+    def _mock_session(self):
+        sess = mock.Mock()
+        resp = mock.Mock()
+        resp.text = "<html><h1>Test Auction</h1><body>5/31/2026 - 6/1/2026</body></html>"
+        resp.raise_for_status = mock.Mock()
+        sess.get.return_value = resp
+        return sess
+
+    def _run(self, tmp: Path, env: dict, existing_bids: dict,
+             pre_create_embeddings: bool = False) -> tuple:
+        from scrape_hibid import scrape_hibid_auction
+        if pre_create_embeddings:
+            (tmp / "hibid_123456.embeddings").write_bytes(b"x")
+        mock_embed = mock.MagicMock()
+        patches = [
+            mock.patch("scrape_hibid.create_session", return_value=self._mock_session()),
+            mock.patch("scrape_hibid.fetch_catalog_lot_links",
+                       return_value=[("https://hibid.com/lot/99001/test/", None)]),
+            mock.patch("scrape_hibid.fetch_lot_details", return_value=dict(self._LOT_ITEM)),
+            mock.patch("scrape_hibid.load_existing_bids", return_value=existing_bids),
+            mock.patch("scrape_hibid.ITEMS_DIR", tmp),
+            mock.patch.dict(sys.modules, {"embed": mock_embed}),
+        ]
+        with ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(mock.patch.dict(os.environ, env))
+            result = scrape_hibid_auction(
+                self._CATALOG_URL, source_slug="past_chapters",
+                company_name="Past Chapters", snapshot_to_motherduck=False,
+            )
+        return result, mock_embed.generate_and_write
+
+    # --- early-return (no bid changes) path ---
+
+    def test_early_return_generates_embeddings_when_missing(self):
+        existing = {"hibid_99001": (25.0, 3)}  # same → no changes
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result, mock_gen = self._run(Path(tmpdir), {"GOONERS_EMBEDDINGS": "1"}, existing)
+        self.assertEqual(result, {"changed": False})
+        mock_gen.assert_called_once()
+
+    def test_early_return_skips_when_embeddings_exist(self):
+        existing = {"hibid_99001": (25.0, 3)}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result, mock_gen = self._run(
+                Path(tmpdir), {"GOONERS_EMBEDDINGS": "1"}, existing,
+                pre_create_embeddings=True,
+            )
+        self.assertEqual(result, {"changed": False})
+        mock_gen.assert_not_called()
+
+    def test_early_return_skips_when_env_not_set(self):
+        existing = {"hibid_99001": (25.0, 3)}
+        env = {k: v for k, v in os.environ.items() if k != "GOONERS_EMBEDDINGS"}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, env, clear=True):
+                result, mock_gen = self._run(Path(tmpdir), {}, existing)
+        self.assertEqual(result, {"changed": False})
+        mock_gen.assert_not_called()
+
+    # --- normal write (bid changes present) path ---
+
+    def test_write_path_generates_embeddings(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result, mock_gen = self._run(
+                Path(tmpdir), {"GOONERS_EMBEDDINGS": "1"}, existing_bids={},
+            )
+        self.assertEqual(result["changed"], True)
+        mock_gen.assert_called_once()
+
+    def test_write_path_skips_embeddings_when_env_not_set(self):
+        env = {k: v for k, v in os.environ.items() if k != "GOONERS_EMBEDDINGS"}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.dict(os.environ, env, clear=True):
+                result, mock_gen = self._run(Path(tmpdir), {}, existing_bids={})
+        self.assertEqual(result["changed"], True)
+        mock_gen.assert_not_called()
 
 
 if __name__ == "__main__":
