@@ -46,8 +46,8 @@ export function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, onItem
         </div>
         {maxBid != null && (
           <div className="item-roi-row">
-            <span className="item-roi-max">Max ${Math.round(maxBid)}</span>
-            <span className="item-roi-cost">All-in ${totalCost}</span>
+            <span className="item-roi-max"><span className="item-roi-label">Max</span> ${Math.round(maxBid)}</span>
+            <span className="item-roi-cost"><span className="item-roi-label">All-in</span> ${totalCost}</span>
           </div>
         )}
         {remaining && <div className="item-time">{remaining}</div>}
