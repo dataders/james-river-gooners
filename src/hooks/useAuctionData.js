@@ -1,74 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import initWasm, { readParquet } from 'parquet-wasm'
 import { isLocalAuction } from '../utils/locality'
 import { normalizeManifest } from '../utils/manifest'
 import { syncUrlParam } from '../utils/urlState'
 
 const BASE = import.meta.env.BASE_URL
 
-// Determine loader from URL param once at module load; default is ndjson
-export const activeLoader = (() => {
-  try {
-    const p = new URLSearchParams(window.location.search).get('loader')
-    return p === 'parquet' ? 'parquet' : 'ndjson'
-  } catch {
-    return 'ndjson'
-  }
-})()
-
-// Pre-warm WASM at module parse time so it overlaps with manifest fetch
-const wasmReady = activeLoader === 'parquet' ? initWasm() : Promise.resolve()
-
 function dataUrl(path) {
   return `${BASE}${path.replace(/^\//, '')}`
 }
-
-// --- Parquet loader ---
-
-async function fetchParquetAsObjects(url) {
-  await wasmReady
-  const resp = await fetch(url)
-  const buffer = new Uint8Array(await resp.arrayBuffer())
-  const arrowTable = readParquet(buffer)
-  const { tableFromIPC } = await import('apache-arrow')
-  const table = tableFromIPC(arrowTable.intoIPCStream())
-  return table.toArray().map(row => row.toJSON())
-}
-
-function normalizeRowsParquet(results, archived) {
-  const items = []
-  const auctionMap = {}
-  for (const rows of results) {
-    for (const row of rows) {
-      if (typeof row.images === 'string') {
-        try { row.images = JSON.parse(row.images) } catch { row.images = [] }
-      }
-      if (typeof row.lotNumber === 'bigint') row.lotNumber = Number(row.lotNumber)
-      if (typeof row.totalBids === 'bigint') row.totalBids = Number(row.totalBids)
-      if (typeof row.currentBid === 'bigint') row.currentBid = Number(row.currentBid)
-      row.archived = archived
-      items.push(row)
-      const sid = row.auctionSafeId
-      if (sid && !auctionMap[sid]) {
-        auctionMap[sid] = {
-          safeId: sid,
-          id: row.auctionId,
-          title: row.auctionTitle,
-          endDate: row.auctionEndDate,
-          scrapedAt: row.scrapedAt,
-          source: row.source || 'cannons',
-          archived,
-          isLocal: isLocalAuction(row.auctionTitle),
-          totalItems: 0,
-        }
-      }
-      if (sid) auctionMap[sid].totalItems++
-    }
-  }
-  return { items, auctions: Object.values(auctionMap) }
-}
-
-// --- NDJSON loader ---
 
 async function fetchNdjson(url) {
   const text = await fetch(url).then(r => r.text())
@@ -111,19 +50,11 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
   const manifest = await manifestResp.json()
   const entries = normalizeManifest(manifest, { archived })
 
-  let items, auctions
-  if (activeLoader === 'ndjson') {
-    const results = await Promise.all(entries.map(entry => {
-      const path = entry.ndjsonPath || entry.itemsPath.replace('.parquet', '.ndjson')
-      return fetchNdjson(dataUrl(path))
-    }))
-    ;({ items, auctions } = normalizeRowsNdjson(results, archived))
-  } else {
-    const results = await Promise.all(entries.map(entry =>
-      fetchParquetAsObjects(dataUrl(entry.itemsPath))
-    ))
-    ;({ items, auctions } = normalizeRowsParquet(results, archived))
-  }
+  const results = await Promise.all(entries.map(entry => {
+    const path = entry.ndjsonPath || entry.itemsPath.replace('.parquet', '.ndjson')
+    return fetchNdjson(dataUrl(path))
+  }))
+  const { items, auctions } = normalizeRowsNdjson(results, archived)
 
   const embeddingPaths = entries.flatMap(e => e.embeddingsPath ? [e.embeddingsPath] : [])
   return { items, auctions, embeddingPaths, loadTimeMs: Math.round(performance.now() - t0) }
