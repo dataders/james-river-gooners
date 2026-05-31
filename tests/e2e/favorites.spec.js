@@ -79,3 +79,48 @@ test.describe('Favorites', () => {
     await expect(page.locator('.item-card').first().locator('.favorite-button')).toContainText('★')
   })
 })
+
+test.describe('Favorites filter toggle', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => {
+      document.cookie = 'gooners-favorites=; path=/; max-age=0'
+    })
+    await waitForLoad(page)
+  })
+
+  test('button label updates to show count after starring an item', async ({ page }) => {
+    const count = await getItemCount(page)
+    test.skip(count === 0, 'No items loaded — skipping favorites filter test')
+
+    await expect(page.getByRole('button', { name: 'Favorites', exact: true })).toBeVisible()
+    await page.locator('.item-card').first().locator('.favorite-button').click()
+    await expect(page.getByRole('button', { name: 'Favorites (1)', exact: true })).toBeVisible()
+  })
+
+  test('activating the filter shows only starred items', async ({ page }) => {
+    const total = await getItemCount(page)
+    test.skip(total < 2, 'Need at least 2 items to test filter isolation')
+
+    // Star only the first card
+    await page.locator('.item-card').first().locator('.favorite-button').click()
+
+    // Activate the filter
+    await page.getByRole('button', { name: /^Favorites/ }).click()
+    await page.waitForTimeout(200)
+
+    expect(await getItemCount(page)).toBe(1)
+  })
+
+  test('shows empty state when filter is active with no favorites', async ({ page }) => {
+    const count = await getItemCount(page)
+    test.skip(count === 0, 'No items loaded — skipping favorites filter test')
+
+    // Activate with nothing starred
+    await page.getByRole('button', { name: 'Favorites', exact: true }).click()
+
+    await expect(page.locator('.no-deals-message')).toBeVisible()
+    await expect(page.locator('.no-deals-message')).toContainText('No favorites yet')
+  })
+})
+
