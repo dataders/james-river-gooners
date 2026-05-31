@@ -4,11 +4,12 @@
       "safeId": "NxlGR1rzSa43pZm8BUveUQ",
       "title": "05/31/26: Colonial Heights VA Online Estate Auction | 09 Pontiac G6 GT | Antiques and Collectibles- Cannon's Online Auctions, LLC",
       "endDate": "2026-05-31 6:19:00 PM",
-      "scrapedAt": "2026-05-30T22:57:30.578897+00:00",
+      "scrapedAt": "2026-05-31T00:02:27.431681+00:00",
       "itemCount": 286,
       "itemsPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.ndjson"
+      "ndjsonPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.ndjson",
+      "embeddingsPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.embeddings"
     },
     {
       "safeId": "hibid_739418",
@@ -34,31 +35,34 @@
       "safeId": "hT_S_DZDYuxrkjyAGwm8Lw",
       "title": "06/01/26: DNA Auction Group | Lifetime Collection of Vintage Costume Jewelry | Estate Goods and Chattels | Antiques | Schroeder Rd, Powhatan VA 23139- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-01 9:59:00 PM",
-      "scrapedAt": "2026-05-30T22:58:04.341161+00:00",
+      "scrapedAt": "2026-05-31T00:03:45.412029+00:00",
       "itemCount": 1164,
       "itemsPath": "data/items/hT_S_DZDYuxrkjyAGwm8Lw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/items/hT_S_DZDYuxrkjyAGwm8Lw.ndjson"
+      "ndjsonPath": "data/items/hT_S_DZDYuxrkjyAGwm8Lw.ndjson",
+      "embeddingsPath": "data/items/hT_S_DZDYuxrkjyAGwm8Lw.embeddings"
     },
     {
       "safeId": "50gRY3ttr9OMTLukeSTZjA",
       "title": "06/02/26: The Estate of Allen & Carol Cook by Tom Jones Auctions, Powhatan County VA 23139- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-02 8:12:00 PM",
-      "scrapedAt": "2026-05-30T22:58:56.637084+00:00",
+      "scrapedAt": "2026-05-31T00:06:40.173254+00:00",
       "itemCount": 409,
       "itemsPath": "data/items/50gRY3ttr9OMTLukeSTZjA.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/items/50gRY3ttr9OMTLukeSTZjA.ndjson"
+      "ndjsonPath": "data/items/50gRY3ttr9OMTLukeSTZjA.ndjson",
+      "embeddingsPath": "data/items/50gRY3ttr9OMTLukeSTZjA.embeddings"
     },
     {
       "safeId": "ueFwkKYNsqFLAllnYAFdcw",
       "title": "06/03/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-03 8:18:00 PM",
-      "scrapedAt": "2026-05-30T22:59:26.801529+00:00",
+      "scrapedAt": "2026-05-31T00:07:55.629596+00:00",
       "itemCount": 796,
       "itemsPath": "data/items/ueFwkKYNsqFLAllnYAFdcw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/items/ueFwkKYNsqFLAllnYAFdcw.ndjson"
+      "ndjsonPath": "data/items/ueFwkKYNsqFLAllnYAFdcw.ndjson",
+      "embeddingsPath": "data/items/ueFwkKYNsqFLAllnYAFdcw.embeddings"
     },
     {
       "safeId": "rpsJEu-fQcegLdNm4BjoYQ",
@@ -144,11 +148,12 @@
       "safeId": "kv5GFVm_PLi6WqCrpWFtew",
       "title": "06/10/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-10 8:04:00 PM",
-      "scrapedAt": "2026-05-30T23:00:37.812697+00:00",
+      "scrapedAt": "2026-05-31T00:10:44.705468+00:00",
       "itemCount": 739,
       "itemsPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.ndjson"
+      "ndjsonPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.ndjson",
+      "embeddingsPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.embeddings"
     },
     {
       "safeId": "KtbqxU0Uovx985gkiiGrUQ",
@@ -174,11 +179,12 @@
       "safeId": "ZO1ARTsfo5u_cpC34qfAGQ",
       "title": "06/15/26: Henrico County Estate Auction |  Dunkerry Lane | Sandston VA 23150- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-15 5:56:00 PM",
-      "scrapedAt": "2026-05-30T23:01:16.362661+00:00",
+      "scrapedAt": "2026-05-31T00:12:43.539469+00:00",
       "itemCount": 228,
       "itemsPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.ndjson"
+      "ndjsonPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.ndjson",
+      "embeddingsPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.embeddings"
     },
     {
       "safeId": "zmIi5q6gqQxSJ8zjILQe5A",
