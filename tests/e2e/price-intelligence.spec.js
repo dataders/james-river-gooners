@@ -8,7 +8,7 @@ async function waitForItems(page) {
 }
 
 function bestDealsButton(page) {
-  return page.getByRole('button', { name: 'Best deals only', exact: true })
+  return page.getByRole('button', { name: 'Best deals', exact: true })
 }
 
 // ── Best Deals toggle ─────────────────────────────────────────────────────────
