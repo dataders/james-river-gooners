@@ -112,7 +112,7 @@ export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite,
                 rel="noopener noreferrer"
                 className="detail-link"
               >
-                Open on Cannon's
+                {item.detailUrl?.includes('hibid.com') ? 'Open on HiBid' : "Open on Cannon's"}
               </a>
             )}
             <button className="detail-copy-link" onClick={handleCopyLink}>
