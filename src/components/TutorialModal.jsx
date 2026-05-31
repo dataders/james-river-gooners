@@ -79,9 +79,6 @@ export function TutorialModal({ onClose }) {
             </li>
           ))}
         </ul>
-        <div className="tutorial-footer">
-          <button className="tutorial-got-it" onClick={onClose}>Got it!</button>
-        </div>
       </div>
     </div>
   )

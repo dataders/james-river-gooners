@@ -998,27 +998,6 @@ body {
   line-height: 1.45;
 }
 
-.tutorial-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.tutorial-got-it {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius);
-  padding: 8px 24px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.tutorial-got-it:hover {
-  background: var(--accent-hover);
-}
 
 /* Help button (? next to theme toggle) */
 .help-button {
