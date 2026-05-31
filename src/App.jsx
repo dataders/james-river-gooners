@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { useAuctionData, activeLoader } from './hooks/useAuctionData'
+import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
 import { usePreferences } from './hooks/usePreferences'
@@ -11,7 +11,6 @@ import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
 import { hasEbayComps } from './utils/ebayComps'
 import { syncUrlParam } from './utils/urlState'
-import { DealsPanel } from './components/DealsPanel'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
@@ -32,7 +31,6 @@ export default function App() {
     items,
     embeddingPaths,
     loading,
-    loadTimeMs,
     error,
     archiveLoading,
     archiveError,
@@ -64,16 +62,14 @@ export default function App() {
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
-  const { isFavorite, toggleFavorite } = useFavorites()
+  const { favoriteIds, isFavorite, toggleFavorite } = useFavorites()
   const headerVisible = useHeaderVisible()
 
   const [selectedItem, setSelectedItem] = useState(null)
   const [bestDeals, setBestDeals] = useState(
     () => new URLSearchParams(window.location.search).get('bestDeals') === '1'
   )
-  const [showDeals, setShowDeals] = useState(
-    () => new URLSearchParams(window.location.search).get('showDeals') === '1'
-  )
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
 
   // Deep-link: open item modal once data loads
   const initialItemKey = useRef(new URLSearchParams(window.location.search).get('item'))
@@ -168,6 +164,11 @@ export default function App() {
     return result
   }, [filteredItems, hasComp, bestDeals, allComps])
 
+  const finalItems = useMemo(() => {
+    if (!showFavoritesOnly) return displayItems
+    return displayItems.filter(isFavorite)
+  }, [displayItems, showFavoritesOnly, isFavorite])
+
   if (error) {
     return <div className="error">Error: {error}</div>
   }
@@ -185,18 +186,6 @@ export default function App() {
         </div>
         <ArsenalTrivia />
         <div className="view-toggles">
-          <button
-            type="button"
-            className="loader-bench"
-            title="Switch loader and reload"
-            onClick={() => {
-              const url = new URL(window.location.href)
-              url.searchParams.set('loader', activeLoader === 'ndjson' ? 'parquet' : 'ndjson')
-              window.location.href = url.toString()
-            }}
-          >
-            {activeLoader}{loadTimeMs != null ? ` · ${loadTimeMs}ms` : ''}
-          </button>
           <label className="local-toggle">
             <input
               type="checkbox"
@@ -218,23 +207,20 @@ export default function App() {
           </label>
           <button
             type="button"
+            className={`deals-toggle${showFavoritesOnly ? ' active' : ''}`}
+            onClick={() => setShowFavoritesOnly(v => !v)}
+          >
+            {favoriteIds.length > 0 ? `Favorites (${favoriteIds.length})` : 'Favorites'}
+          </button>
+          <button
+            type="button"
             className={`deals-toggle${bestDeals ? ' active' : ''}`}
             onClick={() => setBestDeals(v => {
               syncUrlParam('bestDeals', !v)
               return !v
             })}
           >
-            Best deals only
-          </button>
-          <button
-            type="button"
-            className={`deals-toggle${showDeals ? ' active' : ''}`}
-            onClick={() => setShowDeals(v => {
-              syncUrlParam('showDeals', !v)
-              return !v
-            })}
-          >
-            Deals view
+            Best deals
           </button>
           <button
             type="button"
@@ -286,9 +272,7 @@ export default function App() {
       <main>
         {loading ? (
           <div className="loading">Loading auction items...</div>
-        ) : showDeals ? (
-          <DealsPanel items={visibleItems} allComps={allComps} onItemClick={handleItemClick} />
-        ) : bestDeals && displayItems.length === 0 ? (
+        ) : bestDeals && finalItems.length === 0 ? (
           <div className="no-deals-message">
             <div className="item-count">0 items</div>
             <p>No best deals found.</p>
@@ -298,9 +282,17 @@ export default function App() {
               enable <strong>Archived auctions</strong> to see deals from past sales.
             </p>
           </div>
+        ) : showFavoritesOnly && finalItems.length === 0 ? (
+          <div className="no-deals-message">
+            <div className="item-count">0 items</div>
+            <p>No favorites yet.</p>
+            <p className="no-deals-hint">
+              Star items in the grid to save them here.
+            </p>
+          </div>
         ) : (
           <ItemGrid
-            items={displayItems}
+            items={finalItems}
             allComps={allComps}
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
