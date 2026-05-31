@@ -93,9 +93,12 @@ export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite,
           </div>
           <div className="detail-category">{item.rawCategory || item.category}</div>
 
-          <div className="detail-bid-row">
-            <span className="detail-bid">${item.currentBid.toLocaleString()}</span>
-            <span className="detail-bids">{item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}</span>
+          <div className="detail-price-section">
+            <div className="detail-price-label">Current bid</div>
+            <div className="detail-bid-row">
+              <span className="detail-bid">${item.currentBid.toLocaleString()}</span>
+              <span className="detail-bids">{item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}</span>
+            </div>
           </div>
 
           {remaining && <div className="detail-time">{remaining}</div>}

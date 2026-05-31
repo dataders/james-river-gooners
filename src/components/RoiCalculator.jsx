@@ -48,7 +48,7 @@ export function RoiCalculator({ soldComps }) {
       </div>
 
       <div className="roi-results">
-        <div className="roi-result-block">
+        <div className="roi-result-block roi-result-block--primary">
           <span className="roi-result-label">Max bid</span>
           <span className="roi-result-value">{fmt(maxBid)}</span>
         </div>
