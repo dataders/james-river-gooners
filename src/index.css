@@ -165,14 +165,14 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .range-value {
-  font-weight: 400;
+  font-weight: 700;
   color: var(--gold);
   font-size: 0.8rem;
 }
@@ -285,11 +285,11 @@ body {
 }
 
 .auction-filter-label {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-muted);
+  color: var(--text);
 }
 
 .auction-filter-summary {
@@ -682,8 +682,9 @@ body {
 
 .item-bid {
   color: var(--gold);
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
 }
 
 .item-bids {
@@ -701,13 +702,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-top: 3px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.item-roi-label {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 2px;
 }
 
 .item-roi-max {
   color: var(--gold);
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .item-roi-cost {
@@ -765,7 +777,8 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: var(--text);
   cursor: pointer;
 }
 .local-toggle input[type="checkbox"] {
@@ -808,14 +821,16 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   font-size: 0.85rem;
+  font-weight: 500;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .deals-toggle.active {
-  background: color-mix(in srgb, var(--gold) 15%, var(--chip-bg));
+  background: color-mix(in srgb, var(--gold) 22%, var(--chip-bg));
   border-color: var(--gold);
   color: var(--gold);
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .loader-bench {
@@ -979,22 +994,37 @@ body {
   margin-bottom: 12px;
 }
 
+.detail-price-section {
+  margin-bottom: 8px;
+}
+
+.detail-price-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
 .detail-bid-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .detail-bid {
   color: var(--gold);
-  font-weight: 700;
-  font-size: 1.2rem;
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
 }
 
 .detail-bids {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 .detail-time {
@@ -1284,6 +1314,11 @@ body {
   padding: 10px 12px;
 }
 
+.roi-result-block--primary {
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+  background: color-mix(in srgb, var(--gold) 6%, var(--bg));
+}
+
 .roi-result-label {
   color: var(--text-muted);
   font-size: 0.68rem;
@@ -1293,12 +1328,13 @@ body {
 
 .roi-result-value {
   color: var(--gold);
-  font-size: 1.15rem;
-  font-weight: 850;
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .roi-result-cost {
-  color: var(--text);
+  color: var(--text-muted);
+  font-size: 1rem;
 }
 
 .roi-footnote {
