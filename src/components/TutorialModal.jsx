@@ -4,42 +4,27 @@ const STEPS = [
   {
     icon: '🔍',
     title: 'Search',
-    body: 'Type keywords to find items. AI-powered image search loads in the background — once the "AI ✓" badge appears, searches match visual similarity too.',
+    body: 'Keyword search with fuzzy matching. "AI ✓" means image similarity search is also active.',
   },
   {
     icon: '🏷️',
-    title: 'Category filters',
-    body: 'Show or hide whole item categories. Click a group header to expand it, then toggle individual categories. Use "show all" / "hide all" to reset.',
-  },
-  {
-    icon: '🎚️',
-    title: 'Range sliders',
-    body: 'Narrow results by current bid price, number of bids, or hours remaining. Drag either handle to set a range.',
+    title: 'Categories & filters',
+    body: 'Toggle categories on/off. Use the sliders to filter by price, bid count, or time remaining.',
   },
   {
     icon: '⭐',
     title: 'Favorites',
-    body: 'Click the star on any card or in the detail panel to save an item. Hit the "Favorites" button in the toolbar to see only your saved items.',
+    body: 'Star any item to save it. Use the Favorites toggle to see only saved items.',
   },
   {
     icon: '📋',
     title: 'Item detail',
-    body: 'Click any card to open a detail panel with full photos, current bid, eBay sold comps, and an ROI calculator to estimate your potential profit.',
+    body: 'Click a card for full photos, eBay sold comps, and an ROI calculator.',
   },
   {
     icon: '💰',
-    title: 'Best deals & comps',
-    body: '"Best deals" shows items where the current bid is below typical eBay resale. "Has comp" filters to items with actual price data from eBay.',
-  },
-  {
-    icon: '📍',
-    title: 'Richmond area only',
-    body: 'Toggle this to limit results to local Richmond auctions only, hiding items from other regions.',
-  },
-  {
-    icon: '🗄️',
-    title: 'Archived auctions',
-    body: 'Turn this on to browse past auction data. Great for researching what similar items have sold for.',
+    title: 'Best deals',
+    body: 'Highlights items where the current bid is below typical eBay resale price.',
   },
 ]
 
@@ -82,7 +67,7 @@ export function TutorialModal({ onClose }) {
             ✕
           </button>
         </div>
-        <p className="tutorial-subtitle">A better way to browse Cannon's Auctions. Here's what you can do:</p>
+        <p className="tutorial-subtitle">Here's what you can do:</p>
         <ul className="tutorial-steps">
           {STEPS.map(step => (
             <li key={step.title} className="tutorial-step">
