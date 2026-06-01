@@ -71,7 +71,18 @@ export default function App() {
   const { theme, toggle: toggleTheme } = useTheme()
   const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
   const { favoriteIds, isFavorite, toggleFavorite } = useFavorites()
-  const headerVisible = useHeaderVisible()
+
+  const headerRef = useRef(null)
+  const [headerHeight, setHeaderHeight] = useState(Infinity)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(() => setHeaderHeight(el.offsetHeight))
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const headerVisible = useHeaderVisible(headerHeight)
 
   const [selectedItem, setSelectedItem] = useState(null)
   const [bestDeals, setBestDeals] = useState(
@@ -185,7 +196,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
+      <header ref={headerRef} className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
         <div className="header-banner">
           <img src="/apple-touch-icon.png" className="banner-icon" alt="" aria-hidden="true" />
           <div className="banner-text">

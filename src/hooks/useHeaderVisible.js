@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 
-export function useHeaderVisible() {
+export function useHeaderVisible(headerHeight = Infinity) {
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
 
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY
-      if (currentY < 80) {
+      if (currentY < headerHeight) {
         setVisible(true)
       } else if (currentY > lastScrollY.current + 5) {
         setVisible(false)
@@ -19,7 +19,7 @@ export function useHeaderVisible() {
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, [headerHeight])
 
   return visible
 }
