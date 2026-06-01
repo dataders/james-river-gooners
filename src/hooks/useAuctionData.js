@@ -154,7 +154,13 @@ export function useAuctionData(includeArchived = false) {
         : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
             ? { ...item, archived: true }
             : item)
-      return [...active, ...archiveItems]
+      // The same lot can appear in both the active and archive snapshots while
+      // an auction is mid-transition. De-dupe by item id (preferring the active
+      // copy) so downstream consumers never see a collision — a duplicate id
+      // makes MiniSearch.addAll throw, which crashes the whole App.
+      const activeIds = new Set(active.map(i => i.id))
+      const archiveOnly = archiveItems.filter(i => !activeIds.has(i.id))
+      return [...active, ...archiveOnly]
     }
     if (dynamicArchivedIds.size === 0) return activeItems
     return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
