@@ -1,3 +1,4 @@
+// @ts-check
 // Small fetch wrapper with bounded retries + exponential backoff.
 //
 // The read model lives on GitHub Pages / a CDN, so transient 5xx and network
@@ -9,8 +10,22 @@
 const DEFAULT_RETRIES = 3
 const DEFAULT_BASE_DELAY_MS = 300
 
+/** @param {number} ms @returns {Promise<void>} */
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
+/**
+ * @typedef {Object} RetryOptions
+ * @property {number} [retries]      Max retry attempts after the first try
+ * @property {number} [baseDelayMs]  Base backoff delay (doubles each attempt)
+ * @property {(url: string) => Promise<Response>} [fetchImpl]  Injectable for tests
+ */
+
+/**
+ * fetch() with bounded retries on 5xx + network errors. 4xx is returned as-is.
+ * @param {string} url
+ * @param {RetryOptions} [options]
+ * @returns {Promise<Response>}
+ */
 export async function fetchWithRetry(url, {
   retries = DEFAULT_RETRIES,
   baseDelayMs = DEFAULT_BASE_DELAY_MS,
@@ -40,12 +55,22 @@ export async function fetchWithRetry(url, {
   throw lastError
 }
 
+/**
+ * @param {string} url
+ * @param {RetryOptions} [options]
+ * @returns {Promise<any>}
+ */
 export async function fetchJsonWithRetry(url, options) {
   const resp = await fetchWithRetry(url, options)
   if (!resp.ok) throw new Error(`Failed to load ${url}: ${resp.status}`)
   return resp.json()
 }
 
+/**
+ * @param {string} url
+ * @param {RetryOptions} [options]
+ * @returns {Promise<string>}
+ */
 export async function fetchTextWithRetry(url, options) {
   const resp = await fetchWithRetry(url, options)
   if (!resp.ok) throw new Error(`Failed to load ${url}: ${resp.status}`)
