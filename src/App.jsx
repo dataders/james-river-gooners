@@ -19,6 +19,8 @@ import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
+import { TutorialModal } from './components/TutorialModal'
+import { useTutorial } from './hooks/useTutorial'
 
 export default function App() {
   const [showArchived, setShowArchived] = useState(
@@ -62,6 +64,7 @@ export default function App() {
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
+  const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
   const { favoriteIds, isFavorite, toggleFavorite } = useFavorites()
   const headerVisible = useHeaderVisible()
 
@@ -182,6 +185,12 @@ export default function App() {
             <h1 className="logo">James River Gooners</h1>
             <p className="tagline">A better way to browse Cannon's Auctions</p>
           </div>
+          <button
+            className="help-button"
+            onClick={openTutorial}
+            title="How to use this site"
+            aria-label="Open help"
+          >?</button>
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <ArsenalTrivia />
@@ -300,6 +309,8 @@ export default function App() {
           />
         )}
       </main>
+
+      {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
 
       {selectedItem && (
         <ItemDetail
