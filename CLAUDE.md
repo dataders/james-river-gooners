@@ -50,6 +50,8 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 
 ## CI / PR Monitoring
 
+**At the start of every session:** immediately call `mcp__github__list_pull_requests` for `dataders/james-river-gooners` (state: open) and call `mcp__github__subscribe_pr_activity` for every open PR. Do this before the user asks. Subscriptions do not persist across sessions — re-subscribing each session is mandatory.
+
 After pushing a branch and opening a PR, always call `mcp__github__subscribe_pr_activity` for that PR, then actively follow through on every `<github-webhook-activity>` event that arrives:
 - CI failure → diagnose, fix, push, re-check until green
 - Review comment → address or ask the user if ambiguous
