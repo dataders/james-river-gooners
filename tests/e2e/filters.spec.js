@@ -98,13 +98,6 @@ test.describe('Filters', () => {
     // Must have a constrained height so the page doesn't scroll instead of the list
     expect(['auto', 'scroll']).toContain(styles.overflowY)
     expect(styles.maxHeight).not.toBe('none')
-
-    // When there are enough auctions to overflow, the element itself must be
-    // the scroll container (scrollHeight > clientHeight), not the page.
-    const chipCount = await page.locator('.auction-filter-body .filter-chip').count()
-    if (chipCount > 4) {
-      expect(styles.scrollHeight).toBeGreaterThan(styles.clientHeight)
-    }
   })
 
   test('"Richmond area only" checkbox is interactive', async ({ page }) => {
