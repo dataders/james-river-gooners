@@ -25,7 +25,7 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 1652,
+        "durationMs": 1597,
         "friction": []
       },
       {
@@ -35,9 +35,9 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2003,
+        "durationMs": 1927,
         "friction": [
-          "Search settled in 521ms"
+          "Search settled in 451ms"
         ]
       },
       {
@@ -47,10 +47,10 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2222,
+        "durationMs": 2263,
         "friction": [
-          "Sort settled in 830ms",
-          "Price filter settled in 216ms"
+          "Sort settled in 866ms",
+          "Price filter settled in 217ms"
         ]
       },
       {
@@ -60,7 +60,7 @@
         "status": "pass",
         "steps": 4,
         "optimalSteps": 2,
-        "durationMs": 1758,
+        "durationMs": 1657,
         "friction": [
           "Category toggle settled in 269ms",
           "No one-click \"only this category\" — requires hide-all then re-show (4 steps)"
@@ -73,9 +73,9 @@
         "status": "pass",
         "steps": 1,
         "optimalSteps": 1,
-        "durationMs": 1832,
+        "durationMs": 1805,
         "friction": [
-          "Locality filter settled in 684ms"
+          "Locality filter settled in 670ms"
         ]
       },
       {
@@ -85,7 +85,7 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2275,
+        "durationMs": 2382,
         "friction": []
       },
       {
@@ -95,7 +95,7 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2836,
+        "durationMs": 2942,
         "friction": []
       },
       {
@@ -105,7 +105,7 @@
         "status": "pass",
         "steps": 3,
         "optimalSteps": 3,
-        "durationMs": 2387,
+        "durationMs": 2386,
         "friction": []
       },
       {
@@ -115,18 +115,18 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2097,
+        "durationMs": 2224,
         "friction": []
       }
     ],
     "perf": {
-      "dataReadyMs": 1054,
-      "domContentLoaded": 177,
-      "loadComplete": 178,
-      "firstContentfulPaint": 272,
+      "dataReadyMs": 1132,
+      "domContentLoaded": 199,
+      "loadComplete": 200,
+      "firstContentfulPaint": 292,
       "transferKB": 1,
-      "searchLatencyMs": 458,
-      "filterLatencyMs": 411
+      "searchLatencyMs": 487,
+      "filterLatencyMs": 495
     },
     "responsive": [
       {
