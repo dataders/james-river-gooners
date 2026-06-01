@@ -1,6 +1,8 @@
+import { parseAuctionDate } from './dates.js'
+
 function hoursUntil(endDate) {
-  if (!endDate) return Infinity
-  const end = new Date(endDate.replace(/-/g, '/'))
+  const end = parseAuctionDate(endDate)
+  if (!end) return Infinity
   return Math.max(0, (end - new Date()) / 3600000)
 }
 
