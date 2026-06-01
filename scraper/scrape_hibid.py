@@ -15,6 +15,7 @@ import json
 import re
 import sys
 import time
+import warnings
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -66,6 +67,11 @@ def extract_catalog_id(url: str) -> str | None:
 
 
 def create_session() -> requests.Session:
+    import urllib3
+    # HiBid occasionally serves a cert with a future not-before date during
+    # rotation; disable verification rather than hard-failing the whole run.
+    warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     session = requests.Session()
     session.headers.update({
         "User-Agent": (
@@ -75,6 +81,7 @@ def create_session() -> requests.Session:
         ),
         "Accept-Language": "en-US,en;q=0.9",
     })
+    session.verify = False
     return session
 
 
@@ -243,64 +250,88 @@ def discover_hibid_specs(sources_file: Path | None = None) -> list[dict]:
 # Catalog pagination
 # ---------------------------------------------------------------------------
 
-def fetch_catalog_lot_links(
-    session: requests.Session, catalog_url: str
-) -> list[tuple[str, int]]:
-    """
-    Return [(full_lot_url, lot_number_hint), ...] for every lot in the catalog.
-    Paginates until no more lot links are found.
-    """
-    lot_links: list[tuple[str, int]] = []
+def _parse_apollo_state(html: str) -> dict:
+    """Extract the hibid-state Apollo cache JSON from a page."""
+    m = re.search(r'<script id="hibid-state"[^>]*>(.*?)</script>', html, re.DOTALL)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(1)).get("apollo.state", {})
+    except Exception:
+        return {}
+
+
+def _lot_links_from_html(html: str) -> list[tuple[str, int]]:
+    """Extract lot specs from already-fetched catalog page HTML."""
+    apollo = _parse_apollo_state(html)
+
+    lots_in_state: dict[int, int] = {}
+    for k, v in apollo.items():
+        if k.startswith("Lot:") and isinstance(v, dict):
+            try:
+                lot_id = int(k.split(":")[1])
+                lot_num = int(v.get("lotNumber") or 0)
+                lots_in_state[lot_id] = lot_num
+            except (ValueError, TypeError):
+                continue
+
+    rq = apollo.get("ROOT_QUERY", {})
+    lot_search_key = next((k for k in rq if k.startswith("lotSearch")), None)
+    total_count = 0
+    if lot_search_key:
+        pr = rq[lot_search_key].get("pagedResults") or {}
+        total_count = pr.get("totalCount") or 0
+
+    if lots_in_state and total_count > 0:
+        min_id = min(lots_in_state)
+        min_lot_num = lots_in_state[min_id]
+        base_id = min_id - (min_lot_num - 1)
+        return [
+            (f"{HIBID_BASE}/lot/{base_id + lot_num - 1}/", lot_num)
+            for lot_num in range(1, total_count + 1)
+        ]
+
+    # Fallback: parse links directly from HTML (capped at 100)
+    print("  Warning: Apollo state unavailable; falling back to HTML lot links")
+    soup = BeautifulSoup(html, "html.parser")
     seen_ids: set[str] = set()
-    base_url = catalog_url.rstrip("/")
-    page = 1
-
-    while page <= 50:
-        page_url = base_url if page == 1 else f"{base_url}?page={page}"
-        try:
-            resp = session.get(page_url, timeout=30)
-            resp.raise_for_status()
-        except Exception as exc:
-            print(f"  Warning: catalog page {page} failed: {exc}")
-            break
-
-        soup = BeautifulSoup(resp.text, "html.parser")
-        links = soup.find_all("a", href=re.compile(r"/lot/\d+"))
-        if not links:
-            break
-
-        added = 0
-        for a in links:
-            href = a.get("href", "").split("?")[0]
-            m = re.search(r"/lot/(\d+)", href)
-            if not m:
-                continue
-            lot_id = m.group(1)
-            if lot_id in seen_ids:
-                continue
-            seen_ids.add(lot_id)
-
-            # "Lot 3 | Title" → extract lot number
-            link_text = a.get_text(strip=True)
-            lot_num = 0
-            lot_m = re.match(r"Lot\s*#?\s*(\d+)", link_text, re.IGNORECASE)
-            if lot_m:
-                lot_num = int(lot_m.group(1))
-
-            full_url = href if href.startswith("http") else HIBID_BASE + href
-            lot_links.append((full_url, lot_num))
-            added += 1
-
-        if added == 0:
-            break
-
-        next_link = soup.find("a", string=re.compile(r"Next|›|»", re.IGNORECASE))
-        if not next_link:
-            break
-        page += 1
-
+    lot_links: list[tuple[str, int]] = []
+    for a in soup.find_all("a", href=re.compile(r"/lot/\d+")):
+        href = a.get("href", "").split("?")[0]
+        m = re.search(r"/lot/(\d+)", href)
+        if not m:
+            continue
+        lot_id = m.group(1)
+        if lot_id in seen_ids:
+            continue
+        seen_ids.add(lot_id)
+        link_text = a.get_text(strip=True)
+        lot_num = 0
+        lot_m = re.match(r"Lot\s*#?\s*(\d+)", link_text, re.IGNORECASE)
+        if lot_m:
+            lot_num = int(lot_m.group(1))
+        full_url = href if href.startswith("http") else HIBID_BASE + href
+        lot_links.append((full_url, lot_num))
     lot_links.sort(key=lambda x: (x[1] == 0, x[1]))
     return lot_links
+
+
+def fetch_catalog_lot_links(
+    session: requests.Session,
+    catalog_url: str,
+    html: str | None = None,
+) -> list[tuple[str, int]]:
+    """Return [(full_lot_url, lot_number_hint), ...] for every lot in the catalog."""
+    if html is None:
+        base_url = catalog_url.rstrip("/")
+        try:
+            resp = session.get(base_url + "/", timeout=30)
+            resp.raise_for_status()
+            html = resp.text
+        except Exception as exc:
+            print(f"  Warning: catalog page fetch failed: {exc}")
+            return []
+    return _lot_links_from_html(html)
 
 
 # ---------------------------------------------------------------------------
@@ -505,26 +536,37 @@ def scrape_hibid_auction(
     # Canonical catalog URL (no state prefix)
     full_catalog_url = f"{HIBID_BASE}/catalog/{catalog_id}/"
 
-    # Fetch catalog page: title + end date
+    # Fetch catalog page once: parse title, end date, and lot specs together.
     auction_title = ""
     auction_end_date = ""
+    catalog_html = ""
     try:
         resp = session.get(full_catalog_url, timeout=30)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        page_text = soup.get_text(" ", strip=True)
-
-        h1 = soup.find("h1")
-        if h1:
-            auction_title = h1.get_text(strip=True)
-        if not auction_title:
-            og = soup.find("meta", property="og:title")
-            if og:
-                auction_title = og.get("content", "").split("|")[0].strip()
-
-        auction_end_date = parse_date_range_end(page_text)
+        catalog_html = resp.text
     except Exception as exc:
         print(f"  Warning: could not load catalog page: {exc}")
+
+    if catalog_html:
+        # Try Apollo state first for clean title/date (strips the " | HiBid.com" suffix)
+        apollo = _parse_apollo_state(catalog_html)
+        auction_obj = apollo.get(f"Auction:{catalog_id}") or {}
+        auction_title = auction_obj.get("title", "")
+        auction_end_date = auction_obj.get("endDate", "")
+
+        if not auction_title or not auction_end_date:
+            soup = BeautifulSoup(catalog_html, "html.parser")
+            page_text = soup.get_text(" ", strip=True)
+            if not auction_title:
+                h1 = soup.find("h1")
+                if h1:
+                    auction_title = h1.get_text(strip=True)
+            if not auction_title:
+                og = soup.find("meta", property="og:title")
+                if og:
+                    auction_title = og.get("content", "").split("|")[0].strip()
+            if not auction_end_date:
+                auction_end_date = parse_date_range_end(page_text)
 
     if not auction_title:
         auction_title = catalog_url
@@ -535,9 +577,9 @@ def scrape_hibid_auction(
         print("  Skipping: real estate auction")
         return {"changed": False, "skipped": True}
 
-    # Fetch lot links
+    # Pass the already-fetched HTML so fetch_catalog_lot_links skips a second request.
     print("  Fetching lot links...")
-    lot_specs = fetch_catalog_lot_links(session, full_catalog_url)
+    lot_specs = fetch_catalog_lot_links(session, full_catalog_url, html=catalog_html or None)
     print(f"  Found {len(lot_specs)} lots")
 
     if not lot_specs:
