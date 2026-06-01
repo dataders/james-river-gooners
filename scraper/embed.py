@@ -16,6 +16,13 @@ Output binary format (.embeddings file):
 
 This layout lets the browser slice the float32 block directly with a
 TypedArray and parse the IDs with JSON.parse.
+
+The IDs stored here are the *bare* item ids, which are unique only within a
+single auction. That is safe because each .embeddings file holds exactly one
+auction's items; the frontend loader (src/hooks/useEmbeddings.js) namespaces
+them with the auction's safeId — `${safeId}:${id}` — when it merges multiple
+auctions in-browser, producing the globally-unique composite keys that search
+and filtering compare against. So there is no need to store composite ids here.
 """
 
 import io

@@ -9,6 +9,7 @@ import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
 import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
+import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { syncUrlParam } from './utils/urlState'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
@@ -31,7 +32,7 @@ export default function App() {
     excludedAuctions,
     toggleAuction,
     items,
-    embeddingPaths,
+    embeddingEntries,
     loading,
     error,
     archiveLoading,
@@ -90,7 +91,7 @@ export default function App() {
   }, [loading, items])
 
   const handleItemClick = useCallback((item) => {
-    syncUrlParam('item', `${item.auctionSafeId}:${item.id}`)
+    syncUrlParam('item', itemKey(item))
     setSelectedItem(item)
   }, [])
 
@@ -127,7 +128,7 @@ export default function App() {
     return new Set(searchIndex.search(searchQuery).map(r => r.id))
   }, [searchIndex, searchQuery])
 
-  const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery, embeddingPaths)
+  const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery, embeddingEntries)
 
   // Hybrid blend: intersect when both are available so semantic filters keyword false positives.
   // If keyword finds nothing (semantic-only query like "vintage mid-century"), use semantic alone.
