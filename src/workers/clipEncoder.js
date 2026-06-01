@@ -1,4 +1,4 @@
-import { pipeline, env } from '@xenova/transformers'
+import { pipeline, env } from '@huggingface/transformers'
 
 // Never attempt to load local models — always fetch from Hugging Face Hub
 env.allowLocalModels = false
@@ -6,7 +6,9 @@ env.allowLocalModels = false
 let extractor = null
 
 async function loadModel() {
-  extractor = await pipeline('feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true })
+  // v3 replaced the `quantized` boolean with `dtype`; 'q8' is the quantized
+  // 8-bit model (the wasm default) — the same weights v2's `quantized: true` used.
+  extractor = await pipeline('feature-extraction', 'Xenova/clip-vit-base-patch32', { dtype: 'q8' })
   self.postMessage({ type: 'ready' })
 }
 

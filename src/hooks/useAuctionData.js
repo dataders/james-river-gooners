@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { isLocalAuction } from '../utils/locality'
+import { itemKey } from '../utils/itemKey'
 import { normalizeManifest } from '../utils/manifest'
 import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
@@ -71,14 +72,19 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
   }))
   const { items, auctions } = normalizeRowsNdjson(results, archived)
 
-  const embeddingPaths = entries.flatMap(e => e.embeddingsPath ? [e.embeddingsPath] : [])
-  return { items, auctions, embeddingPaths, loadTimeMs: Math.round(performance.now() - t0) }
+  // Carry each auction's safeId with its embeddings path: the .embeddings binary
+  // stores bare item ids (unique within one auction), so the loader must namespace
+  // them by safeId to form globally-unique keys when merging auctions in-browser.
+  const embeddingEntries = entries.flatMap(e =>
+    e.embeddingsPath ? [{ path: e.embeddingsPath, safeId: e.safeId }] : []
+  )
+  return { items, auctions, embeddingEntries, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 export function useAuctionData(includeArchived = false) {
   const [activeItems, setActiveItems] = useState([])
   const [activeAuctions, setActiveAuctions] = useState([])
-  const [activeEmbeddingPaths, setActiveEmbeddingPaths] = useState([])
+  const [activeEmbeddingEntries, setActiveEmbeddingEntries] = useState([])
   const [archiveItems, setArchiveItems] = useState([])
   const [archiveAuctions, setArchiveAuctions] = useState([])
   const [archiveLoaded, setArchiveLoaded] = useState(false)
@@ -102,11 +108,11 @@ export function useAuctionData(includeArchived = false) {
   useEffect(() => {
     let cancelled = false
     fetchDataset('data/manifest.json')
-      .then(({ items, auctions, embeddingPaths, loadTimeMs }) => {
+      .then(({ items, auctions, embeddingEntries, loadTimeMs }) => {
         if (cancelled) return
         setActiveItems(items)
         setActiveAuctions(auctions)
-        setActiveEmbeddingPaths(embeddingPaths)
+        setActiveEmbeddingEntries(embeddingEntries)
         setLoadTimeMs(loadTimeMs)
         setLoading(false)
       })
@@ -164,11 +170,12 @@ export function useAuctionData(includeArchived = false) {
             ? { ...item, archived: true }
             : item)
       // The same lot can appear in both the active and archive snapshots while
-      // an auction is mid-transition. De-dupe by item id (preferring the active
-      // copy) so downstream consumers never see a collision — a duplicate id
-      // makes MiniSearch.addAll throw, which crashes the whole App.
-      const activeIds = new Set(active.map(i => i.id))
-      const archiveOnly = archiveItems.filter(i => !activeIds.has(i.id))
+      // an auction is mid-transition. De-dupe by the globally-unique composite
+      // key (preferring the active copy) so downstream consumers never see a
+      // collision. Keying on the bare id here would wrongly drop an archive lot
+      // that merely shares an id with an unrelated active lot from another auction.
+      const activeKeys = new Set(active.map(itemKey))
+      const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
       return [...active, ...archiveOnly]
     }
     if (dynamicArchivedIds.size === 0) return activeItems
@@ -207,7 +214,7 @@ export function useAuctionData(includeArchived = false) {
     excludedAuctions,
     toggleAuction,
     items,
-    embeddingPaths: activeEmbeddingPaths,
+    embeddingEntries: activeEmbeddingEntries,
     loading,
     loadTimeMs,
     archiveLoading: includeArchived && !archiveLoaded && !archiveError,

@@ -25,7 +25,7 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 1608,
+        "durationMs": 1652,
         "friction": []
       },
       {
@@ -35,9 +35,9 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2104,
+        "durationMs": 2003,
         "friction": [
-          "Search settled in 475ms"
+          "Search settled in 521ms"
         ]
       },
       {
@@ -47,10 +47,10 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2413,
+        "durationMs": 2222,
         "friction": [
-          "Sort settled in 807ms",
-          "Price filter settled in 223ms"
+          "Sort settled in 830ms",
+          "Price filter settled in 216ms"
         ]
       },
       {
@@ -60,9 +60,9 @@
         "status": "pass",
         "steps": 4,
         "optimalSteps": 2,
-        "durationMs": 1861,
+        "durationMs": 1758,
         "friction": [
-          "Category toggle settled in 270ms",
+          "Category toggle settled in 269ms",
           "No one-click \"only this category\" — requires hide-all then re-show (4 steps)"
         ]
       },
@@ -73,9 +73,9 @@
         "status": "pass",
         "steps": 1,
         "optimalSteps": 1,
-        "durationMs": 2092,
+        "durationMs": 1832,
         "friction": [
-          "Locality filter settled in 656ms"
+          "Locality filter settled in 684ms"
         ]
       },
       {
@@ -85,7 +85,7 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2493,
+        "durationMs": 2275,
         "friction": []
       },
       {
@@ -95,7 +95,7 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 3734,
+        "durationMs": 2836,
         "friction": []
       },
       {
@@ -105,7 +105,7 @@
         "status": "pass",
         "steps": 3,
         "optimalSteps": 3,
-        "durationMs": 2341,
+        "durationMs": 2387,
         "friction": []
       },
       {
@@ -115,18 +115,18 @@
         "status": "pass",
         "steps": 2,
         "optimalSteps": 2,
-        "durationMs": 2231,
+        "durationMs": 2097,
         "friction": []
       }
     ],
     "perf": {
-      "dataReadyMs": 1116,
-      "domContentLoaded": 201,
-      "loadComplete": 202,
-      "firstContentfulPaint": 296,
+      "dataReadyMs": 1054,
+      "domContentLoaded": 177,
+      "loadComplete": 178,
+      "firstContentfulPaint": 272,
       "transferKB": 1,
-      "searchLatencyMs": 479,
-      "filterLatencyMs": 413
+      "searchLatencyMs": 458,
+      "filterLatencyMs": 411
     },
     "responsive": [
       {
@@ -288,7 +288,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -331,7 +330,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -411,7 +409,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -521,7 +518,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -613,7 +609,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -692,7 +687,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -715,7 +709,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -766,7 +759,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -836,7 +828,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
@@ -920,7 +911,6 @@
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
-      "Cannot read properties of undefined (reading 'registerBackend')",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",
       "Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID",

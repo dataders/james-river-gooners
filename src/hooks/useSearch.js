@@ -1,10 +1,16 @@
 import { useMemo } from 'react'
 import MiniSearch from 'minisearch'
+import { itemKey } from '../utils/itemKey'
 
 export function useSearch(items) {
   return useMemo(() => {
     const ms = new MiniSearch({
-      idField: 'id',
+      // Item `id` is not globally unique — the same id recurs across auctions
+      // (active vs. archived, Maxanet vs. HiBid). Index on the auction-namespaced
+      // composite key so MiniSearch.addAll can't throw "duplicate ID" and so a
+      // search hit maps back to exactly one item in the filter step.
+      idField: 'key',
+      extractField: (doc, field) => field === 'key' ? itemKey(doc) : doc[field],
       fields: ['title', 'description', 'rawCategory'],
       searchOptions: {
         boost: { title: 2 },
@@ -14,20 +20,7 @@ export function useSearch(items) {
         prefix: true,
       },
     })
-    // Item `id` is not globally unique — the same id can recur across auctions
-    // (notably active vs. archived). MiniSearch throws "duplicate ID" on addAll,
-    // which previously blanked the page once archived data loaded. Dedupe by id
-    // (keep first) so indexing can't throw. The downstream filter/semantic
-    // pipeline still keys on `id`; making search collision-correct with a
-    // composite auctionSafeId:id key is tracked as a follow-up.
-    const seen = new Set()
-    const unique = []
-    for (const item of items) {
-      if (seen.has(item.id)) continue
-      seen.add(item.id)
-      unique.push(item)
-    }
-    ms.addAll(unique)
+    ms.addAll(items)
     return ms
   }, [items])
 }
