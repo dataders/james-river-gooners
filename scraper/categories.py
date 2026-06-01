@@ -1,7 +1,11 @@
 """
-Category normalization for Cannon's Auctions (Maxanet).
+Shared category normalization for all auction sources.
 
-Reads mappings from category_mappings.yml.
+Used by both scrape.py (Maxanet/Cannon's) and scrape_hibid.py (HiBid) so that
+every source emits the same unified category vocabulary. Maxanet supplies a real
+site category (matched via raw_aliases); HiBid supplies its breadcrumb crumb and
+relies more heavily on description_keywords inference. Reads mappings from
+category_mappings.yml.
 """
 
 from pathlib import Path

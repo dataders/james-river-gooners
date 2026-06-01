@@ -1,11 +1,15 @@
-# Category mappings for Cannon's Auctions (Maxanet)
+# Shared category mappings for all auction sources (Maxanet/Cannon's + HiBid).
 #
-# Two layers:
-# 1. raw_aliases: maps messy site category names -> canonical display names
+# Three layers:
+# 1. raw_aliases: maps messy site category names -> canonical display names.
+#    Most variants below are Cannon's/Maxanet site strings, but HiBid breadcrumb
+#    crumbs also match here, so do not prune entries just because they look
+#    Maxanet-specific.
 # 2. groups: maps canonical names -> broad groups (via substring matching)
-# 3. description_keywords: infers category from item description when raw category is missing
+# 3. description_keywords: infers category from item title/description when the
+#    raw category is missing or unrecognized. HiBid leans on this layer heavily.
 #
-# Edit this file to adjust categorization. The scraper reads it at runtime.
+# Edit this file to adjust categorization. Both scrapers read it at runtime.
 
 raw_aliases:
   # Art

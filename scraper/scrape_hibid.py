@@ -392,11 +392,11 @@ def fetch_lot_details(
     if bids_m:
         total_bids = int(bids_m.group(1))
 
-    # Extract breadcrumb categories as context for inference.
-    # HiBid's last breadcrumb crumb is always the lot title — skip it and any long strings.
-    # We fold the category crumbs into `combined` rather than using them as raw_cat so
-    # that our alias/group lookup handles the normalization.
-    breadcrumb_extra = ""
+    # Extract breadcrumb categories. HiBid's last breadcrumb crumb is always the
+    # lot title — skip it and any long strings. The most specific remaining crumb
+    # is used as raw_cat so HiBid items flow through the shared raw_aliases layer;
+    # all crumbs are also folded into `combined` for keyword-inference fallback.
+    cat_crumbs: list[str] = []
     for nav_sel in [
         "nav[aria-label*='breadcrumb' i]",
         ".breadcrumb",
@@ -411,9 +411,9 @@ def fetch_lot_details(
                 if a.get_text(strip=True).lower() not in skip_lower
                 and len(a.get_text(strip=True)) <= 40  # lot titles are longer
             ]
-            breadcrumb_extra = " ".join(cat_crumbs)
             break
-    raw_cat = ""  # Always infer from combined text for HiBid
+    breadcrumb_extra = " ".join(cat_crumbs)
+    raw_cat = cat_crumbs[-1] if cat_crumbs else ""
 
     # Images — HiBid loads the gallery via JS, but the primary photo is in og:image
     images: list[str] = []
