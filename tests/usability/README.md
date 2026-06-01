@@ -8,10 +8,26 @@ live app and produce a scored report. See
 npm run test:usability
 ```
 
-Runs in ~25s against the dev server (auto-started) and regenerates:
+Runs in ~30s against the dev server (auto-started) and regenerates:
 
 - `results/REPORT.md` — scored, human-readable report
 - `results/scorecard.json` — machine-readable scorecard + raw results
+
+## CI gate
+
+The `Usability benchmark` job in `.github/workflows/test.yml` runs the benchmark
+on every PR and fails if the score regresses:
+
+```bash
+npm run test:usability            # writes results/scorecard.json
+node tests/usability/check-score.js   # exits 1 if below the gate
+```
+
+The gate fails when **overall < 85** (override with `USABILITY_GATE`) **or any
+bidder objective fails**. The floor leaves headroom for CI perf variance in the
+latency-based "Fast" dimension while still catching a real regression (e.g. a
+Responsive or Usable drop) and any broken bidder flow. To make it block merges,
+mark the job as a required status check in branch protection.
 
 ## Layout
 
