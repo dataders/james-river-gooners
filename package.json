@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "test:unit": "node --test src/utils/*.test.js",
+    "test:unit:coverage": "node --test --experimental-test-coverage src/utils/*.test.js",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:e2e",
     "prepare": "git rev-parse --is-inside-work-tree 2>/dev/null && git config core.hooksPath .githooks || true"

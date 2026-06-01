@@ -1,14 +1,27 @@
+// @ts-check
+/** @typedef {import('../types.js').Item} Item */
+/** @typedef {import('../types.js').FilterOptions} FilterOptions */
+
 import { parseAuctionDate } from './dates.js'
 
+/**
+ * Hours from now until an item closes; Infinity when there is no end date.
+ * @param {string} endDate
+ * @returns {number}
+ */
 function hoursUntil(endDate) {
   const end = parseAuctionDate(endDate)
   if (!end) return Infinity
-  return Math.max(0, (end - new Date()) / 3600000)
+  return Math.max(0, (end.getTime() - Date.now()) / 3600000)
 }
 
 /**
  * Filter auction items based on preferences.
  * excludedCategories now contains rawCategory values.
+ *
+ * @param {Item[]} items
+ * @param {FilterOptions} options
+ * @returns {Item[]}
  */
 export function filterItems(items, { excludedCategories, searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }) {
   return items.filter(item => {
@@ -52,6 +65,9 @@ export function filterItems(items, { excludedCategories, searchIds, minPrice, ma
 /**
  * Get raw categories grouped under their normalized group, with counts.
  * Returns: [{ group: "Electronics", rawCategories: [{ name: "Audiovisual", count: 22 }, ...] }, ...]
+ *
+ * @param {Item[]} items
+ * @returns {{ group: string, rawCategories: { name: string, count: number }[], totalCount: number }[]}
  */
 export function getGroupedCategories(items) {
   // Count raw categories

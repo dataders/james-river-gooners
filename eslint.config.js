@@ -30,6 +30,16 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Correctness
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'no-throw-literal': 'error',
+      'no-unneeded-ternary': 'error',
+      'no-implicit-coercion': ['error', { allow: ['!!'] }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // Encourage typedef hints / discourage silent `any`-style holes
+      'valid-typeof': 'error',
     },
   },
 ])
