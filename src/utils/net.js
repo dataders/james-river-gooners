@@ -14,12 +14,16 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 export async function fetchWithRetry(url, {
   retries = DEFAULT_RETRIES,
   baseDelayMs = DEFAULT_BASE_DELAY_MS,
-  fetchImpl = fetch,
+  fetchImpl,
 } = {}) {
+  // Wrap the default so `fetch` keeps its `this` binding to the global — calling
+  // a bare `fetch` reference (`const f = fetch; f(url)`) throws "Illegal
+  // invocation" in browsers. Tests inject their own fetchImpl.
+  const doFetch = fetchImpl || ((u) => fetch(u))
   let lastError
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const resp = await fetchImpl(url)
+      const resp = await doFetch(url)
       // Retry only on server errors; client errors are returned to the caller.
       if (resp.status >= 500 && attempt < retries) {
         lastError = new Error(`HTTP ${resp.status}`)
