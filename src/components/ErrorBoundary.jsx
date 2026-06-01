@@ -17,17 +17,17 @@ export class ErrorBoundary extends Component {
     console.error('Uncaught error in React tree:', error, info)
   }
 
-  handleReload = () => {
-    window.location.reload()
-  }
-
   render() {
     if (this.state.error) {
       return (
         <div className="error">
           <p>Something went wrong rendering the page.</p>
           <p>{this.state.error.message}</p>
-          <button type="button" className="deals-toggle" onClick={this.handleReload}>
+          <button
+            type="button"
+            className="deals-toggle"
+            onClick={() => window.location.reload()}
+          >
             Reload
           </button>
         </div>
