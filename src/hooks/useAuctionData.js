@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { isLocalAuction } from '../utils/locality'
 import { normalizeManifest } from '../utils/manifest'
+import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
+
+// How often to re-check active auctions for a passed deadline (ms). Auctions
+// rarely turn over second-to-second, so a coarse tick keeps the page reactive
+// without re-deriving the item list on every render.
+const DEADLINE_TICK_MS = 60000
 
 const BASE = import.meta.env.BASE_URL
 
@@ -75,6 +81,14 @@ export function useAuctionData(includeArchived = false) {
   const [loadTimeMs, setLoadTimeMs] = useState(null)
   const [error, setError] = useState(null)
   const [archiveError, setArchiveError] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Re-evaluate deadlines on an interval so auctions that end while the page
+  // stays open get archived without a reload.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), DEADLINE_TICK_MS)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -118,15 +132,46 @@ export function useAuctionData(includeArchived = false) {
     }
   }, [includeArchived, archiveLoaded, archiveError])
 
-  const allItems = useMemo(
-    () => includeArchived ? [...activeItems, ...archiveItems] : activeItems,
-    [activeItems, archiveItems, includeArchived]
+  // Active auctions whose deadline has already passed are treated as archived,
+  // even though the backend hasn't moved them to the archive manifest yet.
+  // Keyed on a stable string so the Set identity only changes when membership
+  // changes (not on every minute tick), keeping downstream memos cheap.
+  const dynamicArchivedKey = activeAuctions
+    .filter(a => !a.archived && isPastDeadline(a.endDate, now))
+    .map(a => a.safeId)
+    .sort()
+    .join(',')
+
+  const dynamicArchivedIds = useMemo(
+    () => new Set(dynamicArchivedKey ? dynamicArchivedKey.split(',') : []),
+    [dynamicArchivedKey]
   )
 
-  const auctions = useMemo(
-    () => includeArchived ? [...activeAuctions, ...archiveAuctions] : activeAuctions,
-    [activeAuctions, archiveAuctions, includeArchived]
-  )
+  const allItems = useMemo(() => {
+    if (includeArchived) {
+      const active = dynamicArchivedIds.size === 0
+        ? activeItems
+        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+            ? { ...item, archived: true }
+            : item)
+      return [...active, ...archiveItems]
+    }
+    if (dynamicArchivedIds.size === 0) return activeItems
+    return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+  }, [activeItems, archiveItems, includeArchived, dynamicArchivedIds])
+
+  const auctions = useMemo(() => {
+    if (includeArchived) {
+      const active = dynamicArchivedIds.size === 0
+        ? activeAuctions
+        : activeAuctions.map(a => dynamicArchivedIds.has(a.safeId)
+            ? { ...a, archived: true }
+            : a)
+      return [...active, ...archiveAuctions]
+    }
+    if (dynamicArchivedIds.size === 0) return activeAuctions
+    return activeAuctions.filter(a => !dynamicArchivedIds.has(a.safeId))
+  }, [activeAuctions, archiveAuctions, includeArchived, dynamicArchivedIds])
 
   const items = useMemo(() => {
     if (excludedAuctions.length === 0) return allItems
