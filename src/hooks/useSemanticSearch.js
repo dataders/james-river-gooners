@@ -27,11 +27,15 @@ function dotProductTopK(queryEmb, vectors, ids, nDims, totalItems, k) {
 /**
  * Semantic search using CLIP embeddings decoded in a Web Worker.
  *
+ * `embeddingEntries` is an array of { path, safeId } passed through to
+ * useEmbeddings so results can be keyed on globally-unique composite keys.
+ *
  * Returns:
- *   semanticIds   — Set of item IDs in top-K by cosine similarity, or null when no query
+ *   semanticIds   — Set of composite item keys (`${safeId}:${id}`) in top-K by
+ *                   cosine similarity, or null when no query
  *   semanticStatus — 'loading' | 'ready' | 'error'
  */
-export function useSemanticSearch(query, embeddingPaths) {
+export function useSemanticSearch(query, embeddingEntries) {
   // Start in 'loading' — the worker begins downloading the model immediately on mount
   const [semanticStatus, setSemanticStatus] = useState('loading')
   const [lastSemanticIds, setLastSemanticIds] = useState(null)
@@ -39,7 +43,7 @@ export function useSemanticSearch(query, embeddingPaths) {
   const queryIdRef = useRef(0)
   const embeddingsRef = useRef(null)
 
-  const embeddings = useEmbeddings(embeddingPaths, Boolean(query))
+  const embeddings = useEmbeddings(embeddingEntries, Boolean(query))
 
   useEffect(() => {
     embeddingsRef.current = embeddings

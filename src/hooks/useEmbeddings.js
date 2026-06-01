@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { compositeKey } from '../utils/itemKey'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -21,21 +22,25 @@ async function parseEmbeddingsBuffer(buf) {
 
 /**
  * Lazily fetches and parses embeddings files.
+ * `embeddingEntries` is an array of { path, safeId } — the safeId namespaces the
+ * bare item ids stored in each .embeddings binary into globally-unique composite
+ * keys, since the same id recurs across auctions.
  * Returns null until active=true and all files are loaded.
- * Returns { vectors: Float32Array, ids: string[], nDims: number } when ready.
+ * Returns { vectors: Float32Array, ids: string[], nDims: number } when ready,
+ * where `ids` are composite keys (`${safeId}:${id}`).
  */
-export function useEmbeddings(embeddingPaths, active) {
+export function useEmbeddings(embeddingEntries, active) {
   const [embeddings, setEmbeddings] = useState(null)
-  const pathsKey = embeddingPaths?.join(',') ?? ''
+  const pathsKey = embeddingEntries?.map(e => e.path).join(',') ?? ''
 
   useEffect(() => {
-    if (!active || !embeddingPaths?.length) return
+    if (!active || !embeddingEntries?.length) return
     let cancelled = false
 
     async function load() {
       try {
         const buffers = await Promise.all(
-          embeddingPaths.map(p => fetch(dataUrl(p)).then(r => r.arrayBuffer()))
+          embeddingEntries.map(e => fetch(dataUrl(e.path)).then(r => r.arrayBuffer()))
         )
         if (cancelled) return
 
@@ -47,9 +52,11 @@ export function useEmbeddings(embeddingPaths, active) {
         const vectors = new Float32Array(totalItems * nDims)
         const ids = []
         let offset = 0
-        for (const { vectors: v, ids: i, nItems } of parsed) {
+        for (let idx = 0; idx < parsed.length; idx++) {
+          const { vectors: v, ids: fileIds, nItems } = parsed[idx]
+          const safeId = embeddingEntries[idx].safeId
           vectors.set(v, offset * nDims)
-          ids.push(...i)
+          for (const id of fileIds) ids.push(compositeKey(safeId, id))
           offset += nItems
         }
 

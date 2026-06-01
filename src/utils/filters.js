@@ -3,6 +3,7 @@
 /** @typedef {import('../types.js').FilterOptions} FilterOptions */
 
 import { parseAuctionDate } from './dates.js'
+import { itemKey } from './itemKey.js'
 
 /**
  * Hours from now until an item closes; Infinity when there is no end date.
@@ -53,8 +54,9 @@ export function filterItems(items, { excludedCategories, searchIds, minPrice, ma
       if (maxHours != null && h > maxHours) return false
     }
 
-    // Search filter
-    if (searchIds !== null && searchIds !== undefined && !searchIds.has(item.id)) {
+    // Search filter — searchIds holds globally-unique composite keys, since a
+    // bare item id can collide across auctions and match the wrong lot.
+    if (searchIds !== null && searchIds !== undefined && !searchIds.has(itemKey(item))) {
       return false
     }
 
