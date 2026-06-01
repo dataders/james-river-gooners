@@ -93,6 +93,9 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
 
   const handleLo = (e) => {
     const pos = Number(e.target.value)
+    // At the minimum position the bound is cleared (null = no lower limit) so
+    // it matches the "Any" summary instead of pinning to a finite value.
+    if (pos <= 0) { onLoChange(null); return }
     const ratio = pos / SLIDER_STEPS
     const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
     const snapped = Math.round(real)
@@ -101,6 +104,11 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
 
   const handleHi = (e) => {
     const pos = Number(e.target.value)
+    // At the maximum position the bound is cleared (null = no upper limit).
+    // Pinning to a finite `max` would otherwise drop items whose value can't be
+    // compared — e.g. lots with no parseable end date filter to Infinity hours
+    // and would be excluded even though the slider reads as unbounded.
+    if (pos >= SLIDER_STEPS) { onHiChange(null); return }
     const ratio = pos / SLIDER_STEPS
     const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
     const snapped = Math.round(real)
