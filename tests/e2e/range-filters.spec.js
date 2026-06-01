@@ -102,12 +102,14 @@ test.describe('Range filters', () => {
     await setRangeValue(page, ENDS, '.range-slider-hi', MAX_POS)
     await page.waitForTimeout(200)
     const countReset = await getItemCount(page)
+    const summary = await page.locator('.range-filter').nth(ENDS).locator('.range-value').textContent()
 
-    // After reset the count must be greater than while filtered.
-    // It may differ from totalBefore by a few items: the slider max is
-    // Math.round(hoursMax) rather than null, so items at the exact time
-    // boundary can differ between the initial count and the reset count.
-    expect(countReset).toBeGreaterThan(countFiltered)
-    expect(countReset).toBeGreaterThanOrEqual(totalBefore - 5)
+    // Regression guard for #65: at the max slider position the upper bound is
+    // cleared to null (not pinned to Math.round(hoursMax)), so lots with no
+    // parseable end date (Infinity hours) are NOT dropped. Resetting to max
+    // must restore the EXACT unfiltered count and the summary must read "Any".
+    expect(countFiltered).toBeLessThan(totalBefore)
+    expect(countReset).toBe(totalBefore)
+    expect(summary).toBe('Any')
   })
 })
