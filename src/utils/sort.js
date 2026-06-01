@@ -1,6 +1,8 @@
 // Sorting for the item grid. `key` values are stable identifiers persisted in
 // URL/localStorage state, so don't rename them without a migration.
 
+import { parseAuctionDate } from './dates.js'
+
 export const SORT_OPTIONS = [
   { key: '', label: 'Featured' },
   { key: 'ending', label: 'Ending soonest' },
@@ -10,13 +12,15 @@ export const SORT_OPTIONS = [
   { key: 'bids', label: 'Most bids' },
 ]
 
-// Hours until an item ends. Mirrors filters.js so sort and the time filter agree.
-// Items with no end date sort to the very end of time-based orderings.
+// Hours until an item ends. Delegates date parsing to the shared
+// parseAuctionDate so both auction formats are handled — Maxanet
+// "YYYY-MM-DD h:mm:ss AM/PM" and HiBid ISO 8601 ("...T...+00:00"). A naive
+// dash→slash swap would corrupt the ISO form and send every HiBid lot to the
+// bottom of time-based orderings. Items with no/unparseable date sort last.
 function hoursUntil(endDate) {
-  if (!endDate) return Infinity
-  const end = new Date(endDate.replace(/-/g, '/'))
-  const h = (end.getTime() - Date.now()) / 3_600_000
-  return Number.isNaN(h) ? Infinity : h
+  const end = parseAuctionDate(endDate)
+  if (!end) return Infinity
+  return (end.getTime() - Date.now()) / 3_600_000
 }
 
 const num = (v) => (typeof v === 'number' && !Number.isNaN(v) ? v : 0)

@@ -2,8 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { sortItems, SORT_OPTIONS } from './sort.js'
 
-// Build a slash-formatted local datetime `h` hours from now. hoursUntil() in
-// sort.js replaces dashes with slashes, so a slash format parses unambiguously.
+// Build a slash-formatted local datetime `h` hours from now — the Maxanet
+// shape parseAuctionDate reads as local time (matching the on-card timer).
 function inHours(h) {
   const d = new Date(Date.now() + h * 3_600_000)
   const p = (n) => String(n).padStart(2, '0')
@@ -47,6 +47,23 @@ test('price high to low orders by descending current bid', () => {
 
 test('most bids orders by descending total bids', () => {
   assert.deepEqual(ids(sortItems(items, 'bids')), ['b', 'a', 'd', 'c'])
+})
+
+test('ending sort handles ISO (HiBid) and Maxanet dates together', () => {
+  // Regression: a naive dash→slash swap corrupts ISO 8601 strings, sending
+  // every HiBid lot to the bottom. parseAuctionDate parses both forms, so the
+  // ISO lot must interleave by its real end time, not sort last.
+  const isoIn = (h) => new Date(Date.now() + h * 3_600_000).toISOString()
+  const mixed = [
+    { id: 'maxLate', endDate: inHours(20) },
+    { id: 'isoSoon', endDate: isoIn(2) },
+    { id: 'maxSoon', endDate: inHours(5) },
+    { id: 'none', endDate: null },
+  ]
+  assert.deepEqual(
+    ids(sortItems(mixed, 'ending')),
+    ['isoSoon', 'maxSoon', 'maxLate', 'none']
+  )
 })
 
 test('SORT_OPTIONS leads with Featured then Ending soonest', () => {
