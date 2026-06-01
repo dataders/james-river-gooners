@@ -16,6 +16,7 @@ function loadInitialPrefs() {
   if (p.has('cat')) merged.excludedCategories = p.getAll('cat')
   if (p.has('local')) merged.localOnly = p.get('local') === '1'
   if (p.has('hasComp')) merged.hasComp = p.get('hasComp') === '1'
+  if (p.has('sort')) merged.sort = p.get('sort') || ''
   return merged
 }
 
@@ -118,6 +119,15 @@ export function usePreferences() {
     })
   }, [])
 
+  const setSort = useCallback((value) => {
+    syncUrlParam('sort', value)
+    setPrefs(prev => {
+      const next = { ...prev, sort: value }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   return {
     ...prefs,
     toggleIncluded,
@@ -134,5 +144,6 @@ export function usePreferences() {
     setMaxHours,
     setLocalOnly,
     setHasComp,
+    setSort,
   }
 }
