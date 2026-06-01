@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { isLocalAuction } from '../utils/locality'
 import { normalizeManifest } from '../utils/manifest'
 import { syncUrlParam } from '../utils/urlState'
+import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -10,8 +11,18 @@ function dataUrl(path) {
 }
 
 async function fetchNdjson(url) {
-  const text = await fetch(url).then(r => r.text())
-  return text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+  const text = await fetchTextWithRetry(url)
+  const rows = []
+  for (const line of text.trim().split('\n')) {
+    if (!line) continue
+    try {
+      rows.push(JSON.parse(line))
+    } catch (err) {
+      // One malformed line shouldn't sink the whole auction — skip it.
+      console.warn(`Skipping malformed NDJSON line in ${url}:`, err)
+    }
+  }
+  return rows
 }
 
 function normalizeRowsNdjson(results, archived) {
@@ -45,9 +56,7 @@ function normalizeRowsNdjson(results, archived) {
 
 async function fetchDataset(manifestPath, { archived = false } = {}) {
   const t0 = performance.now()
-  const manifestResp = await fetch(dataUrl(manifestPath))
-  if (!manifestResp.ok) throw new Error(`Failed to load ${manifestPath}: ${manifestResp.status}`)
-  const manifest = await manifestResp.json()
+  const manifest = await fetchJsonWithRetry(dataUrl(manifestPath))
   const entries = normalizeManifest(manifest, { archived })
 
   const results = await Promise.all(entries.map(entry => {
