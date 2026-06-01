@@ -12,19 +12,22 @@ of it.
 
 ## TL;DR
 
-**Overall grade: B (88 / 100).** The site is fast, the core bidding workflows all
-work, and accessibility fundamentals are solid. The two things holding it back
-from an A are **touch-target sizes on the header controls** and a handful of
-**missing-affordance gaps** (no sort, no one-click category isolation). Nothing
-here is a five-alarm fire — these are polish items on an already-strong app.
+**Overall grade: A (97 / 100)** — up from B (88) after acting on the benchmark.
+The site is fast, the core bidding workflows all work, and accessibility
+fundamentals are solid. This PR fixed the two biggest gaps the benchmark found:
+**undersized header touch targets** (Responsive 57 → 100) and the **missing sort
+control** (bidders can now order by ending-soonest / price / bids).
 
 | Dimension | Score | Verdict |
 |---|---:|---|
 | Usable (task completion) | 100 | All 9 bidder objectives completed |
 | Fast (load + interaction) | 90 | Sub-second load; interaction slightly over budget |
-| Responsive (layout integrity) | 57 | ⚠️ Undersized tap targets drag this down |
-| Intuitive (steps vs optimal) | 94 | One task needs more steps than it should |
+| Responsive (layout integrity) | 100 | ✅ Header controls now meet ≥40px tap targets |
+| Intuitive (steps vs optimal) | 94 | Sort added; one task (category isolation) still long |
 | Accessible | 100 | Good ARIA, alt text, 19.7:1 text contrast |
+
+> Earlier baseline (before this PR): Responsive **57** (theme toggle 38×26, help
+> 27×25, Categories row 27px tall) and **no sort control**.
 
 ## Should there be a usability benchmark? — Yes, and now there is one
 
@@ -84,31 +87,23 @@ pre-existing defects — exactly the kind of regression a benchmark exists to ca
 
 ## Findings & prioritized recommendations
 
-### P1 — Touch targets are too small (Responsive: 57/100)
+### P1 — Touch targets too small ✅ FIXED IN THIS PR (Responsive 57 → 100)
 
-The header controls measure well under a comfortable 44×44 px touch target on
-every viewport:
+The header controls measured well under a comfortable 44×44 px touch target on
+every viewport (theme toggle 38×26, help `?` 27×25, Categories row 27 px tall).
+**Fix:** the icon buttons (`.theme-toggle`, `.help-button`) now have a ≥40 px
+min-width/height with centered content, and the filter toggle rows
+(`.filter-bar-toggle`, `.auction-filter-toggle`) plus the pill toggles
+(`.deals-toggle`) get a ≥36–40 px min-height. CSS-only; Responsive is now 100.
 
-| Control | Size | Note |
-|---|---|---|
-| Theme toggle | 38 × 26 px | 26 px tall |
-| Help `?` button | 27 × 25 px | smallest target on the page |
-| Categories toggle row | full-width × 27 px | tall enough to find, short to tap |
+### P2 — No sorting ✅ FIXED IN THIS PR
 
-These clear the bare WCAG 2.5.8 minimum (24 px) but are fiddly on a phone — and
-this site's bidders are often browsing on mobile. **Recommendation:** bump the
-icon buttons to a ≥40 px min-height/width and give the filter toggle rows a
-little more vertical padding on small screens. This is a CSS-only change and
-would move the Responsive score from ~57 to ~90+.
-
-### P2 — No sorting (Intuitive)
-
-The Bargain-hunter objective surfaced this: there is **no way to sort** the grid
-(by price, by ending-soonest, by bid count). Bidders can _filter_ a range with
-the sliders, but "show me the cheapest lots" or "what's ending in the next hour"
-requires manual scanning. For an auction site, **ending-soonest** is the single
-most valuable sort. **Recommendation:** add a small sort dropdown
-(Ending soonest / Price ↑ / Price ↓ / Most bids).
+There was **no way to sort** the grid. Bidders could filter a price/time range
+but couldn't ask "show me the cheapest" or "what's ending soonest" — the most
+valuable sort for an auction. **Fix:** added a sort dropdown (Featured / Ending
+soonest / Ending latest / Price ↑ / Price ↓ / Most bids), wired through
+`usePreferences` so it persists in the URL and localStorage like the other
+filters. Logic + unit tests in `src/utils/sort.js`.
 
 ### P3 — Isolating one category takes 4 steps (Intuitive)
 

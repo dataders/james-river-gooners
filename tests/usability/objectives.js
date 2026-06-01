@@ -90,21 +90,35 @@ export const objectives = [
 
   // -----------------------------------------------------------------------
   {
-    id: 'bargain-price-cap',
+    id: 'bargain-sort-and-cap',
     persona: 'Bargain hunter',
-    goal: 'Cap results to low-priced lots using the price filter',
-    optimalSteps: 1,
+    goal: 'Sort by price and cap results to low-priced lots',
+    optimalSteps: 2,
     async run({ page, tracker }) {
       await gotoApp(page)
       const total = await getItemCount(page)
 
-      // Drag the max-price slider down. Price is the first range-filter.
+      // Sort by cheapest first, then verify the grid is actually ordered.
+      tracker.step('Sort by "Price: low to high"')
+      const sortLatency = await measureSettle(page, async () => {
+        await page.locator('.sort-select').selectOption('priceAsc')
+      })
+      tracker.note(`Sort settled in ${sortLatency}ms`)
+      const prices = await page.locator('.item-card .item-bid').evaluateAll(
+        els => els.slice(0, 8).map(e => Number(e.textContent.replace(/[^0-9.]/g, '')))
+      )
+      const ascending = prices.every((p, i) => i === 0 || p >= prices[i - 1])
+      if (!ascending) {
+        tracker.note(`Grid not ordered by price: ${prices.join(', ')}`)
+        return 'fail'
+      }
+
+      // Then cap the max-price slider to narrow to genuinely cheap lots.
       tracker.step('Lower the max-price slider')
       const latency = await measureSettle(page, async () => {
         await page.evaluate(() => {
           const filter = document.querySelectorAll('.range-filter')[0]
-          const slider = filter?.querySelector('input[type="range"].range-max, .range-slider-max, input[type="range"]:last-of-type')
-            || filter?.querySelectorAll('input[type="range"]')[1]
+          const slider = filter?.querySelectorAll('input[type="range"]')[1]
           if (!slider) throw new Error('price max slider not found')
           const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
           setter.call(slider, '60') // ~30% along a log scale → a low price cap
@@ -117,7 +131,6 @@ export const objectives = [
         tracker.note('Price cap did not reduce the result set')
         return 'fail'
       }
-      tracker.note('No sort control exists — bargain hunters cannot order by price/ending-soonest')
       return 'pass'
     },
   },

@@ -12,6 +12,7 @@ export const DEFAULT_PREFS = {
   maxHours: null,
   localOnly: false,
   hasComp: false,
+  sort: '',
 }
 
 const PERSISTED_KEYS = [
@@ -25,6 +26,7 @@ const PERSISTED_KEYS = [
   'maxHours',
   'localOnly',
   'hasComp',
+  'sort',
 ]
 
 export function loadPrefs() {
