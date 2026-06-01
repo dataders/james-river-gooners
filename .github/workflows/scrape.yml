@@ -40,8 +40,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Scrape auction(s)
-        id: scrape
+      - name: Scrape Cannon's (Maxanet) auctions
+        id: scrape_maxanet
         continue-on-error: true
         run: |
           cd scraper
@@ -56,17 +56,34 @@ jobs:
               --with sentence-transformers --with pillow \
               python scrape.py "${{ inputs.auction_url }}"
           else
-            echo "Re-scraping all auctions from manifest..."
+            echo "Re-scraping all Cannon's auctions..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
               --with sentence-transformers --with pillow \
-              python rescrape_all.py
+              python rescrape_all.py --source maxanet
           fi
 
-      - name: Rebuild manifests
+      - name: Scrape HiBid auctions
+        id: scrape_hibid
+        if: ${{ !inputs.auction_url }}
+        continue-on-error: true
+        run: |
+          cd scraper
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Dry run: skipping MotherDuck listing snapshot writes"
+          elif [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            export GOONERS_MOTHERDUCK_SNAPSHOTS=1
+          fi
+          echo "Re-scraping HiBid auctions..."
+          uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+            --with sentence-transformers --with pillow \
+            python rescrape_all.py --source hibid
+
+      - name: Archive closed auctions and rebuild manifests
+        if: ${{ !inputs.auction_url }}
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-            python -c "from rescrape_all import update_manifests; update_manifests()"
+            python rescrape_all.py --archive-only
 
       - name: Install agent-browser Playwright deps
         run: |
@@ -131,8 +148,8 @@ jobs:
           done
           git push
 
-      - name: Fail if any auction scrape errored
-        if: ${{ steps.scrape.outcome == 'failure' }}
+      - name: Fail if Cannon's scrape errored
+        if: ${{ steps.scrape_maxanet.outcome == 'failure' }}
         run: |
-          echo "One or more auctions failed to scrape — see 'Scrape auction(s)' step above for details."
+          echo "Cannon's (Maxanet) scrape failed — see 'Scrape Cannon's' step above for details."
           exit 1
