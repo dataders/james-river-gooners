@@ -84,7 +84,7 @@ def create_session(auction_url: str) -> tuple[requests.Session, str]:
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     })
     # Visit the auction page to establish session cookies
-    resp = session.get(auction_url, allow_redirects=True)
+    resp = session.get(auction_url, allow_redirects=True, timeout=30)
     resp.raise_for_status()
     return session, resp.text
 
@@ -92,7 +92,7 @@ def create_session(auction_url: str) -> tuple[requests.Session, str]:
 def fetch_categories(session: requests.Session, auction_id: str) -> dict:
     """Fetch category list from Maxanet API. Returns {id: name} dict."""
     url = f"https://bid.cannonsauctions.com/Public/Lookup/GetCategories"
-    resp = session.get(url, params={"AuctionId": auction_id})
+    resp = session.get(url, params={"AuctionId": auction_id}, timeout=30)
     resp.raise_for_status()
     data = resp.json()
     return {item["Value"]: item["Text"].strip() for item in data if item.get("Text", "").strip()}
@@ -117,6 +117,7 @@ def fetch_items_page(session: requests.Session, auction_id: str, page: int, page
         url,
         params=params,
         headers={"X-Requested-With": "XMLHttpRequest"},
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.text

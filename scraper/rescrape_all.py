@@ -6,6 +6,7 @@ auction_urls.txt remains a fallback/manual override list. Blank lines and
 comments are skipped.
 """
 
+import argparse
 import json
 import subprocess
 import sys
@@ -160,72 +161,69 @@ def archive_closed_and_stale(current_candidate_ids: set[str]) -> None:
     update_manifests()
 
 
-def main():
-    # --- Maxanet discovery ---
+def _discover_maxanet() -> list[str]:
     print("Discovering Maxanet (Cannon's) auctions...")
     try:
-        discovered_urls = discover_current_auction_urls()
+        discovered = discover_current_auction_urls()
     except Exception as exc:
         print(f"  Maxanet discovery failed: {exc}")
-        discovered_urls = []
+        discovered = []
 
-    manual_urls = read_manual_urls()
-    if discovered_urls:
-        maxanet_urls = discovered_urls
-        print(f"  Discovered {len(discovered_urls)} Maxanet auctions")
+    manual = read_manual_urls()
+    if discovered:
+        urls = dedupe_urls(discovered)
+        print(f"  Discovered {len(urls)} Maxanet auctions")
     else:
-        maxanet_urls = manual_urls
-        print(f"  Falling back to {len(manual_urls)} configured URLs")
+        urls = dedupe_urls(manual)
+        print(f"  Falling back to {len(urls)} configured URLs")
+    return urls
 
-    maxanet_urls = dedupe_urls(maxanet_urls)
 
-    # --- HiBid discovery ---
-    print("\nDiscovering HiBid auctions...")
+def _discover_hibid() -> list[dict]:
+    print("Discovering HiBid auctions...")
     try:
-        hibid_specs = discover_hibid_specs()
-        print(f"  Found {len(hibid_specs)} HiBid catalogs")
+        specs = discover_hibid_specs()
+        print(f"  Found {len(specs)} HiBid catalogs")
+        return specs
     except Exception as exc:
         print(f"  HiBid discovery failed: {exc}")
-        hibid_specs = []
+        return []
 
-    total = len(maxanet_urls) + len(hibid_specs)
-    if total == 0:
-        print("No auction URLs found")
-        sys.exit(0)
 
-    # Build set of current safe IDs for archiving stale files
-    current_candidate_ids: set[str] = set()
+def _candidate_ids_from(maxanet_urls: list[str], hibid_specs: list[dict]) -> set[str]:
+    ids: set[str] = set()
     for url in maxanet_urls:
         try:
-            current_candidate_ids.add(sanitize_auction_id(extract_auction_id(url)))
+            ids.add(sanitize_auction_id(extract_auction_id(url)))
         except ValueError:
             pass
     for spec in hibid_specs:
         cid = extract_catalog_id(spec["catalog_url"])
         if cid:
-            current_candidate_ids.add(hibid_safe_id(cid))
+            ids.add(hibid_safe_id(cid))
+    return ids
 
-    print(f"\nRe-scraping {total} auctions ({len(maxanet_urls)} Maxanet, {len(hibid_specs)} HiBid)...")
+
+def _scrape_maxanet(maxanet_urls: list[str], total: int, start_i: int) -> list[str]:
     failures: list[str] = []
-    i = 0
     cwd = Path(__file__).resolve().parent
-
-    # Maxanet auctions
-    for url in maxanet_urls:
-        i += 1
+    for j, url in enumerate(maxanet_urls, start_i):
         print(f"\n{'='*60}")
-        print(f"[{i}/{total}] Maxanet: {url[:80]}")
+        print(f"[{j}/{total}] Maxanet: {url[:80]}")
         print(f"{'='*60}")
         result = subprocess.run([sys.executable, "scrape.py", url], cwd=cwd)
         if result.returncode != 0:
             print(f"FAILED: {url[:80]}")
             failures.append(url)
+    return failures
 
-    # HiBid auctions
-    for spec in hibid_specs:
-        i += 1
+
+def _scrape_hibid(hibid_specs: list[dict], total: int, start_i: int) -> list[str]:
+    failures: list[str] = []
+    cwd = Path(__file__).resolve().parent
+    for j, spec in enumerate(hibid_specs, start_i):
         print(f"\n{'='*60}")
-        print(f"[{i}/{total}] HiBid ({spec['company_name']}): {spec['catalog_url']}")
+        print(f"[{j}/{total}] HiBid ({spec['company_name']}): {spec['catalog_url']}")
         print(f"{'='*60}")
         result = subprocess.run(
             [
@@ -239,10 +237,69 @@ def main():
         if result.returncode != 0:
             print(f"FAILED: {spec['catalog_url']}")
             failures.append(spec["catalog_url"])
+    return failures
+
+
+def archive_only() -> None:
+    """Discover all current candidates from both sources and archive stale/closed auctions."""
+    print("Archive pass: discovering current candidates from all sources...")
+    maxanet_urls = _discover_maxanet()
+    hibid_specs = _discover_hibid()
+    candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs)
+    archive_closed_and_stale(candidate_ids)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Re-scrape current auctions")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--source",
+        choices=["maxanet", "hibid"],
+        help="Scrape only one source (default: both). Does not archive — run --archive-only afterwards.",
+    )
+    group.add_argument(
+        "--archive-only",
+        action="store_true",
+        help="Skip scraping; re-discover candidates, archive closed/stale auctions, rebuild manifests.",
+    )
+    return parser.parse_args(argv)
+
+
+def main() -> None:
+    args = parse_args()
+
+    if args.archive_only:
+        archive_only()
+        return
+
+    run_maxanet = args.source in (None, "maxanet")
+    run_hibid = args.source in (None, "hibid")
+
+    maxanet_urls = _discover_maxanet() if run_maxanet else []
+    print()
+    hibid_specs = _discover_hibid() if run_hibid else []
+
+    total = len(maxanet_urls) + len(hibid_specs)
+    if total == 0:
+        print("No auction URLs found")
+        sys.exit(0)
+
+    print(f"\nRe-scraping {total} auctions ({len(maxanet_urls)} Maxanet, {len(hibid_specs)} HiBid)...")
+    failures: list[str] = []
+    failures += _scrape_maxanet(maxanet_urls, total, 1)
+    failures += _scrape_hibid(hibid_specs, total, len(maxanet_urls) + 1)
 
     print(f"\n{'='*60}")
     print(f"Done: {total - len(failures)}/{total} succeeded")
-    archive_closed_and_stale(current_candidate_ids)
+
+    if args.source is None:
+        # Full run: archive stale/closed auctions and update manifests
+        candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs)
+        archive_closed_and_stale(candidate_ids)
+    else:
+        # Partial run: just update manifests; archiving deferred to --archive-only
+        update_manifests()
+
     if failures:
         print(f"Failed ({len(failures)}):")
         for url in failures:
