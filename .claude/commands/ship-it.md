@@ -23,7 +23,7 @@ Run the full quality gate, then commit, push, and open a PR for the current bran
    while true; do
      out=$(gh pr checks $PR --repo dataders/james-river-gooners 2>/dev/null) || { sleep 15; continue; }
      if ! echo "$out" | grep -q "pending"; then
-       echo "$out" | awk '{print $1 ": " $2}'
+       echo "$out" | awk -F'\t' '{print $1 ": " $2}'
        echo "Done"
        break
      fi

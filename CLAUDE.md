@@ -64,7 +64,7 @@ After pushing a branch and opening a PR, always call `mcp__github__subscribe_pr_
 while true; do
   out=$(gh pr checks N --repo dataders/james-river-gooners 2>/dev/null) || { sleep 15; continue; }
   if ! echo "$out" | grep -q "pending"; then
-    echo "$out" | awk '{print $1 ": " $2}'
+    echo "$out" | awk -F'\t' '{print $1 ": " $2}'
     echo "Done"
     break
   fi
