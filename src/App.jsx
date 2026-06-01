@@ -195,7 +195,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" style={{ '--header-height': `${isFinite(headerHeight) ? headerHeight : 0}px` }}>
       <header ref={headerRef} className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
         <div className="header-banner">
           <img src="/apple-touch-icon.png" className="banner-icon" alt="" aria-hidden="true" />
@@ -258,76 +258,81 @@ export default function App() {
           </button>
           <SortBar value={sort} onChange={setSort} />
         </div>
-        <SearchBar value={searchQuery} onChange={setSearchQuery} semanticStatus={semanticStatus} />
-        <RangeFilters
-          items={visibleItems}
-          minPrice={minPrice}
-          maxPrice={maxPrice}
-          minBids={minBids}
-          maxBids={maxBids}
-          minHours={minHours}
-          maxHours={maxHours}
-          onMinPriceChange={v => setMinPrice(v)}
-          onMaxPriceChange={v => setMaxPrice(v)}
-          onMinBidsChange={v => setMinBids(v)}
-          onMaxBidsChange={v => setMaxBids(v)}
-          onMinHoursChange={v => setMinHours(v)}
-          onMaxHoursChange={v => setMaxHours(v)}
-        />
-        <AuctionFilter
-          auctions={visibleAuctions}
-          excludedAuctions={excludedAuctions}
-          onToggle={toggleAuction}
-        />
-        {archiveLoading && (
-          <div className="inline-status">Loading archived auctions...</div>
-        )}
-        {archiveError && (
-          <div className="inline-error">Archived auctions failed to load: {archiveError}</div>
-        )}
-        <FilterBar
-          groupedCategories={groupedCategories}
-          excludedCategories={excludedCategories}
-          onToggleExcluded={toggleExcluded}
-          onHideAll={() => {
-            const allRaw = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
-            hideAll(allRaw)
-          }}
-          onShowAll={showAll}
-        />
       </header>
 
-      <main>
-        {loading ? (
-          <div className="loading">Loading auction items...</div>
-        ) : bestDeals && finalItems.length === 0 ? (
-          <div className="no-deals-message">
-            <div className="item-count">0 items</div>
-            <p>No best deals found.</p>
-            <p className="no-deals-hint">
-              Deal detection requires eBay sold-comp data. Most current auction items
-              haven&apos;t been priced yet — try again after the next scraper run, or
-              enable <strong>Archived auctions</strong> to see deals from past sales.
-            </p>
-          </div>
-        ) : showFavoritesOnly && finalItems.length === 0 ? (
-          <div className="no-deals-message">
-            <div className="item-count">0 items</div>
-            <p>No favorites yet.</p>
-            <p className="no-deals-hint">
-              Star items in the grid to save them here.
-            </p>
-          </div>
-        ) : (
-          <ItemGrid
-            items={sortedItems}
-            allComps={allComps}
-            isFavorite={isFavorite}
-            onToggleFavorite={toggleFavorite}
-            onItemClick={handleItemClick}
+      <div className="app-body">
+        <aside className="filter-sidebar">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} semanticStatus={semanticStatus} />
+          <RangeFilters
+            items={visibleItems}
+            minPrice={minPrice}
+            maxPrice={maxPrice}
+            minBids={minBids}
+            maxBids={maxBids}
+            minHours={minHours}
+            maxHours={maxHours}
+            onMinPriceChange={v => setMinPrice(v)}
+            onMaxPriceChange={v => setMaxPrice(v)}
+            onMinBidsChange={v => setMinBids(v)}
+            onMaxBidsChange={v => setMaxBids(v)}
+            onMinHoursChange={v => setMinHours(v)}
+            onMaxHoursChange={v => setMaxHours(v)}
           />
-        )}
-      </main>
+          <AuctionFilter
+            auctions={visibleAuctions}
+            excludedAuctions={excludedAuctions}
+            onToggle={toggleAuction}
+          />
+          {archiveLoading && (
+            <div className="inline-status">Loading archived auctions...</div>
+          )}
+          {archiveError && (
+            <div className="inline-error">Archived auctions failed to load: {archiveError}</div>
+          )}
+          <FilterBar
+            groupedCategories={groupedCategories}
+            excludedCategories={excludedCategories}
+            onToggleExcluded={toggleExcluded}
+            onHideAll={() => {
+              const allRaw = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
+              hideAll(allRaw)
+            }}
+            onShowAll={showAll}
+          />
+        </aside>
+
+        <main>
+          {loading ? (
+            <div className="loading">Loading auction items...</div>
+          ) : bestDeals && finalItems.length === 0 ? (
+            <div className="no-deals-message">
+              <div className="item-count">0 items</div>
+              <p>No best deals found.</p>
+              <p className="no-deals-hint">
+                Deal detection requires eBay sold-comp data. Most current auction items
+                haven&apos;t been priced yet — try again after the next scraper run, or
+                enable <strong>Archived auctions</strong> to see deals from past sales.
+              </p>
+            </div>
+          ) : showFavoritesOnly && finalItems.length === 0 ? (
+            <div className="no-deals-message">
+              <div className="item-count">0 items</div>
+              <p>No favorites yet.</p>
+              <p className="no-deals-hint">
+                Star items in the grid to save them here.
+              </p>
+            </div>
+          ) : (
+            <ItemGrid
+              items={sortedItems}
+              allComps={allComps}
+              isFavorite={isFavorite}
+              onToggleFavorite={toggleFavorite}
+              onItemClick={handleItemClick}
+            />
+          )}
+        </main>
+      </div>
 
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
 

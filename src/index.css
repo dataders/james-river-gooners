@@ -1800,7 +1800,50 @@ body {
   background: var(--accent-hover);
 }
 
-/* Mobile responsive */
+/* ── Desktop two-column layout (sidebar + item grid) ───────────────────── */
+@media (min-width: 1024px) {
+  /* Prevent header auto-hide on desktop — sidebar sticky offset depends on it */
+  .app-header.header-hidden {
+    transform: none;
+  }
+
+  .app-body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 0 20px;
+    align-items: start;
+    padding-top: 12px;
+  }
+
+  .filter-sidebar {
+    position: sticky;
+    top: var(--header-height, 0px);
+    max-height: calc(100vh - var(--header-height, 0px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 12px;
+    padding-bottom: 24px;
+    padding-right: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    border-right: 1px solid var(--border);
+  }
+
+  /* Stack range filters vertically — side-by-side is too cramped at 280px */
+  .filter-sidebar .range-filters {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+/* ── Tablet (between mobile and desktop sidebar) ────────────────────────── */
+@media (min-width: 601px) and (max-width: 1023px) {
+  .range-filters {
+    gap: 12px;
+  }
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .app-header {
     padding: 12px 0 8px;
