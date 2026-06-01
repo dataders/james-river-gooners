@@ -193,17 +193,6 @@
       "ndjsonPath": "data/items/hibid_745663.ndjson"
     },
     {
-      "safeId": "NxlGR1rzSa43pZm8BUveUQ",
-      "title": "05/31/26: Colonial Heights VA Online Estate Auction | 09 Pontiac G6 GT | Antiques and Collectibles- Cannon's Online Auctions, LLC",
-      "endDate": "",
-      "scrapedAt": "2026-06-01T00:07:25.039407+00:00",
-      "itemCount": 286,
-      "itemsPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.parquet",
-      "source": "cannons",
-      "ndjsonPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.ndjson",
-      "embeddingsPath": "data/items/NxlGR1rzSa43pZm8BUveUQ.embeddings"
-    },
-    {
       "safeId": "hibid_739442",
       "title": "https://hibid.com/catalog/739442/",
       "endDate": "",
