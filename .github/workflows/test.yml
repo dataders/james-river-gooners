@@ -74,3 +74,35 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  usability:
+    name: Usability benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run usability benchmark
+        run: npm run test:usability
+
+      - name: Check usability score gate
+        run: node tests/usability/check-score.js
+        env:
+          USABILITY_GATE: '85'
+
+      - name: Upload usability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usability-report
+          path: tests/usability/results/
+          retention-days: 14
