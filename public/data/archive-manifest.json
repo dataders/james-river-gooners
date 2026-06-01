@@ -11,17 +11,6 @@
       "ndjsonPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.ndjson"
     },
     {
-      "safeId": "NxlGR1rzSa43pZm8BUveUQ",
-      "title": "05/31/26: Colonial Heights VA Online Estate Auction | 09 Pontiac G6 GT | Antiques and Collectibles- Cannon's Online Auctions, LLC",
-      "endDate": "2026-05-31 6:19:00 PM",
-      "scrapedAt": "2026-05-31T22:58:01.166485+00:00",
-      "itemCount": 286,
-      "itemsPath": "data/archive/items/NxlGR1rzSa43pZm8BUveUQ.parquet",
-      "source": "cannons",
-      "ndjsonPath": "data/archive/items/NxlGR1rzSa43pZm8BUveUQ.ndjson",
-      "embeddingsPath": "data/archive/items/NxlGR1rzSa43pZm8BUveUQ.embeddings"
-    },
-    {
       "safeId": "hibid_739418",
       "title": "May 31st, 2026 Stamps & Postal History Auction | Live and Online Auctions on HiBid.com",
       "endDate": "2026-05-31T23:00:00+00:00",
@@ -120,6 +109,17 @@
       "itemsPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.parquet",
       "source": "",
       "ndjsonPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.ndjson"
+    },
+    {
+      "safeId": "NxlGR1rzSa43pZm8BUveUQ",
+      "title": "05/31/26: Colonial Heights VA Online Estate Auction | 09 Pontiac G6 GT | Antiques and Collectibles- Cannon's Online Auctions, LLC",
+      "endDate": "",
+      "scrapedAt": "2026-06-01T00:07:25.039407+00:00",
+      "itemCount": 286,
+      "itemsPath": "data/archive/items/NxlGR1rzSa43pZm8BUveUQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/NxlGR1rzSa43pZm8BUveUQ.ndjson",
+      "embeddingsPath": "data/archive/items/NxlGR1rzSa43pZm8BUveUQ.embeddings"
     }
   ]
 }
