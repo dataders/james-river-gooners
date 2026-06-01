@@ -80,7 +80,7 @@
  *
  * @typedef {Object} FilterOptions
  * @property {string[]} excludedCategories  rawCategory values to hide
- * @property {?Set<string>} [searchIds]     item ids to keep, or null/undefined for no search filter
+ * @property {?Set<string>} [searchIds]     composite item keys (`${auctionSafeId}:${id}`) to keep, or null/undefined for no search filter
  * @property {?number} [minPrice]
  * @property {?number} [maxPrice]
  * @property {?number} [minBids]
