@@ -594,6 +594,10 @@ body {
   color: var(--text);
   cursor: pointer;
   transition: border-color 0.15s, transform 0.15s;
+  /* Skip layout/paint for off-screen cards; `auto` remembers actual sizes
+     after first render so scroll position stays stable. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 380px;
 }
 .item-card:hover {
   border-color: var(--accent);
@@ -730,6 +734,13 @@ body {
 /* Scroll sentinel */
 .scroll-sentinel {
   height: 1px;
+}
+
+/* Top spacer that compensates for items dropped from the DOM when the
+   sliding window advances forward through a long auction. */
+.scroll-top-spacer {
+  width: 100%;
+  flex-shrink: 0;
 }
 
 /* Loading / Error */
