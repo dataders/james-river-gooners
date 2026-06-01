@@ -557,6 +557,42 @@ body {
   opacity: 0.5;
   margin-left: 1px;
 }
+
+/* "only" affordance — isolates one category in a single click. Attached to the
+   right of a shown chip; always visible (so it works on touch) but subtle until
+   hovered/focused. */
+.filter-chip-wrap {
+  display: inline-flex;
+  align-items: stretch;
+}
+.filter-chip-wrap .filter-chip {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.filter-chip-only {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+.filter-chip-only:hover,
+.filter-chip-only:focus-visible {
+  opacity: 1;
+  color: var(--gold);
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface));
+}
 .filter-chip.archived {
   border-style: dashed;
 }

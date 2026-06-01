@@ -80,6 +80,17 @@ export function usePreferences() {
     })
   }, [])
 
+  // Isolate a single category: exclude every category except `keep`.
+  const showOnly = useCallback((keep, allCategories) => {
+    const excluded = allCategories.filter(c => c !== keep)
+    syncUrlParam('cat', excluded)
+    setPrefs(prev => {
+      const next = { ...prev, excludedCategories: excluded }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   const setSearchQuery = useCallback((query) => {
     syncUrlParam('q', query)
     setPrefs(prev => ({ ...prev, searchQuery: query }))
@@ -135,6 +146,7 @@ export function usePreferences() {
     clearIncluded,
     hideAll,
     showAll,
+    showOnly,
     setSearchQuery,
     setMinPrice,
     setMaxPrice,

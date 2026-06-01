@@ -56,6 +56,7 @@ export default function App() {
     toggleExcluded,
     hideAll,
     showAll,
+    showOnly,
     setSearchQuery,
     setMinPrice,
     setMaxPrice,
@@ -283,6 +284,7 @@ export default function App() {
             hideAll(allRaw)
           }}
           onShowAll={showAll}
+          onShowOnly={showOnly}
         />
       </header>
 
