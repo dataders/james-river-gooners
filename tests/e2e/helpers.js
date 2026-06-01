@@ -1,8 +1,14 @@
 import { expect } from '@playwright/test'
 
-// Wait for the ndjson data pipeline to finish
+// Wait for the ndjson data pipeline to finish.
+// Reloads once if data loading errored — handles Vite dev-server cold-start on CI
+// where the first fetch can fail before the server has fully initialised.
 export async function waitForLoad(page) {
   await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+  if (await page.locator('.error').isVisible()) {
+    await page.reload()
+    await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+  }
   await expect(page.locator('.error')).toBeHidden()
 }
 
