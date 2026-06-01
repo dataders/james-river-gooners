@@ -70,10 +70,14 @@ def normalize_category(raw_category: str, description: str = "") -> str:
         for term in terms:
             if term in lower:
                 return group
-    if canonical == "Other" or lower == "other":
-        result = infer_from_description(description)
-        if result:
-            return result[1]
+    # No group matched the raw category — it may be empty, "Other", or an
+    # unrecognized crumb (e.g. a HiBid breadcrumb with no alias). In every such
+    # case fall back to keyword inference from the description before giving up,
+    # so an unrecognized crumb no longer suppresses inference the way a literal
+    # "Other" check did.
+    result = infer_from_description(description)
+    if result:
+        return result[1]
     return "Other"
 
 
