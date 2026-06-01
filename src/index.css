@@ -74,9 +74,9 @@ body {
 
 /* App layout */
 .app {
-  max-width: 1400px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 24px;
 }
 
 .app-header {
@@ -1852,6 +1852,9 @@ body {
 
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
+  .app {
+    padding: 0 12px;
+  }
   .app-header {
     padding: 12px 0 8px;
   }
