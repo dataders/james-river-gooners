@@ -565,12 +565,14 @@ def scrape_hibid_auction(
                 og = soup.find("meta", property="og:title")
                 if og:
                     auction_title = og.get("content", "").split("|")[0].strip()
+            if not auction_title:
+                t = soup.find("title")
+                if t:
+                    auction_title = t.get_text(strip=True).split("|")[0].strip()
             if not auction_end_date:
                 auction_end_date = parse_date_range_end(page_text)
 
-    if not auction_title:
-        auction_title = catalog_url
-    print(f"  Title: {auction_title}")
+    print(f"  Title: {auction_title or '(unknown — will derive from lots)'}")
     print(f"  End date: {auction_end_date or '(unknown)'}")
 
     if is_real_estate_auction(auction_title):
@@ -603,6 +605,14 @@ def scrape_hibid_auction(
     if not all_items:
         print("  No items parsed; skipping")
         return {"changed": False}
+
+    # Derive auction-level metadata from items when catalog page parsing failed
+    if not auction_title:
+        auction_title = catalog_url
+    if not auction_end_date:
+        dates = [item["endDate"] for item in all_items if item.get("endDate")]
+        if dates:
+            auction_end_date = max(dates)
 
     # Skip write if nothing changed
     items_path = ITEMS_DIR / f"{safe_id}.parquet"
