@@ -83,19 +83,8 @@ test.describe('Preference persistence', () => {
     await page.goto('/')
     await waitForLoad(page)
 
-    // Open the filter bar and hide all categories
-    const toggle = page.locator('button.filter-bar-toggle')
-    const filterBody = page.locator('.filter-bar-body')
-    await toggle.click()
-    await expect(filterBody).toBeVisible()
-
-    const hideAllBtn = filterBody.locator('button', { hasText: /hide all/i })
-    if (!(await hideAllBtn.count())) {
-      // Try clicking the toggle itself which may contain hide all
-      await page.locator('button.filter-bar-toggle').locator('text=hide all').click()
-    } else {
-      await hideAllBtn.click()
-    }
+    // Hide all categories via the action button in the filter bar header
+    await page.locator('.filter-bar-header button.filter-action', { hasText: /hide all/i }).click()
     await page.waitForTimeout(200)
 
     const stored = await page.evaluate((key) => {

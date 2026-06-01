@@ -50,10 +50,7 @@ test.describe('Filters', () => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping filter test')
 
-    // Open filter panel
-    await page.locator('button.filter-bar-toggle').click()
-    // Click the "hide all" action in the filter bar header
-    await page.locator('button.filter-bar-toggle').locator('text=hide all').click()
+    await page.locator('.filter-bar-header button.filter-action', { hasText: 'hide all' }).click()
     await page.waitForTimeout(200)
     expect(await getItemCount(page)).toBe(0)
   })
@@ -62,11 +59,9 @@ test.describe('Filters', () => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping filter test')
 
-    await page.locator('button.filter-bar-toggle').click()
-    // Hide all, then show all
-    await page.locator('button.filter-bar-toggle').locator('text=hide all').click()
+    await page.locator('.filter-bar-header button.filter-action', { hasText: 'hide all' }).click()
     await page.waitForTimeout(200)
-    await page.locator('button.filter-bar-toggle').locator('text=show all').click()
+    await page.locator('.filter-bar-header button.filter-action', { hasText: 'show all' }).click()
     await page.waitForTimeout(200)
     expect(await getItemCount(page)).toBe(totalBefore)
   })
@@ -178,7 +173,7 @@ test.describe('Filters', () => {
     expect(await getItemCount(page)).toBeLessThan(totalBefore)
 
     // Restore via "show all"
-    const showAllBtn = page.locator('button.filter-bar-toggle').locator('text=show all')
+    const showAllBtn = page.locator('.filter-bar-header button.filter-action', { hasText: 'show all' })
     if (await showAllBtn.isVisible()) {
       await showAllBtn.click()
       await page.waitForTimeout(200)
