@@ -14,7 +14,18 @@ export function useSearch(items) {
         prefix: true,
       },
     })
-    ms.addAll(items)
+    // Items are keyed by `id` here, but ids are only unique *within* an auction —
+    // enabling archived auctions can surface two lots that share an id. MiniSearch
+    // throws on duplicate ids, which (with no error boundary) would crash the whole
+    // grid. De-dupe by id so the index builds; the grid still shows every lot, and
+    // `searchIds.has(item.id)` matches both, so neither becomes unsearchable.
+    const seen = new Set()
+    const unique = items.filter(item => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    })
+    ms.addAll(unique)
     return ms
   }, [items])
 }

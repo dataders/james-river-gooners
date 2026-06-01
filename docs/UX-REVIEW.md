@@ -68,6 +68,20 @@ the overall score regresses below a threshold.
 - **Favorites and filter state survive reloads** via cookie + URL — a returning
   bidder picks up where they left off.
 
+## Bugs surfaced while building the benchmark
+
+Standing up the benchmark (and chasing the resulting CI run) turned up two real,
+pre-existing defects — exactly the kind of regression a benchmark exists to catch:
+
+- **🐞 Archive toggle crashed the grid (fixed in this PR).** Enabling "Archived
+  auctions" could surface two lots sharing a bare `id`; `MiniSearch` throws on
+  duplicate ids, and with no error boundary the whole `<main>` unmounted — grid,
+  cards, and item count all vanished. Fixed by de-duplicating by `id` before
+  building the search index (`src/hooks/useSearch.js`).
+- **🐞 "Ends within = Any" hides 289 dateless lots (tracked in #65).** At its
+  maximum the slider says "Any" but still excludes the 289 active items that have
+  no end date. Filed separately as a focused app fix.
+
 ## Findings & prioritized recommendations
 
 ### P1 — Touch targets are too small (Responsive: 57/100)
