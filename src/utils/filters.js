@@ -2,14 +2,16 @@
 /** @typedef {import('../types.js').Item} Item */
 /** @typedef {import('../types.js').FilterOptions} FilterOptions */
 
+import { parseAuctionDate } from './dates.js'
+
 /**
  * Hours from now until an item closes; Infinity when there is no end date.
  * @param {string} endDate
  * @returns {number}
  */
 function hoursUntil(endDate) {
-  if (!endDate) return Infinity
-  const end = new Date(endDate.replace(/-/g, '/'))
+  const end = parseAuctionDate(endDate)
+  if (!end) return Infinity
   return Math.max(0, (end.getTime() - Date.now()) / 3600000)
 }
 

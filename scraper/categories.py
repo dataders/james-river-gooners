@@ -1,7 +1,11 @@
 """
-Category normalization for Cannon's Auctions (Maxanet).
+Shared category normalization for all auction sources.
 
-Reads mappings from category_mappings.yml.
+Used by both scrape.py (Maxanet/Cannon's) and scrape_hibid.py (HiBid) so that
+every source emits the same unified category vocabulary. Maxanet supplies a real
+site category (matched via raw_aliases); HiBid supplies its breadcrumb crumb and
+relies more heavily on description_keywords inference. Reads mappings from
+category_mappings.yml.
 """
 
 from pathlib import Path
@@ -66,10 +70,14 @@ def normalize_category(raw_category: str, description: str = "") -> str:
         for term in terms:
             if term in lower:
                 return group
-    if canonical == "Other" or lower == "other":
-        result = infer_from_description(description)
-        if result:
-            return result[1]
+    # No group matched the raw category — it may be empty, "Other", or an
+    # unrecognized crumb (e.g. a HiBid breadcrumb with no alias). In every such
+    # case fall back to keyword inference from the description before giving up,
+    # so an unrecognized crumb no longer suppresses inference the way a literal
+    # "Other" check did.
+    result = infer_from_description(description)
+    if result:
+        return result[1]
     return "Other"
 
 
