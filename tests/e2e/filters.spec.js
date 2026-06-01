@@ -80,6 +80,26 @@ test.describe('Filters', () => {
     await expect(page.locator('.auction-filter-body .filter-chip').first()).toBeVisible()
   })
 
+  test('auction dropdown body is scrollable and does not overflow the viewport', async ({ page }) => {
+    await page.locator('button.auction-filter-toggle').click()
+    const body = page.locator('.auction-filter-body')
+    await expect(body).toBeVisible()
+
+    const styles = await body.evaluate(el => {
+      const cs = getComputedStyle(el)
+      return {
+        overflowY: cs.overflowY,
+        maxHeight: cs.maxHeight,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      }
+    })
+
+    // Must have a constrained height so the page doesn't scroll instead of the list
+    expect(['auto', 'scroll']).toContain(styles.overflowY)
+    expect(styles.maxHeight).not.toBe('none')
+  })
+
   test('"Richmond area only" checkbox is interactive', async ({ page }) => {
     const label = page.locator('label.local-toggle', { hasText: 'Richmond area only' })
     const checkbox = label.locator('input[type="checkbox"]')
