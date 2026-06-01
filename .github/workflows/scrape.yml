@@ -41,6 +41,8 @@ jobs:
           node-version: '20'
 
       - name: Scrape auction(s)
+        id: scrape
+        continue-on-error: true
         run: |
           cd scraper
           if [ "${{ inputs.dry_run }}" = "true" ]; then
@@ -128,3 +130,9 @@ jobs:
             fi
           done
           git push
+
+      - name: Fail if any auction scrape errored
+        if: ${{ steps.scrape.outcome == 'failure' }}
+        run: |
+          echo "One or more auctions failed to scrape — see 'Scrape auction(s)' step above for details."
+          exit 1
