@@ -71,6 +71,29 @@ test.describe('Filters', () => {
     expect(await getItemCount(page)).toBe(totalBefore)
   })
 
+  test('category "only" isolates a single category in one click', async ({ page }) => {
+    const totalBefore = await getItemCount(page)
+    test.skip(totalBefore === 0, 'No items loaded — skipping filter test')
+
+    await page.locator('button.filter-bar-toggle').click()
+    // Expand the first group so its chips (and "only" buttons) render.
+    await page.locator('.filter-group-toggle').first().click()
+    const onlyBtn = page.locator('.filter-group-body .filter-chip-only').first()
+    await expect(onlyBtn).toBeVisible()
+
+    await onlyBtn.click()
+    await page.waitForTimeout(200)
+    const isolated = await getItemCount(page)
+    // Isolating one category must leave fewer items than the full set, but more than zero.
+    expect(isolated).toBeGreaterThan(0)
+    expect(isolated).toBeLessThan(totalBefore)
+
+    // "show all" undoes it.
+    await page.locator('button.filter-bar-toggle').locator('text=show all').click()
+    await page.waitForTimeout(200)
+    expect(await getItemCount(page)).toBe(totalBefore)
+  })
+
   test('auctions panel opens and shows auction chips', async ({ page }) => {
     const toggle = page.locator('button.auction-filter-toggle')
     await expect(page.locator('.auction-filter-body')).toBeHidden()

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function GroupSection({ group, excludedCategories, onToggle, onHideGroup, onShowGroup, startExpanded }) {
+function GroupSection({ group, excludedCategories, onToggle, onShowOnly, onHideGroup, onShowGroup, startExpanded }) {
   const [expanded, setExpanded] = useState(startExpanded)
   const shown = group.rawCategories.filter(c => !excludedCategories.includes(c.name))
   const hidden = group.rawCategories.filter(c => excludedCategories.includes(c.name))
@@ -35,14 +35,23 @@ function GroupSection({ group, excludedCategories, onToggle, onHideGroup, onShow
         <div className="filter-group-body">
           <div className="filter-chips">
             {shown.map(({ name, count }) => (
-              <button
-                key={name}
-                className="filter-chip shown"
-                onClick={() => onToggle(name)}
-              >
-                {name}
-                <span className="chip-count">{count}</span>
-              </button>
+              <span key={name} className="filter-chip-wrap">
+                <button
+                  className="filter-chip shown"
+                  onClick={() => onToggle(name)}
+                >
+                  {name}
+                  <span className="chip-count">{count}</span>
+                </button>
+                <button
+                  className="filter-chip-only"
+                  title={`Show only ${name}`}
+                  aria-label={`Show only ${name}`}
+                  onClick={() => onShowOnly(name)}
+                >
+                  only
+                </button>
+              </span>
             ))}
             {hidden.map(({ name, count }) => (
               <button
@@ -68,6 +77,7 @@ export function FilterBar({
   onToggleExcluded,
   onHideAll,
   onShowAll,
+  onShowOnly,
 }) {
   const totalItems = groupedCategories.reduce((s, g) => s + g.totalCount, 0)
   const allRawNames = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
@@ -93,6 +103,9 @@ export function FilterBar({
     }
   }
 
+  // Isolate one category — exclude every other category across all groups.
+  const handleShowOnly = (name) => onShowOnly(name, allRawNames)
+
   const [open, setOpen] = useState(false)
 
   return (
@@ -116,6 +129,7 @@ export function FilterBar({
               group={group}
               excludedCategories={excludedCategories}
               onToggle={onToggleExcluded}
+              onShowOnly={handleShowOnly}
               onHideGroup={handleHideGroup}
               onShowGroup={handleShowGroup}
               startExpanded={false}
