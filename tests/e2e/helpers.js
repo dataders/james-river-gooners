@@ -3,6 +3,7 @@ import { expect } from '@playwright/test'
 // Wait for the ndjson data pipeline to finish
 export async function waitForLoad(page) {
   await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+  await expect(page.locator('.error')).toBeHidden()
 }
 
 // Read the visible item count from the grid header
