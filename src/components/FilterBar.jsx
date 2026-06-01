@@ -97,17 +97,19 @@ export function FilterBar({
 
   return (
     <div className="filter-bar">
-      <button className="filter-bar-toggle" onClick={() => setOpen(!open)}>
-        <span className="filter-label-text">Categories</span>
+      <div className="filter-bar-header">
+        <button className="filter-bar-toggle" onClick={() => setOpen(!open)}>
+          <span className="filter-label-text">Categories</span>
+          <span className="filter-summary">{totalItems - excludedCount} of {totalItems}</span>
+          <span className="filter-bar-arrow">{open ? '▾' : '▸'}</span>
+        </button>
         {!noneHidden && (
-          <span className="filter-action" role="button" onClick={e => { e.stopPropagation(); onShowAll() }}>show all</span>
+          <button className="filter-action" onClick={onShowAll}>show all</button>
         )}
         {!allHidden && (
-          <span className="filter-action" role="button" onClick={e => { e.stopPropagation(); onHideAll() }}>hide all</span>
+          <button className="filter-action" onClick={onHideAll}>hide all</button>
         )}
-        <span className="filter-summary">{totalItems - excludedCount} of {totalItems}</span>
-        <span className="filter-bar-arrow">{open ? '▾' : '▸'}</span>
-      </button>
+      </div>
       {open && (
         <div className="filter-bar-body">
           {groupedCategories.map(group => (
