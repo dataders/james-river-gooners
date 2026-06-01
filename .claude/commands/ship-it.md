@@ -16,7 +16,22 @@ Run the full quality gate, then commit, push, and open a PR for the current bran
    - A short title (under 70 chars)
    - A body that lists what changed and includes a test plan checklist
 
-7. **Subscribe and monitor CI** — call `mcp__github__subscribe_pr_activity` for the new PR. Then actively respond to every `<github-webhook-activity>` event that arrives:
+7. **Subscribe and monitor CI** — call `mcp__github__subscribe_pr_activity` for the new PR, then immediately start a Monitor to actively poll CI results (do not rely on webhooks alone). Use this script (note: `gh pr checks` on this version does NOT support `--json`):
+
+   ```bash
+   PR=<number>
+   while true; do
+     out=$(gh pr checks $PR --repo dataders/james-river-gooners 2>/dev/null) || { sleep 15; continue; }
+     if ! echo "$out" | grep -q "pending"; then
+       echo "$out" | awk -F'\t' '{print $1 ": " $2}'
+       echo "Done"
+       break
+     fi
+     sleep 30
+   done
+   ```
+
+   Then actively respond to every `<github-webhook-activity>` event that arrives:
    - CI failure → diagnose, fix, push, re-check; do not stop until all checks are green
    - Review comment → address it or ask the user if ambiguous
    - Do NOT just say "I'm watching" and go silent — each event requires a visible response and action

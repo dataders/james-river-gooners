@@ -50,7 +50,24 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 
 ## CI / PR Monitoring
 
+**At the start of every session:** immediately call `mcp__github__list_pull_requests` for `dataders/james-river-gooners` (state: open) and call `mcp__github__subscribe_pr_activity` for every open PR. Do this before the user asks. Subscriptions do not persist across sessions — re-subscribing each session is mandatory.
+
 After pushing a branch and opening a PR, always call `mcp__github__subscribe_pr_activity` for that PR, then actively follow through on every `<github-webhook-activity>` event that arrives:
 - CI failure → diagnose, fix, push, re-check until green
 - Review comment → address or ask the user if ambiguous
 - Do NOT just say "I'm watching" and go quiet — each event requires a visible response and action
+
+**Actively watching CI with Monitor:** use the Monitor tool (not just subscribe) to poll CI results after pushing. This version of `gh` does NOT support `--json` on `pr checks` — use plain text output:
+
+```bash
+# Watch PR #N until all checks finish, emit each result as it lands
+while true; do
+  out=$(gh pr checks N --repo dataders/james-river-gooners 2>/dev/null) || { sleep 15; continue; }
+  if ! echo "$out" | grep -q "pending"; then
+    echo "$out" | awk -F'\t' '{print $1 ": " $2}'
+    echo "Done"
+    break
+  fi
+  sleep 30
+done
+```
