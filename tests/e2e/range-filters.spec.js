@@ -91,7 +91,7 @@ test.describe('Range filters', () => {
     expect(await getItemCount(page)).toBeLessThanOrEqual(totalBefore)
   })
 
-  test('resetting hours filter restores original count', async ({ page }) => {
+  test('resetting hours filter widens the results again', async ({ page }) => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping count test')
 

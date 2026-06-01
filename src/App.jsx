@@ -11,8 +11,10 @@ import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
+import { sortItems } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
+import { SortBar } from './components/SortBar'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
@@ -50,6 +52,7 @@ export default function App() {
     maxHours,
     localOnly,
     hasComp,
+    sort,
     toggleExcluded,
     hideAll,
     showAll,
@@ -62,6 +65,7 @@ export default function App() {
     setMaxHours,
     setLocalOnly,
     setHasComp,
+    setSort,
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
@@ -173,6 +177,8 @@ export default function App() {
     return displayItems.filter(isFavorite)
   }, [displayItems, showFavoritesOnly, isFavorite])
 
+  const sortedItems = useMemo(() => sortItems(finalItems, sort), [finalItems, sort])
+
   if (error) {
     return <div className="error">Error: {error}</div>
   }
@@ -239,6 +245,7 @@ export default function App() {
           >
             Has comp
           </button>
+          <SortBar value={sort} onChange={setSort} />
         </div>
         <SearchBar value={searchQuery} onChange={setSearchQuery} semanticStatus={semanticStatus} />
         <RangeFilters
@@ -302,7 +309,7 @@ export default function App() {
           </div>
         ) : (
           <ItemGrid
-            items={finalItems}
+            items={sortedItems}
             allComps={allComps}
             isFavorite={isFavorite}
             onToggleFavorite={toggleFavorite}
