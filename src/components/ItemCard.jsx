@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import { timeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 
-export function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, onItemClick }) {
+export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, onItemClick }) {
   const imgSrc = item.images?.[0] || null
   const remaining = timeRemaining(item.endDate)
 
@@ -54,4 +55,4 @@ export function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, onItem
       </div>
     </div>
   )
-}
+})
