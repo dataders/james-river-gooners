@@ -6,11 +6,12 @@ Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet 
 
 **Scraper** (`scraper/`) — Python scripts: discover auctions, fetch Maxanet HTML fragments, normalize categories, write Parquet to `public/data/`.
 
-**Frontend** (`src/`) — Vite + React 19 SPA. Reads Parquet in-browser via `parquet-wasm` + `apache-arrow`. Masonry grid, filtering (auction/category/price/search), favorites, infinite scroll, dark mode.
+**Frontend** (`src/`) — Vite + React 19 SPA. Reads the per-auction NDJSON sidecars in-browser (one `fetch` per auction via `src/hooks/useAuctionData.js`); no Parquet/Arrow runs client-side. Masonry grid, filtering (auction/category/price/search), keyword + CLIP semantic search, favorites, infinite scroll, dark mode.
 
-**Data layout:**
-- Active: `public/data/manifest.json` + `public/data/items/*.parquet`
-- Archived: `public/data/archive-manifest.json` + `public/data/archive/items/*.parquet` (loaded only when archive toggle is on)
+**Data layout** (the browser reads NDJSON; Parquet is written alongside it as the warehouse/manifest source, not served to the SPA):
+- Active: `public/data/manifest.json` + `public/data/items/{safeId}.ndjson` (+ `.parquet`, `.embeddings`)
+- Archived: `public/data/archive-manifest.json` + `public/data/archive/items/{safeId}.ndjson` (loaded only when archive toggle is on)
+- eBay comps: `public/data/ebay-comps/{safeId}.json` (loaded per visible auction; 404-tolerant)
 
 ## Commands
 
@@ -42,8 +43,10 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
   - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server
   - `MOTHERDUCK_READ_TOKEN` — read-scaling token; safe to expose to browsers/CDN; used in GitHub Actions as `MOTHERDUCK_READ_SCALING_TOKEN` secret for eBay comps export
 - CLIP embeddings: `GOONERS_EMBEDDINGS=1` triggers `embed.py` after each scrape; writes `{safe_id}.embeddings` binary alongside `.ndjson`; manifest gains `embeddingsPath`; requires `sentence-transformers` + `pillow`; model cached in `~/.cache/huggingface` after first download
-- GitHub Pages base path: `/james-river-gooners/` (vite.config sets `base: '/'` for local dev)
-- Arrow `BigInt` fields (`lotNumber`, `totalBids`, `currentBid`) must be converted to `Number` after Parquet deserialization
+- Served from a custom domain (`public/CNAME` → `cannonsbrowser.com`), so vite uses `base: '/'` (root) in all environments
+- The browser reads NDJSON, so numeric fields (`lotNumber`, `totalBids`, `currentBid`) arrive as plain JS numbers — no Arrow/BigInt conversion needed. (The old `parquet-wasm` loader was removed in #52.)
+- Network reads from the read model go through `src/utils/net.js` (`fetchWithRetry` / `fetchJsonWithRetry` / `fetchTextWithRetry`): retries 5xx + network errors with exponential backoff, returns 4xx as-is so the comps loader can treat 404 as "no comps yet"
+- A top-level `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx`) keeps a render error in one item/component from blanking the whole page
 
 ## CI / PR Monitoring
 

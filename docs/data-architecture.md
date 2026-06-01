@@ -35,17 +35,26 @@ reads. It must work with **zero backend configuration** — GitHub Pages has no
 server and the browser must never receive a warehouse token.
 
 Convention for every dataset: **one manifest + per-auction data files**, loaded
-through one shared fetch utility.
+through one shared fetch utility (`src/utils/net.js`, used by the data hooks).
 
-| Dataset | Manifest | Per-auction files | Format |
+| Dataset | Manifest | Per-auction file the browser reads | Sidecars on disk |
 | --- | --- | --- | --- |
-| Active listings | `data/manifest.json` | `data/items/{safeId}.parquet` | Parquet |
-| Archived listings | `data/archive-manifest.json` | `data/archive/items/{safeId}.parquet` | Parquet |
-| eBay comps | `data/ebay-comps/manifest.json` *(target)* | `data/ebay-comps/{safeId}.json` | JSON |
+| Active listings | `data/manifest.json` | `data/items/{safeId}.ndjson` | `.parquet`, `.embeddings` |
+| Archived listings | `data/archive-manifest.json` | `data/archive/items/{safeId}.ndjson` | `.parquet`, `.embeddings` |
+| eBay comps | `data/ebay-comps/manifest.json` *(target)* | `data/ebay-comps/{safeId}.json` | — |
 
-Listings are Parquet (large, flat, tabular). Comps are JSON (small, nested
-match arrays). **This is an intentional choice, not drift** — the unifying
-principle is one *convention* (manifest + shared loader), not one *format*.
+**What the browser actually reads.** The SPA fetches the **NDJSON** sidecar for
+each auction (`useAuctionData.js` → `net.js`) and the comps JSON for each visible
+auction. There is no Parquet or Arrow in the browser — the `parquet-wasm` loader
+was removed in #52. NDJSON keeps `images` as a real array and yields plain JS
+numbers (no BigInt conversion).
+
+**Why Parquet still exists.** Each scrape writes `{safeId}.parquet` next to the
+NDJSON. It is *not* served to the SPA; it is the source the scraper reads back to
+build manifest metadata (`rescrape_all.py`) and the columnar artifact mirrored to
+the warehouse. Listings stay columnar (large, flat, tabular) for analytics; comps
+are JSON (small, nested match arrays). The unifying principle is one *convention*
+(manifest + shared loader), not one *format*.
 
 ### 3. Warehouse (system of record / analytics)
 
@@ -117,10 +126,12 @@ is additive, not a rewrite:
 
 These are tracked targets, not yet fully implemented:
 
-- **Auction metadata is still embedded per-row** in every Parquet file *and*
-  derived into the manifest *and* rebuilt in the frontend. The manifest should
-  be the single source of auction-level facts; rows should carry only
-  `auctionSafeId` as a foreign key. (Refactor phase 4.)
+- **Auction metadata is still embedded per-row** in every listing file (NDJSON
+  *and* Parquet) *and* derived into the manifest *and* rebuilt in the frontend
+  (`useAuctionData.js` reconstructs the auction list from row fields rather than
+  reading the manifest). The manifest should be the single source of
+  auction-level facts; rows should carry only `auctionSafeId` as a foreign key.
+  (Refactor phase 4.)
 - **`data/ebay-comps/` has no manifest.** The frontend guesses URLs by safeId
   and tolerates 404s. Target: add a comps manifest. (Refactor phase 4.)
 

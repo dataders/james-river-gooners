@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { fetchWithRetry } from '../utils/net'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -26,7 +27,7 @@ export function useEbayComps(auctionSafeIds) {
 
     Promise.all(
       toFetch.map(id =>
-        fetch(dataUrl(`data/ebay-comps/${id}.json`))
+        fetchWithRetry(dataUrl(`data/ebay-comps/${id}.json`))
           .then(resp => {
             if (resp.status === 404) return { id, items: {} }
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
