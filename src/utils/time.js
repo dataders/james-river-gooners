@@ -1,8 +1,8 @@
+import { parseAuctionDate } from './dates.js'
+
 export function timeRemaining(endDate) {
-  if (!endDate) return ''
-  // ISO format (contains 'T') parses correctly as-is; only apply the
-  // replace trick for Maxanet's "YYYY-MM-DD H:MM:SS AM/PM" format.
-  const end = new Date(endDate.includes('T') ? endDate : endDate.replace(/-/g, '/'))
+  const end = parseAuctionDate(endDate)
+  if (!end) return ''
   const now = new Date()
   const diff = end - now
   if (diff <= 0) return 'Ended'

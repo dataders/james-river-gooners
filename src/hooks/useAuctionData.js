@@ -1,7 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { isLocalAuction } from '../utils/locality'
 import { normalizeManifest } from '../utils/manifest'
+import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
+import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
+
+// How often to re-check active auctions for a passed deadline (ms). Auctions
+// rarely turn over second-to-second, so a coarse tick keeps the page reactive
+// without re-deriving the item list on every render.
+const DEADLINE_TICK_MS = 60000
 
 const BASE = import.meta.env.BASE_URL
 
@@ -10,8 +17,18 @@ function dataUrl(path) {
 }
 
 async function fetchNdjson(url) {
-  const text = await fetch(url).then(r => r.text())
-  return text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+  const text = await fetchTextWithRetry(url)
+  const rows = []
+  for (const line of text.trim().split('\n')) {
+    if (!line) continue
+    try {
+      rows.push(JSON.parse(line))
+    } catch (err) {
+      // One malformed line shouldn't sink the whole auction — skip it.
+      console.warn(`Skipping malformed NDJSON line in ${url}:`, err)
+    }
+  }
+  return rows
 }
 
 function normalizeRowsNdjson(results, archived) {
@@ -45,9 +62,7 @@ function normalizeRowsNdjson(results, archived) {
 
 async function fetchDataset(manifestPath, { archived = false } = {}) {
   const t0 = performance.now()
-  const manifestResp = await fetch(dataUrl(manifestPath))
-  if (!manifestResp.ok) throw new Error(`Failed to load ${manifestPath}: ${manifestResp.status}`)
-  const manifest = await manifestResp.json()
+  const manifest = await fetchJsonWithRetry(dataUrl(manifestPath))
   const entries = normalizeManifest(manifest, { archived })
 
   const results = await Promise.all(entries.map(entry => {
@@ -75,6 +90,14 @@ export function useAuctionData(includeArchived = false) {
   const [loadTimeMs, setLoadTimeMs] = useState(null)
   const [error, setError] = useState(null)
   const [archiveError, setArchiveError] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Re-evaluate deadlines on an interval so auctions that end while the page
+  // stays open get archived without a reload.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), DEADLINE_TICK_MS)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -118,15 +141,52 @@ export function useAuctionData(includeArchived = false) {
     }
   }, [includeArchived, archiveLoaded, archiveError])
 
-  const allItems = useMemo(
-    () => includeArchived ? [...activeItems, ...archiveItems] : activeItems,
-    [activeItems, archiveItems, includeArchived]
+  // Active auctions whose deadline has already passed are treated as archived,
+  // even though the backend hasn't moved them to the archive manifest yet.
+  // Keyed on a stable string so the Set identity only changes when membership
+  // changes (not on every minute tick), keeping downstream memos cheap.
+  const dynamicArchivedKey = activeAuctions
+    .filter(a => !a.archived && isPastDeadline(a.endDate, now))
+    .map(a => a.safeId)
+    .sort()
+    .join(',')
+
+  const dynamicArchivedIds = useMemo(
+    () => new Set(dynamicArchivedKey ? dynamicArchivedKey.split(',') : []),
+    [dynamicArchivedKey]
   )
 
-  const auctions = useMemo(
-    () => includeArchived ? [...activeAuctions, ...archiveAuctions] : activeAuctions,
-    [activeAuctions, archiveAuctions, includeArchived]
-  )
+  const allItems = useMemo(() => {
+    if (includeArchived) {
+      const active = dynamicArchivedIds.size === 0
+        ? activeItems
+        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+            ? { ...item, archived: true }
+            : item)
+      // The same lot can appear in both the active and archive snapshots while
+      // an auction is mid-transition. De-dupe by item id (preferring the active
+      // copy) so downstream consumers never see a collision — a duplicate id
+      // makes MiniSearch.addAll throw, which crashes the whole App.
+      const activeIds = new Set(active.map(i => i.id))
+      const archiveOnly = archiveItems.filter(i => !activeIds.has(i.id))
+      return [...active, ...archiveOnly]
+    }
+    if (dynamicArchivedIds.size === 0) return activeItems
+    return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+  }, [activeItems, archiveItems, includeArchived, dynamicArchivedIds])
+
+  const auctions = useMemo(() => {
+    if (includeArchived) {
+      const active = dynamicArchivedIds.size === 0
+        ? activeAuctions
+        : activeAuctions.map(a => dynamicArchivedIds.has(a.safeId)
+            ? { ...a, archived: true }
+            : a)
+      return [...active, ...archiveAuctions]
+    }
+    if (dynamicArchivedIds.size === 0) return activeAuctions
+    return activeAuctions.filter(a => !dynamicArchivedIds.has(a.safeId))
+  }, [activeAuctions, archiveAuctions, includeArchived, dynamicArchivedIds])
 
   const items = useMemo(() => {
     if (excludedAuctions.length === 0) return allItems

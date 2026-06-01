@@ -14,17 +14,19 @@ export function useSearch(items) {
         prefix: true,
       },
     })
-    // Items are keyed by `id` here, but ids are only unique *within* an auction —
-    // enabling archived auctions can surface two lots that share an id. MiniSearch
-    // throws on duplicate ids, which (with no error boundary) would crash the whole
-    // grid. De-dupe by id so the index builds; the grid still shows every lot, and
-    // `searchIds.has(item.id)` matches both, so neither becomes unsearchable.
+    // Item `id` is not globally unique — the same id can recur across auctions
+    // (notably active vs. archived). MiniSearch throws "duplicate ID" on addAll,
+    // which previously blanked the page once archived data loaded. Dedupe by id
+    // (keep first) so indexing can't throw. The downstream filter/semantic
+    // pipeline still keys on `id`; making search collision-correct with a
+    // composite auctionSafeId:id key is tracked as a follow-up.
     const seen = new Set()
-    const unique = items.filter(item => {
-      if (seen.has(item.id)) return false
+    const unique = []
+    for (const item of items) {
+      if (seen.has(item.id)) continue
       seen.add(item.id)
-      return true
-    })
+      unique.push(item)
+    }
     ms.addAll(unique)
     return ms
   }, [items])

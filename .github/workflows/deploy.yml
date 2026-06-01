@@ -1,8 +1,12 @@
 name: Deploy to GitHub Pages
 
+# Deploy only after the Test workflow succeeds on main, so a red build never
+# ships. Manual runs (workflow_dispatch) bypass the gate for emergency deploys.
 on:
-  push:
+  workflow_run:
+    workflows: ["Test"]
     branches: [main]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +20,8 @@ concurrency:
 
 jobs:
   build:
+    # Gate: only build when manually dispatched, or when the triggering Test run passed.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
