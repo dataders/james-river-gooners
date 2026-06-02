@@ -8,8 +8,10 @@ comments are skipped.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -204,6 +206,19 @@ def _candidate_ids_from(maxanet_urls: list[str], hibid_specs: list[dict]) -> set
     return ids
 
 
+def _run_with_retry(cmd: list[str], cwd: Path, label: str) -> int:
+    """Run cmd, retrying once on non-zero exit. Returns final returncode."""
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    for attempt in range(2):
+        result = subprocess.run(cmd, cwd=cwd, env=env)
+        if result.returncode == 0:
+            return 0
+        if attempt == 0:
+            print(f"  attempt 1 failed (exit {result.returncode}); retrying {label}...")
+            time.sleep(2)
+    return result.returncode
+
+
 def _scrape_maxanet(maxanet_urls: list[str], total: int, start_i: int) -> list[str]:
     failures: list[str] = []
     cwd = Path(__file__).resolve().parent
@@ -211,8 +226,8 @@ def _scrape_maxanet(maxanet_urls: list[str], total: int, start_i: int) -> list[s
         print(f"\n{'='*60}")
         print(f"[{j}/{total}] Maxanet: {url[:80]}")
         print(f"{'='*60}")
-        result = subprocess.run([sys.executable, "scrape.py", url], cwd=cwd)
-        if result.returncode != 0:
+        rc = _run_with_retry([sys.executable, "scrape.py", url], cwd, url[:60])
+        if rc != 0:
             print(f"FAILED: {url[:80]}")
             failures.append(url)
     return failures
@@ -225,16 +240,14 @@ def _scrape_hibid(hibid_specs: list[dict], total: int, start_i: int) -> list[str
         print(f"\n{'='*60}")
         print(f"[{j}/{total}] HiBid ({spec['company_name']}): {spec['catalog_url']}")
         print(f"{'='*60}")
-        result = subprocess.run(
-            [
-                sys.executable, "scrape_hibid.py",
-                spec["catalog_url"],
-                "--source", spec["source_slug"],
-                "--company", spec["company_name"],
-            ],
-            cwd=cwd,
-        )
-        if result.returncode != 0:
+        cmd = [
+            sys.executable, "scrape_hibid.py",
+            spec["catalog_url"],
+            "--source", spec["source_slug"],
+            "--company", spec["company_name"],
+        ]
+        rc = _run_with_retry(cmd, cwd, spec["catalog_url"])
+        if rc != 0:
             print(f"FAILED: {spec['catalog_url']}")
             failures.append(spec["catalog_url"])
     return failures

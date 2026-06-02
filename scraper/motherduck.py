@@ -33,7 +33,7 @@ create table if not exists {SNAPSHOT_TABLE} (
 """
 
 INSERT_SNAPSHOT_SQL = f"""
-insert into {SNAPSHOT_TABLE} (
+insert or ignore into {SNAPSHOT_TABLE} (
   auction_id,
   auction_safe_id,
   item_id,
