@@ -31,6 +31,17 @@
       "ndjsonPath": "data/archive/items/hibid_744897.ndjson"
     },
     {
+      "safeId": "hT_S_DZDYuxrkjyAGwm8Lw",
+      "title": "06/01/26: DNA Auction Group | Lifetime Collection of Vintage Costume Jewelry | Estate Goods and Chattels | Antiques | Schroeder Rd, Powhatan VA 23139- Cannon's Online Auctions, LLC",
+      "endDate": "2026-06-01 10:50:00 PM",
+      "scrapedAt": "2026-06-02T03:30:50.876952+00:00",
+      "itemCount": 1164,
+      "itemsPath": "data/archive/items/hT_S_DZDYuxrkjyAGwm8Lw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/hT_S_DZDYuxrkjyAGwm8Lw.ndjson",
+      "embeddingsPath": "data/archive/items/hT_S_DZDYuxrkjyAGwm8Lw.embeddings"
+    },
+    {
       "safeId": "bLkOiYnlcePwcQwm8L25cw",
       "title": "03/16/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "",
