@@ -147,7 +147,7 @@ test.describe('ROI calculator in detail modal', () => {
     await expect(page.locator('.roi-calc')).toBeVisible()
   })
 
-  test('ROI calculator appears before eBay comps section in the DOM', async ({ page }) => {
+  test('eBay comps section appears before the ROI calculator in the DOM', async ({ page }) => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
@@ -163,12 +163,13 @@ test.describe('ROI calculator in detail modal', () => {
     await expect(roiCalc).toBeVisible()
     await expect(ebayComps).toBeVisible()
 
+    // Comps lead, calculator is secondary (#88)
     const roiBox = await roiCalc.boundingBox()
     const compsBox = await ebayComps.boundingBox()
-    expect(roiBox.y).toBeLessThan(compsBox.y)
+    expect(compsBox.y).toBeLessThan(roiBox.y)
   })
 
-  test('ROI calculator shows comp median, margin slider, max bid, and total cost', async ({ page }) => {
+  test('ROI calculator shows comp median, margin readout, max bid, and total cost (no inline slider)', async ({ page }) => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
@@ -179,13 +180,14 @@ test.describe('ROI calculator in detail modal', () => {
     await cards.first().click()
     const panel = page.locator('.detail-panel')
     await expect(panel.locator('.roi-calc')).toBeVisible()
-    await expect(panel.locator('.roi-comps-line')).toBeVisible()
-    await expect(panel.locator('.roi-margin-slider')).toBeVisible()
+    await expect(panel.locator('.roi-comps-line').first()).toBeVisible()
     await expect(panel.locator('.roi-result-value').first()).toBeVisible()
     await expect(panel.locator('.roi-footnote')).toContainText("buyer's premium")
+    // The margin slider moved to the sidebar preferences (#89) — it is no longer in the panel.
+    await expect(panel.locator('.roi-margin-slider')).toHaveCount(0)
   })
 
-  test('adjusting the margin slider updates the max bid', async ({ page }) => {
+  test('margin slider lives in the sidebar, and changing it updates the max bid', async ({ page }) => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
@@ -193,24 +195,29 @@ test.describe('ROI calculator in detail modal', () => {
     const cards = page.locator('.item-card:has(.item-roi-row)')
     test.skip(await cards.count() === 0, 'No items have comp data loaded — skipping ROI modal test')
 
+    // Read the max bid at the default 30% margin, then close the panel.
     await cards.first().click()
     await expect(page.locator('.roi-calc')).toBeVisible()
-
-    const slider = page.locator('.roi-margin-slider')
     const maxBidBefore = await page.locator('.roi-result-value').first().textContent()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.detail-overlay')).toBeHidden()
 
-    // Move slider to 0% (break-even) — max bid should be higher than at 30%.
-    // Use the native value setter so React's tracked value updates and onChange
-    // fires; assigning el.value directly is ignored by React (see helpers.js).
+    // The slider is the global preference in the sidebar, not the detail panel.
+    const slider = page.locator('.margin-pref .roi-margin-slider')
+    await expect(slider).toBeVisible()
+    // Drop margin to 0% (break-even) — max bid should rise. Use the native value
+    // setter so React's tracked value updates and onChange fires (see helpers.js).
     await slider.evaluate(el => {
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
       setter.call(el, '0')
       el.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    await page.waitForTimeout(100)
 
+    // Reopen the same item; the calculator now reflects the 0% margin.
+    await cards.first().click()
+    await expect(page.locator('.roi-calc')).toBeVisible()
     const maxBidAfter = await page.locator('.roi-result-value').first().textContent()
-    // At 0% margin the max bid is higher than at 30%
+
     const before = parseInt(maxBidBefore.replace(/[^0-9]/g, ''))
     const after = parseInt(maxBidAfter.replace(/[^0-9]/g, ''))
     expect(after).toBeGreaterThan(before)

@@ -289,6 +289,16 @@ export const objectives = [
     async run({ page, tracker }) {
       await gotoApp(page)
 
+      // Margin is now a global preference set in the sidebar, not a per-item slider.
+      tracker.step('Set the target margin in preferences')
+      await page.waitForSelector('.margin-pref .roi-margin-slider')
+      await page.evaluate(() => {
+        const slider = document.querySelector('.margin-pref .roi-margin-slider')
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+        setter.call(slider, '40')
+        slider.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+
       // Need a lot that has eBay comps for the calculator to appear.
       tracker.step('Filter to lots with comps')
       await page.locator('.deals-toggle', { hasText: 'Has comp' }).click()
@@ -299,7 +309,7 @@ export const objectives = [
         return 'blocked'
       }
 
-      tracker.step('Open a comped lot')
+      tracker.step('Open a comped lot to price the flip')
       await page.locator('.item-card').first().click()
       const calc = page.locator('.roi-calc')
       if (!(await calc.isVisible().catch(() => false))) {
@@ -307,18 +317,15 @@ export const objectives = [
         return 'fail'
       }
 
-      const before = await page.locator('.roi-result-value').first().textContent()
-      tracker.step('Adjust the target-margin slider')
-      await page.evaluate(() => {
-        const slider = document.querySelector('.roi-margin-slider')
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-        setter.call(slider, '40')
-        slider.dispatchEvent(new Event('input', { bubbles: true }))
-      })
-      await page.waitForTimeout(200)
-      const after = await page.locator('.roi-result-value').first().textContent()
-      if (before === after) {
-        tracker.note('Max-bid value did not respond to margin change')
+      const maxBid = await page.locator('.roi-result-value').first().textContent()
+      if (!/\$\d/.test(maxBid)) {
+        tracker.note('Max-bid value missing from the calculator')
+        return 'fail'
+      }
+      // The calculator should reflect the 40% margin preference we set.
+      const panelText = await page.locator('.detail-panel').textContent()
+      if (!panelText.includes('40%')) {
+        tracker.note('Calculator did not reflect the margin preference')
         return 'fail'
       }
       return 'pass'

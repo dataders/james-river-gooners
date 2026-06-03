@@ -19,6 +19,7 @@ import { SortBar } from './components/SortBar'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
+import { MarginPreference } from './components/MarginPreference'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -56,6 +57,7 @@ export default function App() {
     localOnly,
     hasComp,
     sort,
+    margin,
     toggleExcluded,
     hideAll,
     showAll,
@@ -69,6 +71,7 @@ export default function App() {
     setLocalOnly,
     setHasComp,
     setSort,
+    setMargin,
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
@@ -292,6 +295,7 @@ export default function App() {
             onMinHoursChange={v => setMinHours(v)}
             onMaxHoursChange={v => setMaxHours(v)}
           />
+          <MarginPreference value={margin} onChange={setMargin} />
           <AuctionFilter
             auctions={visibleAuctions}
             excludedAuctions={excludedAuctions}
@@ -356,6 +360,7 @@ export default function App() {
         <ItemDetail
           item={selectedItem}
           ebayComps={allComps[selectedItem.auctionSafeId] || {}}
+          margin={margin}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={toggleFavorite}
           onClose={handleItemClose}

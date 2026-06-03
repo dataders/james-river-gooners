@@ -13,6 +13,8 @@ export const DEFAULT_PREFS = {
   localOnly: false,
   hasComp: false,
   sort: '',
+  // Resale margin used by the max-bid calculator, as a percentage (matches DEFAULT_MARGIN in roiCalc.js)
+  margin: 30,
 }
 
 const PERSISTED_KEYS = [
@@ -27,6 +29,7 @@ const PERSISTED_KEYS = [
   'localOnly',
   'hasComp',
   'sort',
+  'margin',
 ]
 
 export function loadPrefs() {
