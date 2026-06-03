@@ -8,6 +8,8 @@ Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet 
 
 **Frontend** (`src/`) — Vite + React 19 SPA. Reads the per-auction NDJSON sidecars in-browser (one `fetch` per auction via `src/hooks/useAuctionData.js`); no Parquet/Arrow runs client-side. Masonry grid, filtering (auction/category/price/search), keyword + CLIP semantic search, favorites, infinite scroll, dark mode.
 
+**Auth + cloud favorites** (`src/lib/supabase.js`, M2/#91-#93) — Supabase email/password auth. Single browser client in `src/lib/supabase.js` reads `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_…` key, browser-safe given row-level security); `supabase`/`isSupabaseConfigured` are null/false when those env vars are absent so the static site still works offline. `useAuth` exposes the session; `useFavorites(user)` is offline-first — the `gooners-favorites` cookie is the source of truth when logged out, the RLS-protected `favorites` table when logged in (cookie favorites merge up on first login). SQL lives in `supabase/migrations/`. The `sb_secret_…` key (`SUPABASE_SECRET_KEY`) is backend-only — never in a `VITE_` var or the bundle.
+
 **Data layout** (the browser reads NDJSON; Parquet is written alongside it as the warehouse/manifest source, not served to the SPA):
 - Active: `public/data/manifest.json` + `public/data/items/{safeId}.ndjson` (+ `.parquet`, `.embeddings`)
 - Archived: `public/data/archive-manifest.json` + `public/data/archive/items/{safeId}.ndjson` (loaded only when archive toggle is on)

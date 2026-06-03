@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
+import { useAuth } from './hooks/useAuth'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
@@ -23,6 +24,8 @@ import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
 import { TutorialModal } from './components/TutorialModal'
+import { AuthModal } from './components/AuthModal'
+import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
 
 export default function App() {
@@ -70,7 +73,9 @@ export default function App() {
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
-  const { favoriteIds, isFavorite, toggleFavorite } = useFavorites()
+  const auth = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
+  const { favoriteIds, isFavorite, toggleFavorite } = useFavorites(auth.user)
 
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(Infinity)
@@ -217,6 +222,7 @@ export default function App() {
             title="How to use this site"
             aria-label="Open help"
           >?</button>
+          <AccountButton auth={auth} onSignInClick={() => setAuthOpen(true)} />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <ArsenalTrivia />
@@ -343,6 +349,8 @@ export default function App() {
       </div>
 
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
+
+      {authOpen && <AuthModal auth={auth} onClose={() => setAuthOpen(false)} />}
 
       {selectedItem && (
         <ItemDetail
