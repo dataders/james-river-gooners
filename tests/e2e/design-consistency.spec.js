@@ -6,7 +6,7 @@
  * so that future theme tweaks don't require updating the suite.
  */
 import { test, expect } from '@playwright/test'
-import { waitForLoad, getItemCount } from './helpers.js'
+import { waitForLoad, getItemCount, openRoiCard } from './helpers.js'
 
 // Helper: read one or more computed style properties from the first matching element
 async function cs(page, selector, ...props) {
@@ -168,21 +168,16 @@ test.describe('Design consistency — ROI calculator hierarchy', () => {
   test('max bid result block carries the --primary modifier class', async ({ page }) => {
     const count = await getItemCount(page)
     test.skip(count === 0, 'no items loaded')
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'no items with comp data')
-    await cards.first().click()
-    await expect(page.locator('.detail-overlay')).toBeVisible()
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'no items with comp data')
     await expect(page.locator('.roi-result-block--primary')).toBeVisible()
   })
 
   test('max bid block has a different border color than the cost block', async ({ page }) => {
     const count = await getItemCount(page)
     test.skip(count === 0, 'no items loaded')
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'no items with comp data')
-    await cards.first().click()
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'no items with comp data')
     await expect(page.locator('.roi-calc')).toBeVisible()
     const [primaryBorder, costBorder] = await page.locator('.roi-result-block').evaluateAll(els =>
       els.map(el => getComputedStyle(el).borderTopColor)
@@ -193,10 +188,8 @@ test.describe('Design consistency — ROI calculator hierarchy', () => {
   test('max bid result value is at least 1.25rem (20 px)', async ({ page }) => {
     const count = await getItemCount(page)
     test.skip(count === 0, 'no items loaded')
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'no items with comp data')
-    await cards.first().click()
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'no items with comp data')
     await expect(page.locator('.roi-calc')).toBeVisible()
     const [fontSize] = await cs(page, '.roi-result-value', 'fontSize')
     expect(px(fontSize)).toBeGreaterThanOrEqual(20)
@@ -205,10 +198,8 @@ test.describe('Design consistency — ROI calculator hierarchy', () => {
   test('cost result value is smaller than max bid result value', async ({ page }) => {
     const count = await getItemCount(page)
     test.skip(count === 0, 'no items loaded')
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'no items with comp data')
-    await cards.first().click()
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'no items with comp data')
     await expect(page.locator('.roi-calc')).toBeVisible()
     const [maxSize, costSize] = await page.locator('.roi-results').evaluate(el => {
       const values = el.querySelectorAll('.roi-result-value')

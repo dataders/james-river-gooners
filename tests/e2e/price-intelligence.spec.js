@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { openRoiCard } from './helpers.js'
 
 async function waitForItems(page) {
   await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
@@ -136,14 +137,9 @@ test.describe('ROI calculator in detail modal', () => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
-    await page.waitForTimeout(1500)
-    // Find a card that has ROI data loaded
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    const cardCount = await cards.count()
-    test.skip(cardCount === 0, 'No items have comp data loaded — skipping ROI modal test')
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'No items have comp data loaded — skipping ROI modal test')
 
-    await cards.first().click()
-    await expect(page.locator('.detail-overlay')).toBeVisible()
     await expect(page.locator('.roi-calc')).toBeVisible()
   })
 
@@ -151,12 +147,8 @@ test.describe('ROI calculator in detail modal', () => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'No items have comp data loaded — skipping ROI modal test')
-
-    await cards.first().click()
-    await expect(page.locator('.detail-overlay')).toBeVisible()
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'No items have comp data loaded — skipping ROI modal test')
 
     const roiCalc = page.locator('.roi-calc')
     const ebayComps = page.locator('.ebay-comps')
@@ -173,11 +165,9 @@ test.describe('ROI calculator in detail modal', () => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'No items have comp data loaded — skipping ROI modal test')
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'No items have comp data loaded — skipping ROI modal test')
 
-    await cards.first().click()
     const panel = page.locator('.detail-panel')
     await expect(panel.locator('.roi-calc')).toBeVisible()
     await expect(panel.locator('.roi-comps-line').first()).toBeVisible()
@@ -191,12 +181,9 @@ test.describe('ROI calculator in detail modal', () => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'No items have comp data loaded — skipping ROI modal test')
-
     // Read the max bid at the default 30% margin, then close the panel.
-    await cards.first().click()
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'No items have comp data loaded — skipping ROI modal test')
     await expect(page.locator('.roi-calc')).toBeVisible()
     const maxBidBefore = await page.locator('.roi-result-value').first().textContent()
     await page.keyboard.press('Escape')
@@ -214,7 +201,7 @@ test.describe('ROI calculator in detail modal', () => {
     })
 
     // Reopen the same item; the calculator now reflects the 0% margin.
-    await cards.first().click()
+    await openRoiCard(page)
     await expect(page.locator('.roi-calc')).toBeVisible()
     const maxBidAfter = await page.locator('.roi-result-value').first().textContent()
 
@@ -227,11 +214,9 @@ test.describe('ROI calculator in detail modal', () => {
     const count = await waitForItems(page)
     test.skip(count === 0, 'No items loaded — skipping ROI modal test')
 
-    await page.waitForTimeout(1500)
-    const cards = page.locator('.item-card:has(.item-roi-row)')
-    test.skip(await cards.count() === 0, 'No items have comp data loaded — skipping ROI modal test')
+    const opened = await openRoiCard(page)
+    test.skip(!opened, 'No items have comp data loaded — skipping ROI modal test')
 
-    await cards.first().click()
     const footnote = page.locator('.roi-footnote')
     await expect(footnote).toContainText('20%')
     await expect(footnote).toContainText('6%')
