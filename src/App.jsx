@@ -204,7 +204,7 @@ export default function App() {
             title="Go to home"
             aria-label="Home"
           >
-            <img src="/arsenal-1930s.svg" className="home-crest" alt="Arsenal FC 1930s crest" />
+            <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
           </button>
           <img src="/apple-touch-icon.png" className="banner-icon" alt="" aria-hidden="true" />
           <div className="banner-text">
