@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   favoriteKey,
+  mergeFavoriteKeys,
   parseFavoritesCookie,
   serializeFavoritesCookie,
   toggleFavoriteKey,
@@ -30,4 +31,13 @@ test('serializeFavoritesCookie stores ids only for one year', () => {
 test('toggleFavoriteKey adds and removes ids without duplicates', () => {
   assert.deepEqual(toggleFavoriteKey(['abc:123'], 'def:456'), ['abc:123', 'def:456'])
   assert.deepEqual(toggleFavoriteKey(['abc:123', 'def:456'], 'abc:123'), ['def:456'])
+})
+
+test('mergeFavoriteKeys unions both lists, de-duped, cloud order first', () => {
+  assert.deepEqual(
+    mergeFavoriteKeys(['abc:123', 'def:456'], ['def:456', 'ghi:789']),
+    ['abc:123', 'def:456', 'ghi:789'],
+  )
+  assert.deepEqual(mergeFavoriteKeys([], ['x:1']), ['x:1'])
+  assert.deepEqual(mergeFavoriteKeys(), [])
 })
