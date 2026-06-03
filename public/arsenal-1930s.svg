@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Arsenal FC Art Deco crest">
+  <!-- Red background -->
+  <rect width="240" height="240" fill="#CC0000"/>
+
+  <!-- Hexagon ring: outer then inner, evenodd cuts the hole -->
+  <path fill-rule="evenodd" fill="white" d="
+    M 228,120 L 174,27 L 66,27 L 12,120 L 66,213 L 174,213 Z
+    M 210,120 L 165,43 L 75,43 L 30,120 L 75,197 L 165,197 Z
+  "/>
+
+  <!-- Triangle at top (pointing up) -->
+  <polygon points="120,50 152,95 88,95" fill="white"/>
+
+  <!-- Left bracket: angular C-shape opening right -->
+  <polygon points="
+    88,50
+    74,62 48,92 34,120 48,148 74,178 88,190
+    88,172 73,157 54,134 60,120 54,106 73,83 88,68
+  " fill="white"/>
+
+  <!-- Left inner arc: second layer giving the stepped Art Deco depth -->
+  <polygon points="
+    88,72
+    75,86 66,106 70,120 66,134 75,154 88,168
+    88,152 82,140 79,120 82,100 88,88
+  " fill="white"/>
+
+  <!-- Right bracket: mirror of left -->
+  <polygon points="
+    152,50
+    166,62 192,92 206,120 192,148 166,178 152,190
+    152,172 167,157 186,134 180,120 186,106 167,83 152,68
+  " fill="white"/>
+
+  <!-- Right inner arc -->
+  <polygon points="
+    152,72
+    165,86 174,106 170,120 174,134 165,154 152,168
+    152,152 158,140 161,120 158,100 152,88
+  " fill="white"/>
+
+  <!-- Small downward arrow bottom-left -->
+  <polygon points="72,188 84,170 96,188" fill="white"/>
+
+  <!-- Small downward arrow bottom-right -->
+  <polygon points="144,188 156,170 168,188" fill="white"/>
+
+  <!-- Central football: outer ring -->
+  <circle cx="120" cy="120" r="28" fill="none" stroke="white" stroke-width="4.5"/>
+  <!-- Horizontal eye/oval at center -->
+  <ellipse cx="120" cy="120" rx="13" ry="8" fill="white"/>
+  <!-- Top panel line -->
+  <line x1="120" y1="92" x2="120" y2="104" stroke="white" stroke-width="3.5"/>
+  <!-- Bottom panel line -->
+  <line x1="120" y1="136" x2="120" y2="148" stroke="white" stroke-width="3.5"/>
+  <!-- Top-left panel line -->
+  <line x1="101" y1="98"  x2="108" y2="108" stroke="white" stroke-width="2.5"/>
+  <!-- Top-right panel line -->
+  <line x1="132" y1="108" x2="139" y2="98"  stroke="white" stroke-width="2.5"/>
+  <!-- Mid-left panel line -->
+  <line x1="92"  y1="113" x2="103" y2="117" stroke="white" stroke-width="2.5"/>
+  <!-- Mid-right panel line -->
+  <line x1="137" y1="117" x2="148" y2="113" stroke="white" stroke-width="2.5"/>
+  <!-- Bottom-left panel line -->
+  <line x1="101" y1="142" x2="108" y2="132" stroke="white" stroke-width="2.5"/>
+  <!-- Bottom-right panel line -->
+  <line x1="132" y1="132" x2="139" y2="142" stroke="white" stroke-width="2.5"/>
+  <!-- Mid-left lower panel line -->
+  <line x1="92"  y1="127" x2="103" y2="123" stroke="white" stroke-width="2.5"/>
+  <!-- Mid-right lower panel line -->
+  <line x1="137" y1="123" x2="148" y2="127" stroke="white" stroke-width="2.5"/>
+</svg>
