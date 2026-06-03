@@ -9,8 +9,8 @@ const BATCH_SIZE = 50
 const MAX_DOM_ITEMS = 300
 
 const breakpointColumns = {
-  default: 4,  // ≥1440px
-  1440: 3,     // 1024–1440px (sidebar reduces usable width)
+  default: 4,  // ≥1800px (sidebar reduces usable width; only show 4 on very wide screens)
+  1800: 3,     // 1024–1800px
   1024: 3,     // 800–1024px (no sidebar yet)
   800: 2,      // 500–800px
   500: 1,      // <500px
@@ -31,7 +31,7 @@ function currentNumCols() {
   const w = window.innerWidth
   if (w <= 500) return 1
   if (w <= 800) return 2
-  if (w <= 1440) return 3
+  if (w <= 1800) return 3
   return 4
 }
 

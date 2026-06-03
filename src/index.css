@@ -598,6 +598,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Item card */
