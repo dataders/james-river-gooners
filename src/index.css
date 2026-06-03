@@ -1458,20 +1458,6 @@ body {
   margin-left: 4px;
 }
 
-.roi-margin-row {
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.roi-slider-group {
-  align-items: center;
-  display: flex;
-  flex: 1;
-  gap: 8px;
-}
-
 .roi-margin-slider {
   accent-color: var(--gold);
   cursor: pointer;
@@ -1529,6 +1515,13 @@ body {
 .roi-footnote {
   color: var(--text-muted);
   font-size: 0.68rem;
+}
+
+/* Sidebar resale-margin preference */
+.margin-pref-slider-group {
+  align-items: center;
+  display: flex;
+  gap: 8px;
 }
 
 /* Arsenal Trivia */

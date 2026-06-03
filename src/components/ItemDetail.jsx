@@ -3,7 +3,7 @@ import { timeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
 import { RoiCalculator } from './RoiCalculator'
 
-export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite, onClose }) {
+export function ItemDetail({ item, ebayComps = {}, margin, isFavorite, onToggleFavorite, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [copied, setCopied] = useState(false)
 
@@ -123,8 +123,9 @@ export function ItemDetail({ item, ebayComps = {}, isFavorite, onToggleFavorite,
             </button>
           </div>
 
-          <RoiCalculator soldComps={ebayComps[item.id]} />
+          {/* Comps lead — they're the primary signal; the calculator is secondary (#88) */}
           <EbayComps item={item} soldComps={ebayComps[item.id]} />
+          <RoiCalculator soldComps={ebayComps[item.id]} margin={margin} />
         </div>
       </div>
     </div>

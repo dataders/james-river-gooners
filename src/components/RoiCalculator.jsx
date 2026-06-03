@@ -1,12 +1,11 @@
-import { useState } from 'react'
 import { calcMaxBid, COST_MULTIPLIER, extractCompPrices, calcMedian, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { normalizeEbaySoldMatches } from '../utils/ebayComps'
 
 const fmt = v => `$${Math.round(v).toLocaleString()}`
 
-export function RoiCalculator({ soldComps }) {
-  const [margin, setMargin] = useState(DEFAULT_MARGIN * 100)
-
+// Margin comes from global preferences (set in the sidebar) rather than a
+// per-item slider, so this panel stays focused on the all-in cost (#88/#89).
+export function RoiCalculator({ soldComps, margin = DEFAULT_MARGIN * 100 }) {
   const normalized = normalizeEbaySoldMatches(soldComps)
   const prices = extractCompPrices(normalized)
   const median = calcMedian(prices)
@@ -30,21 +29,9 @@ export function RoiCalculator({ soldComps }) {
         </span>
       </div>
 
-      <div className="roi-margin-row">
-        <span className="roi-label">Target margin</span>
-        <div className="roi-slider-group">
-          <input
-            type="range"
-            min="0"
-            max="60"
-            step="5"
-            value={margin}
-            onChange={e => setMargin(Number(e.target.value))}
-            className="roi-margin-slider"
-            aria-label="Target margin"
-          />
-          <span className="roi-margin-pct">{margin}%</span>
-        </div>
+      <div className="roi-comps-line">
+        <span className="roi-label">Resale margin</span>
+        <span className="roi-comp-value">{margin}%</span>
       </div>
 
       <div className="roi-results">
@@ -58,7 +45,7 @@ export function RoiCalculator({ soldComps }) {
         </div>
       </div>
 
-      <div className="roi-footnote">20% buyer's premium + 6% VA sales tax</div>
+      <div className="roi-footnote">20% buyer's premium + 6% VA sales tax · margin set in preferences</div>
     </section>
   )
 }
