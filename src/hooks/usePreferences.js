@@ -128,6 +128,15 @@ export function usePreferences() {
     })
   }, [])
 
+  // Personal preference (not a shareable filter), so it persists but doesn't sync to the URL.
+  const setMargin = useCallback((value) => {
+    setPrefs(prev => {
+      const next = { ...prev, margin: value }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   return {
     ...prefs,
     toggleIncluded,
@@ -145,5 +154,6 @@ export function usePreferences() {
     setLocalOnly,
     setHasComp,
     setSort,
+    setMargin,
   }
 }
