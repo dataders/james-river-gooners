@@ -31,6 +31,17 @@
       "ndjsonPath": "data/archive/items/hibid_744897.ndjson"
     },
     {
+      "safeId": "50gRY3ttr9OMTLukeSTZjA",
+      "title": "06/02/26: The Estate of Allen & Carol Cook by Tom Jones Auctions, Powhatan County VA 23139- Cannon's Online Auctions, LLC",
+      "endDate": "2026-06-02 8:12:00 PM",
+      "scrapedAt": "2026-06-02T22:59:21.045898+00:00",
+      "itemCount": 409,
+      "itemsPath": "data/archive/items/50gRY3ttr9OMTLukeSTZjA.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/50gRY3ttr9OMTLukeSTZjA.ndjson",
+      "embeddingsPath": "data/archive/items/50gRY3ttr9OMTLukeSTZjA.embeddings"
+    },
+    {
       "safeId": "bLkOiYnlcePwcQwm8L25cw",
       "title": "03/16/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "",

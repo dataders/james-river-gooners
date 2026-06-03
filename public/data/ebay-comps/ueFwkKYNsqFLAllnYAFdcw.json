@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T15:35:31Z",
+  "generatedAt": "2026-06-03T01:59:12Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -11901,6 +11901,106 @@
     },
     "49013109": {
       "fetchedAt": "2026-05-30T15:35:31Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012842": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013227": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013076": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012654": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012664": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013213": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013221": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012560": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013223": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012567": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013210": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012564": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013080": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013224": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013061": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013225": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012846": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013060": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49013075": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
+      "status": "no_results",
+      "queries": 2
+    },
+    "49012666": {
+      "fetchedAt": "2026-06-03T01:59:12Z",
       "status": "no_results",
       "queries": 2
     }
