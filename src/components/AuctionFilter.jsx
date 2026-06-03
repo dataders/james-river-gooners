@@ -54,7 +54,7 @@ export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
             ))}
           </div>
           {hidden.length > 0 && (
-            <div style={{ marginTop: 6 }}>
+            <div className="auction-filter-hidden">
               <div className="filter-chips">
                 {hidden.map(a => (
                   <button
