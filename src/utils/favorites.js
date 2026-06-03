@@ -37,3 +37,9 @@ export function toggleFavoriteKey(ids, key) {
   }
   return [...ids, key]
 }
+
+// Union of two key lists, de-duplicated, order-stable (first list first). Used
+// on first login to merge anonymous cookie favorites into the cloud set.
+export function mergeFavoriteKeys(a = [], b = []) {
+  return [...new Set([...a, ...b])]
+}

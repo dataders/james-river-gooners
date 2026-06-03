@@ -33,6 +33,11 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+        env:
+          # Publishable key only — safe to embed in the public bundle given RLS.
+          # The secret key (SUPABASE_SECRET_KEY) must never be set here.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
