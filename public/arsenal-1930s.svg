@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" role="img" aria-label="Arsenal FC 1930s crest">
+  <!-- Shield outline -->
+  <path d="M60 4 L108 20 L108 80 Q108 120 60 136 Q12 120 12 80 L12 20 Z"
+        fill="#DB0007" stroke="#8B0000" stroke-width="2"/>
+  <!-- Inner shield border -->
+  <path d="M60 12 L100 26 L100 78 Q100 112 60 126 Q20 112 20 78 L20 26 Z"
+        fill="none" stroke="#FFD700" stroke-width="1.5"/>
+
+  <!-- White band across middle -->
+  <rect x="12" y="52" width="96" height="28" fill="white"/>
+  <rect x="12" y="52" width="96" height="1.5" fill="#FFD700"/>
+  <rect x="12" y="78.5" width="96" height="1.5" fill="#FFD700"/>
+
+  <!-- Cannon on white band -->
+  <!-- Barrel -->
+  <rect x="28" y="60" width="52" height="10" rx="3" fill="#4a3728"/>
+  <!-- Muzzle flare -->
+  <ellipse cx="80" cy="65" rx="5" ry="6" fill="#4a3728"/>
+  <!-- Breech -->
+  <rect x="24" y="58" width="12" height="14" rx="3" fill="#4a3728"/>
+  <!-- Wheels -->
+  <circle cx="36" cy="73" r="5" fill="#4a3728" stroke="#8B6914" stroke-width="1"/>
+  <circle cx="36" cy="73" r="2" fill="#FFD700"/>
+  <circle cx="60" cy="73" r="5" fill="#4a3728" stroke="#8B6914" stroke-width="1"/>
+  <circle cx="60" cy="73" r="2" fill="#FFD700"/>
+  <!-- Carriage -->
+  <path d="M28 70 L72 70 L65 75 L30 75 Z" fill="#6b4c35"/>
+
+  <!-- "ARSENAL" text top -->
+  <text x="60" y="48" text-anchor="middle" font-family="Georgia, serif"
+        font-size="10" font-weight="bold" fill="#FFD700" letter-spacing="2">ARSENAL</text>
+
+  <!-- "F.C." text bottom -->
+  <text x="60" y="100" text-anchor="middle" font-family="Georgia, serif"
+        font-size="9" font-weight="bold" fill="#FFD700" letter-spacing="1">F.C.</text>
+
+  <!-- Stars decorative top corners -->
+  <text x="22" y="36" text-anchor="middle" font-size="9" fill="#FFD700">✦</text>
+  <text x="98" y="36" text-anchor="middle" font-size="9" fill="#FFD700">✦</text>
+
+  <!-- Bottom decorative text -->
+  <text x="60" y="118" text-anchor="middle" font-family="Georgia, serif"
+        font-size="7" fill="#FFD700" letter-spacing="0.5">1886</text>
+</svg>

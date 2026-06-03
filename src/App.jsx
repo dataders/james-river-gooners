@@ -198,6 +198,14 @@ export default function App() {
     <div className="app" style={{ '--header-height': `${isFinite(headerHeight) ? headerHeight : 0}px` }}>
       <header ref={headerRef} className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
         <div className="header-banner">
+          <button
+            className="home-button"
+            onClick={() => { window.location.href = '/' }}
+            title="Go to home"
+            aria-label="Home"
+          >
+            <img src="/arsenal-1930s.svg" className="home-crest" alt="Arsenal FC 1930s crest" />
+          </button>
           <img src="/apple-touch-icon.png" className="banner-icon" alt="" aria-hidden="true" />
           <div className="banner-text">
             <h1 className="logo">James River Gooners</h1>
