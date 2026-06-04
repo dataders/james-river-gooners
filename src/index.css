@@ -1415,6 +1415,69 @@ body {
   text-decoration: underline;
 }
 
+/* Cannon's account link button (header) */
+.cannon-link-btn {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.cannon-link-btn.cannon-linked {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.cannon-link-btn.cannon-linked:hover {
+  border-color: var(--gold);
+  opacity: 0.85;
+}
+
+/* Cannon's link modal body (reuses auth-panel shell) */
+.cannon-linked-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px 24px;
+}
+.cannon-linked-status {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.cannon-linked-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.cannon-refresh-btn {
+  align-self: stretch;
+}
+.cannon-disconnect-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cannon-disconnect-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cannon-disconnect-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Cannon's link form intro text */
+.cannon-intro {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.cannon-intro a {
+  color: var(--accent);
+}
+
 /* Carousel */
 .detail-carousel {
   position: relative;
