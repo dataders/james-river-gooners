@@ -26,7 +26,7 @@
       "safeId": "hibid_739431",
       "title": "June 6th, 2026 Sports Card & Comics Auction | Live and Online Auctions on HiBid.com",
       "endDate": "2026-06-06T23:00:00+00:00",
-      "scrapedAt": "2026-06-01T03:40:55.798000+00:00",
+      "scrapedAt": "2026-06-04T20:20:48.523298+00:00",
       "itemCount": 146,
       "itemsPath": "data/items/hibid_739431.parquet",
       "source": "emerald_ventures",
@@ -44,10 +44,20 @@
       "embeddingsPath": "data/items/vIgvMk-ow4F5FT9vYFpABw.embeddings"
     },
     {
+      "safeId": "hibid_739442",
+      "title": "June 7th, 2026 Coin and Paper Money Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-07T23:00:00+00:00",
+      "scrapedAt": "2026-06-04T20:31:36.096704+00:00",
+      "itemCount": 404,
+      "itemsPath": "data/items/hibid_739442.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/items/hibid_739442.ndjson"
+    },
+    {
       "safeId": "hibid_739720",
       "title": "June 7th, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
       "endDate": "2026-06-07T23:00:00+00:00",
-      "scrapedAt": "2026-06-01T03:48:32.003085+00:00",
+      "scrapedAt": "2026-06-04T20:24:20.797683+00:00",
       "itemCount": 198,
       "itemsPath": "data/items/hibid_739720.parquet",
       "source": "emerald_ventures",
@@ -112,7 +122,7 @@
       "safeId": "hibid_743703",
       "title": "June 14th, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
       "endDate": "2026-06-14T23:00:00+00:00",
-      "scrapedAt": "2026-06-01T04:03:01.870482+00:00",
+      "scrapedAt": "2026-06-04T20:41:02.236951+00:00",
       "itemCount": 197,
       "itemsPath": "data/items/hibid_743703.parquet",
       "source": "emerald_ventures",
@@ -188,7 +198,7 @@
       "safeId": "hibid_745666",
       "title": "June 21st, 2026 Graded & Raw Coin Auction | Live and Online Auctions on HiBid.com",
       "endDate": "2026-06-21T23:00:00+00:00",
-      "scrapedAt": "2026-06-01T04:12:26.972788+00:00",
+      "scrapedAt": "2026-06-04T20:51:02.736864+00:00",
       "itemCount": 206,
       "itemsPath": "data/items/hibid_745666.parquet",
       "source": "emerald_ventures",
@@ -198,7 +208,7 @@
       "safeId": "hibid_745663",
       "title": "June 21st, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
       "endDate": "2026-06-21T23:00:00+00:00",
-      "scrapedAt": "2026-06-01T04:07:52.255487+00:00",
+      "scrapedAt": "2026-06-04T20:46:22.025776+00:00",
       "itemCount": 189,
       "itemsPath": "data/items/hibid_745663.parquet",
       "source": "emerald_ventures",
@@ -216,14 +226,14 @@
       "embeddingsPath": "data/items/OTOEW5yRiFsFngoX55XiYA.embeddings"
     },
     {
-      "safeId": "hibid_739442",
-      "title": "https://hibid.com/catalog/739442/",
-      "endDate": "",
-      "scrapedAt": "2026-06-01T03:53:23.639926+00:00",
-      "itemCount": 404,
-      "itemsPath": "data/items/hibid_739442.parquet",
+      "safeId": "hibid_747559",
+      "title": "June 28th, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-28T23:00:00+00:00",
+      "scrapedAt": "2026-06-04T20:55:55.369171+00:00",
+      "itemCount": 177,
+      "itemsPath": "data/items/hibid_747559.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_739442.ndjson"
+      "ndjsonPath": "data/items/hibid_747559.ndjson"
     }
   ]
 }
