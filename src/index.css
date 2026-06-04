@@ -1468,6 +1468,32 @@ body {
   cursor: default;
 }
 
+.auth-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: calc(100% - 40px);
+  margin: 0 20px 4px;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.auth-google:hover {
+  background: var(--hover-bg, rgba(128,128,128,0.08));
+  border-color: var(--accent);
+}
+.auth-google:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Cannon's link form intro text */
 .cannon-intro {
   font-size: 0.82rem;
@@ -1476,6 +1502,22 @@ body {
 }
 .cannon-intro a {
   color: var(--accent);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  color: var(--text-muted, #888);
+  font-size: 0.8rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* Carousel */
