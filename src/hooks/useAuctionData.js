@@ -209,10 +209,23 @@ export function useAuctionData(includeArchived = false) {
     })
   }
 
+  const showAllAuctions = () => {
+    setExcludedAuctions([])
+    syncUrlParam('hideAuction', [])
+  }
+
+  const showOnlyAuction = (safeId, allSafeIds) => {
+    const excluded = allSafeIds.filter(id => id !== safeId)
+    setExcludedAuctions(excluded)
+    syncUrlParam('hideAuction', excluded)
+  }
+
   return {
     auctions,
     excludedAuctions,
     toggleAuction,
+    showAllAuctions,
+    showOnlyAuction,
     items,
     embeddingEntries: activeEmbeddingEntries,
     loading,

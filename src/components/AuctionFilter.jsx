@@ -18,39 +18,56 @@ function shortTitle(title, source) {
   return prefix ? `${prefix}: ${truncated}` : truncated
 }
 
-export function AuctionFilter({ auctions, excludedAuctions, onToggle }) {
+export function AuctionFilter({ auctions, excludedAuctions, onToggle, onShowAll, onShowOnly }) {
   const [expanded, setExpanded] = useState(false)
 
   const shown = auctions.filter(a => !excludedAuctions.includes(a.safeId))
   const hidden = auctions.filter(a => excludedAuctions.includes(a.safeId))
+  const allSafeIds = auctions.map(a => a.safeId)
 
   return (
     <div className="auction-filter">
-      <button
-        className="auction-filter-toggle"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <span className="auction-filter-label">Auctions</span>
-        <span className="auction-filter-summary">
-          {shown.length} of {auctions.length}
-        </span>
-        <span className="auction-filter-arrow">{expanded ? '▾' : '▸'}</span>
-      </button>
+      <div className="auction-filter-header">
+        <button
+          className="auction-filter-toggle"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <span className="auction-filter-label">Auctions</span>
+          <span className="auction-filter-summary">
+            {shown.length} of {auctions.length}
+          </span>
+          <span className="auction-filter-arrow">{expanded ? '▾' : '▸'}</span>
+        </button>
+        {hidden.length > 0 && (
+          <button className="filter-action" onClick={onShowAll}>show all</button>
+        )}
+      </div>
 
       {expanded && (
         <div className="auction-filter-body">
           <div className="filter-chips">
             {shown.map(a => (
-              <button
-                key={a.safeId}
-                className={`filter-chip shown${a.archived ? ' archived' : ''}`}
-                onClick={() => onToggle(a.safeId)}
-                title={a.title}
-              >
-                {shortTitle(a.title, a.source)}
-                {a.archived && <span className="archive-mark">archived</span>}
-                <span className="chip-count">{a.totalItems}</span>
-              </button>
+              <span key={a.safeId} className="filter-chip-wrap">
+                <button
+                  className={`filter-chip shown${a.archived ? ' archived' : ''}`}
+                  onClick={() => onToggle(a.safeId)}
+                  title={a.title}
+                >
+                  {shortTitle(a.title, a.source)}
+                  {a.archived && <span className="archive-mark">archived</span>}
+                  <span className="chip-count">{a.totalItems}</span>
+                </button>
+                {shown.length > 1 && (
+                  <button
+                    className="filter-chip-only"
+                    title={`Show only ${shortTitle(a.title, a.source)}`}
+                    aria-label={`Show only ${shortTitle(a.title, a.source)}`}
+                    onClick={() => onShowOnly(a.safeId, allSafeIds)}
+                  >
+                    only
+                  </button>
+                )}
+              </span>
             ))}
           </div>
           {hidden.length > 0 && (
