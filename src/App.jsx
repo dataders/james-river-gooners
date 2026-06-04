@@ -3,6 +3,7 @@ import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
 import { useAuth } from './hooks/useAuth'
+import { useCannonBids } from './hooks/useCannonBids'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
@@ -26,6 +27,7 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
 import { TutorialModal } from './components/TutorialModal'
 import { AuthModal } from './components/AuthModal'
+import { CannonLinkModal } from './components/CannonLinkModal'
 import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
 
@@ -79,7 +81,9 @@ export default function App() {
   const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
   const auth = useAuth()
   const [authOpen, setAuthOpen] = useState(false)
+  const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
   const { favoriteIds, isFavorite, toggleFavorite } = useFavorites(auth.user)
+  const cannonBids = useCannonBids(auth.user)
 
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(Infinity)
@@ -98,6 +102,7 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get('bestDeals') === '1'
   )
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [showMyBidsOnly, setShowMyBidsOnly] = useState(false)
 
   // Deep-link: open item modal once data loads
   const initialItemKey = useRef(new URLSearchParams(window.location.search).get('item'))
@@ -193,9 +198,11 @@ export default function App() {
   }, [filteredItems, hasComp, bestDeals, allComps])
 
   const finalItems = useMemo(() => {
-    if (!showFavoritesOnly) return displayItems
-    return displayItems.filter(isFavorite)
-  }, [displayItems, showFavoritesOnly, isFavorite])
+    let result = displayItems
+    if (showFavoritesOnly) result = result.filter(isFavorite)
+    if (showMyBidsOnly) result = result.filter(item => cannonBids.bidItemIds.has(String(item.id)))
+    return result
+  }, [displayItems, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds])
 
   const sortedItems = useMemo(() => sortItems(finalItems, sort), [finalItems, sort])
 
@@ -225,7 +232,12 @@ export default function App() {
             title="How to use this site"
             aria-label="Open help"
           >?</button>
-          <AccountButton auth={auth} onSignInClick={() => setAuthOpen(true)} />
+          <AccountButton
+            auth={auth}
+            cannonBids={auth.user ? cannonBids : null}
+            onSignInClick={() => setAuthOpen(true)}
+            onCannonLinkClick={() => setCannonLinkOpen(true)}
+          />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <ArsenalTrivia />
@@ -256,6 +268,20 @@ export default function App() {
           >
             {favoriteIds.length > 0 ? `Favorites (${favoriteIds.length})` : 'Favorites'}
           </button>
+          {cannonBids.linked && (
+            <button
+              type="button"
+              className={`deals-toggle${showMyBidsOnly ? ' active' : ''}`}
+              onClick={() => setShowMyBidsOnly(v => !v)}
+              title={cannonBids.bidsLoading ? 'Fetching bids…' : `${cannonBids.bidItemIds.size} items bid on`}
+            >
+              {cannonBids.bidsLoading
+                ? 'My Bids…'
+                : cannonBids.bidItemIds.size > 0
+                  ? `My Bids (${cannonBids.bidItemIds.size})`
+                  : 'My Bids'}
+            </button>
+          )}
           <button
             type="button"
             className={`deals-toggle${bestDeals ? ' active' : ''}`}
@@ -341,6 +367,16 @@ export default function App() {
                 Star items in the grid to save them here.
               </p>
             </div>
+          ) : showMyBidsOnly && finalItems.length === 0 ? (
+            <div className="no-deals-message">
+              <div className="item-count">0 items</div>
+              <p>No bids found in current auctions.</p>
+              <p className="no-deals-hint">
+                {cannonBids.bidsLoading
+                  ? 'Fetching your bid history from Cannon\'s…'
+                  : 'Your Cannon\'s bid history didn\'t match any currently listed items. Try enabling archived auctions.'}
+              </p>
+            </div>
           ) : (
             <ItemGrid
               items={sortedItems}
@@ -356,6 +392,10 @@ export default function App() {
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
 
       {authOpen && <AuthModal auth={auth} onClose={() => setAuthOpen(false)} />}
+
+      {cannonLinkOpen && auth.user && (
+        <CannonLinkModal cannonBids={cannonBids} onClose={() => setCannonLinkOpen(false)} />
+      )}
 
       {selectedItem && (
         <ItemDetail

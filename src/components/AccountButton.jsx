@@ -8,7 +8,7 @@ function PersonIcon() {
   )
 }
 
-export function AccountButton({ auth, onSignInClick }) {
+export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkClick }) {
   const [open, setOpen] = useState(false)
   const [changing, setChanging] = useState(false)
   const [newPass, setNewPass] = useState('')
@@ -79,6 +79,16 @@ export function AccountButton({ auth, onSignInClick }) {
               {auth.user.email}
             </div>
             <hr className="account-dropdown-divider" />
+            {cannonBids && (
+              <button
+                type="button"
+                className={`account-dropdown-item${cannonBids.linked ? ' account-dropdown-item--cannon-linked' : ''}`}
+                role="menuitem"
+                onClick={() => { setOpen(false); onCannonLinkClick?.() }}
+              >
+                {cannonBids.linked ? `Cannon's ✓ (${cannonBids.username})` : "Link Cannon's account"}
+              </button>
+            )}
             {changing ? (
               <form className="account-change-pass-form" onSubmit={handleChangePassword}>
                 <input
