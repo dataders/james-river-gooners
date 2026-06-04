@@ -21,6 +21,7 @@ from dates import parse_auction_datetime_utc
 from discover import discover_current_auction_urls
 from scrape import DATA_DIR, ITEMS_DIR, extract_auction_id, sanitize_auction_id
 from scrape_hibid import discover_hibid_specs, hibid_safe_id, extract_catalog_id
+from scrape_rasmus import discover_rasmus_specs, rasmus_safe_id
 
 
 URLS_FILE = Path(__file__).resolve().parent / "auction_urls.txt"
@@ -192,7 +193,22 @@ def _discover_hibid() -> list[dict]:
         return []
 
 
-def _candidate_ids_from(maxanet_urls: list[str], hibid_specs: list[dict]) -> set[str]:
+def _discover_rasmus() -> list[dict]:
+    print("Discovering Rasmus auctions...")
+    try:
+        specs = discover_rasmus_specs()
+        print(f"  Found {len(specs)} Richmond-area Rasmus auctions")
+        return specs
+    except Exception as exc:
+        print(f"  Rasmus discovery failed: {exc}")
+        return []
+
+
+def _candidate_ids_from(
+    maxanet_urls: list[str],
+    hibid_specs: list[dict],
+    rasmus_specs: list[dict] | None = None,
+) -> set[str]:
     ids: set[str] = set()
     for url in maxanet_urls:
         try:
@@ -203,6 +219,8 @@ def _candidate_ids_from(maxanet_urls: list[str], hibid_specs: list[dict]) -> set
         cid = extract_catalog_id(spec["catalog_url"])
         if cid:
             ids.add(hibid_safe_id(cid))
+    for spec in rasmus_specs or []:
+        ids.add(rasmus_safe_id(spec["aid"]))
     return ids
 
 
@@ -253,12 +271,34 @@ def _scrape_hibid(hibid_specs: list[dict], total: int, start_i: int) -> list[str
     return failures
 
 
+def _scrape_rasmus(rasmus_specs: list[dict], total: int, start_i: int) -> list[str]:
+    failures: list[str] = []
+    cwd = Path(__file__).resolve().parent
+    for j, spec in enumerate(rasmus_specs, start_i):
+        print(f"\n{'='*60}")
+        print(f"[{j}/{total}] Rasmus ({spec['company_name']}): {spec['title'][:60]}")
+        print(f"{'='*60}")
+        cmd = [
+            sys.executable, "scrape_rasmus.py",
+            spec["aid"],
+            "--source", spec["source_slug"],
+            "--company", spec["company_name"],
+            "--title", spec["title"],
+        ]
+        rc = _run_with_retry(cmd, cwd, spec["aid"])
+        if rc != 0:
+            print(f"FAILED: {spec['aid']}")
+            failures.append(spec["aid"])
+    return failures
+
+
 def archive_only() -> None:
-    """Discover all current candidates from both sources and archive stale/closed auctions."""
+    """Discover all current candidates from every source and archive stale/closed auctions."""
     print("Archive pass: discovering current candidates from all sources...")
     maxanet_urls = _discover_maxanet()
     hibid_specs = _discover_hibid()
-    candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs)
+    rasmus_specs = _discover_rasmus()
+    candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs, rasmus_specs)
     archive_closed_and_stale(candidate_ids)
 
 
@@ -267,8 +307,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--source",
-        choices=["maxanet", "hibid"],
-        help="Scrape only one source (default: both). Does not archive — run --archive-only afterwards.",
+        choices=["maxanet", "hibid", "rasmus"],
+        help="Scrape only one source (default: all). Does not archive — run --archive-only afterwards.",
     )
     group.add_argument(
         "--archive-only",
@@ -287,27 +327,37 @@ def main() -> None:
 
     run_maxanet = args.source in (None, "maxanet")
     run_hibid = args.source in (None, "hibid")
+    run_rasmus = args.source in (None, "rasmus")
 
     maxanet_urls = _discover_maxanet() if run_maxanet else []
     print()
     hibid_specs = _discover_hibid() if run_hibid else []
+    print()
+    rasmus_specs = _discover_rasmus() if run_rasmus else []
 
-    total = len(maxanet_urls) + len(hibid_specs)
+    total = len(maxanet_urls) + len(hibid_specs) + len(rasmus_specs)
     if total == 0:
         print("No auction URLs found")
         sys.exit(0)
 
-    print(f"\nRe-scraping {total} auctions ({len(maxanet_urls)} Maxanet, {len(hibid_specs)} HiBid)...")
+    print(
+        f"\nRe-scraping {total} auctions "
+        f"({len(maxanet_urls)} Maxanet, {len(hibid_specs)} HiBid, "
+        f"{len(rasmus_specs)} Rasmus)..."
+    )
     failures: list[str] = []
     failures += _scrape_maxanet(maxanet_urls, total, 1)
     failures += _scrape_hibid(hibid_specs, total, len(maxanet_urls) + 1)
+    failures += _scrape_rasmus(
+        rasmus_specs, total, len(maxanet_urls) + len(hibid_specs) + 1
+    )
 
     print(f"\n{'='*60}")
     print(f"Done: {total - len(failures)}/{total} succeeded")
 
     if args.source is None:
         # Full run: archive stale/closed auctions and update manifests
-        candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs)
+        candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs, rasmus_specs)
         archive_closed_and_stale(candidate_ids)
     else:
         # Partial run: just update manifests; archiving deferred to --archive-only

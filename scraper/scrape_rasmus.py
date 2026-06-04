@@ -1,0 +1,554 @@
+#!/usr/bin/env python3
+"""
+Rasmus Auctions scraper for Richmond-area auctions.
+
+Rasmus (rasmus.com) runs on the auction-engine.com platform, a multi-tenant app
+backed by a public Firebase Firestore project ("dark-shade"). Lot data lives in
+the top-level ``items`` collection, tagged with ``origin_sid`` per tenant
+("rasmus_auctions_appspot_com"); the auction title/city is only rendered into
+each auction page's prerendered SEO meta tags.
+
+This scraper therefore:
+  1. Reads active lots straight from the Firestore REST API (filter on
+     ``origin_sid`` + future ``time_end``) to discover current auction ids.
+  2. Reads each candidate auction's ``<title>``/``og:title`` to get its city and
+     keep only Richmond-area, non-real-estate auctions.
+  3. Pulls every lot for a kept auction (filter on ``aid``) and writes a Parquet
+     file in the same schema as scrape.py / scrape_hibid.py.
+
+Usage:
+    python scrape_rasmus.py <aid> [--title "..."] [--source rasmus]
+    python scrape_rasmus.py --discover-only   # print what would be scraped
+"""
+
+import argparse
+import html
+import json
+import os
+import re
+import sys
+import warnings
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+import requests
+import yaml
+
+from categories import normalize_category, normalize_raw_with_description
+from scrape_hibid import is_real_estate_auction
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
+ITEMS_DIR = DATA_DIR / "items"
+SOURCES_FILE = Path(__file__).resolve().parent / "rasmus_sources.yml"
+
+RASMUS_BASE = "https://rasmus.com"
+
+# Public Firebase web config extracted from rasmus.com's bundle. The API key is a
+# browser-safe Firebase web key (it identifies the project, it is not a secret),
+# and the `items`/`auctions` collections are world-readable per the project's
+# security rules — the same data the public site fetches client-side.
+FIRESTORE_PROJECT = "dark-shade"
+FIRESTORE_API_KEY = "AIzaSyDU5Q5Qy9xV7FL5oUB3E0d_C4OWoPZaYYU"
+FIRESTORE_BASE = (
+    f"https://firestore.googleapis.com/v1/projects/{FIRESTORE_PROJECT}"
+    "/databases/(default)/documents"
+)
+
+PAGE_SIZE = 300
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def rasmus_safe_id(aid: str) -> str:
+    return f"rasmus_{aid}"
+
+
+def create_session() -> requests.Session:
+    import urllib3
+    warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    return session
+
+
+def _fs_value(v: dict):
+    """Decode a single Firestore REST ``Value`` into a Python value."""
+    if "stringValue" in v:
+        return v["stringValue"]
+    if "integerValue" in v:
+        return int(v["integerValue"])
+    if "doubleValue" in v:
+        return float(v["doubleValue"])
+    if "booleanValue" in v:
+        return bool(v["booleanValue"])
+    if "timestampValue" in v:
+        return v["timestampValue"]
+    if "nullValue" in v:
+        return None
+    if "arrayValue" in v:
+        return [_fs_value(x) for x in v["arrayValue"].get("values", [])]
+    if "mapValue" in v:
+        return {k: _fs_value(x) for k, x in v["mapValue"].get("fields", {}).items()}
+    return None
+
+
+def _fs_fields(doc: dict) -> dict:
+    return {k: _fs_value(v) for k, v in doc.get("fields", {}).items()}
+
+
+def ms_to_iso(ms) -> str:
+    """Convert an epoch-milliseconds value to an ISO-8601 UTC string."""
+    try:
+        ms = int(ms)
+    except (TypeError, ValueError):
+        return ""
+    if ms <= 0:
+        return ""
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
+
+
+def location_matches(text: str, keywords: list[str]) -> bool:
+    """True when any keyword appears as a whole word (case-insensitive) in text."""
+    if not text:
+        return False
+    lower = text.lower()
+    for kw in keywords:
+        if re.search(r"\b" + re.escape(kw.lower()) + r"\b", lower):
+            return True
+    return False
+
+
+def parse_rasmus_category(category) -> str:
+    """Pull a human category from Rasmus's ``["0--Category--China"]`` shape."""
+    if not category:
+        return ""
+    first = category[0] if isinstance(category, list) else category
+    if not isinstance(first, str):
+        return ""
+    if "--Category--" in first:
+        first = first.split("--Category--", 1)[1]
+    # The remaining value may itself be a "Parent--Child" path; take the leaf.
+    leaf = [p for p in first.split("--") if p.strip()]
+    return leaf[-1].strip() if leaf else ""
+
+
+# ---------------------------------------------------------------------------
+# Firestore REST queries
+# ---------------------------------------------------------------------------
+
+def _run_query(session: requests.Session, body: dict) -> list[dict]:
+    """POST a structuredQuery and return the list of decoded documents."""
+    url = f"{FIRESTORE_BASE}:runQuery?key={FIRESTORE_API_KEY}"
+    resp = session.post(url, json=body, timeout=40)
+    resp.raise_for_status()
+    data = resp.json()
+    if isinstance(data, dict) and "error" in data:
+        raise RuntimeError(f"Firestore error: {data['error'].get('message')}")
+    return [r["document"] for r in data if r.get("document")]
+
+
+def _eq_filter(field: str, value: str) -> dict:
+    return {"fieldFilter": {"field": {"fieldPath": field}, "op": "EQUAL",
+                            "value": {"stringValue": value}}}
+
+
+def fetch_active_auction_ids(
+    session: requests.Session, sid: str, now_ms: int | None = None
+) -> dict[str, int]:
+    """Return {aid: max_time_end_ms} for the site's auctions still open now.
+
+    Paginates the ``items`` collection (projected to aid + time_end) filtered to
+    the tenant and to lots whose close time is in the future.
+    """
+    if now_ms is None:
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    aids: dict[str, int] = {}
+    offset = 0
+    while True:
+        body = {
+            "structuredQuery": {
+                "from": [{"collectionId": "items"}],
+                "where": {"compositeFilter": {"op": "AND", "filters": [
+                    _eq_filter("origin_sid", sid),
+                    {"fieldFilter": {"field": {"fieldPath": "time_end"},
+                                     "op": "GREATER_THAN",
+                                     "value": {"integerValue": str(now_ms)}}},
+                ]}},
+                "select": {"fields": [{"fieldPath": "aid"},
+                                      {"fieldPath": "time_end"}]},
+                "orderBy": [{"field": {"fieldPath": "time_end"},
+                             "direction": "ASCENDING"}],
+                "offset": offset,
+                "limit": PAGE_SIZE,
+            }
+        }
+        docs = _run_query(session, body)
+        for doc in docs:
+            f = _fs_fields(doc)
+            aid = f.get("aid")
+            if not aid:
+                continue
+            end = int(f.get("time_end") or 0)
+            if end > aids.get(aid, 0):
+                aids[aid] = end
+        if len(docs) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+    return aids
+
+
+def fetch_auction_items(session: requests.Session, aid: str) -> list[dict]:
+    """Return every decoded lot document for an auction id (paginated)."""
+    items: list[dict] = []
+    cursor: str | None = None
+    while True:
+        query: dict = {
+            "from": [{"collectionId": "items"}],
+            "where": _eq_filter("aid", aid),
+            "orderBy": [{"field": {"fieldPath": "__name__"},
+                         "direction": "ASCENDING"}],
+            "limit": PAGE_SIZE,
+        }
+        if cursor is not None:
+            query["startAt"] = {
+                "before": False,
+                "values": [{"referenceValue": cursor}],
+            }
+        docs = _run_query(session, {"structuredQuery": query})
+        if not docs:
+            break
+        items.extend(docs)
+        cursor = docs[-1]["name"]
+        if len(docs) < PAGE_SIZE:
+            break
+    return items
+
+
+# ---------------------------------------------------------------------------
+# Auction-page metadata (title + city for Richmond filtering)
+# ---------------------------------------------------------------------------
+
+def _meta_content(htmltext: str, key: str, attr: str = "property") -> str:
+    m = re.search(
+        rf'<meta\s+{attr}="{re.escape(key)}"\s+content="([^"]*)"',
+        htmltext, re.IGNORECASE,
+    )
+    return html.unescape(m.group(1).strip()) if m else ""
+
+
+def fetch_auction_meta(session: requests.Session, aid: str) -> dict:
+    """Return {title, description, image} from an auction page's SEO meta tags."""
+    url = f"{RASMUS_BASE}/auctions/{aid}/a/x"
+    try:
+        resp = session.get(url, timeout=30)
+        resp.raise_for_status()
+        text = resp.text
+    except Exception as exc:
+        print(f"  Warning: could not fetch auction page {aid}: {exc}")
+        return {"title": "", "description": "", "image": ""}
+
+    title = _meta_content(text, "og:title")
+    if not title:
+        m = re.search(r"<title>([^<]*)</title>", text, re.IGNORECASE)
+        if m:
+            title = html.unescape(m.group(1).strip())
+    description = _meta_content(text, "description", attr="name")
+    image = _meta_content(text, "og:image")
+    return {"title": title, "description": description, "image": image}
+
+
+# ---------------------------------------------------------------------------
+# Discovery
+# ---------------------------------------------------------------------------
+
+def load_sources(sources_file: Path | None = None) -> dict:
+    with open(sources_file or SOURCES_FILE) as f:
+        return yaml.safe_load(f)
+
+
+def discover_rasmus_specs(sources_file: Path | None = None) -> list[dict]:
+    """Return {aid, title, source_slug, company_name, image} for Richmond auctions."""
+    config = load_sources(sources_file)
+    site = config["site"]
+    sid = site["sid"]
+    slug = site["slug"]
+    name = site["name"]
+    keywords = config.get("location_keywords", [])
+
+    session = create_session()
+    print(f"  Finding active {name} auctions (sid={sid})...")
+    active = fetch_active_auction_ids(session, sid)
+    print(f"  {len(active)} active auction(s); checking which are Richmond-area")
+
+    specs: list[dict] = []
+    for aid in active:
+        meta = fetch_auction_meta(session, aid)
+        title = meta["title"]
+        haystack = f"{title} {meta['description']}"
+        if not location_matches(haystack, keywords):
+            print(f"    Skipping (not Richmond): {title[:60]}")
+            continue
+        if is_real_estate_auction(title):
+            print(f"    Skipping real estate: {title[:60]}")
+            continue
+        print(f"    Found: {title[:60]}")
+        specs.append({
+            "aid": aid,
+            "safe_id": rasmus_safe_id(aid),
+            "source_slug": slug,
+            "company_name": name,
+            "title": title,
+            "image": meta["image"],
+        })
+    return specs
+
+
+# ---------------------------------------------------------------------------
+# Item mapping
+# ---------------------------------------------------------------------------
+
+def map_item(doc: dict, aid: str) -> dict | None:
+    """Map a Firestore lot document into the shared item schema."""
+    f = _fs_fields(doc)
+    iid = f.get("iid") or doc["name"].split("/")[-1]
+
+    lot = f.get("lot")
+    try:
+        lot_number = int(lot)
+    except (TypeError, ValueError):
+        lot_number = 0
+
+    title = (f.get("name") or "").strip()
+    description = (f.get("description") or "").strip()[:500]
+
+    try:
+        current_bid = float(f.get("price") or 0)
+    except (TypeError, ValueError):
+        current_bid = 0.0
+
+    # Rasmus exposes the distinct bidders per lot (bidders_by_uid) but not a raw
+    # bid count. uniqueBidders is therefore exact; totalBids has no truer source
+    # than the distinct-bidder count (each placed at least one bid), so we use it
+    # as a lower-bound stand-in to keep the shared schema populated.
+    bidders = f.get("bidders_by_uid") or []
+    unique_bidders = len(bidders) if isinstance(bidders, list) else 0
+    has_bids = bool(f.get("has_bids"))
+    total_bids = unique_bidders if has_bids else 0
+    if has_bids and unique_bidders == 0:
+        total_bids = 1  # bid recorded but bidder list withheld
+
+    images: list[str] = []
+    for photo in (f.get("photos_display") or []):
+        if isinstance(photo, dict) and photo.get("src"):
+            images.append(photo["src"])
+    images = images[:5]
+
+    raw_cat = parse_rasmus_category(f.get("category"))
+    combined = f"{raw_cat} {title} {description}".strip()
+
+    return {
+        "id": rasmus_safe_id(iid),
+        "lotNumber": lot_number,
+        "title": title,
+        "description": description,
+        "currentBid": current_bid,
+        "totalBids": total_bids,
+        "uniqueBidders": unique_bidders,
+        "endDate": ms_to_iso(f.get("time_end")),
+        "images": images,
+        "category": normalize_category(raw_cat, combined),
+        "rawCategory": normalize_raw_with_description(raw_cat, combined),
+        "detailUrl": f"{RASMUS_BASE}/auctions/{aid}/lot/{lot_number}",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Bid-change detection (mirrors scrape_hibid)
+# ---------------------------------------------------------------------------
+
+def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
+    ndjson_path = path.with_suffix(".ndjson")
+    if ndjson_path.exists():
+        try:
+            rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+            return {
+                row["id"]: (float(row.get("currentBid") or 0), int(row.get("totalBids") or 0))
+                for row in rows
+            }
+        except Exception:
+            pass
+    if not path.exists():
+        return {}
+    try:
+        table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
+        return {
+            row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
+            for row in table.to_pylist()
+        }
+    except Exception:
+        return {}
+
+
+def has_bid_changes(new_items: list[dict], existing_bids: dict) -> bool:
+    if not existing_bids:
+        return True
+    new_ids = {item["id"] for item in new_items}
+    if new_ids != set(existing_bids):
+        return True
+    return any(
+        (float(item.get("currentBid") or 0), int(item.get("totalBids") or 0))
+        != existing_bids.get(item["id"])
+        for item in new_items
+    )
+
+
+# ---------------------------------------------------------------------------
+# Main scrape function
+# ---------------------------------------------------------------------------
+
+def scrape_rasmus_auction(
+    aid: str,
+    source_slug: str = "rasmus",
+    company_name: str = "Rasmus Auctions",
+    auction_title: str = "",
+    snapshot_to_motherduck: bool | None = None,
+) -> dict:
+    """Scrape one Rasmus auction and write Parquet. Returns {changed, count}."""
+    safe_id = rasmus_safe_id(aid)
+    print(f"Scraping Rasmus auction {aid} ({company_name})")
+
+    session = create_session()
+    scraped_at = datetime.now(timezone.utc)
+
+    if not auction_title:
+        auction_title = fetch_auction_meta(session, aid)["title"]
+    print(f"  Title: {auction_title or '(unknown)'}")
+
+    if is_real_estate_auction(auction_title):
+        print("  Skipping: real estate auction")
+        return {"changed": False, "skipped": True}
+
+    print("  Fetching lots...")
+    docs = fetch_auction_items(session, aid)
+    all_items = [it for it in (map_item(d, aid) for d in docs) if it]
+    print(f"  Fetched {len(all_items)} lots")
+
+    if not all_items:
+        print("  No items parsed; skipping")
+        return {"changed": False}
+
+    auction_end_date = max(
+        (item["endDate"] for item in all_items if item.get("endDate")),
+        default="",
+    )
+    if not auction_title:
+        auction_title = f"Rasmus Auction {aid}"
+
+    # Skip write if nothing changed
+    items_path = ITEMS_DIR / f"{safe_id}.parquet"
+    existing_bids = load_existing_bids(items_path)
+    if not has_bid_changes(all_items, existing_bids):
+        print(f"  No bid changes; skipping write for {safe_id}")
+        if os.environ.get("GOONERS_EMBEDDINGS") == "1":
+            emb_path = items_path.with_suffix(".embeddings")
+            if not emb_path.exists():
+                print(f"  Embeddings missing for {safe_id}; generating now")
+                from embed import generate_and_write as _gen_embeddings
+                _gen_embeddings(all_items, items_path, None)
+        return {"changed": False}
+
+    ITEMS_DIR.mkdir(parents=True, exist_ok=True)
+    scraped_at_str = scraped_at.isoformat()
+
+    for item in all_items:
+        item["auctionId"] = aid
+        item["auctionSafeId"] = safe_id
+        item["auctionTitle"] = auction_title
+        item["auctionEndDate"] = auction_end_date
+        item["scrapedAt"] = scraped_at_str
+        item["source"] = source_slug
+
+    # Write NDJSON (images as real array)
+    ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
+    ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]
+    ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
+    print(f"  Wrote {len(all_items)} items → {ndjson_path.name}")
+
+    # Generate CLIP embeddings (images still arrays at this point)
+    if os.environ.get("GOONERS_EMBEDDINGS") == "1":
+        from embed import generate_and_write as _gen_embeddings
+        _gen_embeddings(all_items, items_path, None)
+
+    # Write Parquet (images stringified for Arrow compatibility)
+    for item in all_items:
+        item["images"] = json.dumps(item["images"])
+    table = pa.Table.from_pylist(all_items)
+    pq.write_table(table, items_path, compression="snappy")
+    print(f"  Wrote {len(all_items)} items → {items_path.name}")
+
+    if snapshot_to_motherduck is None:
+        from motherduck import should_snapshot_to_motherduck
+        snapshot_to_motherduck = should_snapshot_to_motherduck()
+
+    if snapshot_to_motherduck:
+        from warehouse import get_sink
+        sink = get_sink()
+        if sink is not None:
+            source_url = f"{RASMUS_BASE}/auctions/{aid}/a/auction"
+            snapshot_count = sink.append_listing_snapshots(all_items, source_url)
+            print(f"  Appended {snapshot_count} listing snapshots to the warehouse")
+
+    return {"changed": True, "count": len(all_items)}
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Scrape a Rasmus auction")
+    parser.add_argument("aid", nargs="?", help="Rasmus auction id (from the /auctions/<aid>/ URL)")
+    parser.add_argument("--source", default="rasmus", help="Source slug")
+    parser.add_argument("--company", default="Rasmus Auctions", help="Display name")
+    parser.add_argument("--title", default="", help="Auction title (skips a page fetch)")
+    parser.add_argument("--discover-only", action="store_true", help="Print what would be scraped and exit")
+    parser.add_argument("--motherduck", action="store_true")
+    return parser.parse_args(argv)
+
+
+if __name__ == "__main__":
+    args = parse_args(sys.argv[1:])
+
+    if args.discover_only:
+        print("Discovering Rasmus auctions...")
+        specs = discover_rasmus_specs()
+        print(f"\nFound {len(specs)} Richmond-area auction(s):")
+        for spec in specs:
+            print(f"  [{spec['source_slug']}] {spec['title'][:60]}")
+            print(f"    {RASMUS_BASE}/auctions/{spec['aid']}/")
+        sys.exit(0)
+
+    if not args.aid:
+        print("Error: aid is required unless --discover-only is used", file=sys.stderr)
+        sys.exit(1)
+
+    scrape_rasmus_auction(
+        args.aid,
+        source_slug=args.source,
+        company_name=args.company,
+        auction_title=args.title,
+        snapshot_to_motherduck=args.motherduck or None,
+    )
