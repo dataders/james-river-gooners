@@ -39,6 +39,10 @@ export default function App() {
     auctions,
     excludedAuctions,
     toggleAuction,
+    showAllAuctions,
+    showOnlyAuction,
+    hideSource,
+    showSource,
     items,
     embeddingEntries,
     loading,
@@ -326,6 +330,10 @@ export default function App() {
             auctions={visibleAuctions}
             excludedAuctions={excludedAuctions}
             onToggle={toggleAuction}
+            onShowAll={showAllAuctions}
+            onShowOnly={showOnlyAuction}
+            onHideSource={(src) => hideSource(src, visibleAuctions)}
+            onShowSource={(src) => showSource(src, visibleAuctions)}
           />
           {archiveLoading && (
             <div className="inline-status">Loading archived auctions...</div>

@@ -298,11 +298,18 @@ body {
   margin-bottom: 8px;
 }
 
+.auction-filter-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .auction-filter-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 40px; /* comfortable tap target on touch */
   padding: 6px 10px;
   background: var(--surface);
@@ -339,6 +346,13 @@ body {
 .auction-filter-arrow {
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.auction-source-group {
+  margin-bottom: 4px;
+}
+.auction-source-group.all-hidden {
+  opacity: 0.6;
 }
 
 .auction-filter-body {

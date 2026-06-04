@@ -55,8 +55,11 @@ test.describe('Archived auctions', () => {
     await checkbox.click()
     await expect(page.locator('.inline-status')).toBeHidden({ timeout: 30_000 })
 
-    // Open the Auctions filter and look for archived chips
+    // Open the Auctions filter, expand all source groups, then look for archived chips
     await page.locator('button.auction-filter-toggle').click()
+    for (const grpToggle of await page.locator('.auction-filter-body .filter-group-toggle').all()) {
+      await grpToggle.click()
+    }
     await expect(page.locator('.auction-filter-body .filter-chip.archived').first()).toBeVisible()
   })
 })
