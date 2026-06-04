@@ -74,7 +74,7 @@ body {
 
 /* App layout */
 .app {
-  max-width: 1440px;
+  max-width: 1680px;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -317,19 +317,23 @@ body {
   border-color: var(--accent);
 }
 
+/* Matches .filter-label-text so the Auctions and Categories headers read as a set */
 .auction-filter-label {
-  font-weight: 700;
-  font-size: 0.75rem;
+  font-weight: 600;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text);
+  color: var(--gold);
 }
 
 .auction-filter-summary {
-  flex: 1;
-  text-align: left;
-  font-size: 0.75rem;
+  margin-left: auto;
+  font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.auction-filter-hidden {
+  margin-top: 6px;
 }
 
 .auction-filter-arrow {
