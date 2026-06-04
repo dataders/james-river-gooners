@@ -220,6 +220,7 @@ test.describe('Design consistency — navigation active-state hierarchy', () => 
     const inactiveColor = await btn.evaluate(el => getComputedStyle(el).color)
     await btn.click()
     await expect(btn).toHaveClass(/active/)
+    await page.waitForTimeout(300) // allow color transition (0.15s) to settle
     const activeColor = await btn.evaluate(el => getComputedStyle(el).color)
     expect(activeColor).not.toBe(inactiveColor)
   })
