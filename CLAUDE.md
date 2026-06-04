@@ -4,7 +4,9 @@ Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet 
 
 ## Architecture
 
-**Scraper** (`scraper/`) — Python scripts: discover auctions, fetch Maxanet HTML fragments, normalize categories, write Parquet to `public/data/`.
+**Scraper** (`scraper/`) — Python scripts: discover auctions, fetch source data, normalize categories, write Parquet to `public/data/`. Three sources, one shared item schema: Maxanet/Cannon's (`scrape.py`), HiBid (`scrape_hibid.py` + `hibid_sources.yml`), and Rasmus (`scrape_rasmus.py` + `rasmus_sources.yml`). `rescrape_all.py` discovers + scrapes all three (`--source maxanet|hibid|rasmus` to limit).
+
+**Rasmus source** (`scrape_rasmus.py`) — Rasmus runs on the auction-engine.com platform backed by a public Firebase Firestore project (`dark-shade`). Lots live in the world-readable top-level `items` collection tagged `origin_sid: rasmus_auctions_appspot_com`; the scraper reads them via the Firestore REST `:runQuery` API (no key secret — it's the browser-side Firebase web key). Rasmus sells nationwide, so discovery is Richmond-first: a cheap projected query (`aid` + `time_end`) finds active auctions, then each auction's prerendered `<title>`/`og:title` is checked against `rasmus_sources.yml` `location_keywords` (the city only exists in the page title — the per-item `location` field is a warehouse bin, not queryable). Only Richmond-area, non-real-estate auctions get their lots fully pulled. `uniqueBidders` comes free from each lot's `bidders_by_uid`; `totalBids` has no truer source than that distinct-bidder count.
 
 **Frontend** (`src/`) — Vite + React 19 SPA. Reads the per-auction NDJSON sidecars in-browser (one `fetch` per auction via `src/hooks/useAuctionData.js`); no Parquet/Arrow runs client-side. Masonry grid, filtering (auction/category/price/search), keyword + CLIP semantic search, favorites, infinite scroll, dark mode.
 

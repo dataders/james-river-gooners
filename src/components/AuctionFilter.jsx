@@ -5,6 +5,7 @@ const SOURCE_LABELS = {
   emerald_ventures: 'Emerald',
   past_chapters: 'Past Chapters',
   peoples_auction: 'Peoples',
+  rasmus: 'Rasmus',
 }
 
 function sourceLabel(source) {

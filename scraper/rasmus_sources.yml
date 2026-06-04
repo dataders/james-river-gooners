@@ -1,0 +1,40 @@
+# Rasmus Auctions (rasmus.com) — Richmond-area onboarding config.
+#
+# Rasmus runs on the auction-engine.com platform, backed by a public Firebase
+# Firestore project ("dark-shade"). The scraper reads lot data directly from the
+# Firestore REST API filtered by `origin_sid`, and reads each auction's
+# title/city from the auction page's prerendered SEO meta tags.
+#
+# Rasmus sells nationwide, so unlike the HiBid sources we cannot onboard a whole
+# company — we keep only auctions whose title or description mentions one of the
+# Richmond-area place names below. Real-estate-only auctions are skipped.
+
+site:
+  sid: rasmus_auctions_appspot_com
+  name: "Rasmus Auctions"
+  slug: rasmus
+
+# Auctions whose title (or description, as a fallback) mentions any of these
+# place names are treated as "Richmond area" and included. Matched as
+# whole words, case-insensitively.
+location_keywords:
+  - Richmond
+  - Henrico
+  - Chesterfield
+  - Midlothian
+  - Mechanicsville
+  - Glen Allen
+  - Short Pump
+  - Sandston
+  - Varina
+  - Highland Springs
+  - Ashland
+  - Hanover
+  - Goochland
+  - Powhatan
+  - New Kent
+  - Charles City
+  - Chester
+  - Colonial Heights
+  - Petersburg
+  - Aylett
