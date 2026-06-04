@@ -7,6 +7,7 @@ import {
   toggleFavoriteKey,
 } from '../utils/favorites'
 import { supabase } from '../lib/supabase'
+import { captureEvent } from '../lib/analytics'
 
 function loadFavoriteIds() {
   if (typeof document === 'undefined') return []
@@ -87,6 +88,12 @@ export function useFavorites(user) {
 
   const toggleFavorite = useCallback(item => {
     const key = favoriteKey(item)
+    // Capture once per user action, outside the state updater (which React
+    // re-runs under StrictMode). `signed_in` lets us split auth vs anon usage.
+    captureEvent('favorite_toggled', {
+      adding: !favoriteSet.has(key),
+      signed_in: Boolean(userId),
+    })
     setFavoriteIds(prev => {
       const next = toggleFavoriteKey(prev, key)
       saveFavoriteIds(next)
@@ -112,7 +119,7 @@ export function useFavorites(user) {
 
       return next
     })
-  }, [userId])
+  }, [userId, favoriteSet])
 
   return {
     favoriteIds,

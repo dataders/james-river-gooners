@@ -10,8 +10,9 @@
 // permanently-signed-out state and the actions return a friendly error, so the
 // rest of the app keeps working off the anonymous cookie cache.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { identifyUser, resetAnalytics } from '../lib/analytics'
 
 const NOT_CONFIGURED = { error: 'Sign-in is not available right now.' }
 
@@ -19,6 +20,22 @@ export function useAuth() {
   // `loading` is the initial session lookup; null user once resolved = signed out.
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(isSupabaseConfigured)
+
+  // Tie anonymous telemetry to the Supabase user on login, and drop the
+  // identity on logout so the next session isn't attributed to the prior user.
+  // `identifiedId` tracks who we've told PostHog about, so we only reset on a
+  // real sign-out (not on every anonymous page load).
+  const identifiedId = useRef(/** @type {string | null} */ (null))
+  const userId = session?.user?.id ?? null
+  useEffect(() => {
+    if (userId) {
+      identifyUser(userId)
+      identifiedId.current = userId
+    } else if (identifiedId.current) {
+      resetAnalytics()
+      identifiedId.current = null
+    }
+  }, [userId])
 
   useEffect(() => {
     if (!supabase) return
