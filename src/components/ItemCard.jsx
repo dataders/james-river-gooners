@@ -43,7 +43,10 @@ export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, on
         <div className="item-category">{item.rawCategory || item.category}</div>
         <div className="item-bid-row">
           <span className="item-bid">${item.currentBid.toLocaleString()}</span>
-          <span className="item-bids">{item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}</span>
+          <span className="item-bids">
+            {item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}
+            {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}
+          </span>
         </div>
         {maxBid != null && (
           <div className="item-roi-row">

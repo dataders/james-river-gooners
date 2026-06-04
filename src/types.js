@@ -20,6 +20,7 @@
  * @property {string} description
  * @property {number} currentBid
  * @property {number} totalBids
+ * @property {number} [uniqueBidders]  Distinct (masked) bidders; Cannon's lots only
  * @property {string} endDate       Item close time (ISO or "M/D/YYYY h:mm:ss A")
  * @property {string[]} images      S3 image URLs
  * @property {string} category      Broad normalized group (e.g. "Furniture")

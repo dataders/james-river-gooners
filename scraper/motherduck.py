@@ -22,6 +22,7 @@ create table if not exists {SNAPSHOT_TABLE} (
   description text,
   current_bid decimal(12, 2),
   total_bids integer,
+  unique_bidders integer,
   category text,
   raw_category text,
   detail_url text,
@@ -31,6 +32,11 @@ create table if not exists {SNAPSHOT_TABLE} (
   primary key (auction_id, item_id, snapshot_at)
 )
 """
+
+# Backfill the column on tables created before unique-bidder support shipped.
+ADD_UNIQUE_BIDDERS_SQL = (
+    f"alter table {SNAPSHOT_TABLE} add column if not exists unique_bidders integer"
+)
 
 INSERT_SNAPSHOT_SQL = f"""
 insert or ignore into {SNAPSHOT_TABLE} (
@@ -46,12 +52,13 @@ insert or ignore into {SNAPSHOT_TABLE} (
   description,
   current_bid,
   total_bids,
+  unique_bidders,
   category,
   raw_category,
   detail_url,
   images,
   source_url
-) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -98,6 +105,7 @@ def rows_for_snapshots(items: list[dict], source_url: str) -> list[dict]:
             "description": item.get("description", ""),
             "current_bid": decimal_text(item.get("currentBid")),
             "total_bids": item.get("totalBids", 0),
+            "unique_bidders": item.get("uniqueBidders"),
             "category": item.get("category", ""),
             "raw_category": item.get("rawCategory", ""),
             "detail_url": item.get("detailUrl", ""),
@@ -122,6 +130,7 @@ def row_values(row: dict) -> tuple:
         row["description"],
         row["current_bid"],
         row["total_bids"],
+        row["unique_bidders"],
         row["category"],
         row["raw_category"],
         row["detail_url"],
@@ -143,6 +152,7 @@ def append_listing_snapshots(items: list[dict], source_url: str, database: str |
     connection = warehouse.connect(database, "snapshot listings to MotherDuck")
     try:
         connection.execute(CREATE_TABLE_SQL)
+        connection.execute(ADD_UNIQUE_BIDDERS_SQL)
         connection.executemany(INSERT_SNAPSHOT_SQL, [row_values(row) for row in rows])
     finally:
         connection.close()

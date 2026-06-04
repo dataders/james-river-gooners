@@ -50,6 +50,15 @@ class MotherDuckSnapshotTest(unittest.TestCase):
         self.assertEqual(row["current_bid"], "42.50")
         self.assertEqual(row["images"], '["https://example.test/image.jpg"]')
         self.assertEqual(row["source_url"], "https://example.test/auction")
+        # uniqueBidders absent on the item → nullable column maps to None
+        self.assertIsNone(row["unique_bidders"])
+
+    def test_rows_map_unique_bidders_when_present(self):
+        rows = rows_for_snapshots(
+            [{"id": "item-1", "totalBids": 8, "uniqueBidders": 6}],
+            "https://example.test/auction",
+        )
+        self.assertEqual(rows[0]["unique_bidders"], 6)
 
     def test_rows_parse_cannons_local_timestamps(self):
         rows = rows_for_snapshots(
