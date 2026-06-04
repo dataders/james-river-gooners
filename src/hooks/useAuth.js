@@ -84,6 +84,16 @@ export function useAuth() {
     return {}
   }, [])
 
+  const signInWithGoogle = useCallback(async () => {
+    if (!supabase) return NOT_CONFIGURED
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
+    if (error) return { error: error.message }
+    return {}
+  }, [])
+
   return {
     available: isSupabaseConfigured,
     user: session?.user ?? null,
@@ -94,5 +104,6 @@ export function useAuth() {
     signOut,
     resetPassword,
     changePassword,
+    signInWithGoogle,
   }
 }
