@@ -27,6 +27,7 @@ function SourceGroup({ source, auctions, excludedAuctions, onToggle, onShowOnly,
   const [expanded, setExpanded] = useState(false)
   const shown = auctions.filter(a => !excludedAuctions.includes(a.safeId))
   const allHidden = shown.length === 0
+  const someHidden = !allHidden && auctions.some(a => excludedAuctions.includes(a.safeId))
   const shownCount = shown.reduce((s, a) => s + (a.totalItems || 0), 0)
   const totalCount = auctions.reduce((s, a) => s + (a.totalItems || 0), 0)
 
@@ -40,12 +41,12 @@ function SourceGroup({ source, auctions, excludedAuctions, onToggle, onShowOnly,
             {allHidden ? `hidden (${totalCount})` : shownCount}
           </span>
         </button>
-        <button
-          className="filter-action"
-          onClick={() => allHidden ? onShowSource(source) : onHideSource(source)}
-        >
-          {allHidden ? 'show' : 'hide'}
-        </button>
+        {allHidden
+          ? <button className="filter-action" onClick={() => onShowSource(source)}>show</button>
+          : someHidden
+            ? <button className="filter-action" onClick={() => onShowSource(source)}>show all</button>
+            : <button className="filter-action" onClick={() => onHideSource(source)}>hide</button>
+        }
       </div>
 
       {expanded && (
