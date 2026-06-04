@@ -43,7 +43,11 @@ export function useAuth() {
 
   const signUp = useCallback(async (email, password) => {
     if (!supabase) return NOT_CONFIGURED
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    })
     if (error) return { error: error.message }
     // When email confirmation is on, Supabase returns a user but no session;
     // the caller shows a "check your email" message in that case.

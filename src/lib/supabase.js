@@ -27,9 +27,9 @@ export const supabase = isSupabaseConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // The site is a same-origin SPA with no OAuth redirect, so there is no
-        // code/token to parse out of the URL on load.
-        detectSessionInUrl: false,
+        // Must be true so the client picks up the token Supabase appends to the
+        // email confirmation / password-reset redirect URL.
+        detectSessionInUrl: true,
       },
     })
   : null
