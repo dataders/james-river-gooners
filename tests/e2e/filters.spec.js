@@ -83,8 +83,8 @@ test.describe('Filters', () => {
     expect(isolated).toBeGreaterThan(0)
     expect(isolated).toBeLessThan(totalBefore)
 
-    // "show all" undoes it.
-    await page.locator('button.filter-bar-toggle').locator('text=show all').click()
+    // "show all" undoes it — the button is a sibling of .filter-bar-toggle, not inside it.
+    await page.locator('.filter-bar-header').getByRole('button', { name: 'show all' }).click()
     await page.waitForTimeout(200)
     expect(await getItemCount(page)).toBe(totalBefore)
   })

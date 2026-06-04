@@ -215,8 +215,7 @@ export default function App() {
           >
             <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
           </button>
-          <img src="/apple-touch-icon.png" className="banner-icon" alt="" aria-hidden="true" />
-          <div className="banner-text">
+<div className="banner-text">
             <h1 className="logo">James River Gooners</h1>
             <p className="tagline">A better way to browse Cannon's Auctions</p>
           </div>

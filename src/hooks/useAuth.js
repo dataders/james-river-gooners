@@ -77,6 +77,13 @@ export function useAuth() {
     return {}
   }, [])
 
+  const changePassword = useCallback(async (password) => {
+    if (!supabase) return NOT_CONFIGURED
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) return { error: error.message }
+    return {}
+  }, [])
+
   return {
     available: isSupabaseConfigured,
     user: session?.user ?? null,
@@ -86,5 +93,6 @@ export function useAuth() {
     signIn,
     signOut,
     resetPassword,
+    changePassword,
   }
 }

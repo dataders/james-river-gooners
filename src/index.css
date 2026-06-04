@@ -1166,23 +1166,7 @@ body {
   border-color: var(--accent);
 }
 
-/* Account control (header) + auth modal */
-.account-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.account-email {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  max-width: 16ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* Account button (signed-out "Sign in") */
 .account-button {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1197,12 +1181,108 @@ body {
   transition: border-color 0.15s;
   white-space: nowrap;
 }
-.account-button:hover {
-  border-color: var(--accent);
+.account-button:hover { border-color: var(--accent); }
+.account-button:disabled { opacity: 0.5; cursor: default; }
+
+/* Person icon + dropdown (signed-in) */
+.account-menu {
+  position: relative;
+  flex-shrink: 0;
 }
-.account-button:disabled {
-  opacity: 0.5;
-  cursor: default;
+
+.account-icon-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  transition: border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.account-icon-btn:hover { border-color: var(--accent); background: var(--surface); }
+.account-icon-btn[aria-expanded="true"] { border-color: var(--accent); background: var(--surface); }
+
+.account-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  min-width: 200px;
+  padding: 8px 0;
+  z-index: 200;
+}
+
+.account-dropdown-email {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 4px 14px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-dropdown-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.account-dropdown-item {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  display: block;
+  font-size: 0.88rem;
+  padding: 8px 14px;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+.account-dropdown-item:hover { background: var(--surface-alt, rgba(0,0,0,0.06)); }
+.account-dropdown-item--primary { color: var(--accent); font-weight: 600; }
+.account-dropdown-item:disabled { opacity: 0.5; cursor: default; }
+
+.account-change-pass-form {
+  padding: 4px 14px 8px;
+}
+.account-change-pass-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.88rem;
+  padding: 6px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+}
+.account-change-pass-input:focus { outline: none; border-color: var(--accent); }
+.account-change-pass-actions {
+  display: flex;
+  gap: 6px;
+}
+.account-change-pass-actions .account-dropdown-item {
+  padding: 6px 8px;
+}
+.account-dropdown-error {
+  color: var(--accent);
+  font-size: 0.78rem;
+  margin: 0 0 6px;
+}
+.account-dropdown-notice {
+  color: #2a9d2a;
+  font-size: 0.78rem;
+  margin: 0 0 6px;
 }
 
 .auth-overlay {
