@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-30T13:28:41Z",
+  "generatedAt": "2026-06-04T04:02:25Z",
   "marketplaceId": "EBAY_US",
   "source": "scraper",
   "items": {
@@ -214,6 +214,676 @@
           "matchConfidence": "medium"
         }
       ]
+    },
+    "49002494": {
+      "status": "ok",
+      "query": "of approximately fifty black",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=of+approximately+fifty+black&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "267682493636",
+          "title": "2026 USA World Baseball Classic Touch of Gold WBC  New Era 59Fifty Black Hat",
+          "price": {
+            "value": "69.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.49 shipping",
+          "soldDate": "2026-05-29",
+          "soldDateLabel": "Sold May 29, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/kyQAAeSwuqpqF1vr/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/267682493636",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267588891761",
+          "title": "2026 Cuba World Baseball Classic Touch of Gold New Era 59Fifty Black Hat",
+          "price": {
+            "value": "69.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.49 shipping",
+          "soldDate": "2026-05-27",
+          "soldDateLabel": "Sold May 27, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/SPUAAeSwgWtpogfw/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/267588891761",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "168208262803",
+          "title": "2026 Japan World Baseball Classic Touch of Gold New Era 59Fifty Black Hat 7 1/2",
+          "price": {
+            "value": "99.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-07",
+          "soldDateLabel": "Sold Apr 7, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/Y3sAAeSwAHNpqdR7/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/168208262803",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002459": {
+      "status": "ok",
+      "query": "Green soapbox derby car",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Green+soapbox+derby+car&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "318314273797",
+          "title": "Vintage Camp Candy lab 4x4 Wooden Green Soapbox Derby Car",
+          "price": {
+            "value": "8.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$5.95 shipping",
+          "soldDate": "2026-05-17",
+          "soldDateLabel": "Sold May 17, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/FWkAAeSw9zpqCO8D/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/318314273797",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "397675298663",
+          "title": "Lot of 8 Handmade Soap Box Derby Cars",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$12.00 shipping",
+          "soldDate": "2026-03-14",
+          "soldDateLabel": "Sold Mar 14, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/NooAAeSwfUJpqIIF/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/397675298663",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "287337716577",
+          "title": "Set of 4 OFFICIAL SOAP BOX DERBY WHEELS Car Plastic 75th Anniversary",
+          "price": {
+            "value": "175.87",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$50.45 shipping",
+          "soldDate": "2026-05-31",
+          "soldDateLabel": "Sold May 31, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/Sj0AAeSw~7lqCkWT/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/287337716577",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002486": {
+      "status": "ok",
+      "query": "Pink plush animal costume",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Pink+plush+animal+costume&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "224931776410",
+          "title": "Pink Bunny Big Eye Party Halloween Costume Animal Plush 3in1 Hat Scarf Mitten",
+          "price": {
+            "value": "8.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-06-03",
+          "soldDateLabel": "Sold Jun 3, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/eEsAAOSwZG9iU7vE/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/224931776410",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "226989361484",
+          "title": "Hello Kitty  and Friends  Pink Care Bear 9\" Plush Soft, Cuddly and Huggable",
+          "price": {
+            "value": "14.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-31",
+          "soldDateLabel": "Sold May 31, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/T70AAeSwZ1No00mA/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/226989361484",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "227277621481",
+          "title": "G.A.C. Teddy Bear in Bunny Costume White Tan Jointed Pink Bow VTG Easter 12\"",
+          "price": {
+            "value": "13.95",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/TZoAAeSwNEdpyLEP/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/227277621481",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002491": {
+      "status": "ok",
+      "query": "Two holiday-themed costume heads",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Two+holiday-themed+costume+heads&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "800109670037",
+          "title": "Fursuit Long haired Dog Fox Mascot Party Halloween Fur Cosplay(head+claws)",
+          "price": {
+            "value": "4357.08",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$1037.27 shipping",
+          "soldDate": "2026-06-03",
+          "soldDateLabel": "Sold Jun 3, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/UZUAAeSw1cRqHE~9/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/800109670037",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "257536961397",
+          "title": "Halloween Husky Fursuit Partial Animal Costume Mascot Head And Tail!",
+          "price": {
+            "value": "7348.55",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$864.36 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/JoAAAeSwjPRqG1uG/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/257536961397",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "267684992628",
+          "title": "SkyBlue Husky Fursuit Partial Animal Costume Mascot Head And Tail!",
+          "price": {
+            "value": "7348.55",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$864.36 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/zUMAAeSwsI5qG1kc/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/267684992628",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002461": {
+      "status": "ok",
+      "query": "White soap box derby",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=White+soap+box+derby&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "306580446731",
+          "title": "Dunbrooke Vintage 2000 All-American 63rd Soap Box Derby Champion White Jacket M",
+          "price": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.95 shipping",
+          "soldDate": "2026-06-02",
+          "soldDateLabel": "Sold Jun 2, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/JKoAAeSwUfxpB2Xf/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/306580446731",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "306312462084",
+          "title": "72nd Akron American Soap Box Derby Champion Shirt Adult XL White Shirt New",
+          "price": {
+            "value": "19.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$4.00 shipping",
+          "soldDate": "2026-05-30",
+          "soldDateLabel": "Sold May 30, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/~aUAAOSwFgJoLP6~/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/306312462084",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "277774829038",
+          "title": "Vintage 1968 Soap Box Derby Helmet with Booster Button",
+          "price": {
+            "value": "24.95",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$10.15 shipping",
+          "soldDate": "2026-05-22",
+          "soldDateLabel": "Sold May 22, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/RuMAAeSwVaZpqIs~/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/277774829038",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002463": {
+      "status": "ok",
+      "query": "Manson Utley Inc. soapbox",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Manson+Utley+Inc.+soapbox&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "126459047571",
+          "title": "2014 Topps Chrome Base Card YOU PICK - #1-220 inc RC etc",
+          "price": {
+            "value": "0.72",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$13.79 shipping",
+          "soldDate": "2026-03-10",
+          "soldDateLabel": "Sold Mar 10, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/cscAAOSwKAxmMY0A/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/126459047571",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "178021772538",
+          "title": "Marilyn Manson - Mechanical Animals (1998) inc. The Dope Show, Rock is Dead",
+          "price": {
+            "value": "6.73",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$3.70 shipping",
+          "soldDate": "2026-04-09",
+          "soldDateLabel": "Sold Apr 9, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/iFcAAeSwqihpqbJ7/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/178021772538",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "198396002581",
+          "title": "1925 \"P\" Peace SILVER Dollar $1 ANACS MS62 #384 Uncirculated *SOAPBOX* ECC&C Inc",
+          "price": {
+            "value": "99.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-06-03",
+          "soldDateLabel": "Sold Jun 3, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/PtQAAeSwpKRqHi1G/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/198396002581",
+          "condition": "New (Other)",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002485": {
+      "status": "ok",
+      "query": "Four plush character heads",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Four+plush+character+heads&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "306974713072",
+          "title": "11\" Four Plush Toy Battle for Dream Island Character Gift Collectible",
+          "price": {
+            "value": "20.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.04 shipping",
+          "soldDate": "2026-05-31",
+          "soldDateLabel": "Sold May 31, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/QqYAAeSwqg5qHJXD/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/306974713072",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "336483019310",
+          "title": "Sesame Street Place: 15\" Two-Headed Monster Plush Purple Classic Character",
+          "price": {
+            "value": "54.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$19.45 shipping",
+          "soldDate": "2026-04-06",
+          "soldDateLabel": "Sold Apr 6, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/tPgAAOSwblxlKXwl/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/336483019310",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "117006795301",
+          "title": "Baby Three Big Head Baby Zipper Bag Full Case - 6 BLIND BOX - LARGE PLUSH",
+          "price": {
+            "value": "75.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$15.10 shipping",
+          "soldDate": "2026-04-19",
+          "soldDateLabel": "Sold Apr 19, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/kKQAAeSwmehpetb5/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/117006795301",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002481": {
+      "status": "ok",
+      "query": "Metal shelving unit three",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Metal+shelving+unit+three&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "266408294009",
+          "title": "Kitchen carousel corner unit Rotating wire storage shelves 1/2 or 3/4",
+          "price": {
+            "value": "70.01",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-12",
+          "soldDateLabel": "Sold Apr 12, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/0UcAAOSwDkhk~zNS/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/266408294009",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "206316155353",
+          "title": "FDW Wire Shelving Unit Heavy Duty Storage Rack Metal Shelf Garage FDW",
+          "price": {
+            "value": "32.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$58.45 shipping",
+          "soldDate": "2026-06-02",
+          "soldDateLabel": "Sold Jun 2, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/UJgAAeSwEmJqHrTG/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/206316155353",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "318265560604",
+          "title": "2000-pound heavy-duty garage shelving unit, 5-tier metal shelving.",
+          "price": {
+            "value": "39.02",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-13",
+          "soldDateLabel": "Sold May 13, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/zYwAAeSw~85pge49/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/318265560604",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002490": {
+      "status": "ok",
+      "query": "Three costumes a Spider-Man",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Three+costumes+a+Spider-Man&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "227048573482",
+          "title": "Kids SpiderMan Boy Miles Morales Tobey Maguire Outfits Jumpsuit Cosplay Costume",
+          "price": {
+            "value": "6.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-06-03",
+          "soldDateLabel": "Sold Jun 3, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/MnYAAeSwqKxo0WSl/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/227048573482",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "226947516685",
+          "title": "The Amazing Spider-Man Jumpsuit Cosplay Costume Spiderman Bodysuit Kids / Adult",
+          "price": {
+            "value": "17.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-06-01",
+          "soldDateLabel": "Sold Jun 1, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/J20AAeSwfHRoscDb/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/226947516685",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358603386244",
+          "title": "11* Kids Raimi Spider-Man Cosplay Costume Boy Kids XS for 90-100cm Fancy Dress",
+          "price": {
+            "value": "125.00",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-26",
+          "soldDateLabel": "Sold May 26, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/JtMAAeSwCy1qFk75/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/358603386244",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002468": {
+      "status": "ok",
+      "query": "Decorative storybook-themed archway large",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Decorative+storybook-themed+archway+large&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "397861782143",
+          "title": "Rustic Wood Metal Arch Scrollwork Wall Plaques Set of 2 Distressed 24x10",
+          "price": {
+            "value": "23.03",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$9.35 shipping",
+          "soldDate": "2026-04-20",
+          "soldDateLabel": "Sold Apr 20, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/dNgAAeSw7LZp5mJy/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/397861782143",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "137301086468",
+          "title": "9FT Inflatable Octopus Arch with LED Lights for Ocean Theme Parties",
+          "price": {
+            "value": "130.99",
+            "currency": "USD"
+          },
+          "soldDate": "2026-05-24",
+          "soldDateLabel": "Sold May 24, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/DqAAAeSwPeFqAftN/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/137301086468",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "358588086759",
+          "title": "Wokceer 9.2 FT Large Arch Gold Metal Round Backdrop Stand for Decoration Used",
+          "price": {
+            "value": "28.00",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$7.42 shipping",
+          "soldDate": "2026-05-23",
+          "soldDateLabel": "Sold May 23, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/tAcAAeSwCVRqER-z/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/358588086759",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002482": {
+      "status": "ok",
+      "query": "Group of display cases",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Group+of+display+cases&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "366440262140",
+          "title": "Protector For Stevenson Entertainment Group (SEG) House of 1000 Corpses 4-Pack",
+          "price": {
+            "value": "38.72",
+            "currency": "USD"
+          },
+          "soldDate": "2026-06-01",
+          "soldDateLabel": "Sold Jun 1, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/HI8AAeSwcLZqGGMW/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/366440262140",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "365928781118",
+          "title": "Protector For Stevenson Entertainment Group (SEG) House of 1000 Corpses 4-Pack",
+          "price": {
+            "value": "38.72",
+            "currency": "USD"
+          },
+          "soldDate": "2026-02-11",
+          "soldDateLabel": "Sold Feb 11, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/ERsAAeSwM3FpqNjv/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/365928781118",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "177321553075",
+          "title": "2024 Mini Bratz Series 3 Display Case Lot Of 3 Pop Group RC Cruiser Makeover",
+          "price": {
+            "value": "9.95",
+            "currency": "USD"
+          },
+          "soldDate": "2026-04-15",
+          "soldDateLabel": "Sold Apr 15, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/MwIAAeSwrF9olMXz/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/177321553075",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
+    },
+    "49002493": {
+      "status": "ok",
+      "query": "Draper Inc. Truss Cinefold",
+      "searchUrl": "https://www.ebay.com/sch/i.html?_nkw=Draper+Inc.+Truss+Cinefold&LH_Sold=1&LH_Complete=1&_sop=13",
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "warning": null,
+      "matches": [
+        {
+          "ebayItemId": "397685805015",
+          "title": "Joblot 8x Large Turning Chisels / Gouges - 32-46mm inc Draper & Timberman GWO",
+          "price": {
+            "value": "6.44",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$39.17 shipping",
+          "soldDate": "2026-03-14",
+          "soldDateLabel": "Sold Mar 14, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/VS0AAeSwv5NprA5I/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/397685805015",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "292017681986",
+          "title": "Draper Cinefold 7X7 119\" Outdoor Projector Screen Portable W/ Case Open Air",
+          "price": {
+            "value": "119.99",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$270.53 shipping",
+          "soldDate": "2026-05-17",
+          "soldDateLabel": "Sold May 17, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/Tt8AAOSwA3dYk5n-/s-l500.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/292017681986",
+          "condition": "Pre-Owned",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        },
+        {
+          "ebayItemId": "226396336274",
+          "title": "Draper Expert 56411 18.5Kg 1700W Demolition Breaker Inc Pointed and Flat Chisel",
+          "price": {
+            "value": "248.41",
+            "currency": "USD"
+          },
+          "shippingLabel": "+$169.36 shipping",
+          "soldDate": "2026-04-05",
+          "soldDateLabel": "Sold Apr 5, 2026",
+          "thumbnailUrl": "https://i.ebayimg.com/images/g/gAMAAOSwVO9nCnWE/s-l140.webp",
+          "itemWebUrl": "https://www.ebay.com/itm/226396336274",
+          "condition": "Brand New",
+          "sourceQuery": "specific",
+          "matchConfidence": "medium"
+        }
+      ]
     }
   },
   "attempts": {
@@ -316,6 +986,66 @@
     "49002487": {
       "fetchedAt": "2026-05-30T13:28:41Z",
       "status": "ok"
+    },
+    "49002494": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002459": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002486": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002491": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002461": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002463": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002485": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002481": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002490": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002468": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002482": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
+    },
+    "49002493": {
+      "fetchedAt": "2026-06-04T04:02:25Z",
+      "status": "ok",
+      "queries": 1
     }
   }
 }
