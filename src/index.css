@@ -348,6 +348,13 @@ body {
   color: var(--text-muted);
 }
 
+.auction-source-group {
+  margin-bottom: 4px;
+}
+.auction-source-group.all-hidden {
+  opacity: 0.6;
+}
+
 .auction-filter-body {
   margin-top: 6px;
   padding: 8px;

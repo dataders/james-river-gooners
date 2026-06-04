@@ -220,12 +220,36 @@ export function useAuctionData(includeArchived = false) {
     syncUrlParam('hideAuction', excluded)
   }
 
+  const hideSource = (source, allAuctions) => {
+    setExcludedAuctions(prev => {
+      const toAdd = allAuctions
+        .filter(a => a.source === source && !prev.includes(a.safeId))
+        .map(a => a.safeId)
+      const next = [...prev, ...toAdd]
+      syncUrlParam('hideAuction', next)
+      return next
+    })
+  }
+
+  const showSource = (source, allAuctions) => {
+    setExcludedAuctions(prev => {
+      const sourceIds = new Set(
+        allAuctions.filter(a => a.source === source).map(a => a.safeId)
+      )
+      const next = prev.filter(id => !sourceIds.has(id))
+      syncUrlParam('hideAuction', next)
+      return next
+    })
+  }
+
   return {
     auctions,
     excludedAuctions,
     toggleAuction,
     showAllAuctions,
     showOnlyAuction,
+    hideSource,
+    showSource,
     items,
     embeddingEntries: activeEmbeddingEntries,
     loading,
