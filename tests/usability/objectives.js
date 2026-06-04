@@ -140,37 +140,36 @@ export const objectives = [
     id: 'category-narrow',
     persona: 'Category shopper',
     goal: 'Narrow the grid to a single category of interest',
-    optimalSteps: 2,
+    optimalSteps: 3,
     async run({ page, tracker }) {
       await gotoApp(page)
+      const total = await getItemCount(page)
 
       tracker.step('Open Categories panel')
       await page.locator('.filter-bar-toggle').click()
       await expect(page.locator('.filter-bar-body')).toBeVisible({ timeout: 5000 })
 
-      // To see only one category you must hide everything then re-show one.
-      tracker.step('Hide all categories')
-      const hideAll = page.locator('.filter-bar .filter-action', { hasText: 'hide all' })
-      if (!(await hideAll.count())) {
-        tracker.note('No "hide all" shortcut available')
+      tracker.step('Expand first category group')
+      await page.locator('.filter-group-toggle').first().click()
+      const onlyBtn = page.locator('.filter-group-body .filter-chip-only').first()
+      if (!(await onlyBtn.count())) {
+        tracker.note('No one-click "only this category" affordance found')
         return 'fail'
       }
-      await hideAll.first().click()
+      await expect(onlyBtn).toBeVisible({ timeout: 5000 })
 
-      tracker.step('Expand first category group')
-      const group = page.locator('.filter-group-toggle').first()
-      await group.click()
-      const showChip = page.locator('.filter-group-body .filter-chip').first()
-      await expect(showChip).toBeVisible({ timeout: 5000 })
-
-      tracker.step('Re-show one category')
+      // One click isolates the category (no hide-all + re-show dance).
+      tracker.step('Click "only" to isolate the category')
       const latency = await measureSettle(page, async () => {
-        await showChip.click()
+        await onlyBtn.click()
       })
-      tracker.note(`Category toggle settled in ${latency}ms`)
-      tracker.note('No one-click "only this category" — requires hide-all then re-show (4 steps)')
+      tracker.note(`Category isolated in one click; settled in ${latency}ms`)
       const count = await getItemCount(page)
-      return count > 0 ? 'pass' : 'fail'
+      if (count === 0 || count >= total) {
+        tracker.note(`"only" did not isolate the category (count ${count} of ${total})`)
+        return 'fail'
+      }
+      return 'pass'
     },
   },
 

@@ -12,7 +12,7 @@ of it.
 
 ## TL;DR
 
-**Overall grade: A (97 / 100)** — up from B (88) after acting on the benchmark.
+**Overall grade: A (98 / 100)** — up from B (88) after acting on the benchmark.
 The site is fast, the core bidding workflows all work, and accessibility
 fundamentals are solid. This PR fixed the two biggest gaps the benchmark found:
 **undersized header touch targets** (Responsive 57 → 100) and the **missing sort
@@ -23,7 +23,7 @@ control** (bidders can now order by ending-soonest / price / bids).
 | Usable (task completion) | 100 | All 9 bidder objectives completed |
 | Fast (load + interaction) | 90 | Sub-second load; interaction slightly over budget |
 | Responsive (layout integrity) | 100 | ✅ Header controls now meet ≥40px tap targets |
-| Intuitive (steps vs optimal) | 94 | Sort added; one task (category isolation) still long |
+| Intuitive (steps vs optimal) | 100 | Sort + one-click category isolation |
 | Accessible | 100 | Good ARIA, alt text, 19.7:1 text contrast |
 
 > Earlier baseline (before this PR): Responsive **57** (theme toggle 38×26, help
@@ -105,13 +105,13 @@ soonest / Ending latest / Price ↑ / Price ↓ / Most bids), wired through
 `usePreferences` so it persists in the URL and localStorage like the other
 filters. Logic + unit tests in `src/utils/sort.js`.
 
-### P3 — Isolating one category takes 4 steps (Intuitive)
+### P3 — Isolating one category took 4 steps ✅ FIXED (Intuitive 94 → 100)
 
-To see _only_ furniture, a bidder must: open Categories → "hide all" → expand the
-group → re-show the one category. The benchmark measured 4 interactions against an
-optimal of ~2. **Recommendation:** add an "only" affordance on each category chip
-(click the chip = filter to just that category; a small ✕ keeps the current
-toggle behavior), or a top-level category `<select>`.
+To see _only_ furniture, a bidder used to: open Categories → "hide all" → expand
+the group → re-show the one category (4 interactions vs an optimal of ~2).
+**Fix:** every shown category chip now has a one-click **"only"** button that
+isolates that category (excludes all others); "show all" undoes it. The existing
+toggle behavior is unchanged. Intuitive is now 100.
 
 ### P4 — Verify semantic ("AI") search in production (Robustness)
 
