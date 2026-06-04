@@ -10,6 +10,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, unquote
@@ -22,6 +23,9 @@ from categories import normalize_category, normalize_raw_with_description
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 ITEMS_DIR = DATA_DIR / "items"
+
+# Polite delay between per-lot bid-history fetches (only hit for changed lots).
+BID_HISTORY_DELAY = 0.25
 
 
 def sanitize_auction_id(auction_id: str) -> str:
@@ -52,6 +56,125 @@ def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
         }
     except Exception:
         return {}
+
+
+def load_existing_unique_bidders(path: Path) -> dict[str, int]:
+    """Return {item_id: uniqueBidders} from an existing NDJSON or Parquet file.
+
+    Used to carry forward the distinct-bidder count for lots whose bid count
+    hasn't changed, so a re-scrape only re-fetches bid history for active lots.
+    """
+    ndjson_path = path.with_suffix(".ndjson")
+    if ndjson_path.exists():
+        try:
+            out: dict[str, int] = {}
+            for line in ndjson_path.read_text().splitlines():
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                if row.get("uniqueBidders") is not None:
+                    out[row["id"]] = int(row["uniqueBidders"])
+            return out
+        except Exception:
+            pass
+    if not path.exists():
+        return {}
+    import pyarrow.parquet as pq
+    try:
+        table = pq.read_table(path, columns=["id", "uniqueBidders"])
+        return {
+            row["id"]: int(row["uniqueBidders"])
+            for row in table.to_pylist()
+            if row.get("uniqueBidders") is not None
+        }
+    except Exception:
+        return {}
+
+
+def count_unique_bidders(html: str) -> int:
+    """Count distinct (masked) bidder IDs in a GetBidlist HTML fragment.
+
+    Cannon's masks bidder IDs like ``4***2``; the first column of each bid-history
+    row is the bidder who placed that bid. Distinct masks ≈ distinct bidders.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table")
+    if not table:
+        return 0
+    body = table.find("tbody") or table
+    bidders: set[str] = set()
+    for tr in body.find_all("tr"):
+        cells = tr.find_all("td")
+        if not cells:
+            continue
+        bidder = cells[0].get_text(strip=True)
+        if bidder:
+            bidders.add(bidder)
+    return len(bidders)
+
+
+def fetch_unique_bidders(session: requests.Session, item_id: str) -> int | None:
+    """Fetch a lot's bid history and return its distinct-bidder count (None on failure)."""
+    url = "https://bid.cannonsauctions.com/Public/Auction/GetBidlist"
+    params = {
+        "AuctionItemId": item_id,
+        "NameSearch": "",
+        "pageNumber": 1,
+        "pageSize": 1000,  # one page covers any realistic lot's full history
+    }
+    try:
+        resp = session.get(
+            url,
+            params=params,
+            headers={"X-Requested-With": "XMLHttpRequest"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except Exception as exc:
+        print(f"  Warning: bid history fetch failed for item {item_id}: {exc}")
+        return None
+    return count_unique_bidders(resp.text)
+
+
+def enrich_unique_bidders(
+    session: requests.Session,
+    items: list[dict],
+    existing_bids: dict[str, tuple[float, int]],
+    existing_unique: dict[str, int],
+) -> None:
+    """Populate ``item['uniqueBidders']`` in place for Cannon's lots.
+
+    Lots with no bids get 0 without a network call. For bidding lots we reuse the
+    prior count when the bid total is unchanged, and only fetch bid history for
+    lots that are new or whose bid count moved since the last scrape.
+    """
+    fetched = 0
+    for item in items:
+        item_id = item["id"]
+        total = int(item.get("totalBids") or 0)
+        if total <= 0:
+            item["uniqueBidders"] = 0
+            continue
+
+        prior = existing_bids.get(item_id)
+        prior_total = prior[1] if prior else None
+        prior_unique = existing_unique.get(item_id)
+        if prior_unique is not None and prior_total == total:
+            item["uniqueBidders"] = prior_unique
+            continue
+
+        if fetched:
+            time.sleep(BID_HISTORY_DELAY)
+        count = fetch_unique_bidders(session, item_id)
+        fetched += 1
+        if count is not None:
+            item["uniqueBidders"] = count
+        elif prior_unique is not None:
+            item["uniqueBidders"] = prior_unique
+        # else: leave unset so the field is simply absent for this lot
+
+    if fetched:
+        print(f"Fetched bid history for {fetched} lot(s)")
 
 
 def has_bid_changes(new_items: list[dict], existing_bids: dict[str, tuple[float, int]]) -> bool:
@@ -315,6 +438,10 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
                 from embed import generate_and_write as _gen_embeddings
                 _gen_embeddings(all_items, items_path, session)
         return {"changed": False}
+
+    # Count distinct bidders per lot (incremental: only fetch changed/new lots)
+    existing_unique = load_existing_unique_bidders(items_path)
+    enrich_unique_bidders(session, all_items, existing_bids, existing_unique)
 
     # Write items with embedded auction metadata
     import pyarrow as pa
