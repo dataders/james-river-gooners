@@ -89,13 +89,13 @@ test.describe('Filters', () => {
     expect(await getItemCount(page)).toBe(totalBefore)
   })
 
-  test('auctions panel opens and shows auction chips', async ({ page }) => {
+  test('auctions panel opens and shows source groups', async ({ page }) => {
     const toggle = page.locator('button.auction-filter-toggle')
     await expect(page.locator('.auction-filter-body')).toBeHidden()
     await toggle.click()
     await expect(page.locator('.auction-filter-body')).toBeVisible()
-    // Should have at least one auction chip
-    await expect(page.locator('.auction-filter-body .filter-chip').first()).toBeVisible()
+    // Source groups are visible collapsed; chips only appear after expanding
+    await expect(page.locator('.auction-filter-body .filter-group-toggle').first()).toBeVisible()
   })
 
   test('auction dropdown body is scrollable and does not overflow the viewport', async ({ page }) => {
@@ -161,8 +161,9 @@ test.describe('Filters', () => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping auction chip test')
 
-    // Open the auctions filter panel
+    // Open the auctions filter panel and expand the first source group
     await page.locator('button.auction-filter-toggle').click()
+    await page.locator('.auction-filter-body .filter-group-toggle').first().click()
     const chips = page.locator('.auction-filter-body .filter-chip.shown')
     const chipCount = await chips.count()
     test.skip(chipCount < 2, 'Need ≥2 auctions to test exclusion')
