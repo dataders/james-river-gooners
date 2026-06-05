@@ -116,7 +116,7 @@ export default function App() {
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
-  const { whatsNewOpen, hasUnseen, lastSeen, openWhatsNew, closeWhatsNew } = useWhatsNew()
+  const { whatsNewOpen, hasUnseen, seenIds, openWhatsNew, closeWhatsNew } = useWhatsNew()
   const auth = useAuth()
   const [authOpen, setAuthOpen] = useState(false)
   const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
@@ -627,7 +627,7 @@ export default function App() {
 
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
 
-      {whatsNewOpen && <WhatsNewModal onClose={closeWhatsNew} lastSeen={lastSeen} />}
+      {whatsNewOpen && <WhatsNewModal onClose={closeWhatsNew} seenIds={seenIds} />}
 
       {authOpen && <AuthModal auth={auth} onClose={() => setAuthOpen(false)} />}
 
