@@ -16,7 +16,7 @@ Run the full quality gate, then commit, push, and open a PR for the current bran
    - A short title (under 70 chars)
    - A body that lists what changed and includes a test plan checklist
 
-7. **Enable auto-merge** — call `mcp__github__enable_pr_auto_merge` (owner: `dataders`, repo: `james-river-gooners`, mergeMethod: `SQUASH`) for the new PR. This lets GitHub merge the branch automatically once all required checks pass, so no manual merge step is needed.
+7. **Enable auto-merge** — call `mcp__github__enable_pr_auto_merge` (owner: `dataders`, repo: `james-river-gooners`, mergeMethod: `MERGE`) for the new PR. This lets GitHub merge the branch automatically once all required checks pass, so no manual merge step is needed. Note: this repo only allows regular merge commits — squash/rebase are disabled.
 
 8. **Subscribe and watch for failures** — call `mcp__github__subscribe_pr_activity` for the new PR. You do not need to poll CI continuously — auto-merge handles the merge. However, actively respond to every `<github-webhook-activity>` event that arrives:
    - CI failure → diagnose, fix, push; auto-merge will re-trigger once checks go green
