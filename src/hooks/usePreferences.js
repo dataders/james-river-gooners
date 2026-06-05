@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { loadPrefs, savePrefs } from '../utils/prefs'
+import { loadPrefs, savePrefs, DEFAULT_EXCLUDED_GROUPS } from '../utils/prefs'
 import { syncUrlParam } from '../utils/urlState'
 
 function loadInitialPrefs() {
@@ -105,11 +105,16 @@ export function usePreferences() {
     })
   }, [])
 
+  // Bulk "show all" reveals every normally-browsable category but keeps the
+  // standing default-hidden groups (Firearms/Vehicles) hidden — those stay
+  // opt-in via their own group "show" button, so "show all" returns to the
+  // default view rather than surfacing categories the user never browses.
   const showAll = useCallback(() => {
+    const excludedGroups = [...DEFAULT_EXCLUDED_GROUPS]
     syncUrlParam('cat', [])
-    syncUrlParam('grp', [])
+    syncUrlParam('grp', excludedGroups)
     setPrefs(prev => {
-      const next = { ...prev, excludedCategories: [], excludedGroups: [] }
+      const next = { ...prev, excludedCategories: [], excludedGroups }
       savePrefs(next)
       return next
     })

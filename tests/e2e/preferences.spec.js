@@ -83,7 +83,9 @@ test.describe('Preference persistence', () => {
     await page.goto('/')
     await waitForLoad(page)
 
-    // Hide all categories via the action button in the filter bar header
+    // "Hide all" excludes every category group (the coarse switch that also
+    // covers the inconsistent firearm rawCategory strings), persisted as
+    // excludedGroups.
     await page.locator('.filter-bar-header button.filter-action', { hasText: /hide all/i }).click()
     await page.waitForTimeout(200)
 
@@ -93,8 +95,8 @@ test.describe('Preference persistence', () => {
     }, STORAGE_KEY)
 
     expect(stored).not.toBeNull()
-    expect(Array.isArray(stored.excludedCategories)).toBe(true)
-    expect(stored.excludedCategories.length).toBeGreaterThan(0)
+    expect(Array.isArray(stored.excludedGroups)).toBe(true)
+    expect(stored.excludedGroups.length).toBeGreaterThan(0)
 
     // Reload and verify exclusions still applied
     await page.reload()
@@ -104,6 +106,6 @@ test.describe('Preference persistence', () => {
       const raw = localStorage.getItem(key)
       return raw ? JSON.parse(raw) : null
     }, STORAGE_KEY)
-    expect(storedAfterReload.excludedCategories.length).toBeGreaterThan(0)
+    expect(storedAfterReload.excludedGroups.length).toBeGreaterThan(0)
   })
 })
