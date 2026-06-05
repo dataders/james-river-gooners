@@ -49,6 +49,11 @@ on:
         required: false
         type: boolean
         default: false
+      backfill_from_json:
+        description: 'One-time: copy existing public/data/ebay-comps/*.json into Supabase (no eBay requests) instead of fetching'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -67,11 +72,22 @@ jobs:
 
       - uses: astral-sh/setup-uv@v6
 
+      # One-time #6 cutover: copy the committed JSON read model into Supabase so
+      # comps coverage doesn't drop when the frontend flips to Supabase-only.
+      # Spends no eBay requests; skips the fetch path entirely.
+      - name: Backfill comps from JSON to Supabase
+        if: ${{ inputs.backfill_from_json == 'true' }}
+        run: |
+          cd scraper
+          uv run --with requests python backfill_comps_to_supabase.py
+
       - uses: actions/setup-node@v5
+        if: ${{ inputs.backfill_from_json != 'true' }}
         with:
           node-version: '20'
 
       - name: Install agent-browser Playwright deps
+        if: ${{ inputs.backfill_from_json != 'true' }}
         run: |
           npm exec --yes agent-browser@0.27.0 -- install
         env:
@@ -79,6 +95,7 @@ jobs:
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
 
       - name: Refresh eBay comps
+        if: ${{ inputs.backfill_from_json != 'true' }}
         env:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
