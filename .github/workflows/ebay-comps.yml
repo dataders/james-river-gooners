@@ -1,8 +1,10 @@
 name: Refresh eBay Comps
 
-# Comps-only workflow: fetches eBay sold-comp prices and updates the static
-# JSON read model under public/data/ebay-comps/. Does NOT re-scrape auctions or
-# rebuild manifests — use the "Scrape Auction Data" workflow for that.
+# Comps-only workflow: fetches eBay sold-comp prices into the comps read model.
+# With Supabase configured (#6) it writes to the `ebay_comp_snapshots` table and
+# commits nothing; otherwise it updates the static JSON under
+# public/data/ebay-comps/. Does NOT re-scrape auctions or rebuild manifests —
+# use the "Scrape Auction Data" workflow for that.
 
 on:
   workflow_dispatch:
@@ -47,6 +49,11 @@ on:
         required: false
         type: boolean
         default: false
+      backfill_from_json:
+        description: 'One-time: copy existing public/data/ebay-comps/*.json into Supabase (no eBay requests) instead of fetching'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -57,16 +64,30 @@ jobs:
     env:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
       SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
+      # eBay comps → Supabase (#6): the read model + ledger when configured.
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
 
+      # One-time #6 cutover: copy the committed JSON read model into Supabase so
+      # comps coverage doesn't drop when the frontend flips to Supabase-only.
+      # Spends no eBay requests; skips the fetch path entirely.
+      - name: Backfill comps from JSON to Supabase
+        if: ${{ inputs.backfill_from_json }}
+        run: |
+          cd scraper
+          uv run --with requests python backfill_comps_to_supabase.py
+
       - uses: actions/setup-node@v5
+        if: ${{ ! inputs.backfill_from_json }}
         with:
           node-version: '20'
 
       - name: Install agent-browser Playwright deps
+        if: ${{ ! inputs.backfill_from_json }}
         run: |
           npm exec --yes agent-browser@0.27.0 -- install
         env:
@@ -74,6 +95,7 @@ jobs:
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
 
       - name: Refresh eBay comps
+        if: ${{ ! inputs.backfill_from_json }}
         env:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
@@ -81,9 +103,12 @@ jobs:
           GOONERS_EBAY_COMPS_SKIP_CATEGORIES: ${{ inputs.skip_categories }}
         run: |
           cd scraper
-          # The static JSON read model is the source of truth; MotherDuck is an
-          # optional mirror, enabled only when a token is configured.
-          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+          # Prefer Supabase (#6): the comps read model + ledger, so no JSON is
+          # written. Otherwise write the static JSON and mirror to MotherDuck
+          # when its token is present.
+          if [ -n "${SUPABASE_SECRET_KEY:-}" ]; then
+            export GOONERS_WAREHOUSE=supabase
+          elif [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
             export GOONERS_MOTHERDUCK_SNAPSHOTS=1
           fi
           # Backfill by default (skip already-attempted items); flip
