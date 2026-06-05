@@ -23,6 +23,12 @@ _ISOLATED_ENV_VARS = (
     "GOONERS_EBAY_COMPS_MONTHLY_BUDGET",
     "GOONERS_EBAY_USER_AGENT",
     "GOONERS_EBAY_BROWSER_FALLBACK",
+    # LLM enrichment (enrich.py) — opt-in + key gate it. Clear both so a
+    # developer's real key never activates network calls in unit tests.
+    "GOONERS_ENRICHMENT",
+    "GOONERS_ENRICHMENT_MODEL",
+    "GOONERS_ENRICHMENT_WORKERS",
+    "ANTHROPIC_API_KEY",
 )
 
 
