@@ -98,7 +98,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
       'Referer': `${base}/Public/Account/Login`,
     },
     body: new URLSearchParams({
-      Email: username,
+      Username: username,
       Password: password,
       RememberMe: 'false',
       __RequestVerificationToken: verificationToken,
