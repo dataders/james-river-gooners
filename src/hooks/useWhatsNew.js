@@ -16,7 +16,12 @@ function readSeen() {
 // panel. Unlike the tutorial it never auto-opens — it's opt-in via the header.
 export function useWhatsNew() {
   const [open, setOpen] = useState(false)
-  // Compare ISO date strings lexicographically (YYYY-MM-DD sorts correctly).
+  // The date the user had already seen when this session loaded. Captured once
+  // so the per-release "New" markers in the panel stay stable while it's open —
+  // closeWhatsNew bumps the stored value, but this snapshot doesn't move until
+  // the next reload. Compare ISO date strings lexicographically (YYYY-MM-DD
+  // sorts correctly).
+  const [lastSeen] = useState(readSeen)
   const [hasUnseen, setHasUnseen] = useState(() => readSeen() < LATEST_CHANGELOG_DATE)
 
   function openWhatsNew() {
@@ -33,5 +38,5 @@ export function useWhatsNew() {
     setOpen(false)
   }
 
-  return { whatsNewOpen: open, hasUnseen, openWhatsNew, closeWhatsNew }
+  return { whatsNewOpen: open, hasUnseen, lastSeen, openWhatsNew, closeWhatsNew }
 }

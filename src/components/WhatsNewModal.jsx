@@ -9,7 +9,7 @@ function formatDate(iso) {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, DATE_FMT)
 }
 
-export function WhatsNewModal({ onClose }) {
+export function WhatsNewModal({ onClose, lastSeen = '' }) {
   const overlayRef = useRef(null)
   const closeRef = useRef(null)
 
@@ -53,7 +53,13 @@ export function WhatsNewModal({ onClose }) {
           {CHANGELOG.map(release => (
             <section key={release.date} className="changelog-release">
               <div className="changelog-release-head">
-                <h3 className="changelog-release-title">{release.title}</h3>
+                <h3 className="changelog-release-title">
+                  {release.title}
+                  {/* Mark releases the user hasn't seen since their last visit. */}
+                  {release.date > lastSeen && (
+                    <span className="changelog-new-pill">New</span>
+                  )}
+                </h3>
                 <time className="changelog-release-date" dateTime={release.date}>
                   {formatDate(release.date)}
                 </time>
