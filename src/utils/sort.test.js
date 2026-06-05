@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { sortItems, SORT_OPTIONS } from './sort.js'
+import { sortItems, sortByMargin, SORT_OPTIONS } from './sort.js'
+import { itemKey } from './itemKey.js'
 
 // Build a slash-formatted local datetime `h` hours from now — the Maxanet
 // shape parseAuctionDate reads as local time (matching the on-card timer).
@@ -66,9 +67,21 @@ test('ending sort handles ISO (HiBid) and Maxanet dates together', () => {
   )
 })
 
-test('SORT_OPTIONS leads with Featured then Ending soonest', () => {
+test('SORT_OPTIONS leads with Featured then Best margin', () => {
   assert.equal(SORT_OPTIONS[0].key, '')
-  assert.equal(SORT_OPTIONS[1].key, 'ending')
+  assert.equal(SORT_OPTIONS[1].key, 'margin')
   // every option has a non-empty label
   for (const o of SORT_OPTIONS) assert.ok(o.label.length > 0)
+})
+
+test('sortByMargin orders by score desc, unscored lots last', () => {
+  const marginByKey = new Map([
+    [itemKey(items[0]), 20],    // a
+    [itemKey(items[1]), 150],   // b — highest
+    [itemKey(items[2]), null],  // c — no signal
+    [itemKey(items[3]), 80],    // d
+  ])
+  assert.deepEqual(ids(sortByMargin(items, marginByKey)), ['b', 'd', 'a', 'c'])
+  // pure: input array is not mutated
+  assert.deepEqual(ids(items), ['a', 'b', 'c', 'd'])
 })
