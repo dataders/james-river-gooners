@@ -1,45 +1,54 @@
 import { useEffect, useRef, useState } from 'react'
-import { fetchWithRetry } from '../utils/net'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { groupSupabaseCannonsComps } from '../utils/cannonsComps'
 
-const BASE = import.meta.env.BASE_URL
+// PostgREST caps a response at 1000 rows; a busy auction (items × matches) can
+// exceed that, so reads page until a short page comes back.
+const PAGE_SIZE = 1000
 
-// Stable empty result for the logged-out (hidden) path.
+// Stable empty result for the logged-out / unconfigured path.
 const EMPTY = {}
 
-function dataUrl(path) {
-  return `${BASE}${path.replace(/^\//, '')}`
-}
-
-// "Cannon's comps" — similar past lots and what they sold for. Precomputed in
-// the scraper (CLIP similarity vs the archive) and served as a static per-auction
-// read model under public/data/cannons-comps/. 404 = "no comps yet" → empty,
-// never an error.
-async function fetchCannonsComps(id) {
+// Read one auction's Cannon's comps from the Supabase `public_cannons_comps`
+// view (#132 part 3), paging past the 1000-row cap, then reshape to the
+// read-model shape. A read error yields no comps for the auction rather than
+// throwing, so one failure never blanks the grid.
+async function fetchAuctionCannonsComps(id) {
   try {
-    const resp = await fetchWithRetry(dataUrl(`data/cannons-comps/${id}.json`))
-    if (resp.status === 404) return { id, items: {} }
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    return { id, items: data.items || {} }
+    const rows = []
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from('public_cannons_comps')
+        .select('*')
+        .eq('auction_safe_id', id)
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      rows.push(...(data || []))
+      if (!data || data.length < PAGE_SIZE) break
+    }
+    return { id, items: groupSupabaseCannonsComps(rows) }
   } catch {
     return { id, items: {} }
   }
 }
 
-// Accepts a single auction ID string or an array of IDs.
-// Returns { [auctionSafeId]: { [itemId]: { matches: [...] } } } for all loaded auctions.
-// `enabled` hides these from logged-out users alongside the RLS-gated comps so
-// the resale-insights cluster is consistently members-only. NOTE: this is a
-// UI-level hide only — the static cannons-comps JSON stays directly fetchable
-// until it's moved behind auth (follow-up). Defaults true so the offline/static
-// site (no auth available) still shows them to everyone.
+// "Cannon's comps" — similar past lots and what they sold for. Members-only:
+// read from the Supabase `public_cannons_comps` view, which RLS gates to
+// authenticated sessions (#132 part 3 / #150), so logged-out callers read zero
+// rows even at the data layer. `enabled` additionally skips the fetch when
+// logged out (returning empty); a later login refetches. When Supabase isn't
+// configured, comps are simply unavailable.
+//
+// Accepts a single auction ID string or an array of IDs. Returns
+// { [auctionSafeId]: { [itemId]: { matches: [...] } } } for all loaded auctions.
 export function useCannonsComps(auctionSafeIds, enabled = true) {
   const [compsByAuction, setCompsByAuction] = useState({})
   const fetchedIds = useRef(new Set())
 
   useEffect(() => {
-    // Logged out: don't fetch; the hook returns EMPTY below so these stay hidden.
-    if (!enabled) return
+    // Logged out / unconfigured: don't fetch; the hook returns EMPTY below.
+    if (!isSupabaseConfigured || !enabled) return
+
     const ids = Array.isArray(auctionSafeIds)
       ? auctionSafeIds.filter(Boolean)
       : auctionSafeIds ? [auctionSafeIds] : []
@@ -51,7 +60,7 @@ export function useCannonsComps(auctionSafeIds, enabled = true) {
 
     let cancelled = false
 
-    Promise.all(toFetch.map(fetchCannonsComps)).then(results => {
+    Promise.all(toFetch.map(fetchAuctionCannonsComps)).then(results => {
       if (cancelled) return
       setCompsByAuction(prev => {
         const next = { ...prev }

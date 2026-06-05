@@ -24,6 +24,38 @@ export function sourceLabel(source) {
   return SOURCE_LABELS[source] || (source ? source : 'Auction')
 }
 
+// Reshape flat `public_cannons_comps` rows (Supabase, #132 part 3) into the
+// `{ [itemId]: { matches: [...] } }` shape normalizeCannonsComps consumes, so
+// CannonsComps renders the Supabase source unchanged. Each row is one matched
+// past lot; matches for an item are grouped and ordered best (highest
+// similarity) first, since PostgREST doesn't guarantee row order.
+export function groupSupabaseCannonsComps(rows) {
+  const items = {}
+  for (const row of rows || []) {
+    const itemId = row.item_id
+    if (!itemId) continue
+    let entry = items[itemId]
+    if (!entry) {
+      entry = { matches: [] }
+      items[itemId] = entry
+    }
+    entry.matches.push({
+      title: row.match_title || '',
+      soldPrice: row.sold_price,
+      soldDate: row.sold_date || null,
+      thumbnailUrl: row.thumbnail_url || null,
+      detailUrl: row.detail_url || null,
+      auctionTitle: row.auction_title || null,
+      source: row.source || null,
+      similarity: row.similarity,
+    })
+  }
+  for (const entry of Object.values(items)) {
+    entry.matches.sort((a, b) => (Number(b.similarity) || 0) - (Number(a.similarity) || 0))
+  }
+  return items
+}
+
 export function normalizeCannonsComps(comps) {
   return (comps?.matches || [])
     .map(match => ({

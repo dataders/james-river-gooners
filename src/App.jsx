@@ -197,16 +197,17 @@ export default function App() {
     setSelectedItem(null)
   }, [])
 
-  // Resale intelligence (eBay comps + Cannon's sold history) is members-only:
-  // RLS gates the Supabase data to logged-in users (migration 0008), and we hide
-  // the static Cannon's comps to match. `resaleLocked` is true only when auth is
-  // available but no one is signed in — when Supabase is unconfigured (offline
-  // static site, no login possible) it's false, so those builds behave as before.
+  // Resale intelligence (eBay comps + Cannon's comps + sold history) is
+  // members-only: RLS gates all of it to logged-in users (migrations 0008 +
+  // 0009), so the hooks only fetch when signed in. `resaleLocked` is true only
+  // when auth is available but no one is signed in — when Supabase is
+  // unconfigured (offline static site, no login possible) it's false, so the
+  // detail panel shows the resale cluster instead of the gate.
   const resaleLocked = auth.available && !auth.user
 
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds, Boolean(auth.user))
-  const allCannonsComps = useCannonsComps(auctionSafeIds, !resaleLocked)
+  const allCannonsComps = useCannonsComps(auctionSafeIds, Boolean(auth.user))
   // Per-category Cannon's sold-price baseline (#95): feeds the "Best margin"
   // sort (#97) and the detail panel's category history (#96).
   const categorySoldStats = useCategorySoldStats(Boolean(auth.user))
