@@ -136,7 +136,120 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   return sessionCookies
 }
 
-async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; bidderId: string | null }> {
+interface BidItem {
+  itemId: string
+  auctionId: string
+}
+
+interface BidStatus {
+  auctionItemId: string
+  winning: boolean | null
+  currentBid: number | null
+  minimumNextBid: number | null
+}
+
+// Parses bid history HTML into item+auction ID pairs.
+// Prefers full AuctionItemDetail URLs (which carry both IDs); falls back to
+// any AuctionItemId mention for items where AuctionId isn't available.
+function parseBidItems(html: string): BidItem[] {
+  const seen = new Set<string>()
+  const out: BidItem[] = []
+
+  // href/data-url attributes containing AuctionItemId query params
+  for (const m of html.matchAll(/(?:href|data-url)="([^"]*?AuctionItemId[^"]+)"/gi)) {
+    const raw = m[1].replace(/&amp;/g, '&')
+    const q = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : raw
+    const p = new URLSearchParams(q)
+    const itemId = p.get('AuctionItemId')
+    if (!itemId || seen.has(itemId)) continue
+    seen.add(itemId)
+    out.push({ itemId, auctionId: p.get('AuctionId') ?? '' })
+  }
+
+  // Fallback: plain AuctionItemId mentions (onclick handlers, hidden inputs)
+  for (const m of html.matchAll(/AuctionItemId[=:]["']?(\d+)/g)) {
+    if (!seen.has(m[1])) {
+      seen.add(m[1])
+      out.push({ itemId: m[1], auctionId: '' })
+    }
+  }
+
+  return out
+}
+
+function parseBidderId(html: string): string | null {
+  const patterns = [
+    /bidder\s*#\s*(\d+)/i,
+    /bidder\s*number[:\s]+(\d+)/i,
+    /BidderNumber[=":\s]+(\d+)/i,
+    /data-bidder-id="(\d+)"/i,
+    /my\s+bidder\s+(?:id|#)[:\s]+(\d+)/i,
+  ]
+  for (const re of patterns) {
+    const m = html.match(re)
+    if (m) return m[1]
+  }
+  return null
+}
+
+// Calls RefreshItem for a single bid and parses winning/outbid status from
+// the rendered HTML. Non-fatal — returns null fields on any failure.
+async function refreshItemStatus(
+  base: string,
+  cookies: Record<string, string>,
+  csrf: string,
+  { itemId, auctionId }: BidItem,
+): Promise<BidStatus> {
+  try {
+    const resp = await fetch(`${base}/Public/Auction/RefreshItem`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookieHeader(cookies),
+        'User-Agent': UA,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: new URLSearchParams({
+        __RequestVerificationToken: csrf,
+        model: JSON.stringify({
+          AuctionId: auctionId ? Number(auctionId) : 0,
+          AuctionItemId: Number(itemId),
+          TenantId: 399,
+          IsBiddingEnabled: true,
+          DisplayFormatCode: 'OB',
+          StatusCode: 'NW',
+        }),
+        index: '1',
+        viewType: '2',
+        auctionItemFilterVM: JSON.stringify({
+          AuctionId: auctionId || '0',
+          AuctionItemId: Number(itemId),
+          pageNumber: '1',
+          itemsPerPage: 1,
+          viewType: '2',
+          Filter: 'Current',
+          __RequestVerificationToken: csrf,
+        }),
+      }).toString(),
+    })
+    const html = await resp.text()
+    const cb = html.match(/name="CurrentBidAmount"[^>]*value="([^"]+)"/)?.[1]
+    const mnb = html.match(/name="MinimumNextBidAmount"[^>]*value="([^"]+)"/)?.[1]
+    const winning = html.includes('<span>Winning :') ? true
+      : html.includes('<span>Outbid :') ? false
+      : null
+    return {
+      auctionItemId: itemId,
+      winning,
+      currentBid: cb ? parseFloat(cb) : null,
+      minimumNextBid: mnb ? parseFloat(mnb) : null,
+    }
+  } catch {
+    return { auctionItemId: itemId, winning: null, currentBid: null, minimumNextBid: null }
+  }
+}
+
+async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
   const resp = await fetch(`${base}/Public/Account/BidHistory`, {
@@ -152,41 +265,9 @@ async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemI
   if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
 
   const html = await resp.text()
-  return { itemIds: parseBidItemIds(html), bidderId: parseBidderId(html) }
-}
-
-function parseBidderId(html: string): string | null {
-  // Common patterns auction platforms use to display a user's bidder number.
-  // These are best-effort regexes; add more once a real BidHistory response
-  // can be inspected in DevTools.
-  const patterns = [
-    /bidder\s*#\s*(\d+)/i,
-    /bidder\s*number[:\s]+(\d+)/i,
-    /BidderNumber[=":\s]+(\d+)/i,
-    /data-bidder-id="(\d+)"/i,
-    /my\s+bidder\s+(?:id|#)[:\s]+(\d+)/i,
-  ]
-  for (const re of patterns) {
-    const m = html.match(re)
-    if (m) return m[1]
-  }
-  return null
-}
-
-function parseBidItemIds(html: string): string[] {
-  const ids = new Set<string>()
-
-  for (const m of html.matchAll(/AuctionItemId=([^&"'\s]+)/g)) {
-    ids.add(decodeURIComponent(m[1]))
-  }
-  for (const m of html.matchAll(/BidAuctionItemId[^>]*value="([^"]+)"/g)) {
-    ids.add(m[1])
-  }
-  for (const m of html.matchAll(/data-(?:auction-)?item-id="([^"]+)"/g)) {
-    ids.add(m[1])
-  }
-
-  return [...ids]
+  const items = parseBidItems(html)
+  const csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId: parseBidderId(html) }
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────────
@@ -254,25 +335,30 @@ async function getBids(
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
 
-  let itemIds: string[]
-  let bidderId: string | null
+  let history: { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }
   try {
-    ;({ itemIds, bidderId } = await fetchBidHistory(cookies))
+    history = await fetchBidHistory(cookies)
   } catch (e: unknown) {
     return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
   }
 
   // Auto-populate cannon_bidder_id the first time we see it in a response.
-  // Only writes if the field is still null — won't overwrite a manually set value.
-  if (bidderId) {
+  if (history.bidderId) {
     await supabase
       .from('users')
-      .update({ cannon_bidder_id: bidderId })
+      .update({ cannon_bidder_id: history.bidderId })
       .eq('id', userId)
       .is('cannon_bidder_id', null)
   }
 
-  return json({ itemIds })
+  const base = 'https://bid.cannonsauctions.com'
+  // Cap at 20 items so we don't flood Maxanet with concurrent requests
+  const toRefresh = history.items.slice(0, 20)
+  const statuses: BidStatus[] = await Promise.all(
+    toRefresh.map(item => refreshItemStatus(base, cookies, history.csrf, item))
+  )
+
+  return json({ itemIds: history.itemIds, statuses })
 }
 
 interface PlaceBidParams {

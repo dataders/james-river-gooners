@@ -34,7 +34,7 @@ function estimateColumnHeight(itemCount, numCols) {
   return itemsPerCol > 0 ? itemsPerCol * (ITEM_HEIGHT_ESTIMATE + ITEM_GAP) - ITEM_GAP : 0
 }
 
-export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick }) {
+export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses }) {
   // Pair `items` with its loaded count so we can reset loaded when items changes.
   const [loadState, setLoadState] = useState({ items, loaded: BATCH_SIZE })
   const sentinelRef = useRef(null)
@@ -107,6 +107,7 @@ export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, i
             isIgnored={isIgnored(item)}
             onToggleIgnored={onToggleIgnored}
             onItemClick={onItemClick}
+            bidStatus={bidStatuses?.get(String(item.id))}
           />
         ))}
       </Masonry>
