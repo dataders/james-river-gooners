@@ -36,10 +36,12 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
 import { SwipeDeck } from './components/SwipeDeck'
 import { TutorialModal } from './components/TutorialModal'
+import { WhatsNewModal } from './components/WhatsNewModal'
 import { AuthModal } from './components/AuthModal'
 import { CannonLinkModal } from './components/CannonLinkModal'
 import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
+import { useWhatsNew } from './hooks/useWhatsNew'
 
 export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
@@ -126,6 +128,7 @@ export default function App() {
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
+  const { whatsNewOpen, hasUnseen, seenIds, openWhatsNew, closeWhatsNew } = useWhatsNew()
   const auth = useAuth()
   const [authOpen, setAuthOpen] = useState(false)
   const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
@@ -387,6 +390,17 @@ export default function App() {
             title="How to use this site"
             aria-label="Open help"
           >?</button>
+          <button
+            className={`whatsnew-button${hasUnseen ? ' has-unseen' : ''}`}
+            onClick={() => {
+              captureEvent('whats_new_opened', { hasUnseen })
+              openWhatsNew()
+            }}
+            title="What's new"
+            aria-label={hasUnseen ? "What's new (updates available)" : "What's new"}
+          >
+            <span aria-hidden="true">✨</span>
+          </button>
           <AccountButton
             auth={auth}
             cannonBids={auth.user ? cannonBids : null}
@@ -624,6 +638,8 @@ export default function App() {
       </div>
 
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
+
+      {whatsNewOpen && <WhatsNewModal onClose={closeWhatsNew} seenIds={seenIds} />}
 
       {authOpen && <AuthModal auth={auth} onClose={() => setAuthOpen(false)} />}
 
