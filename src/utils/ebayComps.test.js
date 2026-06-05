@@ -65,7 +65,7 @@ test('normalizeEbaySoldMatches keeps only priced matches with real item links', 
 
 test('tester eBay comps keep sold prices and direct item links', () => {
   const fixture = JSON.parse(readFileSync(
-    new URL('../../public/data/ebay-comps/XgTddU43tCQrk0_gjgUuBA.json', import.meta.url),
+    new URL('./__fixtures__/ebay-comps-sample.json', import.meta.url),
     'utf8'
   ))
 
