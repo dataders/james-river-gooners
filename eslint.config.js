@@ -7,12 +7,6 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist', '.vite', 'node_modules']),
   {
-    files: ['playwright.config.js', 'playwright.*.config.js', 'tests/**/*.js'],
-    languageOptions: {
-      globals: { ...globals.node },
-    },
-  },
-  {
     files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
@@ -40,6 +34,16 @@ export default defineConfig([
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       // Encourage typedef hints / discourage silent `any`-style holes
       'valid-typeof': 'error',
+    },
+  },
+  // Node.js scripts and test infrastructure — need process/console/etc.
+  {
+    files: ['playwright.config.js', 'playwright.*.config.js', 'tests/**/*.js', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+    rules: {
+      'no-console': 'off',
     },
   },
 ])
