@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useCannonsComps } from './hooks/useCannonsComps'
+import { useCategorySoldStats } from './hooks/useCategorySoldStats'
 import { useFavorites } from './hooks/useFavorites'
 import { useIgnored } from './hooks/useIgnored'
 import { useAuth } from './hooks/useAuth'
@@ -13,10 +14,11 @@ import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
 import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal, meetsMinProfit } from './utils/roiCalc'
+import { marginForItem } from './utils/soldHistory'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { hasCannonsComps } from './utils/cannonsComps'
-import { sortItems } from './utils/sort'
+import { sortItems, sortByMargin } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
@@ -198,6 +200,9 @@ export default function App() {
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds)
   const allCannonsComps = useCannonsComps(auctionSafeIds)
+  // Per-category Cannon's sold-price baseline (#95): feeds the "Best margin"
+  // sort (#97) and the detail panel's category history (#96).
+  const categorySoldStats = useCategorySoldStats()
 
   const localAuctionIds = useMemo(() => {
     const ids = new Set()
@@ -312,7 +317,27 @@ export default function App() {
     captureEvent('swipe_deck_opened', { count: deck.length })
   }, [displayItems, isIgnored, isFavorite])
 
-  const sortedItems = useMemo(() => sortItems(finalItems, sort), [finalItems, sort])
+  // Estimated profit per item ($) for the "Best margin" sort (#97): eBay comp
+  // median when present, else the Cannon's category median sold (#95). Only
+  // computed when that sort is active.
+  const marginByKey = useMemo(() => {
+    const map = new Map()
+    if (sort !== 'margin') return map
+    for (const item of finalItems) {
+      const m = marginForItem(
+        item.currentBid,
+        allComps[item.auctionSafeId]?.[item.id],
+        categorySoldStats[item.category]
+      )
+      map.set(itemKey(item), m ? m.profit : null)
+    }
+    return map
+  }, [sort, finalItems, allComps, categorySoldStats])
+
+  const sortedItems = useMemo(
+    () => sort === 'margin' ? sortByMargin(finalItems, marginByKey) : sortItems(finalItems, sort),
+    [finalItems, sort, marginByKey]
+  )
 
   if (error) {
     return <div className="error">Error: {error}</div>
@@ -564,6 +589,7 @@ export default function App() {
           item={selectedItem}
           ebayComps={allComps[selectedItem.auctionSafeId] || {}}
           cannonsComps={allCannonsComps[selectedItem.auctionSafeId] || {}}
+          categoryStats={categorySoldStats[selectedItem.category]}
           margin={margin}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={handleToggleFavorite}

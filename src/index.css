@@ -1943,6 +1943,42 @@ body {
   padding-top: 16px;
 }
 
+/* Cannon's per-category sold-price baseline (#96) */
+.category-sold-history {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+.category-sold-header {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.category-sold-header h3 {
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  margin: 0;
+}
+.category-sold-median {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.category-sold-meta {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.category-sold-margin {
+  font-size: 0.82rem;
+  margin-top: 8px;
+}
+.category-sold-margin.positive strong { color: var(--success, #1a7f37); }
+.category-sold-margin.negative strong { color: var(--danger, #b42318); }
+
 .cannons-comps-header {
   align-items: baseline;
   display: flex;
