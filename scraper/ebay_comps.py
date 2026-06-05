@@ -41,7 +41,7 @@ PUBLIC_VIEW = "public_auction_comps"
 SNAPSHOT_TABLE = "ebay_comp_snapshots"
 DEFAULT_LIMIT = 50
 DEFAULT_STALE_HOURS = 7 * 24
-DEFAULT_MONTHLY_BUDGET = 2000  # shared SoldComps request ceiling for the whole pipeline
+DEFAULT_MONTHLY_BUDGET = 5000  # shared SoldComps request ceiling for the whole pipeline
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
