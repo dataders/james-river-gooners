@@ -3,6 +3,7 @@ import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useCannonsComps } from './hooks/useCannonsComps'
 import { useCategorySoldStats } from './hooks/useCategorySoldStats'
+import { useEnrichment } from './hooks/useEnrichment'
 import { useFavorites } from './hooks/useFavorites'
 import { useIgnored } from './hooks/useIgnored'
 import { useAuth } from './hooks/useAuth'
@@ -18,7 +19,7 @@ import { marginForItem } from './utils/soldHistory'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { hasCannonsComps } from './utils/cannonsComps'
-import { hasEnrichment } from './utils/enrichment'
+import { hasEnrichment, overlayEnrichment } from './utils/enrichment'
 import { sortItems, sortByMargin } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
@@ -57,13 +58,24 @@ export default function App() {
     showOnlyAuction,
     hideSource,
     showSource,
-    items,
+    items: rawItems,
     embeddingEntries,
     loading,
     error,
     archiveLoading,
     archiveError,
   } = useAuctionData(archiveMode)
+
+  // Overlay backend enrichment (#155) onto items as early as possible, so every
+  // downstream consumer (deep-link finder, filters, ✨ Identified toggle, cards)
+  // sees the fresher Supabase copy when available and the NDJSON-baked fields
+  // otherwise. Defined before the first `items` consumer below.
+  const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
+  const enrichmentByAuction = useEnrichment(auctionSafeIds)
+  const items = useMemo(
+    () => overlayEnrichment(rawItems, enrichmentByAuction),
+    [rawItems, enrichmentByAuction]
+  )
 
   const changeArchiveMode = useCallback((mode) => {
     setArchiveMode(mode)
@@ -206,7 +218,6 @@ export default function App() {
   // static site, no login possible) it's false, so those builds behave as before.
   const resaleLocked = auth.available && !auth.user
 
-  const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds, Boolean(auth.user))
   const allCannonsComps = useCannonsComps(auctionSafeIds, !resaleLocked)
   // Per-category Cannon's sold-price baseline (#95): feeds the "Best margin"
