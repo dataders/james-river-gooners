@@ -81,6 +81,51 @@ def is_closed(path: Path) -> bool:
     return end_date <= datetime.now(timezone.utc)
 
 
+def finalize_closed_file(path: Path) -> None:
+    """Stamp a closing auction's lots with their final sold price (#94).
+
+    When an auction actually closes there's no truer record of the hammer price
+    than the last-seen ``currentBid``, so we promote it to ``finalBid`` and mark
+    ``closed=True`` the moment we archive the auction. Rewrites both the NDJSON
+    (images stay arrays) and the Parquet (images stringified, mirroring
+    scrape.py) in place; the caller then moves them into the archive. Idempotent
+    and source-agnostic — it operates on whatever rows the file holds, and never
+    clobbers a finalBid that was already captured (e.g. by backfill_closed)."""
+    import pyarrow as pa
+
+    ndjson_path = path.with_suffix(".ndjson")
+    if not ndjson_path.exists():
+        return
+
+    rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+    if not rows:
+        return
+
+    for row in rows:
+        row["closed"] = True
+        if row.get("finalBid") is None:
+            try:
+                bid = float(row.get("currentBid") or 0)
+            except (TypeError, ValueError):
+                bid = 0.0
+            # A lot that closed at $0 drew no bids — it didn't sell, so it has no
+            # final price (None), not a $0 sale.
+            row["finalBid"] = bid if bid > 0 else None
+
+    ndjson_path.write_text(
+        "\n".join(json.dumps(row, separators=(",", ":")) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    # Parquet stores images as a JSON string (Arrow can't infer list-of-strings
+    # here), matching how scrape.py writes the active file.
+    for row in rows:
+        if isinstance(row.get("images"), list):
+            row["images"] = json.dumps(row["images"])
+    pq.write_table(pa.Table.from_pylist(rows), path, compression="snappy")
+    print(f"Finalized {len(rows)} closed lots with final sold price: {path.name}")
+
+
 def archive_file(path: Path) -> None:
     ARCHIVE_ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     target = ARCHIVE_ITEMS_DIR / path.name
@@ -158,7 +203,12 @@ def archive_closed_and_stale(current_candidate_ids: set[str]) -> None:
         return
 
     for path in sorted(ITEMS_DIR.glob("*.parquet")):
-        if path.stem not in current_candidate_ids or is_closed(path):
+        closed = is_closed(path)
+        if path.stem not in current_candidate_ids or closed:
+            # Only stamp finalBid/closed when the auction has truly ended — a
+            # stale auction merely dropped from discovery may still be live.
+            if closed:
+                finalize_closed_file(path)
             archive_file(path)
 
     update_manifests()

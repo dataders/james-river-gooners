@@ -20,6 +20,8 @@
  * @property {string} description
  * @property {number} currentBid
  * @property {number} totalBids
+ * @property {boolean} [closed]      True once the auction has closed (archive step)
+ * @property {?number} [finalBid]    Final sold/hammer price, set at close; null while live
  * @property {number} [uniqueBidders]  Distinct (masked) bidders; Cannon's lots only
  * @property {string} endDate       Item close time (ISO or "M/D/YYYY h:mm:ss A")
  * @property {string[]} images      S3 image URLs

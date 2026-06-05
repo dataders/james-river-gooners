@@ -3,10 +3,12 @@ import unittest
 from datetime import timezone
 from pathlib import Path
 
+import json
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from rescrape_all import manifest_entry_for_file, parse_end_date
+from rescrape_all import finalize_closed_file, manifest_entry_for_file, parse_end_date
 
 
 class ManifestEntryTest(unittest.TestCase):
@@ -118,6 +120,50 @@ class ManifestEntryTest(unittest.TestCase):
             entry = manifest_entry_for_file(path, archived=True)
 
         self.assertEqual(entry["itemsPath"], "data/archive/items/old-id.parquet")
+
+
+class FinalizeClosedFileTest(unittest.TestCase):
+    def _write(self, tmpdir, rows):
+        path = Path(tmpdir) / "closing.parquet"
+        # NDJSON keeps images as arrays; Parquet stores them stringified.
+        path.with_suffix(".ndjson").write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+        )
+        parquet_rows = [{**r, "images": json.dumps(r.get("images", []))} for r in rows]
+        pq.write_table(pa.Table.from_pylist(parquet_rows), path)
+        return path
+
+    def test_promotes_last_bid_to_final_and_marks_closed(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = self._write(tmpdir, [
+                {"id": "1", "currentBid": 120.0, "closed": False, "finalBid": None, "images": ["a.jpg"]},
+                {"id": "2", "currentBid": 0.0, "closed": False, "finalBid": None, "images": []},
+            ])
+
+            finalize_closed_file(path)
+
+            rows = [json.loads(l) for l in path.with_suffix(".ndjson").read_text().splitlines() if l.strip()]
+            self.assertEqual(rows[0]["closed"], True)
+            self.assertEqual(rows[0]["finalBid"], 120.0)
+            # A lot that closed with no bids has no sold price.
+            self.assertEqual(rows[1]["closed"], True)
+            self.assertIsNone(rows[1]["finalBid"])
+            # NDJSON images stay arrays; Parquet round-trips closed/finalBid.
+            self.assertEqual(rows[0]["images"], ["a.jpg"])
+            table = pq.read_table(path).to_pylist()
+            self.assertEqual(table[0]["finalBid"], 120.0)
+            self.assertTrue(table[0]["closed"])
+
+    def test_does_not_clobber_an_existing_final_bid(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = self._write(tmpdir, [
+                {"id": "1", "currentBid": 50.0, "closed": True, "finalBid": 999.0, "images": []},
+            ])
+
+            finalize_closed_file(path)
+
+            rows = [json.loads(l) for l in path.with_suffix(".ndjson").read_text().splitlines() if l.strip()]
+            self.assertEqual(rows[0]["finalBid"], 999.0)
 
 
 if __name__ == "__main__":

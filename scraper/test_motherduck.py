@@ -53,6 +53,28 @@ class MotherDuckSnapshotTest(unittest.TestCase):
         # uniqueBidders absent on the item → nullable column maps to None
         self.assertIsNone(row["unique_bidders"])
 
+    def test_open_lot_has_null_final_bid_and_not_closed(self):
+        rows = rows_for_snapshots(
+            [{"id": "item-1", "currentBid": 42.5}],
+            "https://example.test/auction",
+        )
+        # Live lot: no sold price yet, and not closed.
+        self.assertIsNone(rows[0]["final_bid"])
+        self.assertEqual(rows[0]["closed"], False)
+
+    def test_closed_lot_carries_final_bid_and_closed_flag(self):
+        rows = rows_for_snapshots(
+            [{"id": "item-1", "currentBid": 42.5, "finalBid": 120.0, "closed": True}],
+            "https://example.test/auction",
+        )
+        self.assertEqual(rows[0]["final_bid"], "120.00")
+        self.assertEqual(rows[0]["closed"], True)
+
+    def test_insert_placeholder_count_matches_row_values(self):
+        from motherduck import INSERT_SNAPSHOT_SQL, row_values
+        sample = rows_for_snapshots([{"id": "x"}], "u")[0]
+        self.assertEqual(INSERT_SNAPSHOT_SQL.count("?"), len(row_values(sample)))
+
     def test_rows_map_unique_bidders_when_present(self):
         rows = rows_for_snapshots(
             [{"id": "item-1", "totalBids": 8, "uniqueBidders": 6}],
