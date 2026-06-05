@@ -29,9 +29,12 @@ test.describe('Smoke — basic app structure', () => {
     await expect(page.locator('button.auction-filter-toggle')).toContainText('Auctions')
   })
 
-  test('view checkboxes are present', async ({ page }) => {
+  test('view controls are present', async ({ page }) => {
     await expect(page.getByText('Richmond area only')).toBeVisible()
-    await expect(page.getByText('Archived auctions')).toBeVisible()
+    // Archive view is a segmented control (Active / All / Archived).
+    const group = page.getByRole('group', { name: 'Which auctions to show' })
+    await expect(group.getByRole('button', { name: 'Active', exact: true })).toBeVisible()
+    await expect(group.getByRole('button', { name: 'Archived', exact: true })).toBeVisible()
   })
 
   test('loading state resolves within 20s', async ({ page }) => {

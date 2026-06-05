@@ -24,7 +24,7 @@ function hoursUntil(endDate) {
  * @param {FilterOptions} options
  * @returns {Item[]}
  */
-export function filterItems(items, { excludedCategories, searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }) {
+export function filterItems(items, { excludedCategories, searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours }) {
   return items.filter(item => {
     // Exclude filter: hide items by rawCategory
     if (excludedCategories.includes(item.rawCategory)) {
@@ -45,6 +45,14 @@ export function filterItems(items, { excludedCategories, searchIds, minPrice, ma
     }
     if (maxBids != null && item.totalBids > maxBids) {
       return false
+    }
+
+    // Bidders filter — uniqueBidders is absent on sources that don't expose
+    // bidder identities (e.g. HiBid), so treat missing as 0.
+    if (minBidders != null || maxBidders != null) {
+      const bidders = item.uniqueBidders ?? 0
+      if (minBidders != null && bidders < minBidders) return false
+      if (maxBidders != null && bidders > maxBidders) return false
     }
 
     // Time filter

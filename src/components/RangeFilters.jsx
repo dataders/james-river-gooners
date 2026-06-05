@@ -161,19 +161,25 @@ export function RangeFilters({
   minPrice, maxPrice, onMinPriceChange, onMaxPriceChange,
   minHours, maxHours, onMinHoursChange, onMaxHoursChange,
   minBids, maxBids, onMinBidsChange, onMaxBidsChange,
+  minBidders, maxBidders, onMinBiddersChange, onMaxBiddersChange,
 }) {
-  const { priceMax, hoursMax, bidsMax, priceHist, bidsHist, hoursHist } = useMemo(() => {
+  const { priceMax, hoursMax, bidsMax, biddersMax, priceHist, bidsHist, biddersHist, hoursHist } = useMemo(() => {
     let pMax = 0
     let hMax = 0
     let bMax = 0
+    let brMax = 0
     const prices = []
     const bidCounts = []
+    const bidderCounts = []
     const hours = []
     for (const item of items) {
       prices.push(item.currentBid)
       bidCounts.push(item.totalBids)
+      bidderCounts.push(item.uniqueBidders ?? 0)
       if (item.currentBid > pMax) pMax = item.currentBid
       if (item.totalBids > bMax) bMax = item.totalBids
+      const br = item.uniqueBidders ?? 0
+      if (br > brMax) brMax = br
       const h = hoursUntil(item.endDate)
       if (h !== Infinity) {
         hours.push(h)
@@ -186,13 +192,15 @@ export function RangeFilters({
       priceMax: pMax,
       hoursMax: hMax,
       bidsMax: bMax,
+      biddersMax: brMax,
       priceHist: buildHistogram(prices, 0, pMax, true),
       bidsHist: buildHistogram(bidCounts, 0, bMax, true),
+      biddersHist: buildHistogram(bidderCounts, 0, brMax, true),
       hoursHist: buildHistogram(hours, 0, hMax, false),
     }
   }, [items])
 
-  if (!priceMax && !hoursMax && !bidsMax) return null
+  if (!priceMax && !hoursMax && !bidsMax && !biddersMax) return null
 
   const formatBids = (v) => `${Math.round(v)}`
 
@@ -228,6 +236,23 @@ export function RangeFilters({
         histogram={bidsHist}
         logScale
       />
+      {biddersMax > 0 && (
+        <DualSlider
+          label="Bidders"
+          min={0}
+          max={biddersMax}
+          valueLo={minBidders ?? 0}
+          valueHi={maxBidders ?? biddersMax}
+          formatLo={formatBids}
+          formatHi={formatBids}
+          formatBoundLo="0"
+          formatBoundHi={String(biddersMax)}
+          onLoChange={onMinBiddersChange}
+          onHiChange={onMaxBiddersChange}
+          histogram={biddersHist}
+          logScale
+        />
+      )}
       <DualSlider
         label="Ends within"
         min={0}
