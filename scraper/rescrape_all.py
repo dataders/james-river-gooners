@@ -126,6 +126,24 @@ def finalize_closed_file(path: Path) -> None:
     print(f"Finalized {len(rows)} closed lots with final sold price: {path.name}")
 
 
+def backfill_archive_final_prices() -> int:
+    """One-time backfill: stamp closed/finalBid onto already-archived lots (#94).
+
+    Auctions archived before #94 carry no final-price marker. Re-running the same
+    idempotent finalize over every file in the archive promotes each lot's
+    last-seen currentBid to finalBid and marks it closed, without clobbering any
+    finalBid already present. Returns the number of archived files visited."""
+    if not ARCHIVE_ITEMS_DIR.exists():
+        print("No archive directory to backfill.")
+        return 0
+    count = 0
+    for path in sorted(ARCHIVE_ITEMS_DIR.glob("*.parquet")):
+        finalize_closed_file(path)
+        count += 1
+    print(f"Backfilled final prices across {count} archived auction file(s).")
+    return count
+
+
 def archive_file(path: Path) -> None:
     ARCHIVE_ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     target = ARCHIVE_ITEMS_DIR / path.name
@@ -365,11 +383,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Skip scraping; re-discover candidates, archive closed/stale auctions, rebuild manifests.",
     )
+    group.add_argument(
+        "--backfill-final-prices",
+        action="store_true",
+        help="One-time: stamp closed/finalBid onto already-archived lots (#94), then exit.",
+    )
     return parser.parse_args(argv)
 
 
 def main() -> None:
     args = parse_args()
+
+    if args.backfill_final_prices:
+        backfill_archive_final_prices()
+        return
 
     if args.archive_only:
         archive_only()

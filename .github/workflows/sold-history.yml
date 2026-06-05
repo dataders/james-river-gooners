@@ -1,0 +1,82 @@
+name: Refresh Sold-Price History
+
+# Mirrors the closed-lot sold prices from the archive read model
+# (public/data/archive/) into the Supabase `sold_lots` table (issue #95 / M3.2),
+# so the browser can read per-item history and per-category medians to surface
+# past sold prices (#96) and rank best-margin items (#97). The upsert is keyed on
+# (auction_safe_id, item_id), so running it repeatedly is idempotent.
+#
+# Requires the Supabase secret key (writes bypass RLS); does nothing useful
+# without it. Reads the committed archive, so it makes no external scrape calls.
+
+on:
+  schedule:
+    # Daily at 04:00 UTC, after the hourly scrape has archived any freshly-closed
+    # auctions.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build rows and report the count without writing to Supabase'
+        required: false
+        type: boolean
+        default: false
+      backfill_archive:
+        description: 'One-time: stamp closed/finalBid onto already-archived lots (#94) and commit before upserting'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  sold-history:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      # One-time: promote last-seen currentBid to finalBid on lots archived
+      # before #94, then commit the stamped archive files.
+      - name: Backfill archived final prices
+        if: ${{ inputs.backfill_archive }}
+        run: |
+          cd scraper
+          uv run --with pyarrow --with beautifulsoup4 --with pyyaml --with requests \
+            python rescrape_all.py --backfill-final-prices
+
+      - name: Commit backfilled archive
+        if: ${{ inputs.backfill_archive }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/archive/
+          if git diff --staged --quiet; then
+            echo "No archive changes to commit"
+          else
+            git commit -m "data: backfill final sold prices onto archived lots [$(date -u +%Y-%m-%dT%H:%M)]"
+            for attempt in 1 2 3; do
+              git push && break
+              echo "Push failed; rebasing on origin/main before retry ${attempt}"
+              git fetch origin main && git rebase origin/main
+            done
+          fi
+
+      - name: Upsert sold-price history to Supabase
+        run: |
+          cd scraper
+          if [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
+            echo "SUPABASE_SECRET_KEY not set — skipping sold-history upsert"
+            exit 0
+          fi
+          DRY_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          uv run --with pyarrow --with beautifulsoup4 --with pyyaml --with requests \
+            python sold_history.py $DRY_FLAG
