@@ -142,6 +142,47 @@ export function hasEbayComps(soldComps) {
   return normalizeEbaySoldMatches(soldComps).length > 0
 }
 
+// Reshape flat `public_auction_comps` rows (Supabase, issue #6) into the same
+// `{ [itemId]: { status, query, searchUrl, fetchedAt, warning, matches: [...] } }`
+// shape the static read model produces, so EbayComps consumes either source
+// unchanged. Each view row is one matched eBay listing; rows for the same item
+// share its attempt-level fields, so the first row seen sets them and every row
+// contributes a match. Rows are ordered newest-first within the array.
+export function groupSupabaseComps(rows) {
+  const items = {}
+  for (const row of rows || []) {
+    const itemId = row.item_id
+    if (!itemId) continue
+    let entry = items[itemId]
+    if (!entry) {
+      entry = {
+        status: row.status || 'ok',
+        query: row.query || '',
+        searchUrl: row.search_url || '',
+        fetchedAt: row.fetched_at || '',
+        warning: row.warning || null,
+        matches: [],
+      }
+      items[itemId] = entry
+    }
+    const match = {
+      ebayItemId: row.ebay_item_id || null,
+      title: row.title || '',
+      price: { value: row.price_value, currency: row.price_currency || 'USD' },
+      shippingLabel: row.shipping_label || null,
+      soldDate: row.sold_date || null,
+      soldDateLabel: row.sold_date_label || null,
+      thumbnailUrl: row.thumbnail_url || null,
+      itemWebUrl: row.item_web_url || '',
+      condition: row.condition || null,
+      sourceQuery: row.source_query || null,
+      matchConfidence: row.match_confidence || null,
+    }
+    entry.matches.push(match)
+  }
+  return items
+}
+
 export function getEbayCompThumbnail(comp) {
   // Only ever show the comp's own eBay photo. Never fall back to the auction
   // item's image — doing so made every comp appear to show the Cannon's lot

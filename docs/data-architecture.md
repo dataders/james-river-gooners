@@ -113,14 +113,32 @@ The browser then reads only the static read model: manifest → Parquet/JSON.
 Because all warehouse access is behind `SnapshotSink`, migrating off MotherDuck
 is additive, not a rewrite:
 
-1. Implement `SupabaseSink` in `scraper/warehouse.py` (append to Postgres tables
-   `auctions`, `listing_snapshots`, `comp_snapshots` — these mirror the
-   normalized read model 1:1).
+1. Implement a `SupabaseSink` in `scraper/warehouse.py` for each data stream.
+   **eBay comps are done (#6):** `SupabaseSink.append_comp_snapshots` writes the
+   same comp row dicts to the Postgres `ebay_comp_snapshots` table via PostgREST
+   (`scraper/supabase_comps.py`); listings still raise `NotImplementedError`
+   until the #98 epic.
 2. Set `GOONERS_WAREHOUSE=supabase` plus Supabase credentials in CI secrets.
+   `warehouse.should_mirror()` only mirrors when the selected backend is
+   actually configured (Supabase: `SUPABASE_URL` + `SUPABASE_SECRET_KEY`).
 3. Optionally keep `MotherDuckSink` as a second analytics mirror, or retire it.
-4. The static read model continues to power the public site unchanged.
+4. The static read model continues to power the public site unchanged. **For
+   comps, the browser now reads Supabase first** (the `public_auction_comps`
+   view, via the publishable key) and falls back to the static
+   `data/ebay-comps/*.json` files per auction, so the CDN remains the safety net
+   during cutover (`src/hooks/useEbayComps.js`).
 5. *Future, optional:* dynamic features that a static site can't serve (favorites
    sync, accounts) can read Supabase live. The public browse stays static.
+
+### eBay comps in Supabase (#6)
+
+- **Table `ebay_comp_snapshots`** — append-only, one row per (item, matched eBay
+  listing). RLS-enabled with a `select using (true)` policy (the data is already
+  public); writes require the secret key, which bypasses RLS.
+- **View `public_auction_comps`** — the browser read model: latest fetch per
+  `(auction_safe_id, item_id, source_query)`, dropping rows with no listing.
+  `security_invoker = on`, granted to `anon`/`authenticated`.
+- **SQL:** `supabase/migrations/0003_ebay_comps.sql`.
 
 ## Known debt / in-progress normalization
 
