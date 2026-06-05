@@ -309,6 +309,17 @@
       "embeddingsPath": "data/archive/items/rpsJEu-fQcegLdNm4BjoYQ.embeddings"
     },
     {
+      "safeId": "Gb1d9TSVzPoNpFRycmPhSQ",
+      "title": "06/05/26:  Sports Collectibles and Comic Books | Evolving Lifestyle Online Auction |  Dinwiddie VA 23841- Cannon's Online Auctions, LLC",
+      "endDate": "2026-06-05 5:36:00 PM",
+      "scrapedAt": "2026-06-05T21:22:15.744164+00:00",
+      "itemCount": 146,
+      "itemsPath": "data/archive/items/Gb1d9TSVzPoNpFRycmPhSQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/Gb1d9TSVzPoNpFRycmPhSQ.ndjson",
+      "embeddingsPath": "data/archive/items/Gb1d9TSVzPoNpFRycmPhSQ.embeddings"
+    },
+    {
       "safeId": "bLkOiYnlcePwcQwm8L25cw",
       "title": "03/16/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "",
