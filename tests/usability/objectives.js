@@ -300,7 +300,7 @@ export const objectives = [
 
       // Need a lot that has eBay comps for the calculator to appear.
       tracker.step('Filter to lots with comps')
-      await page.locator('.deals-toggle', { hasText: 'Has comp' }).click()
+      await page.locator('.deals-toggle', { hasText: 'Has eBay comp' }).click()
       await page.waitForTimeout(400)
       const withComp = await getItemCount(page)
       if (withComp === 0) {
