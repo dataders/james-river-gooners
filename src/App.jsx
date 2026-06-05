@@ -615,12 +615,32 @@ export default function App() {
           ) : showMyBidsOnly && finalItems.length === 0 ? (
             <div className="no-deals-message">
               <div className="item-count">0 items</div>
-              <p>No bids found in current auctions.</p>
-              <p className="no-deals-hint">
-                {cannonBids.bidsLoading
-                  ? 'Fetching your bid history from Cannon\'s…'
-                  : 'Your Cannon\'s bid history didn\'t match any currently listed items. Try enabling archived auctions.'}
-              </p>
+              {cannonBids.error ? (
+                <>
+                  <p>Couldn't load your bids from Cannon's.</p>
+                  <p className="no-deals-hint bids-error">{cannonBids.error}</p>
+                  <p className="no-deals-hint">
+                    This is a problem reaching Cannon's — not a missing match.{' '}
+                    <button
+                      type="button"
+                      className="bids-retry-button"
+                      onClick={cannonBids.refreshBids}
+                      disabled={cannonBids.bidsLoading}
+                    >
+                      {cannonBids.bidsLoading ? 'Retrying…' : 'Retry'}
+                    </button>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>No bids found in current auctions.</p>
+                  <p className="no-deals-hint">
+                    {cannonBids.bidsLoading
+                      ? 'Fetching your bid history from Cannon\'s…'
+                      : 'Your Cannon\'s bid history didn\'t match any currently listed items. Try enabling archived auctions.'}
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <ItemGrid
