@@ -5,6 +5,10 @@
 //   delete_credentials                         → remove credentials
 //   get_status                                 → { linked, username }
 //   get_bids                                   → { itemIds: string[] }
+//   place_bid         { auctionItemId, auctionId, newBidAmount, maxBidAmount,
+//                       currentBid, minimumNextBid, itemName?, endDate?,
+//                       totalBids?, category?, skuNumber? }
+//                     → { ok, status, description }
 //
 // Env vars required:
 //   SUPABASE_URL               (auto-injected by Supabase)
@@ -49,9 +53,6 @@ async function decryptText(ciphertext: string): Promise<string> {
 }
 
 // ── Maxanet helpers ───────────────────────────────────────────────────────────
-// NOTE: These endpoint URLs are best guesses from the ASP.NET MVC patterns
-// observed in the public scraper. Verify by inspecting Network tab while
-// logging in to bid.cannonsauctions.com manually.
 
 function parseCookies(setCookieHeader: string): Record<string, string> {
   const out: Record<string, string> = {}
@@ -71,6 +72,18 @@ function cookieHeader(cookies: Record<string, string>): string {
   return Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
 }
 
+// Extracts all <input type="hidden" name="..." value="..."> from an HTML fragment.
+function parseHiddenInputs(html: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const m of html.matchAll(/<input[^>]+type="hidden"[^>]*>/gi)) {
+    const tag = m[0]
+    const name = tag.match(/name="([^"]+)"/)?.[1]
+    const value = tag.match(/value="([^"]*)"/)?.[1] ?? ''
+    if (name) out[name] = value
+  }
+  return out
+}
+
 async function maxanetLogin(username: string, password: string): Promise<Record<string, string>> {
   const base = 'https://bid.cannonsauctions.com'
 
@@ -84,11 +97,10 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   const pageHtml = await pageResp.text()
   const cookies = parseCookies(pageResp.headers.get('set-cookie') ?? '')
 
-  // Extract ASP.NET anti-forgery token (present in all standard MVC login forms)
   const tokenMatch = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)
   const verificationToken = tokenMatch?.[1] ?? ''
 
-  // Extract TenantCode hidden field (Cannon's value is "Can399")
+  // TenantCode is a hidden field required by Maxanet (Cannon's value is "Can399")
   const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
   const tenantCode = tenantMatch?.[1] ?? ''
 
@@ -108,14 +120,13 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
       Password: password,
       __RequestVerificationToken: verificationToken,
     }).toString(),
-    redirect: 'manual', // catch redirect so we can check status
+    redirect: 'manual',
   })
 
   // Successful login → 302 redirect away from /Account/Login
   // Failed login → 200 (re-renders the form with an error message)
   if (loginResp.status === 200) {
     const body = await loginResp.text()
-    // Look for a server-side validation error message
     const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
     throw new Error(errMatch ? `Login failed: ${errMatch[1].replace(/<[^>]+>/g, '').trim()}` : 'Login failed')
   }
@@ -128,9 +139,6 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
 async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
-  // NOTE: /Public/Account/BidHistory is the standard MVC endpoint guess. If this
-  // returns 404, try /Public/Account/MyBids or /Public/Account/BiddingHistory,
-  // then inspect the Network tab on a live logged-in session to find the real URL.
   const resp = await fetch(`${base}/Public/Account/BidHistory`, {
     headers: {
       'Cookie': cookieHeader(cookies),
@@ -168,17 +176,12 @@ function parseBidderId(html: string): string | null {
 function parseBidItemIds(html: string): string[] {
   const ids = new Set<string>()
 
-  // Pattern 1: detail URL query param AuctionItemId=<id>
   for (const m of html.matchAll(/AuctionItemId=([^&"'\s]+)/g)) {
     ids.add(decodeURIComponent(m[1]))
   }
-
-  // Pattern 2: hidden BidAuctionItemId inputs (same as the scraper sees on listing pages)
   for (const m of html.matchAll(/BidAuctionItemId[^>]*value="([^"]+)"/g)) {
     ids.add(m[1])
   }
-
-  // Pattern 3: data-item-id attributes
   for (const m of html.matchAll(/data-(?:auction-)?item-id="([^"]+)"/g)) {
     ids.add(m[1])
   }
@@ -272,6 +275,170 @@ async function getBids(
   return json({ itemIds })
 }
 
+interface PlaceBidParams {
+  auctionItemId: string
+  auctionId: string
+  newBidAmount: number
+  maxBidAmount: number
+  currentBid: number
+  minimumNextBid: number
+  itemName?: string
+  endDate?: string
+  totalBids?: number
+  category?: string
+  skuNumber?: string
+}
+
+async function placeBid(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  params: PlaceBidParams,
+): Promise<Response> {
+  const { data, error } = await supabase
+    .from('cannon_credentials')
+    .select('cannon_username, cannon_password_enc')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) return json({ error: error.message }, 500)
+  if (!data) return json({ error: 'No Cannon\'s account linked' }, 400)
+
+  let password: string
+  try {
+    password = await decryptText(data.cannon_password_enc)
+  } catch {
+    return json({ error: 'Failed to decrypt stored credentials' }, 500)
+  }
+
+  let cookies: Record<string, string>
+  try {
+    cookies = await maxanetLogin(data.cannon_username, password)
+  } catch (e: unknown) {
+    return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
+  }
+
+  const base = 'https://bid.cannonsauctions.com'
+
+  // Fetch the item page to get a fresh CSRF token for this session
+  const itemPageResp = await fetch(
+    `${base}/Public/Auction/AuctionItemDetail?AuctionItemId=${params.auctionItemId}&AuctionId=${params.auctionId}`,
+    { headers: { Cookie: cookieHeader(cookies), 'User-Agent': UA }, redirect: 'manual' },
+  )
+  if (itemPageResp.status === 302) return json({ error: 'Session expired fetching item page' }, 400)
+  const itemHtml = await itemPageResp.text()
+  cookies = mergeCookies(cookies, parseCookies(itemPageResp.headers.get('set-cookie') ?? ''))
+  const itemCsrf = itemHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+
+  // POST SubmitBid — Maxanet uses this to render the bid confirmation modal.
+  // The response HTML contains a pre-populated form with hidden fields we need
+  // for SaveBid (notably UserId, TenantId, and a fresh CSRF token).
+  const now = new Date().toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  })
+  const submitResp = await fetch(`${base}/Public/Auction/SubmitBid`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookieHeader(cookies),
+      'User-Agent': UA,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new URLSearchParams({
+      AuctionItemId: params.auctionItemId,
+      OldBidAmount: String(params.currentBid),
+      NewBidAmount: '0',
+      MaxBidAmount: '0',
+      Quantity: '1',
+      ItemName: params.itemName ?? '',
+      __RequestVerificationToken: itemCsrf,
+      TotalTerms: '0',
+      MinimumNextBidAmount: String(params.minimumNextBid),
+      TotalBids: String(params.totalBids ?? 0),
+      IsWatchList: 'False',
+      DisplayFormatCode: 'OB',
+      Types: params.category ?? '',
+      SKUNumber: String(params.skuNumber ?? ''),
+      Description: '',
+      EndDate: params.endDate ?? '',
+      StatusCode: 'NW',
+      CurrentDate: now,
+      IsAutoExtended: 'False',
+      IsBiddingEnabled: 'True',
+      ReservePrice: '0',
+      BidAmount: String(params.currentBid),
+      BidNowLabel: 'Bid Now',
+      index: '1',
+      ImageURL: '',
+      OriginalName: '',
+      ButtonId: 'bidpopup_1',
+      ActivityModuleId: 'PBAUCITM',
+    }).toString(),
+  })
+  cookies = mergeCookies(cookies, parseCookies(submitResp.headers.get('set-cookie') ?? ''))
+  const submitHtml = await submitResp.text()
+
+  // The confirmation form has a fresh CSRF token plus UserId, TenantId, etc.
+  const formFields = parseHiddenInputs(submitHtml)
+  const bidCsrf = formFields.__RequestVerificationToken ?? itemCsrf
+
+  // Accept T&C for this auction — idempotent, required on first bid per auction.
+  // Fire-and-forget: don't block the bid if this fails.
+  fetch(`${base}/Public/Auction/SaveBidderTermsAndCondition`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookieHeader(cookies),
+      'User-Agent': UA,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new URLSearchParams({
+      AuctionId: params.auctionId,
+      __RequestVerificationToken: bidCsrf,
+    }).toString(),
+  }).catch(() => {})
+
+  // POST SaveBid — places the actual bid
+  const saveBidResp = await fetch(`${base}/Public/Auction/SaveBid`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookieHeader(cookies),
+      'User-Agent': UA,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new URLSearchParams({
+      __RequestVerificationToken: bidCsrf,
+      AuctionId: params.auctionId,
+      ActivityModuleId: 'PBAUCITM',
+      NewBidAmount: String(params.newBidAmount),
+      MaxBidAmount: String(params.maxBidAmount),
+      minumumNextBixAmount: String(params.minimumNextBid),
+      AuctionItemId: params.auctionItemId,
+      OldBidAmount: String(params.currentBid),
+      ReservePriceAmount: formFields.ReservePriceAmount ?? '0',
+      TenantId: formFields.TenantId ?? '399',
+      UserId: formFields.UserId ?? '',
+      TotalTerms: '0',
+      RequestUrl: '',
+    }).toString(),
+  })
+
+  if (!saveBidResp.ok) return json({ error: `SaveBid HTTP ${saveBidResp.status}` }, 400)
+
+  let result: { ApiStatusCode?: number; status?: number; Description?: string } = {}
+  try { result = await saveBidResp.json() } catch { /* non-JSON response */ }
+
+  const ok = result.ApiStatusCode === 200
+  return json({
+    ok,
+    status: result.status,
+    description: result.Description ?? (ok ? 'Bid placed' : 'Bid failed'),
+  }, ok ? 200 : 400)
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 function json(body: unknown, status = 200): Response {
@@ -297,7 +464,7 @@ Deno.serve(async (req: Request) => {
   )
   if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-  let body: Record<string, string>
+  let body: Record<string, unknown>
   try {
     body = await req.json()
   } catch {
@@ -309,13 +476,36 @@ Deno.serve(async (req: Request) => {
   switch (action) {
     case 'save_credentials':
       if (!username || !password) return json({ error: 'username and password required' }, 400)
-      return saveCredentials(supabase, user.id, username, password)
+      return saveCredentials(supabase, user.id, String(username), String(password))
     case 'delete_credentials':
       return deleteCredentials(supabase, user.id)
     case 'get_status':
       return getStatus(supabase, user.id)
     case 'get_bids':
       return getBids(supabase, user.id)
+    case 'place_bid': {
+      const { auctionItemId, auctionId, newBidAmount, maxBidAmount, currentBid, minimumNextBid,
+              itemName, endDate, totalBids, category, skuNumber } = body
+      if (!auctionItemId || !auctionId || newBidAmount == null || currentBid == null || minimumNextBid == null) {
+        return json({ error: 'auctionItemId, auctionId, newBidAmount, currentBid, minimumNextBid required' }, 400)
+      }
+      if (Number(newBidAmount) < Number(minimumNextBid)) {
+        return json({ error: `Bid must be at least $${minimumNextBid}` }, 400)
+      }
+      return placeBid(supabase, user.id, {
+        auctionItemId: String(auctionItemId),
+        auctionId: String(auctionId),
+        newBidAmount: Number(newBidAmount),
+        maxBidAmount: Number(maxBidAmount ?? 0),
+        currentBid: Number(currentBid),
+        minimumNextBid: Number(minimumNextBid),
+        itemName: itemName != null ? String(itemName) : undefined,
+        endDate: endDate != null ? String(endDate) : undefined,
+        totalBids: totalBids != null ? Number(totalBids) : undefined,
+        category: category != null ? String(category) : undefined,
+        skuNumber: skuNumber != null ? String(skuNumber) : undefined,
+      })
+    }
     default:
       return json({ error: `Unknown action: ${action}` }, 400)
   }
