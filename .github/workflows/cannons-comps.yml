@@ -2,8 +2,9 @@ name: Refresh Cannon's Comps
 
 # Precomputes "Cannon's comps" — for each active item, the most similar past
 # (archived) lots and what they sold for — using CLIP similarity against the
-# archive. Writes the static read model under public/data/cannons-comps/ and
-# caches the generated .embeddings sidecars so reruns skip re-embedding.
+# archive. Writes them to the Supabase `cannons_comp_snapshots` table (the
+# auth-gated read model, #132 part 3 / #150) and commits the generated
+# .embeddings sidecars so reruns skip re-embedding.
 #
 # Does NOT re-scrape auctions or rebuild manifests — use "Scrape Auction Data"
 # for that. CLIP is heavy on CI, so this runs on demand (and can be scheduled).
@@ -54,6 +55,10 @@ jobs:
         env:
           GOONERS_CANNONS_COMPS_TOP_K: ${{ inputs.top_k }}
           GOONERS_CANNONS_COMPS_MIN_SIM: ${{ inputs.min_sim }}
+          # Secret key (service_role) → writes to cannons_comp_snapshots, bypassing
+          # RLS. Without these the build falls back to the static JSON read model.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: |
           cd scraper
           LIMIT_FLAG=""
@@ -68,25 +73,31 @@ jobs:
             --with sentence-transformers --with pillow --with numpy \
             python cannons_comps.py $LIMIT_FLAG $DRY_FLAG
 
-      - name: Commit and push
+      # The comps themselves now live in Supabase; only the generated .embeddings
+      # sidecars are committed back so future runs skip re-embedding.
+      - name: Commit embeddings cache
         if: ${{ inputs.dry_run != 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/cannons-comps/ \
-            'public/data/items/*.embeddings' \
+          git add 'public/data/items/*.embeddings' \
             'public/data/archive/items/*.embeddings'
           if git diff --staged --quiet; then
-            echo "No Cannon's comp changes to commit"
+            echo "No embedding changes to commit"
             exit 0
           fi
-          git commit -m "data: refresh Cannon's comps [$(date -u +%Y-%m-%dT%H:%M)]"
+          git commit -m "data: refresh Cannon's comp embeddings [$(date -u +%Y-%m-%dT%H:%M)]"
+          # Push the embedding cache back to whatever branch this ran on (main on
+          # the schedule, a PR branch for a populate-from-branch run). On a
+          # concurrent push, rebase onto the SAME branch — never onto main, which
+          # would conflict when running from a feature branch.
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
           for attempt in 1 2 3; do
-            if git push; then
+            if git push origin "HEAD:${BRANCH}"; then
               exit 0
             fi
-            echo "Push failed; rebasing on origin/main before retry ${attempt}"
-            git fetch origin main
-            git rebase origin/main
+            echo "Push failed; rebasing on origin/${BRANCH} before retry ${attempt}"
+            git fetch origin "${BRANCH}"
+            git rebase "origin/${BRANCH}"
           done
-          git push
+          git push origin "HEAD:${BRANCH}"
