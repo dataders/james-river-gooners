@@ -15,7 +15,7 @@ function makeLocalStorage() {
 globalThis.localStorage = makeLocalStorage()
 
 // Import after setting up the mock so module-level code sees it
-const { DEFAULT_PREFS, STORAGE_KEY, loadPrefs, savePrefs } = await import('./prefs.js')
+const { DEFAULT_PREFS, STORAGE_KEY, loadPrefs, savePrefs, sanitizePrefs } = await import('./prefs.js')
 
 test('loadPrefs returns defaults when nothing is stored', () => {
   localStorage.clear()
@@ -67,6 +67,21 @@ test('loadPrefs fills in missing keys with defaults', () => {
   assert.equal(prefs.maxPrice, null)
   assert.equal(prefs.localOnly, false)
   assert.deepEqual(prefs.excludedCategories, ['Furniture'])
+})
+
+test('loadPrefs normalizes a stuck maxHours of 0 to null', () => {
+  localStorage.clear()
+  // A maxHours of 0 hides every item; it must not survive a reload.
+  savePrefs({ ...DEFAULT_PREFS, maxHours: 0 })
+  assert.equal(loadPrefs().maxHours, null)
+})
+
+test('sanitizePrefs clears non-positive maxHours but keeps valid bounds', () => {
+  assert.equal(sanitizePrefs({ maxHours: 0 }).maxHours, null)
+  assert.equal(sanitizePrefs({ maxHours: -5 }).maxHours, null)
+  assert.equal(sanitizePrefs({ maxHours: NaN }).maxHours, null)
+  assert.equal(sanitizePrefs({ maxHours: 48 }).maxHours, 48)
+  assert.equal(sanitizePrefs({ maxHours: null }).maxHours, null)
 })
 
 test('loadPrefs handles corrupt storage gracefully', () => {
