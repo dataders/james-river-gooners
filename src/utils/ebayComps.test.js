@@ -7,6 +7,8 @@ import {
   compactItemText,
   getEbayCompThumbnail,
   getEbayCompKey,
+  groupSupabaseComps,
+  hasEbayComps,
   isEbayItemUrl,
   normalizeEbaySoldMatches,
 } from './ebayComps.js'
@@ -138,4 +140,55 @@ test('compactItemText ignores lot-only titles', () => {
     description: '',
     rawCategory: 'Jewelry',
   }), 'Jewelry')
+})
+
+test('groupSupabaseComps reshapes flat view rows into the read-model shape', () => {
+  const rows = [
+    {
+      item_id: '1001',
+      status: 'ok',
+      query: 'Sony Bravia',
+      search_url: 'https://www.ebay.com/sch/i.html?_nkw=Sony',
+      fetched_at: '2026-06-05T00:00:00Z',
+      warning: null,
+      ebay_item_id: '111',
+      title: 'Sony Bravia 32"',
+      price_value: 149.99,
+      price_currency: 'USD',
+      item_web_url: 'https://www.ebay.com/itm/123456789011',
+      source_query: 'specific',
+      match_confidence: 'medium',
+    },
+    {
+      item_id: '1001',
+      status: 'ok',
+      query: 'Sony Bravia',
+      ebay_item_id: '222',
+      title: 'Sony Bravia TV',
+      price_value: 130,
+      price_currency: 'USD',
+      item_web_url: 'https://www.ebay.com/itm/123456789022',
+    },
+  ]
+
+  const items = groupSupabaseComps(rows)
+  assert.deepEqual(Object.keys(items), ['1001'])
+  const entry = items['1001']
+  assert.equal(entry.query, 'Sony Bravia')
+  assert.equal(entry.searchUrl, 'https://www.ebay.com/sch/i.html?_nkw=Sony')
+  assert.equal(entry.matches.length, 2)
+  assert.deepEqual(entry.matches[0].price, { value: 149.99, currency: 'USD' })
+
+  // The reshaped entry must be consumable by the same readers the static
+  // read model feeds.
+  assert.equal(hasEbayComps(entry), true)
+  const normalized = normalizeEbaySoldMatches(entry)
+  assert.equal(normalized.length, 2)
+  assert.equal(normalized[0].priceLabel, '$149.99')
+})
+
+test('groupSupabaseComps skips rows without an item id and handles empties', () => {
+  assert.deepEqual(groupSupabaseComps([]), {})
+  assert.deepEqual(groupSupabaseComps(undefined), {})
+  assert.deepEqual(groupSupabaseComps([{ title: 'orphan' }]), {})
 })

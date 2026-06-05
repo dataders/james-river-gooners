@@ -76,6 +76,25 @@ class MotherDuckSink(SnapshotSink):
         return append_ebay_comp_snapshots(rows, database=self.database)
 
 
+class SupabaseSink(SnapshotSink):
+    """PostgREST sink — eBay comps only so far (issue #6).
+
+    Listing snapshots stay in MotherDuck until the #98 migration, so the
+    listing method raises rather than silently dropping rows.
+    """
+
+    def append_listing_snapshots(self, items: list[dict], source_url: str) -> int:
+        raise NotImplementedError(
+            "Listing snapshots to Supabase are part of the #98 migration; "
+            "only eBay comps (#6) are wired up so far."
+        )
+
+    def append_comp_snapshots(self, rows: list[dict]) -> int:
+        from supabase_comps import append_ebay_comp_snapshots
+
+        return append_ebay_comp_snapshots(rows)
+
+
 def get_sink(database: str | None = None) -> SnapshotSink | None:
     """Return the configured sink, or ``None`` when the warehouse is disabled."""
     kind = warehouse_kind()
@@ -84,7 +103,27 @@ def get_sink(database: str | None = None) -> SnapshotSink | None:
     if kind == "motherduck":
         return MotherDuckSink(database)
     if kind == "supabase":
-        raise NotImplementedError(
-            "SupabaseSink is not implemented yet; see docs/data-architecture.md"
-        )
+        return SupabaseSink()
     raise ValueError(f"Unknown GOONERS_WAREHOUSE={kind!r}")
+
+
+def should_mirror() -> bool:
+    """Whether the configured warehouse is ready to receive a snapshot mirror.
+
+    The mirror is best-effort and only runs when its backend is actually
+    configured: MotherDuck gated on ``GOONERS_MOTHERDUCK_SNAPSHOTS`` (+ token),
+    Supabase gated on its URL + secret key being present.
+    """
+    kind = warehouse_kind()
+    if kind in ("", "none", "off", "disabled"):
+        return False
+    if kind == "motherduck":
+        from motherduck import should_snapshot_to_motherduck
+
+        return should_snapshot_to_motherduck()
+    if kind == "supabase":
+        from supabase_comps import resolve_credentials
+
+        url, key = resolve_credentials()
+        return bool(url and key)
+    return False

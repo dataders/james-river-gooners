@@ -1386,8 +1386,8 @@ def fetch_direct(
     summary["files_written"] = merge_comp_files(new_exports, attempts, output_dir, generated_at)
 
     if mirror_to_warehouse is None:
-        from motherduck import should_snapshot_to_motherduck
-        mirror_to_warehouse = should_snapshot_to_motherduck()
+        from warehouse import should_mirror
+        mirror_to_warehouse = should_mirror()
     if mirror_to_warehouse:
         mirror_rows_to_warehouse(all_rows)
 
