@@ -86,6 +86,8 @@
  * @property {?number} [maxPrice]
  * @property {?number} [minBids]
  * @property {?number} [maxBids]
+ * @property {?number} [minBidders]
+ * @property {?number} [maxBidders]
  * @property {?number} [minHours]
  * @property {?number} [maxHours]
  */

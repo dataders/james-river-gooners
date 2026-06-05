@@ -45,6 +45,15 @@ export async function openRoiCard(page) {
   return true
 }
 
+// Select a view from the segmented archive "Auctions" control (Active / All /
+// Archived). Replaced the old "Archived auctions" checkbox in the three-state
+// archive filter.
+export async function selectArchiveView(page, name) {
+  await page.getByRole('group', { name: 'Which auctions to show' })
+    .getByRole('button', { name, exact: true })
+    .click()
+}
+
 // Read the visible item count from the grid header
 export async function getItemCount(page) {
   const text = await page.locator('.item-count').textContent()
@@ -53,15 +62,30 @@ export async function getItemCount(page) {
 }
 
 // Set a range slider to a specific position (0–200) via native value setter so
-// React's synthetic onChange fires correctly on the input event.
-export async function setRangeValue(page, filterIndex, sliderClass, position) {
-  await page.evaluate(({ idx, cls, pos }) => {
-    const filters = document.querySelectorAll('.range-filter')
-    const filter = filters[idx]
-    const slider = filter?.querySelector(cls)
-    if (!slider) throw new Error(`Slider ${cls} not found in range-filter[${idx}]`)
+// React's synthetic onChange fires correctly on the input event. The filter is
+// located by its label text (e.g. "Bids", "Ends within") rather than a fixed
+// index, since the Bidders slider renders only when bidder data is present and
+// would otherwise shift positional indices.
+export async function setRangeValue(page, filterLabel, sliderClass, position) {
+  await page.evaluate(({ label, cls, pos }) => {
+    const filters = [...document.querySelectorAll('.range-filter')]
+    const filter = filters.find(f =>
+      f.querySelector('.range-label')?.textContent?.trim().startsWith(label)
+    )
+    if (!filter) throw new Error(`Range filter labelled "${label}" not found`)
+    const slider = filter.querySelector(cls)
+    if (!slider) throw new Error(`Slider ${cls} not found in "${label}" filter`)
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
     setter.call(slider, String(pos))
     slider.dispatchEvent(new Event('input', { bubbles: true }))
-  }, { idx: filterIndex, cls: sliderClass, pos: position })
+  }, { label: filterLabel, cls: sliderClass, pos: position })
+}
+
+// Read the "Any" / "≤ X" / "X – Y" summary text for a range filter, located by
+// its label text.
+export async function getRangeSummary(page, filterLabel) {
+  return page.locator('.range-filter', { has: page.locator('.range-label', { hasText: filterLabel }) })
+    .locator('.range-value')
+    .first()
+    .textContent()
 }

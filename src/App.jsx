@@ -72,6 +72,8 @@ export default function App() {
     maxPrice,
     minBids,
     maxBids,
+    minBidders,
+    maxBidders,
     minHours,
     maxHours,
     localOnly,
@@ -87,6 +89,8 @@ export default function App() {
     setMaxPrice,
     setMinBids,
     setMaxBids,
+    setMinBidders,
+    setMaxBidders,
     setMinHours,
     setMaxHours,
     setLocalOnly,
@@ -239,8 +243,8 @@ export default function App() {
 
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
   const preFilteredItems = useMemo(
-    () => filterItems(visibleItems, { excludedCategories: [], searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours }),
-    [visibleItems, searchIds, minPrice, maxPrice, minBids, maxBids, minHours, maxHours]
+    () => filterItems(visibleItems, { excludedCategories: [], searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours }),
+    [visibleItems, searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours]
   )
 
   const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
@@ -420,12 +424,16 @@ export default function App() {
             maxPrice={maxPrice}
             minBids={minBids}
             maxBids={maxBids}
+            minBidders={minBidders}
+            maxBidders={maxBidders}
             minHours={minHours}
             maxHours={maxHours}
             onMinPriceChange={v => setMinPrice(v)}
             onMaxPriceChange={v => setMaxPrice(v)}
             onMinBidsChange={v => setMinBids(v)}
             onMaxBidsChange={v => setMaxBids(v)}
+            onMinBiddersChange={v => setMinBidders(v)}
+            onMaxBiddersChange={v => setMaxBidders(v)}
             onMinHoursChange={v => setMinHours(v)}
             onMaxHoursChange={v => setMaxHours(v)}
           />
