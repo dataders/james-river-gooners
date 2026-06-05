@@ -1,10 +1,10 @@
 import { memo } from 'react'
-import { timeRemaining } from '../utils/time'
+import { itemTimeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 
 export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick }) {
   const imgSrc = item.images?.[0] || null
-  const remaining = timeRemaining(item.endDate)
+  const remaining = itemTimeRemaining(item)
 
   const compMedian = getCompMedianPrice(itemComps)
   const maxBid = compMedian != null ? calcMaxBid(compMedian, DEFAULT_MARGIN) : null
