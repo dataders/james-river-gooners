@@ -75,14 +75,18 @@ await emailField.fill(CANNON_EMAIL)
 await page.locator('input[type="password"]').first().fill(CANNON_PASS)
 
 console.log('Submitting login…')
-await Promise.all([
-  page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15_000 }),
-  page.locator('button[type="submit"], input[type="submit"]').first().click(),
+await page.locator('button[type="submit"], input[type="submit"]').first().click()
+// Some Maxanet deployments do AJAX login (no full navigation), so wait for
+// either a URL change away from /Login or networkidle, whichever comes first.
+await Promise.race([
+  page.waitForURL(url => !url.includes('/Login'), { timeout: 15_000 }).catch(() => {}),
+  page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {}),
 ])
+console.log('Post-submit URL:', page.url())
 
-if (page.url().includes('/Account/Login') || page.url().includes('/Account/login')) {
-  const err = await page.locator('.validation-summary-errors, .field-validation-error').first().textContent().catch(() => '')
-  console.error('Login failed — still on login page.', err)
+if (page.url().includes('/Login')) {
+  const err = await page.locator('.validation-summary-errors, .field-validation-error, .alert').first().textContent().catch(() => '')
+  console.error('Login failed — still on login page.', err || '(no error message found)')
   await browser.close()
   process.exit(1)
 }
