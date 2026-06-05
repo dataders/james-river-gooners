@@ -253,14 +253,14 @@ export const objectives = [
         return 'fail'
       }
 
-      tracker.step('Click "Copy link"')
-      const copy = page.locator('.detail-copy-link')
+      tracker.step('Click Share')
+      const copy = page.locator('.detail-share')
       await copy.click()
-      // "Copied!" confirmation is a nice-to-have; URL state is the real test.
+      // "Copied!" confirmation appears on browsers without Web Share API (the fallback path).
       const confirmed = await copy.textContent({ timeout: 2000 }).catch(() => '')
       await page.waitForTimeout(150)
       if (!/copied/i.test((await copy.textContent()) || confirmed || '')) {
-        tracker.note('No "Copied!" confirmation shown after clicking Copy link')
+        tracker.note('No "Copied!" confirmation shown after clicking Share (fallback path)')
       }
 
       // Reload the shared URL in a clean page and confirm the lot reopens.
