@@ -736,6 +736,50 @@ body {
   background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
+/* "Not interested" button — mirrors .favorite-button but lives top-left and
+   leans red instead of gold. */
+.ignore-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.ignore-button:hover {
+  border-color: #e5534b;
+  color: #e5534b;
+  transform: scale(1.05);
+}
+.ignore-button.active {
+  color: #e5534b;
+  border-color: color-mix(in srgb, #e5534b 55%, transparent);
+}
+.item-card > .ignore-button {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+/* In the ignored view, dim the cards so it reads as a "bin". */
+.item-card.ignored {
+  opacity: 0.6;
+}
+.item-card.ignored:hover {
+  opacity: 1;
+}
+.detail-ignore {
+  flex: 0 0 auto;
+}
+
 .item-image {
   width: 100%;
   aspect-ratio: auto;
@@ -2467,4 +2511,209 @@ a.cannons-comp-card:hover {
     flex-wrap: wrap;
     gap: 1px 4px;
   }
+}
+
+/* ---- Tinder-style swipe deck ------------------------------------------- */
+.swipe-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: color-mix(in srgb, var(--bg) 80%, rgba(0, 0, 0, 0.7));
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.swipe-stage {
+  position: relative;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.swipe-close {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+}
+.swipe-progress {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.swipe-deck {
+  position: relative;
+  width: 100%;
+  height: min(60vh, 480px);
+}
+.swipe-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+.swipe-card-image {
+  flex: 1;
+  min-height: 0;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.swipe-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.swipe-card-placeholder {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.swipe-card-info {
+  padding: 12px 14px 16px;
+  border-top: 1px solid var(--border);
+}
+.swipe-card-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.swipe-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.swipe-card-bid {
+  color: var(--gold);
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.swipe-card-category {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+.swipe-card-time {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.swipe-badge {
+  position: absolute;
+  top: 18px;
+  padding: 6px 12px;
+  border: 3px solid;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  z-index: 2;
+  pointer-events: none;
+}
+.swipe-badge-like {
+  right: 16px;
+  color: var(--gold);
+  border-color: var(--gold);
+  transform: rotate(12deg);
+}
+.swipe-badge-nope {
+  left: 16px;
+  color: #e5534b;
+  border-color: #e5534b;
+  transform: rotate(-12deg);
+}
+.swipe-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.swipe-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.12s, border-color 0.15s, color 0.15s;
+}
+.swipe-action:hover { transform: scale(1.08); }
+.swipe-action-nope {
+  width: 56px;
+  height: 56px;
+  font-size: 1.5rem;
+  color: #e5534b;
+}
+.swipe-action-nope:hover { border-color: #e5534b; }
+.swipe-action-skip {
+  width: 44px;
+  height: 44px;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+.swipe-action-like {
+  width: 56px;
+  height: 56px;
+  font-size: 1.5rem;
+  color: var(--gold);
+}
+.swipe-action-like:hover { border-color: var(--gold); }
+.swipe-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+.swipe-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+}
+.swipe-empty-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+}
+.swipe-empty-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 6px;
 }

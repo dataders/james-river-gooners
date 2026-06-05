@@ -7,7 +7,7 @@ import {
   toggleFavoriteKey,
 } from '../utils/favorites'
 import { supabase } from '../lib/supabase'
-import { captureEvent } from '../lib/analytics'
+import { captureEvent } from '../lib/telemetry'
 
 function loadFavoriteIds() {
   if (typeof document === 'undefined') return []
@@ -86,21 +86,17 @@ export function useFavorites(user) {
     [favoriteSet],
   )
 
-  const toggleFavorite = useCallback(item => {
-    const key = favoriteKey(item)
-    // Capture once per user action, outside the state updater (which React
-    // re-runs under StrictMode). `signed_in` lets us split auth vs anon usage.
-    captureEvent('favorite_toggled', {
-      adding: !favoriteSet.has(key),
-      signed_in: Boolean(userId),
-    })
+  // Add/remove `key` and fire the matching cloud write. No-op if already in the
+  // desired state. Returns nothing; updates state + cookie optimistically.
+  const writeKey = useCallback((key, shouldFavorite) => {
     setFavoriteIds(prev => {
+      const has = prev.includes(key)
+      if (has === shouldFavorite) return prev
       const next = toggleFavoriteKey(prev, key)
       saveFavoriteIds(next)
 
       if (supabase && userId) {
-        const adding = next.includes(key)
-        const op = adding
+        const op = shouldFavorite
           ? supabase
               .from('favorites')
               .upsert({ user_id: userId, item_key: key }, {
@@ -119,11 +115,29 @@ export function useFavorites(user) {
 
       return next
     })
-  }, [userId, favoriteSet])
+  }, [userId])
+
+  const toggleFavorite = useCallback(item => {
+    const key = favoriteKey(item)
+    // Capture once per user action, outside the state updater (which React
+    // re-runs under StrictMode). `signed_in` lets us split auth vs anon usage.
+    captureEvent('favorite_toggled', {
+      adding: !favoriteSet.has(key),
+      signed_in: Boolean(userId),
+    })
+    writeKey(key, !favoriteSet.has(key))
+  }, [userId, favoriteSet, writeKey])
+
+  // Quietly drop an item from favorites without firing a toggle event — used
+  // when an item is marked "not interested", so the two lists stay exclusive.
+  const removeFavorite = useCallback(item => {
+    writeKey(favoriteKey(item), false)
+  }, [writeKey])
 
   return {
     favoriteIds,
     isFavorite,
     toggleFavorite,
+    removeFavorite,
   }
 }

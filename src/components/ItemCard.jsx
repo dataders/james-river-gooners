@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { timeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 
-export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, onItemClick }) {
+export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick }) {
   const imgSrc = item.images?.[0] || null
   const remaining = timeRemaining(item.endDate)
 
@@ -15,14 +15,28 @@ export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, on
     onToggleFavorite(item)
   }
 
+  const toggleIgnored = (event) => {
+    event.stopPropagation()
+    onToggleIgnored(item)
+  }
+
   return (
     <div
       role="button"
       tabIndex={0}
-      className="item-card"
+      className={`item-card${isIgnored ? ' ignored' : ''}`}
       onClick={() => onItemClick(item)}
       onKeyDown={(e) => { if (e.key === 'Enter') onItemClick(item) }}
     >
+      <button
+        type="button"
+        className={`ignore-button${isIgnored ? ' active' : ''}`}
+        aria-label={isIgnored ? 'Stop ignoring' : 'Not interested'}
+        title={isIgnored ? 'Stop ignoring' : 'Not interested'}
+        onClick={toggleIgnored}
+      >
+        ✕
+      </button>
       <button
         type="button"
         className={`favorite-button${isFavorite ? ' active' : ''}`}
