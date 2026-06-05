@@ -43,3 +43,52 @@ export function getDisplayEnrichment(item) {
 export function hasEnrichment(item) {
   return getDisplayEnrichment(item) !== null
 }
+
+// --- Backend-sourced enrichment (#155) ------------------------------------
+// Enrichment is dual-written: baked onto each lot in the NDJSON read model, and
+// mirrored (medium/high only) into the Supabase `lot_enrichment` table. The UI
+// reads the backend copy via `useEnrichment` so refreshed enrichment shows up
+// without a re-scrape, and falls back to the NDJSON-baked fields when Supabase
+// is unconfigured or a lot has no backend row.
+
+// Map a `public_lot_enrichment` view row (snake_case) onto the item's enrichment
+// fields (camelCase), so an overlaid item is indistinguishable from one enriched
+// straight off the NDJSON.
+export function mapEnrichmentRow(row) {
+  return {
+    brand: row?.brand || '',
+    modelOrSku: row?.model_or_sku || '',
+    condition: row?.condition || '',
+    productUrl: row?.product_url || '',
+    enrichmentConfidence: row?.confidence || '',
+    enrichmentModel: row?.model || '',
+  }
+}
+
+// Group one auction's view rows into { [itemId]: mappedFields }, keyed by the
+// stringified item id so it matches the item's `id` regardless of number/string.
+export function groupEnrichmentRows(rows) {
+  const byItem = {}
+  for (const row of rows || []) {
+    if (row?.item_id == null) continue
+    byItem[String(row.item_id)] = mapEnrichmentRow(row)
+  }
+  return byItem
+}
+
+// Overlay backend enrichment onto items by (auctionSafeId, id). A lot with a
+// backend row gets those fields (backend is authoritative + fresher); a lot
+// without one keeps its NDJSON-baked fields (the offline/fallback source). The
+// original array/item references are preserved when nothing overlays, so
+// memoized downstream consumers don't churn.
+export function overlayEnrichment(items, byAuction) {
+  if (!items || !byAuction) return items || []
+  let changed = false
+  const next = items.map(item => {
+    const fields = byAuction[item.auctionSafeId]?.[String(item.id)]
+    if (!fields) return item
+    changed = true
+    return { ...item, ...fields }
+  })
+  return changed ? next : items
+}
