@@ -230,17 +230,8 @@ def jitter_sleep(base_seconds: float, _rand=random.uniform) -> None:
     sleep(_rand(base_seconds * 0.5, base_seconds * 2.5))
 
 
-def compact_item_text(item: dict) -> str:
-    raw_text = " ".join(
-        str(part)
-        for part in (
-            item.get("description"),
-            "" if re.match(r"^lot\s*-", str(item.get("title", "")), re.IGNORECASE) else item.get("title"),
-            item.get("rawCategory"),
-        )
-        if part
-    )
-    cleaned = raw_text
+def clean_comp_text(raw_text: str) -> str:
+    cleaned = raw_text or ""
     for pattern in (
         r"\bserial\s+number\b.*$",
         r"\bthis is a used firearm\b.*$",
@@ -251,6 +242,37 @@ def compact_item_text(item: dict) -> str:
     cleaned = cleaned.replace("“", '"').replace("”", '"')
     cleaned = re.sub(r"[^\w\s\".'-]", " ", cleaned)
     return normalize_spaces(cleaned)
+
+
+def compact_item_text(item: dict) -> str:
+    raw_text = " ".join(
+        str(part)
+        for part in (
+            item.get("description"),
+            "" if re.match(r"^lot\s*-", str(item.get("title", "")), re.IGNORECASE) else item.get("title"),
+            item.get("rawCategory"),
+        )
+        if part
+    )
+    return clean_comp_text(raw_text)
+
+
+def item_exact_phrase(item: dict, max_words: int = 6) -> str:
+    """Quoted exact-phrase query from the lot's most descriptive contiguous
+    text — its real title, or the description when the title is a "Lot - N"
+    placeholder. eBay (and the SoldComps keyword param) treat double quotes as
+    an exact-phrase match, so this is the precise primary query; the token-bag
+    broad/category queries below stay as fallbacks for when the phrase returns
+    nothing. Returns "" when there's no usable multi-word phrase."""
+    title = str(item.get("title") or "")
+    if title.strip() and not re.match(r"^lot\s*-", title, re.IGNORECASE):
+        source = title
+    else:
+        source = str(item.get("description") or "")
+    words = [word for word in clean_comp_text(source).split(" ") if word][:max_words]
+    if len(words) < 2:
+        return ""
+    return '"' + " ".join(words) + '"'
 
 
 def meaningful_tokens(text: str) -> list[str]:
@@ -298,8 +320,15 @@ def build_ebay_sold_searches(item: dict) -> list[dict]:
     specific_tokens = dedupe_words(tokens[:4] + model_tokens)[:5]
     category_tokens = meaningful_tokens(f"{item.get('rawCategory') or item.get('category') or ''} {text}")[:4]
 
+    # Primary query is a quoted exact phrase so eBay/SoldComps match the lot's
+    # actual name instead of OR-ing its individual words (which surfaced
+    # irrelevant comps and burned the SoldComps quota). Fall back to the token
+    # bag only when there's no usable phrase; broad/category recover recall when
+    # the exact phrase returns nothing.
+    specific_query = item_exact_phrase(item) or " ".join(specific_tokens)
+
     candidates = [
-        {"kind": "specific", "label": "Specific match", "query": " ".join(specific_tokens)},
+        {"kind": "specific", "label": "Specific match", "query": specific_query},
         {"kind": "broad", "label": "Broader match", "query": " ".join(broad_tokens)},
         {"kind": "category", "label": "Category match", "query": " ".join(dedupe_words(category_tokens))},
     ]

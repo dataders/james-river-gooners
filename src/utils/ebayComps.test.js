@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import {
   buildEbaySoldSearches,
   buildEbaySoldSearchUrl,
+  itemExactPhrase,
   compactItemText,
   getEbayCompThumbnail,
   getEbayCompKey,
@@ -120,6 +121,40 @@ test('buildEbaySoldSearches handles decorative item descriptions', () => {
 
   assert.match(searches[0].query, /Lenox handcrafted porcelain vase/i)
   assert.equal(searches.some(search => search.query.includes('measures')), false)
+})
+
+test('buildEbaySoldSearches uses a quoted exact phrase for the specific query', () => {
+  // The motivating bug: tokenized queries OR'd individual words, so a trumpet
+  // matched any of fever/brand/brass/student/trumpet and returned junk.
+  const searches = buildEbaySoldSearches({
+    title: 'Fever Brand Brass Student Trumpet',
+    description: '',
+    category: 'Musical Instruments',
+    rawCategory: 'Musical Instruments',
+  })
+
+  assert.equal(searches[0].kind, 'specific')
+  assert.equal(searches[0].query, '"Fever Brand Brass Student Trumpet"')
+  // The eBay link carries the quoted phrase through to _nkw (URLSearchParams
+  // encodes the quotes as %22 and spaces as +).
+  assert.match(searches[0].url, /_nkw=%22Fever\+Brand\+Brass\+Student\+Trumpet%22/)
+  // Broad/category fallbacks remain available, and they are NOT quoted.
+  assert.ok(searches.some(s => s.kind === 'broad' && !s.query.includes('"')))
+})
+
+test('itemExactPhrase caps length, falls back to description, and skips one-word lots', () => {
+  // Real title wins, capped to six words.
+  assert.equal(
+    itemExactPhrase({ title: 'Vintage Omega Seamaster De Ville Automatic Wristwatch' }),
+    '"Vintage Omega Seamaster De Ville Automatic"'
+  )
+  // "Lot - N" placeholder titles fall back to the description.
+  assert.equal(
+    itemExactPhrase({ title: 'Lot - 12', description: 'Pair of brass candlesticks' }),
+    '"Pair of brass candlesticks"'
+  )
+  // A single meaningful word is not a phrase — caller falls back to tokens.
+  assert.equal(itemExactPhrase({ title: 'Trumpet', description: '' }), '')
 })
 
 test('restricted categories include a warning', () => {
