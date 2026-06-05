@@ -822,6 +822,27 @@ body {
   margin-bottom: 4px;
 }
 
+.bid-status-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 99px;
+  margin-bottom: 5px;
+}
+
+.bid-status-winning {
+  background: #1a7f37;
+  color: #fff;
+}
+
+.bid-status-outbid {
+  background: #c23030;
+  color: #fff;
+}
+
 .item-bid-row {
   display: flex;
   justify-content: space-between;

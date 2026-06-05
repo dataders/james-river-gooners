@@ -1,7 +1,6 @@
 // Usability benchmark runner.
 //
 // Prints the scorecard to the test runner, so console output is intentional here.
-/* eslint-disable no-console */
 //
 // Runs each bidder objective, plus global performance / responsive /
 // accessibility probes, then writes a scored report to:
