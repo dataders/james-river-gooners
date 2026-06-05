@@ -1373,6 +1373,21 @@ body {
 .changelog-release-title {
   font-size: 0.95rem;
   color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.changelog-new-pill {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 999px;
+  line-height: 1;
 }
 
 .changelog-release-date {
