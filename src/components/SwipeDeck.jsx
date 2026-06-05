@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { timeRemaining } from '../utils/time'
+import { itemTimeRemaining } from '../utils/time'
 
 // Tinder-style review deck. One card at a time from a snapshot `items` list:
 // swipe/drag right (or ♥ / →) to favorite, left (or ✕ / ←) to mark not
@@ -19,7 +19,7 @@ export function SwipeDeck({ items, onFavorite, onIgnore, onClose }) {
   const cardRef = useRef(null)
 
   const item = items[index]
-  const remaining = item ? timeRemaining(item.endDate) : null
+  const remaining = item ? itemTimeRemaining(item) : null
 
   const commit = useCallback((dir) => {
     const current = items[index]

@@ -12,6 +12,8 @@ export const SORT_OPTIONS = [
   { key: 'priceAsc', label: 'Price: low to high' },
   { key: 'priceDesc', label: 'Price: high to low' },
   { key: 'bids', label: 'Most bids' },
+  { key: 'biddersDesc', label: 'Most bidders' },
+  { key: 'biddersAsc', label: 'Fewest bidders' },
 ]
 
 // Hours until an item ends. Delegates date parsing to the shared
@@ -53,6 +55,10 @@ export function sortItems(items, sortKey) {
       return arr.sort((a, b) => num(b.currentBid) - num(a.currentBid))
     case 'bids':
       return arr.sort((a, b) => num(b.totalBids) - num(a.totalBids))
+    case 'biddersDesc':
+      return arr.sort((a, b) => num(b.uniqueBidders) - num(a.uniqueBidders))
+    case 'biddersAsc':
+      return arr.sort((a, b) => num(a.uniqueBidders) - num(b.uniqueBidders))
     default:
       return items
   }

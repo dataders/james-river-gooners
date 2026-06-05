@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { timeRemaining } from './time.js'
+import { timeRemaining, itemTimeRemaining } from './time.js'
 
 // ── missing / empty input ─────────────────────────────────────────────────────
 
@@ -61,4 +61,26 @@ test('timeRemaining uses Xh Ym format when less than 24 hours remain', () => {
   const future = new Date(Date.now() + 3 * 3600 * 1000).toISOString()
   const result = timeRemaining(future)
   assert.match(result, /^\d+h \d+m$/)
+})
+
+// ── itemTimeRemaining: auctionEndDate fallback (closed Cannon's lots) ─────────
+
+test('itemTimeRemaining uses endDate when present', () => {
+  assert.equal(itemTimeRemaining({ endDate: '2020-01-01 12:00:00 PM' }), 'Ended')
+})
+
+test('itemTimeRemaining falls back to auctionEndDate when endDate is blank', () => {
+  assert.equal(
+    itemTimeRemaining({ endDate: '', auctionEndDate: '2020-01-01 12:00:00 PM' }),
+    'Ended',
+  )
+})
+
+test('itemTimeRemaining returns empty string when both dates are missing', () => {
+  assert.equal(itemTimeRemaining({ endDate: '', auctionEndDate: '' }), '')
+})
+
+test('itemTimeRemaining handles a null/undefined item', () => {
+  assert.equal(itemTimeRemaining(null), '')
+  assert.equal(itemTimeRemaining(undefined), '')
 })
