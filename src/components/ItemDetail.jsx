@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { timeRemaining } from '../utils/time'
+import { itemTimeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
 import { CategorySoldHistory } from './CategorySoldHistory'
@@ -39,7 +39,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const imgIndex = imageState.itemKey === itemKey
     ? Math.min(imageState.imgIndex, maxImgIndex)
     : 0
-  const remaining = timeRemaining(item.endDate)
+  const remaining = itemTimeRemaining(item)
 
   const setCurrentImgIndex = (updater) => {
     setImageState(prevState => {

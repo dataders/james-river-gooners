@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
-import { timeRemaining } from '../utils/time'
+import { itemTimeRemaining } from '../utils/time'
 
 const HOUR_OPTIONS = [
   { label: '24h', value: 24 },
@@ -86,7 +86,7 @@ export function DealsPanel({ items, allComps, onItemClick }) {
 
 function DealCard({ item, median, maxBid, allIn, margin, onItemClick }) {
   const imgSrc = item.images?.[0] || null
-  const remaining = timeRemaining(item.endDate)
+  const remaining = itemTimeRemaining(item)
   const marginPct = Math.round(margin * 100)
   const clickable = typeof onItemClick === 'function'
   const open = () => clickable && onItemClick(item)

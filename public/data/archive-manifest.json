@@ -88,7 +88,8 @@
       "itemCount": 153,
       "itemsPath": "data/archive/items/aEishQMt5bzRYJgbdQEwdw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/aEishQMt5bzRYJgbdQEwdw.ndjson"
+      "ndjsonPath": "data/archive/items/aEishQMt5bzRYJgbdQEwdw.ndjson",
+      "embeddingsPath": "data/archive/items/aEishQMt5bzRYJgbdQEwdw.embeddings"
     },
     {
       "safeId": "AsuPfDpHW89m4S-SJ1K6Xw",
@@ -128,7 +129,8 @@
       "itemCount": 91,
       "itemsPath": "data/archive/items/QCh2BE-Evlvk01UW1xf6Ow.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/QCh2BE-Evlvk01UW1xf6Ow.ndjson"
+      "ndjsonPath": "data/archive/items/QCh2BE-Evlvk01UW1xf6Ow.ndjson",
+      "embeddingsPath": "data/archive/items/QCh2BE-Evlvk01UW1xf6Ow.embeddings"
     },
     {
       "safeId": "T-xEfNn2QOTKtc6i7Gy3Ng",
@@ -218,7 +220,8 @@
       "itemCount": 131,
       "itemsPath": "data/archive/items/uQCxvWTgTM4VQJomOizg2w.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/uQCxvWTgTM4VQJomOizg2w.ndjson"
+      "ndjsonPath": "data/archive/items/uQCxvWTgTM4VQJomOizg2w.ndjson",
+      "embeddingsPath": "data/archive/items/uQCxvWTgTM4VQJomOizg2w.embeddings"
     },
     {
       "safeId": "lC5_JUdif3Suo-R875jvbw",
@@ -228,7 +231,8 @@
       "itemCount": 162,
       "itemsPath": "data/archive/items/lC5_JUdif3Suo-R875jvbw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/lC5_JUdif3Suo-R875jvbw.ndjson"
+      "ndjsonPath": "data/archive/items/lC5_JUdif3Suo-R875jvbw.ndjson",
+      "embeddingsPath": "data/archive/items/lC5_JUdif3Suo-R875jvbw.embeddings"
     },
     {
       "safeId": "ZolUFw6WUqczjHQfI9HsIA",
@@ -238,7 +242,8 @@
       "itemCount": 152,
       "itemsPath": "data/archive/items/ZolUFw6WUqczjHQfI9HsIA.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/ZolUFw6WUqczjHQfI9HsIA.ndjson"
+      "ndjsonPath": "data/archive/items/ZolUFw6WUqczjHQfI9HsIA.ndjson",
+      "embeddingsPath": "data/archive/items/ZolUFw6WUqczjHQfI9HsIA.embeddings"
     },
     {
       "safeId": "XgTddU43tCQrk0_gjgUuBA",

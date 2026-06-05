@@ -119,6 +119,11 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
   const valueLoPct = logScale ? toLog(valueLo, min, max) : (valueLo - min) / (max - min || 1)
   const valueHiPct = logScale ? toLog(valueHi, min, max) : (valueHi - min) / (max - min || 1)
 
+  // When both thumbs land on the same pixel the hi thumb (z-index:2) is always
+  // on top and the lo thumb becomes unreachable. Bring lo on top whenever it
+  // has caught up with hi so the user can drag it back left to un-stick.
+  const loOnTop = sliderLo >= sliderHi
+
   return (
     <div className="range-filter">
       <label className="range-label">
@@ -132,6 +137,7 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
         <input
           type="range"
           className="range-slider range-slider-lo"
+          style={loOnTop ? { zIndex: 3 } : undefined}
           min={0}
           max={SLIDER_STEPS}
           step={1}
