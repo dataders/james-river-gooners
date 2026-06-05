@@ -73,9 +73,7 @@ def _lot_row(item: dict, archived: bool = False) -> dict:
     return {k: json_safe(v) for k, v in row.items()}
 
 
-def _post_batch(rows: list[dict], url: str, key: str) -> None:
-    import requests
-
+def _post_batch(rows: list[dict], url: str, key: str, session) -> None:
     endpoint = f"{url.rstrip('/')}/rest/v1/{LOTS_TABLE}"
     headers = {
         "apikey": key,
@@ -83,8 +81,9 @@ def _post_batch(rows: list[dict], url: str, key: str) -> None:
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
-    resp = requests.post(endpoint, json=rows, headers=headers)
-    resp.raise_for_status()
+    resp = session.post(endpoint, json=rows, headers=headers)
+    if not resp.ok:
+        raise RuntimeError(f"lots upsert failed: {resp.status_code} {resp.text[:300]}")
 
 
 def upsert_lots(
@@ -93,16 +92,23 @@ def upsert_lots(
     *,
     url: str = None,
     key: str = None,
+    session=None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> int:
     """Upsert active items for one auction into ``lots``. Returns row count."""
+    if not items:
+        return 0
     url, key = resolve_credentials(url, key)
     if not url or not key:
         return 0
 
+    if session is None:
+        import requests as _requests
+        session = _requests.Session()
+
     rows = [_lot_row(item) for item in items]
     for i in range(0, len(rows), batch_size):
-        _post_batch(rows[i : i + batch_size], url, key)
+        _post_batch(rows[i : i + batch_size], url, key, session)
 
     print(f"Upserted {len(rows)} lots for {safe_id} to Supabase")
     return len(rows)
@@ -114,16 +120,23 @@ def archive_lots(
     *,
     url: str = None,
     key: str = None,
+    session=None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> int:
     """Mark all lots for ``safe_id`` as archived and write final prices."""
+    if not final_items:
+        return 0
     url, key = resolve_credentials(url, key)
     if not url or not key:
         return 0
 
+    if session is None:
+        import requests as _requests
+        session = _requests.Session()
+
     rows = [_lot_row(item, archived=True) for item in final_items]
     for i in range(0, len(rows), batch_size):
-        _post_batch(rows[i : i + batch_size], url, key)
+        _post_batch(rows[i : i + batch_size], url, key, session)
 
     print(f"Archived {len(rows)} lots for {safe_id} in Supabase")
     return len(rows)
@@ -133,6 +146,7 @@ def backfill(
     *,
     url: str = None,
     key: str = None,
+    session=None,
     do_active: bool = True,
     do_archived: bool = True,
 ) -> tuple[int, int]:
@@ -141,8 +155,14 @@ def backfill(
     Returns ``(active_count, archived_count)``.
     """
     url, key = resolve_credentials(url, key)
-    if not url or not key:
-        raise RuntimeError("SUPABASE_URL and SUPABASE_SECRET_KEY are required for backfill")
+    if not url:
+        raise RuntimeError("SUPABASE_URL is required for backfill")
+    if not key:
+        raise RuntimeError("SUPABASE_SECRET_KEY is required for backfill")
+
+    if session is None:
+        import requests as _requests
+        session = _requests.Session()
 
     active_total = 0
     if do_active and ITEMS_DIR.exists():
@@ -151,7 +171,7 @@ def backfill(
         for ndjson_path in paths:
             items = [json.loads(l) for l in ndjson_path.read_text().splitlines() if l.strip()]
             if items:
-                active_total += upsert_lots(items, ndjson_path.stem, url=url, key=key)
+                active_total += upsert_lots(items, ndjson_path.stem, url=url, key=key, session=session)
 
     archived_total = 0
     if do_archived and ARCHIVE_ITEMS_DIR.exists():
@@ -160,7 +180,7 @@ def backfill(
         for ndjson_path in paths:
             items = [json.loads(l) for l in ndjson_path.read_text().splitlines() if l.strip()]
             if items:
-                archived_total += archive_lots(ndjson_path.stem, items, url=url, key=key)
+                archived_total += archive_lots(ndjson_path.stem, items, url=url, key=key, session=session)
 
     return active_total, archived_total
 
