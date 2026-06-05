@@ -38,11 +38,23 @@ const PERSISTED_KEYS = [
   'margin',
 ]
 
+// An "Ends within" upper bound of 0 (or less, or NaN) can only ever match an
+// item ending at this exact instant — time-remaining is otherwise always > 0 —
+// so it silently hides the entire grid. It's never a useful filter, and because
+// maxHours persists to localStorage and the maxHrs URL param, a stray 0 stays
+// stuck across reloads. Normalize it back to null ("no upper bound").
+export function sanitizePrefs(prefs) {
+  if (prefs.maxHours != null && !(prefs.maxHours > 0)) {
+    return { ...prefs, maxHours: null }
+  }
+  return prefs
+}
+
 export function loadPrefs() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return { ...DEFAULT_PREFS, ...JSON.parse(stored) }
+      return sanitizePrefs({ ...DEFAULT_PREFS, ...JSON.parse(stored) })
     }
   } catch {
     // ignore
