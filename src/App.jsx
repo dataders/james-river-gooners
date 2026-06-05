@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useFavorites } from './hooks/useFavorites'
+import { useIgnored } from './hooks/useIgnored'
 import { useAuth } from './hooks/useAuth'
 import { useCannonBids } from './hooks/useCannonBids'
 import { usePreferences } from './hooks/usePreferences'
@@ -15,7 +16,7 @@ import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { sortItems } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
-import { captureEvent } from './lib/analytics'
+import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { SortBar } from './components/SortBar'
 import { AuctionFilter } from './components/AuctionFilter'
@@ -26,6 +27,7 @@ import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
+import { SwipeDeck } from './components/SwipeDeck'
 import { TutorialModal } from './components/TutorialModal'
 import { AuthModal } from './components/AuthModal'
 import { CannonLinkModal } from './components/CannonLinkModal'
@@ -102,8 +104,20 @@ export default function App() {
   const auth = useAuth()
   const [authOpen, setAuthOpen] = useState(false)
   const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
-  const { favoriteIds, isFavorite, toggleFavorite } = useFavorites(auth.user)
+  const { favoriteIds, isFavorite, toggleFavorite, removeFavorite } = useFavorites(auth.user)
+  const { ignoredIds, isIgnored, toggleIgnored, removeIgnored } = useIgnored(auth.user)
   const cannonBids = useCannonBids(auth.user)
+
+  // Favorites and ignores are mutually exclusive: deciding one clears the other.
+  const handleToggleFavorite = useCallback((item) => {
+    if (!isFavorite(item) && isIgnored(item)) removeIgnored(item)
+    toggleFavorite(item)
+  }, [isFavorite, isIgnored, removeIgnored, toggleFavorite])
+
+  const handleToggleIgnored = useCallback((item) => {
+    if (!isIgnored(item) && isFavorite(item)) removeFavorite(item)
+    toggleIgnored(item)
+  }, [isIgnored, isFavorite, removeFavorite, toggleIgnored])
 
   const headerRef = useRef(null)
   const [headerHeight, setHeaderHeight] = useState(Infinity)
@@ -122,7 +136,25 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get('bestDeals') === '1'
   )
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [showIgnoredOnly, setShowIgnoredOnly] = useState(false)
   const [showMyBidsOnly, setShowMyBidsOnly] = useState(false)
+  const [swipeOpen, setSwipeOpen] = useState(false)
+  const [swipeItems, setSwipeItems] = useState([])
+
+  // Favorites and the ignore bin are opposite views — turning one on closes the
+  // other so the grid never tries to be both at once.
+  const toggleFavoritesView = useCallback(() => {
+    setShowFavoritesOnly(v => {
+      if (!v) setShowIgnoredOnly(false)
+      return !v
+    })
+  }, [])
+  const toggleIgnoredView = useCallback(() => {
+    setShowIgnoredOnly(v => {
+      if (!v) setShowFavoritesOnly(false)
+      return !v
+    })
+  }, [])
 
   // Deep-link: open item modal once data loads
   const initialItemKey = useRef(new URLSearchParams(window.location.search).get('item'))
@@ -238,11 +270,23 @@ export default function App() {
   }, [filteredItems, hasComp, bestDeals, allComps])
 
   const finalItems = useMemo(() => {
-    let result = displayItems
+    // Ignored bin is its own exclusive view; otherwise ignored items are hidden
+    // from the grid entirely (that's the point of marking "not interested").
+    if (showIgnoredOnly) return displayItems.filter(isIgnored)
+    let result = displayItems.filter(item => !isIgnored(item))
     if (showFavoritesOnly) result = result.filter(isFavorite)
     if (showMyBidsOnly) result = result.filter(item => cannonBids.bidItemIds.has(String(item.id)))
     return result
-  }, [displayItems, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds])
+  }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds])
+
+  // Snapshot the not-yet-decided items when the swipe deck opens so the deck
+  // doesn't reshuffle as the user favorites/ignores its way through.
+  const openSwipe = useCallback(() => {
+    const deck = displayItems.filter(item => !isIgnored(item) && !isFavorite(item))
+    setSwipeItems(deck)
+    setSwipeOpen(true)
+    captureEvent('swipe_deck_opened', { count: deck.length })
+  }, [displayItems, isIgnored, isFavorite])
 
   const sortedItems = useMemo(() => sortItems(finalItems, sort), [finalItems, sort])
 
@@ -317,9 +361,24 @@ export default function App() {
           <button
             type="button"
             className={`deals-toggle${showFavoritesOnly ? ' active' : ''}`}
-            onClick={() => setShowFavoritesOnly(v => !v)}
+            onClick={toggleFavoritesView}
           >
             {favoriteIds.length > 0 ? `Favorites (${favoriteIds.length})` : 'Favorites'}
+          </button>
+          <button
+            type="button"
+            className={`deals-toggle${showIgnoredOnly ? ' active' : ''}`}
+            onClick={toggleIgnoredView}
+          >
+            {ignoredIds.length > 0 ? `Ignored (${ignoredIds.length})` : 'Ignored'}
+          </button>
+          <button
+            type="button"
+            className="deals-toggle swipe-launch"
+            onClick={openSwipe}
+            title="Review items one at a time"
+          >
+            ⇄ Swipe
           </button>
           {cannonBids.linked && (
             <button
@@ -428,6 +487,14 @@ export default function App() {
                 Star items in the grid to save them here.
               </p>
             </div>
+          ) : showIgnoredOnly && finalItems.length === 0 ? (
+            <div className="no-deals-message">
+              <div className="item-count">0 items</div>
+              <p>Nothing ignored.</p>
+              <p className="no-deals-hint">
+                Hit the ✕ on an item to hide it from the grid. Ignored items show up here.
+              </p>
+            </div>
           ) : showMyBidsOnly && finalItems.length === 0 ? (
             <div className="no-deals-message">
               <div className="item-count">0 items</div>
@@ -443,7 +510,9 @@ export default function App() {
               items={sortedItems}
               allComps={allComps}
               isFavorite={isFavorite}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={handleToggleFavorite}
+              isIgnored={isIgnored}
+              onToggleIgnored={handleToggleIgnored}
               onItemClick={handleItemClick}
             />
           )}
@@ -464,8 +533,19 @@ export default function App() {
           ebayComps={allComps[selectedItem.auctionSafeId] || {}}
           margin={margin}
           isFavorite={isFavorite(selectedItem)}
-          onToggleFavorite={toggleFavorite}
+          onToggleFavorite={handleToggleFavorite}
+          isIgnored={isIgnored(selectedItem)}
+          onToggleIgnored={handleToggleIgnored}
           onClose={handleItemClose}
+        />
+      )}
+
+      {swipeOpen && (
+        <SwipeDeck
+          items={swipeItems}
+          onFavorite={handleToggleFavorite}
+          onIgnore={handleToggleIgnored}
+          onClose={() => setSwipeOpen(false)}
         />
       )}
     </div>
