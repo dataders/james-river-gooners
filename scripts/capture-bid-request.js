@@ -69,8 +69,8 @@ for (const el of loginInputs) {
   console.log(`  name="${name}" type="${type}" id="${id}"`)
 }
 
-// Cannon's login form uses "Email" or "BidderNumber" label
-const emailField = page.locator('input[name="Email"], input[type="email"], input[name="BidderNumber"]').first()
+// Cannon's login form field is "Username" (not Email or BidderNumber)
+const emailField = page.locator('input[name="Username"]').first()
 await emailField.fill(CANNON_EMAIL)
 await page.locator('input[type="password"]').first().fill(CANNON_PASS)
 
