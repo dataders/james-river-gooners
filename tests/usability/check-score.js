@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 // CI gate for the usability benchmark. Reads the scorecard written by
 // `npm run test:usability` and fails (exit 1) if the overall score drops below
 // the gate or any bidder objective regressed to a failure.

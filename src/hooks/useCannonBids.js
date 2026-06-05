@@ -26,6 +26,7 @@ export function useCannonBids(user) {
   const [linked, setLinked] = useState(false)
   const [username, setUsername] = useState(null)
   const [bidItemIds, setBidItemIds] = useState(() => new Set())
+  const [bidStatuses, setBidStatuses] = useState(() => new Map())
   const [statusLoading, setStatusLoading] = useState(false)
   const [bidsLoading, setBidsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -63,6 +64,15 @@ export function useCannonBids(user) {
     setBidsLoading(false)
     if (result.error) { setError(result.error); return }
     setBidItemIds(new Set((result.itemIds ?? []).map(String)))
+    const statusMap = new Map()
+    for (const s of (result.statuses ?? [])) {
+      statusMap.set(String(s.auctionItemId), {
+        winning: s.winning,
+        currentBid: s.currentBid,
+        minimumNextBid: s.minimumNextBid,
+      })
+    }
+    setBidStatuses(statusMap)
   }, [])
 
   // Fetch bids once we know the account is linked.
@@ -90,6 +100,7 @@ export function useCannonBids(user) {
     setLinked(false)
     setUsername(null)
     setBidItemIds(new Set())
+    setBidStatuses(new Map())
     loadedUserId.current = null
     return {}
   }, [])
@@ -98,6 +109,7 @@ export function useCannonBids(user) {
     linked,
     username,
     bidItemIds,
+    bidStatuses,
     statusLoading,
     bidsLoading,
     error,

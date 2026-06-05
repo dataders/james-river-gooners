@@ -578,6 +578,7 @@ export default function App() {
               isIgnored={isIgnored}
               onToggleIgnored={handleToggleIgnored}
               onItemClick={handleItemClick}
+              bidStatuses={cannonBids.bidStatuses}
             />
           )}
         </main>
