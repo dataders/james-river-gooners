@@ -138,7 +138,13 @@ is additive, not a rewrite:
 - **View `public_auction_comps`** — the browser read model: latest fetch per
   `(auction_safe_id, item_id, source_query)`, dropping rows with no listing.
   `security_invoker = on`, granted to `anon`/`authenticated`.
-- **SQL:** `supabase/migrations/0003_ebay_comps.sql`.
+- **Retention** — a daily `pg_cron` job (`prune-stale-ebay-comps`, 03:17 UTC)
+  deletes snapshots whose `ingested_at` is older than 90 days. Such a row is
+  never the latest fetch for an active auction (those re-fetch every run), so
+  pruning only clears comps for auctions that ended and stopped being scraped,
+  keeping the free-tier 500 MB database from accumulating dead rows.
+- **SQL:** `supabase/migrations/0003_ebay_comps.sql`,
+  `supabase/migrations/0004_ebay_comps_retention.sql`.
 
 ## Known debt / in-progress normalization
 

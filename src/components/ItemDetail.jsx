@@ -4,7 +4,7 @@ import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
 import { RoiCalculator } from './RoiCalculator'
 
-export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, isFavorite, onToggleFavorite, onClose }) {
+export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [copied, setCopied] = useState(false)
 
@@ -83,6 +83,15 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, is
         <div className="detail-body">
           <div className="detail-title-row">
             <h2 className="detail-title">{item.title}</h2>
+            <button
+              type="button"
+              className={`ignore-button detail-ignore${isIgnored ? ' active' : ''}`}
+              aria-label={isIgnored ? 'Stop ignoring' : 'Not interested'}
+              title={isIgnored ? 'Stop ignoring' : 'Not interested'}
+              onClick={() => onToggleIgnored(item)}
+            >
+              ✕
+            </button>
             <button
               type="button"
               className={`favorite-button detail-favorite${isFavorite ? ' active' : ''}`}
