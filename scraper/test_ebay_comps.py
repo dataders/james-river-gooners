@@ -804,7 +804,8 @@ class BackfillBudgetTest(unittest.TestCase):
             # May has 31 days; from the 30th, 2 days remain -> ceil(2000/2) = 1000.
             now = datetime(2026, 5, 30, 12, 0, tzinfo=timezone.utc)
             cap_active, limit = ebay_comps.resolve_query_budget(
-                Path(tmp), monthly_budget=2000, max_queries=0, daily_pacing=True, now=now)
+                ebay_comps.FileCompLedger(Path(tmp)),
+                monthly_budget=2000, max_queries=0, daily_pacing=True, now=now)
         self.assertTrue(cap_active)
         self.assertEqual(limit, 1000)
 
@@ -863,6 +864,69 @@ class BackfillBudgetTest(unittest.TestCase):
         missing = ebay_comps.auction_end_sort_key({"auctionEndDate": ""})
         self.assertLess(soon, late)
         self.assertLess(late, missing)
+
+
+class FetchDirectSupabaseModeTest(unittest.TestCase):
+    """With Supabase as the backend, the run reads/writes the table, not JSON."""
+
+    @staticmethod
+    def _item(item_id=0):
+        return {
+            "auctionSafeId": "A",
+            "id": str(item_id),
+            "title": "Distinctive Brass Telescope Antique",
+            "auctionEndDate": "2026-06-30 6:00:00 PM",
+        }
+
+    def test_supabase_mode_writes_no_json_and_mirrors_rows(self):
+        fake_ledger = Mock()
+        fake_ledger.fresh_keys.return_value = set()
+        fake_ledger.requests_used_in_month.return_value = 0
+        fake_ledger.requests_used_today.return_value = 0
+
+        def fake(session, search, max_matches=3):
+            return {
+                "status": "ok",
+                "matches": [{
+                    "ebay_item_id": "9",
+                    "item_web_url": "https://www.ebay.com/itm/9",
+                    "price_value": "10",
+                }],
+                "warning": None,
+            }
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.supabase_comp_backend_active", return_value=True), \
+                patch("supabase_comps.SupabaseCompLedger", return_value=fake_ledger), \
+                patch("ebay_comps.load_manifest_items", return_value=[self._item()]), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake), \
+                patch("ebay_comps.mirror_rows_to_warehouse") as mirror:
+            out = Path(tmp)
+            summary = ebay_comps.fetch_direct(
+                output_dir=out, limit=10, queries_per_item=1, monthly_budget=0,
+                stale_hours=0, sleep_seconds=0, mirror_to_warehouse=True,
+            )
+
+        self.assertEqual(summary["files_written"], 0)
+        self.assertEqual(list(out.glob("*.json")), [])  # no JSON read model written
+        fake_ledger.fresh_keys.assert_called_once()  # freshness came from the ledger
+        mirror.assert_called_once()
+        mirrored_rows = mirror.call_args[0][0]
+        self.assertTrue(any(r.get("item_web_url") for r in mirrored_rows))
+
+    def test_no_mirror_forces_file_backend_even_if_supabase_configured(self):
+        # --no-mirror (mirror_to_warehouse=False) must never touch Supabase.
+        with patch("ebay_comps.supabase_comp_backend_active") as active, \
+                patch("ebay_comps.load_manifest_items", return_value=[self._item()]), \
+                patch("ebay_comps.fetch_sold_matches",
+                      return_value={"status": "no_results", "matches": [], "warning": None}), \
+                tempfile.TemporaryDirectory() as tmp:
+            ebay_comps.fetch_direct(
+                output_dir=Path(tmp), limit=1, queries_per_item=1, monthly_budget=0,
+                stale_hours=0, sleep_seconds=0, mirror_to_warehouse=False,
+            )
+        active.assert_not_called()  # short-circuited before the backend check
+
 
 if __name__ == "__main__":
     unittest.main()

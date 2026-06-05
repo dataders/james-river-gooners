@@ -1,13 +1,20 @@
 #!/usr/bin/env python
 """
-Fetch eBay sold-comps into the static GitHub Pages read model.
+Fetch eBay sold-comps into the comps read model.
 
-The per-auction JSON files under public/data/ebay-comps/ are the source of
-truth for comps and are accumulated incrementally: each run refreshes a
-rate-limited subset of items and merges the results into the existing files.
-MotherDuck (or any warehouse behind scraper/warehouse.py) is an OPTIONAL
-mirror, written only when a warehouse is configured - it is never required to
-produce the read model. See docs/data-architecture.md.
+Two backends, selected by the warehouse seam (scraper/warehouse.py):
+
+* Supabase (``GOONERS_WAREHOUSE=supabase`` + credentials) is the production
+  backend (issue #6). Comps are written to the ``ebay_comp_snapshots`` table,
+  which is BOTH the browser read model and the scraper's own ledger: freshness
+  and the shared request budget are read back from it (see SupabaseCompLedger),
+  so no per-run JSON is written or committed.
+* The per-auction JSON files under public/data/ebay-comps/ are the legacy /
+  offline backend (no warehouse configured). They are the read model AND the
+  ledger, accumulated incrementally: each run refreshes a rate-limited subset
+  of items and merges results into the existing files.
+
+See docs/data-architecture.md.
 """
 
 import argparse
@@ -19,6 +26,7 @@ import re
 import shlex
 import subprocess
 import sys
+from abc import ABC, abstractmethod
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -1217,8 +1225,58 @@ def requests_used_today(output_dir: Path, now: datetime | None = None) -> int:
     return requests_used_in_bucket(output_dir, now.strftime("%Y-%m-%d"), "%Y-%m-%d")
 
 
+class CompLedger(ABC):
+    """The scraper's freshness + request-budget state store.
+
+    Two facts drive a comp run: which items were fetched recently (so they are
+    skipped until stale) and how many eBay requests have been spent this
+    month/day (the shared budget). The file backend reads them from the JSON
+    read model; the Supabase backend reads them from reconstruction views.
+    """
+
+    @abstractmethod
+    def fresh_keys(self, stale_hours: int, skip_attempted: bool = False) -> set[str]:
+        """``{auction_safe_id:item_id}`` for items fetched within the window."""
+
+    @abstractmethod
+    def requests_used_in_month(self, now: datetime | None = None) -> int:
+        """eBay requests spent in the current month."""
+
+    @abstractmethod
+    def requests_used_today(self, now: datetime | None = None) -> int:
+        """eBay requests spent so far today."""
+
+
+class FileCompLedger(CompLedger):
+    """Ledger backed by the static per-auction JSON read model (legacy/offline)."""
+
+    def __init__(self, output_dir: Path) -> None:
+        self.output_dir = output_dir
+
+    def fresh_keys(self, stale_hours: int, skip_attempted: bool = False) -> set[str]:
+        return fresh_comp_keys_from_files(self.output_dir, stale_hours, skip_attempted)
+
+    def requests_used_in_month(self, now: datetime | None = None) -> int:
+        return requests_used_in_month(self.output_dir, now)
+
+    def requests_used_today(self, now: datetime | None = None) -> int:
+        return requests_used_today(self.output_dir, now)
+
+
+def supabase_comp_backend_active() -> bool:
+    """Whether comps should use Supabase as the read model + ledger this run."""
+    from warehouse import warehouse_kind
+
+    if warehouse_kind() != "supabase":
+        return False
+    from supabase_comps import resolve_credentials
+
+    url, key = resolve_credentials()
+    return bool(url and key)
+
+
 def resolve_query_budget(
-    output_dir: Path,
+    ledger: CompLedger,
     monthly_budget: int,
     max_queries: int,
     daily_pacing: bool,
@@ -1226,21 +1284,21 @@ def resolve_query_budget(
 ) -> tuple[bool, int]:
     """Return ``(cap_active, query_limit)`` for this run.
 
-    Combines the shared monthly ceiling (derived from the read model), optional
-    even daily pacing across the remaining days of the month, and an explicit
-    per-run ``--max-queries`` cap. ``cap_active`` is False only when nothing
-    constrains the run.
+    Combines the shared monthly ceiling (read from the ledger), optional even
+    daily pacing across the remaining days of the month, and an explicit per-run
+    ``--max-queries`` cap. ``cap_active`` is False only when nothing constrains
+    the run.
     """
     now = now or datetime.now(timezone.utc)
     cap_active = False
     query_limit = 0
     if monthly_budget > 0:
         cap_active = True
-        query_limit = max(0, monthly_budget - requests_used_in_month(output_dir, now))
+        query_limit = max(0, monthly_budget - ledger.requests_used_in_month(now))
         if daily_pacing and query_limit > 0:
             days_left = max(1, calendar.monthrange(now.year, now.month)[1] - now.day + 1)
             daily_allowance = -(-query_limit // days_left)  # ceil division
-            remaining_today = max(0, daily_allowance - requests_used_today(output_dir, now))
+            remaining_today = max(0, daily_allowance - ledger.requests_used_today(now))
             query_limit = min(query_limit, remaining_today)
     if max_queries > 0:
         query_limit = min(query_limit, max_queries) if cap_active else max_queries
@@ -1268,11 +1326,13 @@ def fetch_direct(
     request_session=None,
     _rand=random.uniform,
 ) -> dict:
-    """Fetch eBay sold comps and accumulate them into the static JSON read model.
+    """Fetch eBay sold comps into the comps read model.
 
-    The per-auction JSON files are the source of truth; the warehouse is an
-    optional mirror written only when one is configured (``MOTHERDUCK_TOKEN``
-    present, or ``mirror_to_warehouse=True``). No warehouse is required.
+    With Supabase configured (``GOONERS_WAREHOUSE=supabase`` + credentials, the
+    default ``mirror_to_warehouse=None`` resolving to True) the snapshot table is
+    both the read model and the ledger: no JSON is written. Otherwise the static
+    per-auction JSON files are the read model and ledger, with the warehouse an
+    optional mirror. ``mirror_to_warehouse=False`` forces the file backend.
     """
     import requests
 
@@ -1286,17 +1346,32 @@ def fetch_direct(
     if limit <= 0:
         return summary
 
+    if mirror_to_warehouse is None:
+        from warehouse import should_mirror
+
+        mirror_to_warehouse = should_mirror()
+
+    # Supabase, when configured and not explicitly disabled, is the read model
+    # AND the ledger — so the run writes no JSON and paces itself off the table.
+    use_supabase = bool(mirror_to_warehouse) and supabase_comp_backend_active()
+    if use_supabase:
+        from supabase_comps import SupabaseCompLedger
+
+        ledger: CompLedger = SupabaseCompLedger()
+    else:
+        ledger = FileCompLedger(output_dir)
+
     known_fresh = (
         set()
         if dry_run
-        else fresh_comp_keys_from_files(output_dir, stale_hours, skip_attempted=skip_attempted)
+        else ledger.fresh_keys(stale_hours, skip_attempted=skip_attempted)
     )
 
     # A "query" is one SoldComps request. The monthly ceiling is derived from
     # the read model itself, so every run — hourly refresh or manual backfill —
     # draws from one shared pool.
     cap_active, query_limit = resolve_query_budget(
-        output_dir, monthly_budget, max_queries, daily_pacing
+        ledger, monthly_budget, max_queries, daily_pacing
     )
     if cap_active and query_limit <= 0:
         print("eBay comp fetch: request budget exhausted for now; nothing to do.")
@@ -1382,22 +1457,31 @@ def fetch_direct(
         )
         return summary
 
-    new_exports = build_public_exports(all_rows, generated_at)
-    summary["files_written"] = merge_comp_files(new_exports, attempts, output_dir, generated_at)
-
-    if mirror_to_warehouse is None:
-        from warehouse import should_mirror
-        mirror_to_warehouse = should_mirror()
-    if mirror_to_warehouse:
+    if use_supabase:
+        # Supabase is the read model: the mirror write IS the persisted result,
+        # so no JSON is written. A failed write is self-healing — those items
+        # simply aren't recorded as fetched and get retried next run.
         mirror_rows_to_warehouse(all_rows)
+    else:
+        new_exports = build_public_exports(all_rows, generated_at)
+        summary["files_written"] = merge_comp_files(
+            new_exports, attempts, output_dir, generated_at
+        )
+        if mirror_to_warehouse:
+            mirror_rows_to_warehouse(all_rows)
 
+    written_msg = (
+        "Supabase read model updated"
+        if use_supabase
+        else f"{summary['files_written']} auction files updated"
+    )
     print(
         f"eBay comp fetch: {summary['items_attempted']} items, "
         f"{summary['queries_attempted']} queries, {summary['matches']} matches, "
-        f"{summary['files_written']} auction files updated"
+        f"{written_msg}"
     )
     if monthly_budget > 0:
-        used = requests_used_in_month(output_dir)
+        used = ledger.requests_used_in_month()
         print(
             f"Monthly request budget: {used}/{monthly_budget} used "
             f"({max(0, monthly_budget - used)} remaining)"
