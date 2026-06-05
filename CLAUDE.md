@@ -17,7 +17,7 @@ Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet 
 **Data layout** (the browser reads NDJSON; Parquet is written alongside it as the warehouse/manifest source, not served to the SPA):
 - Active: `public/data/manifest.json` + `public/data/items/{safeId}.ndjson` (+ `.parquet`, `.embeddings`)
 - Archived: `public/data/archive-manifest.json` + `public/data/archive/items/{safeId}.ndjson` (loaded only when archive toggle is on)
-- eBay comps: `public/data/ebay-comps/{safeId}.json` (loaded per visible auction; 404-tolerant)
+- eBay comps (#6): browser reads the Supabase `public_auction_comps` view first (publishable key), falling back per-auction to the static `public/data/ebay-comps/{safeId}.json` (404-tolerant). The scraper writes comps to the `ebay_comp_snapshots` table via `scraper/supabase_comps.py` when `GOONERS_WAREHOUSE=supabase` (needs `SUPABASE_URL` + `SUPABASE_SECRET_KEY`); the static JSON is still written as the CDN fallback.
 
 ## Commands
 
