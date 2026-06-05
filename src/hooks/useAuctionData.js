@@ -63,15 +63,21 @@ function normalizeRowsNdjson(results, archived) {
 // --- Supabase dataset fetch ---
 
 async function fetchAllFromView(viewName) {
-  const PAGE = 2000
+  // PostgREST caps each response at the server's `max-rows` setting (1000 by
+  // default), so the page size must stay at or below that cap — a larger PAGE
+  // would come back short on the very first request and the loop would quit
+  // early, silently truncating the dataset to 1000 rows. Advance by the rows
+  // actually returned so this self-adjusts if the cap ever changes.
+  const PAGE = 1000
   const rows = []
   let from = 0
   while (true) {
     const { data, error } = await supabase.from(viewName).select('*').range(from, from + PAGE - 1)
     if (error) throw new Error(error.message)
+    if (!data || data.length === 0) break
     rows.push(...data)
     if (data.length < PAGE) break
-    from += PAGE
+    from += data.length
   }
   return rows
 }
