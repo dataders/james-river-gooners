@@ -2158,6 +2158,38 @@ a.cannons-comp-card:hover {
   gap: 8px;
 }
 
+/* Minimum-profit filter (#101) */
+.min-profit-toggle .filter-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.min-profit-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-muted);
+}
+.min-profit-amount input {
+  width: 56px;
+  padding: 2px 4px;
+  font: inherit;
+  text-align: right;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.min-profit-amount input:disabled {
+  opacity: 0.5;
+}
+.min-profit-hint {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
 /* Arsenal Trivia */
 .trivia-card {
   margin-bottom: 8px;

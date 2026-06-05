@@ -3,13 +3,19 @@ import assert from 'node:assert/strict'
 import {
   calcMaxBid,
   calcMedian,
+  estimatedProfit,
   extractCompPrices,
   getCompMedianPrice,
   isDeal,
+  meetsMinProfit,
   COST_MULTIPLIER,
   DEAL_MARGIN_THRESHOLD,
   DEFAULT_MARGIN,
 } from './roiCalc.js'
+
+const compsAt = (price) => ({
+  matches: [{ title: 'Item', price: { value: String(price), currency: 'USD' }, itemWebUrl: 'https://www.ebay.com/itm/111111111111' }],
+})
 
 // ── COST_MULTIPLIER ──────────────────────────────────────────────────────────
 
@@ -156,4 +162,29 @@ test('isDeal boundary: bid exactly at threshold margin is true', () => {
   const breakEvenBid = (100 * (1 - DEAL_MARGIN_THRESHOLD)) / COST_MULTIPLIER
   // Bid just at break-even for the threshold — implied margin equals threshold exactly
   assert.equal(isDeal(breakEvenBid, soldComps), true)
+})
+
+// ── estimatedProfit / meetsMinProfit ──────────────────────────────────────────
+
+test('estimatedProfit is comp median minus all-in cost, null without comps', () => {
+  // median $300, bid $100 → all-in $127.20 → profit $172.80
+  assert.ok(Math.abs(estimatedProfit(100, compsAt(300)) - (300 - 100 * COST_MULTIPLIER)) < 0.0001)
+  assert.equal(estimatedProfit(100, undefined), null)
+  assert.equal(estimatedProfit(100, { matches: [] }), null)
+})
+
+test('meetsMinProfit: null threshold passes everything', () => {
+  assert.equal(meetsMinProfit(100, undefined, null), true)
+  assert.equal(meetsMinProfit(100, compsAt(300), null), true)
+})
+
+test('meetsMinProfit keeps lots clearing the bar and drops the rest', () => {
+  // profit at bid $100, comp $300 ≈ $172.80
+  assert.equal(meetsMinProfit(100, compsAt(300), 100), true)
+  assert.equal(meetsMinProfit(100, compsAt(300), 200), false)
+})
+
+test('meetsMinProfit drops lots with no comp data when a threshold is set', () => {
+  assert.equal(meetsMinProfit(100, undefined, 100), false)
+  assert.equal(meetsMinProfit(100, { matches: [] }, 100), false)
 })

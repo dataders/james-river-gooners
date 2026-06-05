@@ -12,7 +12,7 @@ import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
 import { useSemanticSearch } from './hooks/useSemanticSearch'
-import { isDeal } from './utils/roiCalc'
+import { isDeal, meetsMinProfit } from './utils/roiCalc'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { hasCannonsComps } from './utils/cannonsComps'
@@ -25,6 +25,7 @@ import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
 import { MarginPreference } from './components/MarginPreference'
+import { MinProfitFilter } from './components/MinProfitFilter'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -79,6 +80,7 @@ export default function App() {
     maxBidders,
     minHours,
     maxHours,
+    minProfit,
     localOnly,
     hasComp,
     hasCannonsComp,
@@ -99,6 +101,7 @@ export default function App() {
     setMaxBidders,
     setMinHours,
     setMaxHours,
+    setMinProfit,
     setLocalOnly,
     setHasComp,
     setHasCannonsComp,
@@ -282,8 +285,13 @@ export default function App() {
         isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
       )
     }
+    if (minProfit != null) {
+      result = result.filter(item =>
+        meetsMinProfit(item.currentBid, allComps[item.auctionSafeId]?.[item.id], minProfit)
+      )
+    }
     return result
-  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, allComps, allCannonsComps])
+  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, minProfit, allComps, allCannonsComps])
 
   const finalItems = useMemo(() => {
     // Ignored bin is its own exclusive view; otherwise ignored items are hidden
@@ -460,6 +468,7 @@ export default function App() {
             onMinHoursChange={v => setMinHours(v)}
             onMaxHoursChange={v => setMaxHours(v)}
           />
+          <MinProfitFilter value={minProfit} onChange={setMinProfit} />
           <MarginPreference value={margin} onChange={setMargin} />
           <AuctionFilter
             auctions={visibleAuctions}

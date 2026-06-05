@@ -15,6 +15,7 @@ function loadInitialPrefs() {
   if (p.has('maxBidders')) merged.maxBidders = Number(p.get('maxBidders'))
   if (p.has('minHrs')) merged.minHours = Number(p.get('minHrs'))
   if (p.has('maxHrs')) merged.maxHours = Number(p.get('maxHrs'))
+  if (p.has('minProfit')) merged.minProfit = Number(p.get('minProfit'))
   if (p.has('cat')) merged.excludedCategories = p.getAll('cat')
   if (p.has('grp')) merged.excludedGroups = p.getAll('grp')
   if (p.has('local')) merged.localOnly = p.get('local') === '1'
@@ -149,6 +150,7 @@ export function usePreferences() {
   const setMaxBidders = useCallback((value) => setNumericPreference('maxBidders', 'maxBidders', value), [setNumericPreference])
   const setMinHours = useCallback((value) => setNumericPreference('minHours', 'minHrs', value), [setNumericPreference])
   const setMaxHours = useCallback((value) => setNumericPreference('maxHours', 'maxHrs', value), [setNumericPreference])
+  const setMinProfit = useCallback((value) => setNumericPreference('minProfit', 'minProfit', value), [setNumericPreference])
 
   const setLocalOnly = useCallback((value) => {
     syncUrlParam('local', value)
@@ -214,6 +216,7 @@ export function usePreferences() {
     setMaxBidders,
     setMinHours,
     setMaxHours,
+    setMinProfit,
     setLocalOnly,
     setHasComp,
     setHasCannonsComp,
