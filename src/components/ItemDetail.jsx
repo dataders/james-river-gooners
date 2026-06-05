@@ -6,13 +6,18 @@ import { RoiCalculator } from './RoiCalculator'
 
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
-  const [copied, setCopied] = useState(false)
+  const [shareLabel, setShareLabel] = useState(null)
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }).catch(() => {})
+  const handleShare = () => {
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title: item?.title, url }).catch(() => {})
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        setShareLabel('Copied!')
+        setTimeout(() => setShareLabel(null), 2000)
+      }).catch(() => {})
+    }
   }
   const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
@@ -131,8 +136,13 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, is
                 {item.detailUrl?.includes('hibid.com') ? 'Open on HiBid' : "Open on Cannon's"}
               </a>
             )}
-            <button className="detail-copy-link" onClick={handleCopyLink}>
-              {copied ? 'Copied!' : 'Copy link'}
+            <button className="detail-share" onClick={handleShare} aria-label="Share">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              {shareLabel ?? 'Share'}
             </button>
           </div>
 

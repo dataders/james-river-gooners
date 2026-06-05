@@ -1774,7 +1774,10 @@ body {
   background: var(--accent-hover);
 }
 
-.detail-copy-link {
+.detail-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 20px;
   background: var(--bg-secondary);
   color: var(--text);
@@ -1785,7 +1788,7 @@ body {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.detail-copy-link:hover {
+.detail-share:hover {
   background: var(--border);
 }
 
