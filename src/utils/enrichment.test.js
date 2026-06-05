@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 import { getDisplayEnrichment, isHighConfidence, hasEnrichment } from './enrichment.js'
 
 test('hasEnrichment matches what the UI can actually show', () => {
-  // High confidence with a brand/model => identified.
+  // Medium or high with a brand/model => identified.
   assert.equal(hasEnrichment({ enrichmentConfidence: 'high', brand: 'Dietz', modelOrSku: 'Lantern' }), true)
-  // High confidence but nothing to show => not identified.
+  assert.equal(hasEnrichment({ enrichmentConfidence: 'medium', brand: 'Dietz' }), true)
+  // Confident but nothing to show => not identified.
   assert.equal(hasEnrichment({ enrichmentConfidence: 'high', brand: '', modelOrSku: '' }), false)
-  // Below the confidence bar => not identified.
-  assert.equal(hasEnrichment({ enrichmentConfidence: 'medium', brand: 'Dietz' }), false)
+  // Below the display bar => not identified.
+  assert.equal(hasEnrichment({ enrichmentConfidence: 'low', brand: 'Dietz' }), false)
   assert.equal(hasEnrichment({}), false)
 })
 
@@ -39,9 +40,16 @@ test('getDisplayEnrichment joins whichever of brand/model is present', () => {
   assert.equal(getDisplayEnrichment({ enrichmentConfidence: 'high', brand: '', modelOrSku: 'DCD771' }).label, 'DCD771')
 })
 
-test('getDisplayEnrichment is null when not high confidence', () => {
-  assert.equal(getDisplayEnrichment({ enrichmentConfidence: 'medium', brand: 'Dietz', modelOrSku: 'Lantern' }), null)
-  assert.equal(getDisplayEnrichment({ enrichmentConfidence: 'low', brand: 'Acme' }), null)
+test('getDisplayEnrichment shows medium confidence and passes the bar through', () => {
+  const out = getDisplayEnrichment({ enrichmentConfidence: 'medium', brand: 'Dietz', modelOrSku: 'Lantern' })
+  assert.equal(out.label, 'Dietz Lantern')
+  assert.equal(out.confidence, 'medium')
+})
+
+test('getDisplayEnrichment is null below the display bar (low/absent)', () => {
+  assert.equal(getDisplayEnrichment({ enrichmentConfidence: 'low', brand: 'Acme', modelOrSku: 'X' }), null)
+  assert.equal(getDisplayEnrichment({ enrichmentConfidence: '', brand: 'Acme', modelOrSku: 'X' }), null)
+  assert.equal(getDisplayEnrichment({}), null)
 })
 
 test('getDisplayEnrichment is null when high confidence but no brand/model', () => {

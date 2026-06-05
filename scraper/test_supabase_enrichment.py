@@ -39,18 +39,27 @@ class EnrichmentRowTest(unittest.TestCase):
         self.assertEqual(row["model"], "claude-haiku-4-5")
         self.assertEqual(row["image_url"], "https://img/a.jpg")
 
-    def test_unenriched_lot_is_skipped(self):
-        # No confidence => not identified => no row (keeps the table a clean index).
-        lot = {"auctionSafeId": "s", "id": 1, "enrichmentConfidence": ""}
-        self.assertIsNone(supabase_enrichment.enrichment_row(lot))
+    def test_below_display_bar_is_skipped(self):
+        # Empty/low confidence => not identified => no row (clean index).
+        base = {"auctionSafeId": "s", "id": 1, "brand": "Acme", "modelOrSku": "X"}
+        self.assertIsNone(supabase_enrichment.enrichment_row({**base, "enrichmentConfidence": ""}))
+        self.assertIsNone(supabase_enrichment.enrichment_row({**base, "enrichmentConfidence": "low"}))
         self.assertIsNone(supabase_enrichment.enrichment_row({"auctionSafeId": "s", "id": 1}))
 
+    def test_medium_confidence_is_kept(self):
+        row = supabase_enrichment.enrichment_row(
+            dict(ENRICHED_LOT, enrichmentConfidence="medium")
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row["confidence"], "medium")
+
     def test_missing_identity_is_skipped(self):
+        # Use a passing confidence so the None is due to missing identity, not the bar.
         self.assertIsNone(
-            supabase_enrichment.enrichment_row({"id": 1, "enrichmentConfidence": "low"})
+            supabase_enrichment.enrichment_row({"id": 1, "enrichmentConfidence": "high"})
         )
         self.assertIsNone(
-            supabase_enrichment.enrichment_row({"auctionSafeId": "s", "enrichmentConfidence": "low"})
+            supabase_enrichment.enrichment_row({"auctionSafeId": "s", "enrichmentConfidence": "high"})
         )
 
     def test_images_as_json_string(self):

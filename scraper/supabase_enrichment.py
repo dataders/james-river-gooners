@@ -9,9 +9,9 @@ metadata is queryable via the API (``public_lot_enrichment`` view, publishable
 key), keyed on ``(auction_safe_id, item_id)`` — the same shape as
 ``sold_lots``/``sold_history.py``.
 
-Only lots that actually got enriched (a non-empty ``enrichmentConfidence``) are
-written, so the table stays a clean index of *identified* products rather than a
-row per lot. Writes use the backend-only secret key (``SUPABASE_SECRET_KEY``)
+Only confidently identified lots (``enrichmentConfidence`` of medium or high —
+the same display bar as the UI) are written, so the table stays a clean index of
+*identified* products rather than a row per lot. Writes use the backend-only secret key (``SUPABASE_SECRET_KEY``)
 via the same PostgREST upsert mechanics as ``supabase_comps.py`` /
 ``sold_history.py``. Transient failures (network errors, 429, 5xx) are retried
 with exponential backoff; a permanent failure raises. The inline post-scrape
@@ -110,11 +110,17 @@ def _first_image(lot: dict) -> str | None:
     return None
 
 
+# The display bar: only medium/high lots are mirrored, matching what the UI shows
+# (src/utils/enrichment.js). Low/absent confidence is noise (often empty brand) —
+# keeping it out makes the table a clean index of identified products.
+DISPLAY_CONFIDENCES = frozenset({"medium", "high"})
+
+
 def enrichment_row(lot: dict) -> dict | None:
-    """Project a lot dict onto a `lot_enrichment` row, or None when the lot
-    carries no enrichment (empty confidence)."""
+    """Project a lot dict onto a `lot_enrichment` row, or None when the lot isn't
+    confidently identified (confidence below the medium/high display bar)."""
     confidence = str(lot.get("enrichmentConfidence") or "").strip().lower()
-    if not confidence:
+    if confidence not in DISPLAY_CONFIDENCES:
         return None
     safe_id = lot.get("auctionSafeId")
     item_id = lot.get("id")
