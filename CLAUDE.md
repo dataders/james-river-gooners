@@ -44,6 +44,7 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 - Auction URLs must include all query params (`AuctionId`, `Title`, etc.) — Maxanet redirects to homepage without them
 - Maxanet API needs session cookies + `X-Requested-With: XMLHttpRequest`; `GetAuctionItems` returns HTML fragments (not JSON); `GetCategories` returns JSON
 - `rescrape_all.py` auto-discovers auctions; `scraper/auction_urls.txt` is a manual fallback only
+- `backfill_closed.py` backfills already-closed Cannon's auctions (`GetAuctions` `filter=Past`) straight into the archive — the historical sold-price corpus for future "Cannon's comps". Closed lots carry no live countdown, so `scrape.py`'s `auction_date_from_title` derives the end date from the title's `MM/DD/YY` prefix. Already-scraped auctions are skipped by default (re-scraping would clobber the precise per-lot end times captured while live). Run `python3 backfill_closed.py --limit N`.
 - Category normalization: `scraper/categories.py` + `scraper/category_mappings.yml`
 - MotherDuck: appends to `listing_snapshots` table in `my_db`; both tokens must stay out of committed files; use `duckdb==1.5.2`
   - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server
