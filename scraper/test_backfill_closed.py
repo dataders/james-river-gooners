@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 import backfill_closed
@@ -62,6 +64,33 @@ class BackfillSkipAndLimitTest(unittest.TestCase):
         # One auction raised; the other still processed. update_manifests runs
         # regardless so the archive manifest reflects whatever landed.
         self.assertEqual(failures, 1)
+
+
+class HibidJobsConfigTest(unittest.TestCase):
+    def test_reads_closed_catalog_ids_from_sources(self):
+        yml = (
+            "companies:\n"
+            "  - id: 1\n"
+            "    slug: acme\n"
+            "    name: Acme\n"
+            "    closed_catalog_ids: [111, 222]\n"
+            "  - id: 2\n"
+            "    slug: other\n"
+            "    name: Other\n"  # no closed_catalog_ids -> contributes nothing
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "hibid.yml"
+            path.write_text(yml)
+            jobs = backfill_closed._hibid_jobs(sources_file=path)
+
+        self.assertEqual([safe_id for safe_id, _, _ in jobs], ["hibid_111", "hibid_222"])
+
+    def test_no_closed_ids_yields_no_jobs(self):
+        yml = "companies:\n  - id: 1\n    slug: acme\n    name: Acme\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "hibid.yml"
+            path.write_text(yml)
+            self.assertEqual(backfill_closed._hibid_jobs(sources_file=path), [])
 
 
 if __name__ == "__main__":

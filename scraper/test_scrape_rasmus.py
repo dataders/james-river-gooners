@@ -1,8 +1,11 @@
 import unittest
+from unittest import mock
 
+import scrape_rasmus
 from scrape_rasmus import (
     _fs_fields,
     _fs_value,
+    _richmond_specs_from_aids,
     has_bid_changes,
     location_matches,
     map_item,
@@ -10,6 +13,24 @@ from scrape_rasmus import (
     parse_rasmus_category,
     rasmus_safe_id,
 )
+
+
+class RichmondSpecsFromAidsTest(unittest.TestCase):
+    KEYWORDS = ["richmond", "glen allen", "va"]
+
+    def test_keeps_only_richmond_non_real_estate(self):
+        metas = {
+            "a": {"title": "Estate Auction Richmond VA", "description": "", "image": "imgA"},
+            "b": {"title": "Furniture Sale Laurel MD", "description": "", "image": "imgB"},
+            "c": {"title": "Land Auction Glen Allen VA", "description": "acres", "image": "imgC"},
+        }
+        with mock.patch.object(scrape_rasmus, "fetch_auction_meta", side_effect=lambda s, aid: metas[aid]):
+            specs = _richmond_specs_from_aids(mock.Mock(), ["a", "b", "c"], "rasmus", "Rasmus", self.KEYWORDS)
+
+        # b is out (not Richmond), c is out (real estate); only a survives.
+        self.assertEqual([s["aid"] for s in specs], ["a"])
+        self.assertEqual(specs[0]["safe_id"], "rasmus_a")
+        self.assertEqual(specs[0]["image"], "imgA")
 
 
 class RasmusSafeIdTest(unittest.TestCase):

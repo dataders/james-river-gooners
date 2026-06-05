@@ -407,7 +407,10 @@ def fetch_lot_details(
             description = description[:idx].strip()
     description = description[:500]
 
-    # Current bid
+    # Current bid (live auctions) or realized price (closed auctions). Once a
+    # HiBid auction closes the "High Bid" field disappears and the hammer price
+    # is shown as "Price Realized: N USD" instead — capture either so backfilled
+    # closed lots carry their final sold price.
     current_bid = 0.0
     bid_m = re.search(
         r"High\s*Bid\s*[:\-]?\s*\$?\s*([\d,]+\.?\d*)\s*USD",
@@ -416,6 +419,14 @@ def fetch_lot_details(
     )
     if bid_m:
         current_bid = float(bid_m.group(1).replace(",", ""))
+    if not current_bid:
+        realized_m = re.search(
+            r"Price\s+Realized\s*[:\-]?\s*\$?\s*([\d,]+\.?\d*)\s*USD",
+            text,
+            re.IGNORECASE,
+        )
+        if realized_m:
+            current_bid = float(realized_m.group(1).replace(",", ""))
 
     # Total bids
     total_bids = 0
