@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { normalizeCategoryStats } from '../utils/soldHistory'
 
+// Stable empty result for the logged-out / unconfigured path.
+const EMPTY = {}
+
 // Per-category Cannon's sold-price stats (median/range/count/recency) from the
 // Supabase `public_category_sold_stats` view (#95). Fetched once on mount — the
 // view has one row per category (dozens), well under PostgREST's 1000-row cap,
@@ -9,12 +12,15 @@ import { normalizeCategoryStats } from '../utils/soldHistory'
 // a failure never blanks the detail panel or the margin sort.
 //
 // Returns { [category]: { category, soldCount, medianSold, minSold, maxSold,
-// lastSoldAt } }. Empty object when Supabase isn't configured.
-export function useCategorySoldStats() {
+// lastSoldAt } }. Empty object when Supabase isn't configured. `enabled` gates
+// the read on auth — the sold-price stats are members-only (RLS, migration
+// 0008), so a logged-out caller passes false to skip the fetch and clear stats.
+export function useCategorySoldStats(enabled = true) {
   const [statsByCategory, setStatsByCategory] = useState({})
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return
+    // Logged out / unconfigured: don't fetch; the hook returns EMPTY below.
+    if (!isSupabaseConfigured || !enabled) return
     let cancelled = false
 
     ;(async () => {
@@ -36,7 +42,7 @@ export function useCategorySoldStats() {
     })()
 
     return () => { cancelled = true }
-  }, [])
+  }, [enabled])
 
-  return statsByCategory
+  return enabled ? statsByCategory : EMPTY
 }

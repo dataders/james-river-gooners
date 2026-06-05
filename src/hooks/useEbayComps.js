@@ -6,6 +6,10 @@ import { groupSupabaseComps } from '../utils/ebayComps'
 // (items × matches), so reads page until a short page comes back.
 const PAGE_SIZE = 1000
 
+// Stable empty result for the logged-out / unconfigured path, so callers don't
+// see a new object identity each render.
+const EMPTY = {}
+
 // Read one auction's deduped comps from the Supabase `public_auction_comps`
 // view, paging past the 1000-row cap, then reshape to the read-model shape.
 // Supabase is the sole comps source (#6); a read error yields no comps for the
@@ -32,12 +36,18 @@ async function fetchAuctionComps(id) {
 // Accepts a single auction ID string or an array of IDs.
 // Returns { [auctionSafeId]: { [itemId]: compData } } for all loaded auctions.
 // When Supabase isn't configured, comps are simply unavailable (empty).
-export function useEbayComps(auctionSafeIds) {
+// `enabled` gates the read on auth: comps are members-only (RLS, migration
+// 0008), so a logged-out caller passes false to skip the fetch and clear any
+// previously-loaded comps; logging in flips it true and refetches.
+export function useEbayComps(auctionSafeIds, enabled = true) {
   const [compsByAuction, setCompsByAuction] = useState({})
   const fetchedIds = useRef(new Set())
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return
+    // Logged out / unconfigured: don't fetch. The hook returns EMPTY below, so
+    // derived UI (card ROI, margin sort) clears; any already-loaded comps stay
+    // cached in state and reappear instantly when `enabled` flips back to true.
+    if (!isSupabaseConfigured || !enabled) return
 
     const ids = Array.isArray(auctionSafeIds)
       ? auctionSafeIds.filter(Boolean)
@@ -60,7 +70,7 @@ export function useEbayComps(auctionSafeIds) {
     })
 
     return () => { cancelled = true }
-  }, [auctionSafeIds])
+  }, [auctionSafeIds, enabled])
 
-  return compsByAuction
+  return enabled ? compsByAuction : EMPTY
 }
