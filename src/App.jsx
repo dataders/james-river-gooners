@@ -69,6 +69,7 @@ export default function App() {
 
   const {
     excludedCategories,
+    excludedGroups,
     searchQuery,
     minPrice,
     maxPrice,
@@ -84,6 +85,8 @@ export default function App() {
     sort,
     margin,
     toggleExcluded,
+    hideGroup,
+    showGroup,
     hideAll,
     showAll,
     showOnly,
@@ -255,8 +258,11 @@ export default function App() {
   const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
 
   const filteredItems = useMemo(
-    () => preFilteredItems.filter(item => !excludedCategories.includes(item.rawCategory)),
-    [preFilteredItems, excludedCategories]
+    () => preFilteredItems.filter(item =>
+      !excludedGroups.includes(item.category) &&
+      !excludedCategories.includes(item.rawCategory)
+    ),
+    [preFilteredItems, excludedCategories, excludedGroups]
   )
 
   const displayItems = useMemo(() => {
@@ -473,11 +479,11 @@ export default function App() {
           <FilterBar
             groupedCategories={groupedCategories}
             excludedCategories={excludedCategories}
+            excludedGroups={excludedGroups}
             onToggleExcluded={toggleExcluded}
-            onHideAll={() => {
-              const allRaw = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
-              hideAll(allRaw)
-            }}
+            onHideGroup={hideGroup}
+            onShowGroup={showGroup}
+            onHideAll={() => hideAll(groupedCategories.map(g => g.group))}
             onShowAll={showAll}
             onShowOnly={showOnly}
           />

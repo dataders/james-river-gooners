@@ -32,6 +32,25 @@ test('null searchIds applies no search filter', () => {
   assert.deepEqual(result, [a, b])
 })
 
+test('excludedGroups hides items by normalized group, not rawCategory', () => {
+  // Firearm lots carry wildly inconsistent rawCategory strings but all
+  // normalize to the Firearms group — excluding the group catches them all.
+  const gun = { ...base, id: '1', category: 'Firearms', rawCategory: 'Daisy Pellet Gun' }
+  const ammo = { ...base, id: '2', category: 'Firearms', rawCategory: 'AMMO' }
+  const lamp = { ...base, id: '3', category: 'Home & Kitchen', rawCategory: 'Lighting' }
+  const items = [gun, ammo, lamp]
+
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], excludedGroups: ['Firearms'] }),
+    [lamp]
+  )
+  // Default-empty excludedGroups leaves everything in.
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [] }),
+    items
+  )
+})
+
 test('minBidders / maxBidders filter on uniqueBidders', () => {
   const low = { ...base, id: '1', uniqueBidders: 1 }
   const mid = { ...base, id: '2', uniqueBidders: 3 }
