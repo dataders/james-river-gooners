@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { normalizeCannonsComps, getCannonsCompMedian } from '../utils/cannonsComps'
 
 // "Sold previously" — similar past auction lots and what they actually sold for,
 // matched by CLIP similarity against the archive (scraper/cannons_comps.py).
 export function CannonsComps({ comps }) {
+  // Archived-lot photos can be purged from S3 over time; fall back to the
+  // source-label placeholder for any thumbnail that fails to load.
+  const [failed, setFailed] = useState(() => new Set())
   const matches = normalizeCannonsComps(comps)
   if (matches.length === 0) return null
 
@@ -22,8 +26,13 @@ export function CannonsComps({ comps }) {
           const card = (
             <>
               <div className="cannons-comp-thumb" aria-hidden="true">
-                {comp.thumbnailUrl ? (
-                  <img src={comp.thumbnailUrl} alt="" loading="lazy" />
+                {comp.thumbnailUrl && !failed.has(index) ? (
+                  <img
+                    src={comp.thumbnailUrl}
+                    alt=""
+                    loading="lazy"
+                    onError={() => setFailed(prev => new Set(prev).add(index))}
+                  />
                 ) : (
                   <span>{comp.sourceLabel}</span>
                 )}
