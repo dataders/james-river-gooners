@@ -432,10 +432,63 @@ async function placeBid(
   try { result = await saveBidResp.json() } catch { /* non-JSON response */ }
 
   const ok = result.ApiStatusCode === 200
+
+  // After placing the bid, refresh the item card to get current bid + winning status.
+  // The rendered HTML contains hidden inputs with live server-side values and
+  // a "Winning :" / "Outbid :" label regardless of what model JSON we send.
+  let winning: boolean | null = null
+  let currentBid: number | null = null
+  let minimumNextBid: number | null = null
+
+  try {
+    const refreshResp = await fetch(`${base}/Public/Auction/RefreshItem`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookieHeader(cookies),
+        'User-Agent': UA,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: new URLSearchParams({
+        __RequestVerificationToken: bidCsrf,
+        model: JSON.stringify({
+          AuctionId: Number(params.auctionId),
+          AuctionItemId: Number(params.auctionItemId),
+          TenantId: Number(formFields.TenantId ?? '399'),
+          IsBiddingEnabled: true,
+          DisplayFormatCode: 'OB',
+          StatusCode: 'NW',
+        }),
+        index: '1',
+        viewType: '2',
+        auctionItemFilterVM: JSON.stringify({
+          AuctionId: params.auctionId,
+          AuctionItemId: Number(params.auctionItemId),
+          pageNumber: '1',
+          itemsPerPage: 100,
+          viewType: '2',
+          Filter: 'Current',
+          activeTab: 1,
+          __RequestVerificationToken: bidCsrf,
+        }),
+      }).toString(),
+    })
+    const html = await refreshResp.text()
+    const cbMatch = html.match(/name="CurrentBidAmount"[^>]*value="([^"]+)"/)
+    const mnbMatch = html.match(/name="MinimumNextBidAmount"[^>]*value="([^"]+)"/)
+    currentBid = cbMatch ? parseFloat(cbMatch[1]) : null
+    minimumNextBid = mnbMatch ? parseFloat(mnbMatch[1]) : null
+    if (html.includes('<span>Winning :')) winning = true
+    else if (html.includes('<span>Outbid :')) winning = false
+  } catch { /* non-fatal — SaveBid result is still returned */ }
+
   return json({
     ok,
     status: result.status,
     description: result.Description ?? (ok ? 'Bid placed' : 'Bid failed'),
+    winning,
+    currentBid,
+    minimumNextBid,
   }, ok ? 200 : 400)
 }
 
