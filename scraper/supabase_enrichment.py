@@ -13,8 +13,13 @@ Only lots that actually got enriched (a non-empty ``enrichmentConfidence``) are
 written, so the table stays a clean index of *identified* products rather than a
 row per lot. Writes use the backend-only secret key (``SUPABASE_SECRET_KEY``)
 via the same PostgREST upsert mechanics as ``supabase_comps.py`` /
-``sold_history.py``; the call is a silent no-op when the key is absent, so a
-scrape without Supabase configured behaves unchanged.
+``sold_history.py``. Transient failures (network errors, 429, 5xx) are retried
+with exponential backoff; a permanent failure raises. The inline post-scrape
+hook (``maybe_export_enrichment``) is resilient: it **warns** rather than
+crashing the scrape (the local NDJSON/Parquet read model is the primary
+deliverable), and warns when Supabase is half-configured (URL set, secret key
+missing). It is a true no-op only when Supabase is entirely unconfigured or no
+lots were enriched.
 
 Called inline after each scrape (``maybe_export_enrichment``); also runnable as a
 script to backfill the table from an already-enriched read model:
@@ -25,6 +30,7 @@ script to backfill the table from an already-enriched read model:
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 from supabase_comps import json_safe, resolve_credentials
@@ -55,6 +61,41 @@ ENRICHMENT_COLUMNS = (
 
 DEFAULT_ITEMS_DIR = Path(__file__).resolve().parent.parent / "public" / "data" / "items"
 DEFAULT_BATCH_SIZE = 500
+
+# Retry transient failures (network errors, rate limits, 5xx) with exponential
+# backoff (2s, 4s, 8s, 16s) — the same convention used elsewhere in the project.
+DEFAULT_MAX_RETRIES = 4
+
+
+def _is_transient(status_code: int) -> bool:
+    return status_code == 429 or status_code >= 500
+
+
+def _post_batch_with_retry(session, endpoint, headers, batch, max_retries, sleep=None):
+    """POST one batch, retrying transient failures; raise on permanent failure."""
+    import requests
+
+    sleep = sleep or time.sleep  # resolved at call time so tests can patch time.sleep
+    body = json.dumps(batch)
+    for attempt in range(max_retries + 1):
+        try:
+            response = session.post(endpoint, headers=headers, data=body, timeout=30)
+        except requests.exceptions.RequestException as exc:
+            if attempt >= max_retries:
+                raise RuntimeError(
+                    f"Supabase lot_enrichment upsert failed after {attempt + 1} attempt(s): {exc}"
+                ) from exc
+            sleep(2 ** (attempt + 1))
+            continue
+
+        if response.status_code < 400:
+            return
+        if _is_transient(response.status_code) and attempt < max_retries:
+            sleep(2 ** (attempt + 1))
+            continue
+        raise RuntimeError(
+            f"Supabase lot_enrichment upsert failed ({response.status_code}): {response.text[:300]}"
+        )
 
 
 def _first_image(lot: dict) -> str | None:
@@ -118,8 +159,12 @@ def upsert_enrichment(
     key: str | None = None,
     session=None,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    max_retries: int = DEFAULT_MAX_RETRIES,
 ) -> int:
-    """Upsert `lot_enrichment` rows into Supabase (merge on the primary key)."""
+    """Upsert `lot_enrichment` rows into Supabase (merge on the primary key).
+
+    Retries transient failures (network, 429, 5xx) with backoff; raises
+    RuntimeError on missing credentials or a permanent failure."""
     if not rows:
         return 0
 
@@ -144,11 +189,7 @@ def upsert_enrichment(
     written = 0
     for start in range(0, len(rows), batch_size):
         batch = rows[start : start + batch_size]
-        response = session.post(endpoint, headers=headers, data=json.dumps(batch), timeout=30)
-        if response.status_code >= 400:
-            raise RuntimeError(
-                f"Supabase lot_enrichment upsert failed ({response.status_code}): {response.text[:300]}"
-            )
+        _post_batch_with_retry(session, endpoint, headers, batch, max_retries)
         written += len(batch)
     return written
 
@@ -156,15 +197,28 @@ def upsert_enrichment(
 def maybe_export_enrichment(items: list[dict], session=None) -> int:
     """Inline post-scrape hook: upsert enriched lots when Supabase is configured.
 
-    Silent no-op when there's no secret key or no enriched lots, so a scrape
-    without Supabase (or with enrichment off) behaves exactly as before."""
+    Resilient by design — the scrape's primary output is the local read model, so
+    a Supabase failure must never crash it:
+      - No Supabase at all → quiet no-op (feature off).
+      - URL set but no secret key → warn (likely a misconfiguration), no-op.
+      - No enriched lots → quiet no-op.
+      - Upsert fails after retries → warn loudly, but don't raise.
+    The strict, raising path lives in ``upsert_enrichment`` for deliberate
+    backfills (the CLI), where a non-zero exit is what you want."""
     url, key = resolve_credentials()
-    if not (url and key):
+    if not key:
+        if url:
+            print("  WARNING: SUPABASE_URL is set but SUPABASE_SECRET_KEY is not — "
+                  "skipping enrichment mirror to Supabase")
         return 0
     rows = build_enrichment_rows(items)
     if not rows:
         return 0
-    written = upsert_enrichment(rows, url=url, key=key, session=session)
+    try:
+        written = upsert_enrichment(rows, url=url, key=key, session=session)
+    except RuntimeError as exc:
+        print(f"  WARNING: failed to mirror {len(rows)} enrichment row(s) to Supabase: {exc}")
+        return 0
     print(f"  upserted {written} enrichment row(s) to Supabase")
     return written
 
