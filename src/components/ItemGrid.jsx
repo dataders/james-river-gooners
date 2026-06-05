@@ -8,39 +8,50 @@ const BATCH_SIZE = 50
 // position remains correct.
 const MAX_DOM_ITEMS = 300
 
-const breakpointColumns = {
-  default: 5,  // ≥2000px — ultrawide monitors
-  2000: 4,     // 1440–2000px
-  1440: 3,     // 1024–1440px (desktop with sidebar)
-  1024: 3,     // 800–1024px (sidebar collapses below 1024)
-  800: 2,      // 500–800px
-  500: 1,      // <500px
+// Column count is derived from the grid's *actual* container width (via a
+// ResizeObserver) rather than window.innerWidth. Keying off the window was the
+// source of repeated laptop overflow (#84, #110): the ~280px sidebar + padding
+// mean the usable grid width trails the window by ~350px, so a window-based
+// breakpoint would pick one column too many and push the last card off-screen.
+const ITEM_GAP = 12
+const MIN_CARD_WIDTH = 280  // target minimum card width before adding a column
+const MAX_COLS = 5
+
+function colsForWidth(width) {
+  if (!width || width <= 0) return 1
+  // Most columns N whose card width (width - (N-1)*gap)/N stays ≥ MIN_CARD_WIDTH.
+  const n = Math.floor((width + ITEM_GAP) / (MIN_CARD_WIDTH + ITEM_GAP))
+  return Math.max(1, Math.min(MAX_COLS, n))
 }
 
 // Rough per-item height estimate used for the top spacer. Auction cards are
 // typically 300-450 px tall; 380 px splits the difference. We divide by column
 // count because masonry stacks items vertically within each column.
 const ITEM_HEIGHT_ESTIMATE = 380
-const ITEM_GAP = 12
 
 function estimateColumnHeight(itemCount, numCols) {
   const itemsPerCol = Math.ceil(itemCount / numCols)
   return itemsPerCol > 0 ? itemsPerCol * (ITEM_HEIGHT_ESTIMATE + ITEM_GAP) - ITEM_GAP : 0
 }
 
-function currentNumCols() {
-  const w = window.innerWidth
-  if (w <= 500) return 1
-  if (w <= 800) return 2
-  if (w <= 1440) return 3
-  if (w <= 2000) return 4
-  return 5
-}
-
 export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, onItemClick }) {
   // Pair `items` with its loaded count so we can reset loaded when items changes.
   const [loadState, setLoadState] = useState({ items, loaded: BATCH_SIZE })
   const sentinelRef = useRef(null)
+  const wrapperRef = useRef(null)
+  const [numCols, setNumCols] = useState(3)
+
+  // Track the grid's actual width so the column count never overruns the
+  // available space (the sidebar makes window.innerWidth unreliable here).
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+    const update = () => setNumCols(colsForWidth(wrapper.clientWidth))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(wrapper)
+    return () => observer.disconnect()
+  }, [])
 
   // Derive loaded count: reset to BATCH_SIZE if the items reference changed.
   const loaded = loadState.items === items ? loadState.loaded : BATCH_SIZE
@@ -70,11 +81,11 @@ export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, o
 
   // Compensate for items dropped from the top of the DOM window.
   const topSpacerHeight = windowStart > 0
-    ? estimateColumnHeight(windowStart, currentNumCols())
+    ? estimateColumnHeight(windowStart, numCols)
     : 0
 
   return (
-    <div className="item-grid-wrapper">
+    <div className="item-grid-wrapper" ref={wrapperRef}>
       <div className="item-count">
         {items.length} items{clampedLoaded < items.length ? ` (showing ${clampedLoaded})` : ''}
       </div>
@@ -82,7 +93,7 @@ export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, o
         <div className="scroll-top-spacer" style={{ height: topSpacerHeight }} />
       )}
       <Masonry
-        breakpointCols={breakpointColumns}
+        breakpointCols={numCols}
         className="masonry-grid"
         columnClassName="masonry-column"
       >
