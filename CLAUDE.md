@@ -61,6 +61,17 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 - Network reads from the read model go through `src/utils/net.js` (`fetchWithRetry` / `fetchJsonWithRetry` / `fetchTextWithRetry`): retries 5xx + network errors with exponential backoff, returns 4xx as-is so the comps loader can treat 404 as "no comps yet"
 - A top-level `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx`) keeps a render error in one item/component from blanking the whole page
 
+## Rolling out data-backed migrations
+
+When a change moves a read model into Supabase (or adds an auth gate that empties it), the table must be **populated before the new frontend goes live**, or signed-in users briefly see empty sections. The pattern: **populate from the dev branch first, then merge.**
+
+1. **Apply the migration** to the live project (Supabase MCP `apply_migration`, or it's already applied per the PR). New tables are additive — applying early doesn't affect the old frontend still on `main`.
+2. **Run the data-refresh GitHub Action from the PR branch** (`workflow_dispatch` with the branch as the ref) — the branch carries the workflow + scraper changes that write to the new table, so this populates Supabase while `main` is untouched. The Action commits its embedding/cache artifacts back to the **branch**, so `git pull` before pushing more to it. (Triggering needs `actions: write`; the GitHub MCP token lacks it, so a human clicks **Run workflow** → pick the branch, or uses `gh workflow run … --ref <branch>`.)
+3. **Verify** the table is populated (service-role count > 0) and the gate holds (anon read = 0 rows).
+4. **Merge → deploy.** The new frontend reads a table that's already full — no gap.
+
+This is the inverse of the frontend-first order used for a pure *gate* (#149, where the data already existed and only access changed); here the data is new, so it must lead.
+
 ## CI / PR Monitoring
 
 **At the start of every session:** immediately call `mcp__github__list_pull_requests` for `dataders/james-river-gooners` (state: open) and call `mcp__github__subscribe_pr_activity` for every open PR. Do this before the user asks. Subscriptions do not persist across sessions — re-subscribing each session is mandatory.
