@@ -11,6 +11,8 @@ function loadInitialPrefs() {
   if (p.has('max')) merged.maxPrice = Number(p.get('max'))
   if (p.has('minBids')) merged.minBids = Number(p.get('minBids'))
   if (p.has('maxBids')) merged.maxBids = Number(p.get('maxBids'))
+  if (p.has('minBidders')) merged.minBidders = Number(p.get('minBidders'))
+  if (p.has('maxBidders')) merged.maxBidders = Number(p.get('maxBidders'))
   if (p.has('minHrs')) merged.minHours = Number(p.get('minHrs'))
   if (p.has('maxHrs')) merged.maxHours = Number(p.get('maxHrs'))
   if (p.has('cat')) merged.excludedCategories = p.getAll('cat')
@@ -109,6 +111,8 @@ export function usePreferences() {
   const setMaxPrice = useCallback((value) => setNumericPreference('maxPrice', 'max', value), [setNumericPreference])
   const setMinBids = useCallback((value) => setNumericPreference('minBids', 'minBids', value), [setNumericPreference])
   const setMaxBids = useCallback((value) => setNumericPreference('maxBids', 'maxBids', value), [setNumericPreference])
+  const setMinBidders = useCallback((value) => setNumericPreference('minBidders', 'minBidders', value), [setNumericPreference])
+  const setMaxBidders = useCallback((value) => setNumericPreference('maxBidders', 'maxBidders', value), [setNumericPreference])
   const setMinHours = useCallback((value) => setNumericPreference('minHours', 'minHrs', value), [setNumericPreference])
   const setMaxHours = useCallback((value) => setNumericPreference('maxHours', 'maxHrs', value), [setNumericPreference])
 
@@ -161,6 +165,8 @@ export function usePreferences() {
     setMaxPrice,
     setMinBids,
     setMaxBids,
+    setMinBidders,
+    setMaxBidders,
     setMinHours,
     setMaxHours,
     setLocalOnly,
