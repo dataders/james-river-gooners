@@ -16,7 +16,7 @@
     "prepare": "git rev-parse --is-inside-work-tree 2>/dev/null && git config core.hooksPath .githooks || true"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
+    "@huggingface/transformers": "^4.2.0",
     "@supabase/supabase-js": "^2.107.0",
     "minisearch": "^7.2.0",
     "posthog-js": "^1.380.0",
