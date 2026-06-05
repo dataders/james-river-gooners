@@ -33,7 +33,7 @@ from pathlib import Path
 import yaml
 
 from discover import discover_past_auction_urls
-from rescrape_all import ARCHIVE_ITEMS_DIR, archive_file, update_manifests
+from rescrape_all import ARCHIVE_ITEMS_DIR, archive_file, finalize_closed_file, update_manifests
 from scrape import ITEMS_DIR, extract_auction_id, sanitize_auction_id, scrape_auction
 from scrape_hibid import HIBID_BASE, SOURCES_FILE as HIBID_SOURCES_FILE, hibid_safe_id, scrape_hibid_auction
 from scrape_rasmus import discover_rasmus_past_specs, rasmus_safe_id, scrape_rasmus_auction
@@ -141,6 +141,9 @@ def backfill(
 
         parquet = ITEMS_DIR / f"{safe_id}.parquet"
         if parquet.exists():
+            # Backfilled auctions are closed by definition — stamp the final sold
+            # price (#94) before moving the files into the archive.
+            finalize_closed_file(parquet)
             archive_file(parquet)
         else:
             print(f"  Nothing written for {safe_id} (skipped/empty); not archived")
