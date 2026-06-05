@@ -1,0 +1,766 @@
+# =============================================================================
+# Canonical, source-aware category mapping  (schema version 1)
+# =============================================================================
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The legacy `category_mappings.yml` is a single source-blind alias table plus a
+# description-keyword fallback that *silently overrides* unrecognized raw
+# categories. That fallback made the mapping non-deterministic: the same raw
+# category landed in different groups depending on the item's description text
+# (e.g. Rasmus "Ind & Warehouse Eqpt" -> mostly Other but sometimes
+# "Jewelry & Watches"; HiBid "US" -> Collectibles / Coins / Books). It also has
+# no vocabulary for Rasmus's industrial inventory, so ~50% of Rasmus lots fall
+# to Other.
+#
+# This file is the canonicalized replacement: a flat, reviewable,
+# SOURCE-AWARE table of   (source, raw_category) -> subcategory -> group.
+# It is the single source of truth; the Supabase `category_mappings` table and
+# its JSON export are generated from it by `build_category_table.py`.
+#
+# THREE LAYERS
+# ------------
+#   groups          The closed set of top-level display groups (filter chips).
+#   subcategories   Canonical mid-level display name -> group it rolls up to.
+#   mappings        raw site category (lowercased) -> subcategory, scoped by
+#                   source. `common` applies to every source; a per-source
+#                   entry (cannons/hibid/rasmus) overrides `common`.
+#   inference       Last-resort keyword inference from the item title/
+#                   description, used ONLY when the raw category is missing or
+#                   maps to `__unknown__`. Unlike the legacy file, inference can
+#                   never override a raw category that the table already knows.
+#
+# A subcategory of `__unknown__` is an explicit "no usable category" marker:
+# it routes to `Other` after inference, and (critically) it does NOT pretend the
+# raw string was a real category. Use it for raw leaves that are not categories
+# at all (HiBid coin-denomination crumbs, sports-player-name crumbs, literal
+# item titles).
+#
+# Matching is case-insensitive; keys here are lowercased. Edit this file to
+# adjust categorization, then run `build_category_table.py` to regenerate the
+# Supabase migration and JSON export and to print a coverage report.
+
+version: 1
+
+# -----------------------------------------------------------------------------
+# Top-level groups (display order). Two are new vs the legacy taxonomy:
+#   - "Industrial & Equipment": gives Rasmus's warehouse/industrial lots a home.
+#   - "Health & Beauty": split out of Fashion (cosmetics/medical aren't apparel).
+# "Vehicles" is broadened to cover auto parts & marine, not just whole vehicles.
+# -----------------------------------------------------------------------------
+groups:
+  - Art
+  - China & Glass
+  - Silver & Metal
+  - Furniture
+  - Jewelry & Watches
+  - Coins & Currency
+  - Firearms
+  - Books & Media
+  - Electronics
+  - Home & Kitchen
+  - Fashion
+  - Health & Beauty
+  - Toys & Games
+  - Rugs & Textiles
+  - Lawn & Garden
+  - Sporting Goods
+  - Hobbies
+  - Tools & Hardware
+  - Industrial & Equipment
+  - Collectibles
+  - Seasonal
+  - Vehicles
+  - Science & Nature
+  - Pets & Kids
+  - Other
+
+# -----------------------------------------------------------------------------
+# Canonical subcategory -> group. Every value used in `mappings` must appear
+# here (the generator validates this). `__unknown__` is the sentinel and maps
+# to Other.
+# -----------------------------------------------------------------------------
+subcategories:
+  # Art
+  Paintings & Prints: Art
+  Decorative Accessories: Art
+  Sculpture: Art
+  African & Ethnographic Art: Art
+  Stained Glass: Art
+  # China & Glass
+  China & Pottery: China & Glass
+  Glassware: China & Glass
+  Crystal: China & Glass
+  # Silver & Metal
+  Sterling & Silverplate: Silver & Metal
+  Pewter: Silver & Metal
+  Cast Iron: Silver & Metal
+  Brassware & Copper: Silver & Metal
+  # Furniture
+  Furniture: Furniture
+  Mirrors: Furniture
+  # Jewelry & Watches
+  Jewelry: Jewelry & Watches
+  Watches: Jewelry & Watches
+  Gemstones: Jewelry & Watches
+  # Coins & Currency
+  Coins & Currency: Coins & Currency
+  # Firearms
+  Firearms: Firearms
+  Firearm Accessories: Firearms
+  Ammunition: Firearms
+  # Books & Media
+  Books: Books & Media
+  Magazines: Books & Media
+  Ephemera: Books & Media
+  Vinyl & CDs: Books & Media
+  Video Games: Books & Media
+  Comics: Books & Media
+  # Electronics
+  Electronics: Electronics
+  Audiovisual: Electronics
+  Photography: Electronics
+  # Home & Kitchen
+  Kitchenware: Home & Kitchen
+  Appliances: Home & Kitchen
+  Lighting: Home & Kitchen
+  Clocks: Home & Kitchen
+  Household: Home & Kitchen
+  Fireplace: Home & Kitchen
+  Faux Plants: Home & Kitchen
+  Office Supplies: Home & Kitchen
+  # Fashion
+  Clothing: Fashion
+  Purses & Bags: Fashion
+  Shoes & Boots: Fashion
+  Fashion Accessories: Fashion
+  # Health & Beauty
+  Health & Beauty: Health & Beauty
+  Personal Care: Health & Beauty
+  Medical: Health & Beauty
+  # Toys & Games
+  Toys & Games: Toys & Games
+  Dolls: Toys & Games
+  Lego: Toys & Games
+  Disney: Toys & Games
+  Steiff: Toys & Games
+  Board Games: Toys & Games
+  # Rugs & Textiles
+  Rugs: Rugs & Textiles
+  Linens & Textiles: Rugs & Textiles
+  # Lawn & Garden
+  Lawn & Garden: Lawn & Garden
+  Outdoor & Patio: Lawn & Garden
+  # Sporting Goods
+  Sporting Goods: Sporting Goods
+  Fishing: Sporting Goods
+  Equestrian: Sporting Goods
+  Exercise & Fitness: Sporting Goods
+  # Hobbies
+  Hobbies & Crafts: Hobbies
+  Drones: Hobbies
+  Aviation: Hobbies
+  Musical Instruments: Hobbies
+  # Tools & Hardware
+  Tools: Tools & Hardware
+  Hardware: Tools & Hardware
+  Power Tools: Tools & Hardware
+  # Industrial & Equipment
+  Industrial Equipment: Industrial & Equipment
+  Material Handling & Storage: Industrial & Equipment
+  Packaging & Shipping: Industrial & Equipment
+  Safety & PPE: Industrial & Equipment
+  HVAC & Plumbing: Industrial & Equipment
+  Janitorial & Cleaning: Industrial & Equipment
+  Food Service Equipment: Industrial & Equipment
+  Building Materials: Industrial & Equipment
+  Batteries & Power: Industrial & Equipment
+  # Collectibles
+  Collectibles: Collectibles
+  Military & Militaria: Collectibles
+  Knives & Swords: Collectibles
+  Stamps: Collectibles
+  Sports Collectibles: Collectibles
+  Trading Cards: Collectibles
+  Hot Wheels & Models: Collectibles
+  Steins: Collectibles
+  Globes: Collectibles
+  Black Americana: Collectibles
+  Artifacts: Collectibles
+  Tobacciana: Collectibles
+  # Seasonal
+  Christmas & Holiday: Seasonal
+  # Vehicles
+  Vehicles: Vehicles
+  Auto Parts & Accessories: Vehicles
+  Boat & Marine: Vehicles
+  # Science & Nature
+  Rocks & Minerals: Science & Nature
+  Scientific Equipment: Science & Nature
+  Taxidermy: Science & Nature
+  # Pets & Kids
+  Pet Accessories: Pets & Kids
+  Child Care: Pets & Kids
+  # sentinel
+  __unknown__: Other
+
+# -----------------------------------------------------------------------------
+# raw category (lowercased) -> subcategory, scoped by source.
+# `common` is shared; a source key overrides `common` for that source only.
+# -----------------------------------------------------------------------------
+mappings:
+
+  # Raw categories that mean the same thing on every site. Most are Cannon's /
+  # Maxanet site strings, but identical HiBid breadcrumb leaves match here too.
+  common:
+    # --- Art
+    paintings & prints: Paintings & Prints
+    paintings and prints: Paintings & Prints
+    painting and prints: Paintings & Prints
+    paintings: Paintings & Prints
+    prints / lithographs: Paintings & Prints
+    pictures/artwork: Paintings & Prints
+    statuary: Sculpture
+    sculpture: Sculpture
+    figurines: Sculpture
+    decorative accessories: Decorative Accessories
+    decorative: Decorative Accessories
+    decors accessories: Decorative Accessories
+    decorations accessories: Decorative Accessories
+    decoration accessories: Decorative Accessories
+    lladro: Decorative Accessories
+    treenware: Decorative Accessories
+    african art: African & Ethnographic Art
+    african & ethnographic art: African & Ethnographic Art
+    ethnographic: African & Ethnographic Art
+    native american: African & Ethnographic Art
+    stained glass: Stained Glass
+    stained glassware: Stained Glass
+    # --- China & Glass
+    china & pottery: China & Pottery
+    china and pottery: China & Pottery
+    china and ceramics: China & Pottery
+    china and dinnerware: China & Pottery
+    china / lenox dinnerware: China & Pottery
+    pottery: China & Pottery
+    porcelain: China & Pottery
+    roseville: China & Pottery
+    stoneware: China & Pottery
+    ceramics: China & Pottery
+    spongeware: China & Pottery
+    fire king: China & Pottery
+    glassware: Glassware
+    glass: Glassware
+    glasses: Glassware
+    vases / jars: Glassware
+    pitchers / decanters: Glassware
+    crystal: Crystal
+    crystal and glass: Crystal
+    waterford: Crystal
+    steuben: Crystal
+    lalique: Crystal
+    swarovski: Crystal
+    # --- Silver & Metal
+    silver and silverplate: Sterling & Silverplate
+    sterling and silverplate: Sterling & Silverplate
+    sterling silver and silverplate: Sterling & Silverplate
+    sterling & silverplate: Sterling & Silverplate
+    sterling silver: Sterling & Silverplate
+    sterling: Sterling & Silverplate
+    silverplate: Sterling & Silverplate
+    silver plate: Sterling & Silverplate
+    pewter: Pewter
+    cast iron: Cast Iron
+    brassware: Brassware & Copper
+    copper: Brassware & Copper
+    # --- Furniture
+    furniture: Furniture
+    bookcases: Furniture
+    outdoor furniture: Furniture
+    mirrors: Mirrors
+    # --- Jewelry & Watches
+    jewelry: Jewelry
+    costume jewelry: Jewelry
+    gold ring: Jewelry
+    watches: Watches
+    pocket watches: Watches
+    rolex: Watches
+    timepieces: Watches
+    gemstones: Gemstones
+    # --- Coins & Currency
+    coins & currency: Coins & Currency
+    coins and currency: Coins & Currency
+    coins: Coins & Currency
+    numismatic: Coins & Currency
+    # --- Firearms
+    firearms: Firearms
+    air guns: Firearms
+    air rifle: Firearms
+    airgun: Firearms
+    firearm accessories: Firearm Accessories
+    firearms ammo & accessories: Firearm Accessories
+    ammunition: Ammunition
+    ammo: Ammunition
+    bullets: Ammunition
+    # --- Books & Media
+    books: Books
+    cookbooks: Books
+    magazines: Magazines
+    ephemera: Ephemera
+    vinyl & cds: Vinyl & CDs
+    vinyl lp records: Vinyl & CDs
+    cds and dvds: Vinyl & CDs
+    cd and dvds: Vinyl & CDs
+    dvds: Vinyl & CDs
+    dvd/vhs: Vinyl & CDs
+    records: Vinyl & CDs
+    music: Vinyl & CDs
+    video games: Video Games
+    comics: Comics
+    comic books: Comics
+    comicbooks: Comics
+    # --- Electronics
+    electronics: Electronics
+    computers and printers: Electronics
+    computers & elec: Electronics
+    telephone: Electronics
+    audiovisual: Audiovisual
+    audio visual: Audiovisual
+    photography: Photography
+    binoculars: Photography
+    # --- Home & Kitchen
+    kitchenware: Kitchenware
+    kitchen: Kitchenware
+    tableware: Kitchenware
+    cookware: Kitchenware
+    barware: Kitchenware
+    flatware: Kitchenware
+    appliances: Appliances
+    small appliances: Appliances
+    kitchen appliances: Appliances
+    home appliances: Appliances
+    lighting: Lighting
+    lamps: Lighting
+    candles and accessories: Lighting
+    clocks: Clocks
+    household: Household
+    household items: Household
+    housekeeping: Household
+    housewares: Household
+    homegoods: Household
+    storage: Household
+    general: Household
+    closet contents: Household
+    shed contents: Household
+    storage containers: Household
+    bathroom: Household
+    vacuum: Household
+    heaters: Household
+    baskets: Household
+    bookends: Household
+    thermometer: Household
+    fireplace: Fireplace
+    fireplace accessories: Fireplace
+    faux plants: Faux Plants
+    office supplies: Office Supplies
+    office: Office Supplies
+    office products and stationary: Office Supplies
+    cash register: Office Supplies
+    # --- Fashion
+    clothing: Clothing
+    clothes: Clothing
+    men's apparel: Clothing
+    "men’s apparel": Clothing
+    women's apparel: Clothing
+    "women’s apparel": Clothing
+    fashion: Clothing
+    vintage clothing: Clothing
+    furs: Clothing
+    gloves: Clothing
+    socks & slippers: Clothing
+    coats / jackets: Clothing
+    purses & bags: Purses & Bags
+    purses & handbags: Purses & Bags
+    purses: Purses & Bags
+    luggage: Purses & Bags
+    travel: Purses & Bags
+    dooney and bourke: Purses & Bags
+    boots: Shoes & Boots
+    shoes: Shoes & Boots
+    footwear: Shoes & Boots
+    fashion accessories: Fashion Accessories
+    accessories: Fashion Accessories
+    personal accessories: Fashion Accessories
+    eyewear: Fashion Accessories
+    # --- Health & Beauty
+    health and beauty: Health & Beauty
+    health & beauty: Health & Beauty
+    health-beauty: Health & Beauty
+    perfumes: Health & Beauty
+    avon: Health & Beauty
+    # --- Toys & Games
+    toys and games: Toys & Games
+    toys & games: Toys & Games
+    toys: Toys & Games
+    games & toys: Toys & Games
+    gaming: Toys & Games
+    plush: Toys & Games
+    action figures: Toys & Games
+    action figure: Toys & Games
+    board games: Board Games
+    board game: Board Games
+    vintage board games: Board Games
+    dolls and doll accessories: Dolls
+    dolls: Dolls
+    dolls house: Dolls
+    lego: Lego
+    disney: Disney
+    steiff: Steiff
+    # --- Rugs & Textiles
+    rugs: Rugs
+    linens: Linens & Textiles
+    linens and textiles: Linens & Textiles
+    blankets and throws: Linens & Textiles
+    quilts: Linens & Textiles
+    textiles: Linens & Textiles
+    linen: Linens & Textiles
+    # --- Lawn & Garden
+    lawn and garden: Lawn & Garden
+    lawn & garden: Lawn & Garden
+    yard and garden: Lawn & Garden
+    lawn equipment: Lawn & Garden
+    lawn mower: Lawn & Garden
+    mowers: Lawn & Garden
+    pool accessories: Lawn & Garden
+    grills: Lawn & Garden
+    coolers: Lawn & Garden
+    step ladders: Lawn & Garden
+    outdoor: Outdoor & Patio
+    outdoors: Outdoor & Patio
+    outdoor & patio: Outdoor & Patio
+    # --- Sporting Goods
+    sporting goods: Sporting Goods
+    sports equipment: Sporting Goods
+    bicycles: Sporting Goods
+    fishing: Fishing
+    fishing/boating: Fishing
+    equestrian: Equestrian
+    exercise equipment: Exercise & Fitness
+    exercise & fitness: Exercise & Fitness
+    fitness: Exercise & Fitness
+    # --- Hobbies
+    hobbies and crafts: Hobbies & Crafts
+    hobbies & crafts: Hobbies & Crafts
+    arts and crafts: Hobbies & Crafts
+    arts & craft: Hobbies & Crafts
+    crafting: Hobbies & Crafts
+    sewing: Hobbies & Crafts
+    sewing machine: Hobbies & Crafts
+    miniatures: Hobbies & Crafts
+    drones: Drones
+    aviation: Aviation
+    musical instruments: Musical Instruments
+    # --- Tools & Hardware
+    tools: Tools
+    tools and hardware: Tools
+    tools & hardware: Tools
+    hardware: Hardware
+    batteries: Hardware
+    power tools: Power Tools
+    saws: Power Tools
+    drill press: Power Tools
+    nail guns: Power Tools
+    angle grinders: Power Tools
+    jigs: Tools
+    # --- Collectibles
+    collectibles: Collectibles
+    antiques: Collectibles
+    memorabilia: Collectibles
+    vintage: Collectibles
+    coca cola: Collectibles
+    longaberger: Collectibles
+    advertising: Collectibles
+    bottles: Collectibles
+    lighters: Collectibles
+    military gear: Military & Militaria
+    military & militaria: Military & Militaria
+    militaria: Military & Militaria
+    scouting: Military & Militaria
+    knives and swords: Knives & Swords
+    knives & swords: Knives & Swords
+    knives: Knives & Swords
+    cutlery: Knives & Swords
+    philately: Stamps
+    stamps: Stamps
+    stamp: Stamps
+    postal history: Stamps
+    sports collectibles: Sports Collectibles
+    trading cards: Trading Cards
+    sports cards: Trading Cards
+    baseball cards: Trading Cards
+    football cards: Trading Cards
+    cards: Trading Cards
+    tcg collectibles: Trading Cards
+    hot wheels: Hot Wheels & Models
+    model trains: Hot Wheels & Models
+    model kits: Hot Wheels & Models
+    steins: Steins
+    beer steins: Steins
+    globes: Globes
+    black americana: Black Americana
+    artifacts: Artifacts
+    relics: Artifacts
+    tobacciana: Tobacciana
+    # --- Seasonal
+    christmas: Christmas & Holiday
+    christmas & holiday: Christmas & Holiday
+    christmas/holiday: Christmas & Holiday
+    holiday: Christmas & Holiday
+    holiday and seasonal: Christmas & Holiday
+    # --- Vehicles
+    vehicles: Vehicles
+    automobile: Vehicles
+    automotive: Auto Parts & Accessories
+    auto parts: Auto Parts & Accessories
+    auto accessories: Auto Parts & Accessories
+    automotive accessories: Auto Parts & Accessories
+    motorcycle accessories: Auto Parts & Accessories
+    automobilia: Auto Parts & Accessories
+    boat parts: Boat & Marine
+    # --- Science & Nature
+    rocks & minerals: Rocks & Minerals
+    rocks fossils and minerals: Rocks & Minerals
+    scientific equipment: Scientific Equipment
+    taxidermy: Taxidermy
+    # --- Pets & Kids
+    pet essentials: Pet Accessories
+    pet accessories: Pet Accessories
+    pets: Pet Accessories
+    child care: Child Care
+    baby items: Child Care
+
+  # Cannon's / Maxanet site strings that need ALL-CAPS or quirky synonyms not
+  # worth polluting `common`. (Matching lowercases, so casing isn't the issue;
+  # these are genuinely Cannon's-specific phrasings.)
+  cannons:
+    art: Paintings & Prints
+    ammo/gun accessories: Firearm Accessories
+    herman miller: Furniture
+    jewelry/coins: Coins & Currency
+    ladders: Hardware
+    restaurant eqt: Food Service Equipment
+    building supplies: Building Materials
+    pumps: Industrial Equipment
+    compressor: Industrial Equipment
+    air hammer: Tools
+    jacks: Tools
+    clamps: Tools
+    polisher: Power Tools
+    helmet: Sporting Goods
+    bat: Sporting Goods
+    baseball: Sports Collectibles
+    sports jerseys: Sports Collectibles
+    jersey: Sports Collectibles
+    pokemon: Trading Cards
+    "pokémon": Trading Cards
+    plaques: Collectibles
+    portrait: Paintings & Prints
+    picture: Paintings & Prints
+    decoys: Collectibles
+    political memorabilia: Collectibles
+    costumes: Clothing
+    wedding dress: Clothing
+    trunks: Furniture
+    materials: Household
+    safe: Household
+    pets: Pet Accessories
+    bounce houses: Toys & Games
+    bounce house: Toys & Games
+    playground: Toys & Games
+    amusement rides: Industrial Equipment
+    animatronic: Industrial Equipment
+    boat parts: Boat & Marine
+    plumbing: HVAC & Plumbing
+    yard: Lawn & Garden
+    ambulatory: Medical
+    # ALL-CAPS Cannon's tags (lowercased here)
+    media: Vinyl & CDs
+
+  # HiBid breadcrumb leaves. HiBid's leaf crumb is frequently NOT a category:
+  #   - coin auctions expose a denomination ("Half Dollars", "Quarters", ...)
+  #   - sports-card auctions expose a player name ("Will Clark", ...)
+  #   - some lots expose the literal item title.
+  # Denominations roll up to Coins & Currency. Player-name and item-title leaves
+  # are unknowable from a static list, so they fall to `__unknown__` and then to
+  # inference (see the `inference` block) -> usually Collectibles for cards.
+  # NOTE: "US" / "International" / "Canada" / "World" are a COUNTRY facet, not a
+  # category; they are genuinely ambiguous (coins vs stamps vs cards) and need
+  # the parent breadcrumb the scraper currently drops. Marked __unknown__.
+  hibid:
+    # coin denominations -> Coins & Currency
+    dollars: Coins & Currency
+    half dollars: Coins & Currency
+    quarters: Coins & Currency
+    dimes: Coins & Currency
+    nickels: Coins & Currency
+    pennies: Coins & Currency
+    sets: Coins & Currency
+    mixed lots: Coins & Currency
+    silver: Coins & Currency
+    gold: Coins & Currency
+    gold coins (pre-1933): Coins & Currency
+    commemorative: Coins & Currency
+    world: Coins & Currency
+    # card-type leaves
+    baseball trading cards: Trading Cards
+    basketball trading cards: Trading Cards
+    football trading cards: Trading Cards
+    # misc HiBid-specific phrasings
+    specialty / collectible / novelty: Collectibles
+    mixed lot: Collectibles
+    music - cds / records / cassettes: Vinyl & CDs
+    knives / blades: Knives & Swords
+    medals / badges / insignias: Military & Militaria
+    world war ii: Military & Militaria
+    civil war: Military & Militaria
+    vintage / antique toys: Toys & Games
+    outdoor games & sports equipment: Sporting Goods
+    bicycles, scooters & more: Sporting Goods
+    kitchen / home: Household
+    kitchen / housewares: Kitchenware
+    bed / bath items: Household
+    displays / display cases: Household
+    "women's accessories": Fashion Accessories
+    auto accessories: Auto Parts & Accessories
+    daisy pellet gun: Firearms
+    # Country-facet leaves. These are a COUNTRY tab, not a real category, and
+    # are genuinely ambiguous (coins vs stamps vs cards). Proper fix: have the
+    # scraper keep the parent breadcrumb. Until then we use the empirical
+    # dominant for these HiBid auctions (sports cards / stamps / misc all roll
+    # up to Collectibles; only the coin sub-tree differs, and "world" below is
+    # the coin case).
+    us: Collectibles
+    international: Collectibles
+    canada: Collectibles
+
+  # Rasmus runs on auction-engine.com and sells industrial / warehouse
+  # liquidation lots. Its taxonomy is almost entirely disjoint from the antiques
+  # vocabulary above and previously fell ~50% to Other.
+  rasmus:
+    apparel & accessories: Clothing
+    computers & elec: Electronics
+    ind & warehouse eqpt: Industrial Equipment
+    specialty eqpt: Industrial Equipment
+    auto parts & eqpt: Auto Parts & Accessories
+    packaging & shipping: Packaging & Shipping
+    hvac & plumbing: HVAC & Plumbing
+    office supplies & eqpt: Office Supplies
+    personal care products: Personal Care
+    medical & healthcare: Medical
+    shelving & storage: Material Handling & Storage
+    safety eqpt & ppe: Safety & PPE
+    food service eqpt: Food Service Equipment
+    garden & lawn eqpt: Lawn & Garden
+    garden/outdoor: Outdoor & Patio
+    outdoor & camping gear: Outdoor & Patio
+    cleaning & janitorial: Janitorial & Cleaning
+    home appliances: Appliances
+    appliances: Appliances
+    hand & power tools: Power Tools
+    tools: Tools
+    building materials: Building Materials
+    furniture & tables: Furniture
+    furniture: Furniture
+    books & media: Books
+    games & toys: Toys & Games
+    sporting goods: Sporting Goods
+    exercise & fitness eqpt: Exercise & Fitness
+    lighting: Lighting
+    batteries & chargers: Batteries & Power
+    snow removal eqpt: Industrial Equipment
+    housewares: Household
+
+# -----------------------------------------------------------------------------
+# Last-resort keyword inference (item title/description). Applied ONLY when the
+# raw category is empty or resolves to `__unknown__`. Order matters: more
+# specific terms first. Each entry maps a keyword -> subcategory.
+# -----------------------------------------------------------------------------
+inference:
+  rifle: Firearms
+  pistol: Firearms
+  shotgun: Firearms
+  revolver: Firearms
+  firearm: Firearms
+  ammunition: Ammunition
+  handbag: Purses & Bags
+  hand bag: Purses & Bags
+  purse: Purses & Bags
+  tote bag: Purses & Bags
+  leather bag: Purses & Bags
+  coach leather: Purses & Bags
+  "doctor's bag": Purses & Bags
+  necklace: Jewelry
+  bracelet: Jewelry
+  earring: Jewelry
+  pendant: Jewelry
+  brooch: Jewelry
+  diamond: Jewelry
+  gemstone: Gemstones
+  wristwatch: Watches
+  silver dollar: Coins & Currency
+  gold eagle: Coins & Currency
+  trading card: Trading Cards
+  baseball card: Trading Cards
+  football card: Trading Cards
+  basketball card: Trading Cards
+  sports card: Trading Cards
+  rookie card: Trading Cards
+  psa graded: Trading Cards
+  topps: Trading Cards
+  panini: Trading Cards
+  comic book: Comics
+  sofa: Furniture
+  dresser: Furniture
+  chest of drawers: Furniture
+  bookcase: Furniture
+  armoire: Furniture
+  sideboard: Furniture
+  nightstand: Furniture
+  dining table: Furniture
+  camera: Photography
+  television: Audiovisual
+  stereo: Audiovisual
+  speaker: Audiovisual
+  laptop: Electronics
+  computer: Electronics
+  oil on canvas: Paintings & Prints
+  watercolor: Paintings & Prints
+  lithograph: Paintings & Prints
+  etching: Paintings & Prints
+  sculpture: Sculpture
+  bronze: Sculpture
+  porcelain: China & Pottery
+  stoneware: China & Pottery
+  crystal: Crystal
+  sterling silver: Sterling & Silverplate
+  silverplate: Sterling & Silverplate
+  pewter: Pewter
+  oriental rug: Rugs
+  persian rug: Rugs
+  quilt: Linens & Textiles
+  drill: Tools
+  wrench: Tools
+  saw: Tools
+  book: Books
+  fishing: Fishing
+  golf: Sporting Goods
+  bicycle: Sporting Goods
+  doll: Dolls
+  lego: Lego
+  cookware: Kitchenware
+  lawn mower: Lawn & Garden
+  action figure: Toys & Games
+  board game: Board Games
+  vinyl record: Vinyl & CDs
+  stamp: Stamps
+  postal history: Stamps
