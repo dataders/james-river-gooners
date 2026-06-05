@@ -483,6 +483,11 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         item["auctionSafeId"] = safe_id
         item["auctionTitle"] = auction_title
         item["auctionEndDate"] = latest_end
+        # Closed lots carry no live countdown, so their per-lot endDate is
+        # blank. Fall back to the auction end date so the UI's countdown shows
+        # "Ended" instead of an empty time line.
+        if not item["endDate"]:
+            item["endDate"] = latest_end
         item["scrapedAt"] = scraped_at
         item["source"] = "cannons"
 
