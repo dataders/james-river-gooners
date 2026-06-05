@@ -501,6 +501,10 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     # so default behavior is unchanged. Runs while images are still arrays.
     from enrich import enrich_items
     enrich_items(all_items)
+    # Mirror enriched lots into Supabase so they're queryable via the API (#104).
+    # No-op without SUPABASE_SECRET_KEY or enriched lots.
+    from supabase_enrichment import maybe_export_enrichment
+    maybe_export_enrichment(all_items)
 
     # Write NDJSON (images as real array)
     ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"

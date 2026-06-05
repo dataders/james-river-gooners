@@ -23,3 +23,10 @@ export function getDisplayEnrichment(item) {
   const productUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : ''
   return { brand, model, label, condition, productUrl }
 }
+
+// True when the lot has a trustworthy, display-ready identification (a confident
+// brand/model). Drives the "Identified" grid filter — same bar as what the UI
+// actually shows, so the toggle never surfaces a lot with nothing to display.
+export function hasEnrichment(item) {
+  return getDisplayEnrichment(item) !== null
+}

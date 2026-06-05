@@ -50,8 +50,9 @@ MAX_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_WORKERS", "8"))
 MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
 
 # Fields written onto each item, camelCase to match the rest of the read model
-# (lotNumber, currentBid, rawCategory, …).
-ENRICHMENT_FIELDS = ("brand", "modelOrSku", "condition", "productUrl", "enrichmentConfidence")
+# (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
+# produced the row (provenance for the Supabase API / future re-runs).
+ENRICHMENT_FIELDS = ("brand", "modelOrSku", "condition", "productUrl", "enrichmentConfidence", "enrichmentModel")
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
 
@@ -184,7 +185,11 @@ def enrich_item(client, item: dict) -> dict:
         output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
     )
     text = next((block.text for block in response.content if getattr(block, "type", None) == "text"), "")
-    return parse_enrichment(json.loads(text))
+    result = parse_enrichment(json.loads(text))
+    # Stamp provenance only on lots that were actually identified.
+    if result.get("enrichmentConfidence"):
+        result["enrichmentModel"] = MODEL
+    return result
 
 
 def apply_enrichment(item: dict, enrichment: dict) -> None:
