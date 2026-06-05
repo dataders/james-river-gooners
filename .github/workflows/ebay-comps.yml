@@ -76,18 +76,18 @@ jobs:
       # comps coverage doesn't drop when the frontend flips to Supabase-only.
       # Spends no eBay requests; skips the fetch path entirely.
       - name: Backfill comps from JSON to Supabase
-        if: ${{ inputs.backfill_from_json == 'true' }}
+        if: ${{ inputs.backfill_from_json }}
         run: |
           cd scraper
           uv run --with requests python backfill_comps_to_supabase.py
 
       - uses: actions/setup-node@v5
-        if: ${{ inputs.backfill_from_json != 'true' }}
+        if: ${{ ! inputs.backfill_from_json }}
         with:
           node-version: '20'
 
       - name: Install agent-browser Playwright deps
-        if: ${{ inputs.backfill_from_json != 'true' }}
+        if: ${{ ! inputs.backfill_from_json }}
         run: |
           npm exec --yes agent-browser@0.27.0 -- install
         env:
@@ -95,7 +95,7 @@ jobs:
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
 
       - name: Refresh eBay comps
-        if: ${{ inputs.backfill_from_json != 'true' }}
+        if: ${{ ! inputs.backfill_from_json }}
         env:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
