@@ -31,3 +31,36 @@ test('null searchIds applies no search filter', () => {
   const result = filterItems([a, b], { excludedCategories: [], searchIds: null })
   assert.deepEqual(result, [a, b])
 })
+
+test('minBidders / maxBidders filter on uniqueBidders', () => {
+  const low = { ...base, id: '1', uniqueBidders: 1 }
+  const mid = { ...base, id: '2', uniqueBidders: 3 }
+  const high = { ...base, id: '3', uniqueBidders: 6 }
+  const items = [low, mid, high]
+
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], minBidders: 3 }),
+    [mid, high]
+  )
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], maxBidders: 3 }),
+    [low, mid]
+  )
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], minBidders: 2, maxBidders: 5 }),
+    [mid]
+  )
+})
+
+test('items without uniqueBidders count as 0 bidders', () => {
+  // HiBid lots omit uniqueBidders entirely.
+  const hibid = { ...base, id: '1' }
+  const cannons = { ...base, id: '2', uniqueBidders: 4 }
+  const items = [hibid, cannons]
+
+  // A "at least 1 bidder" floor drops the source that has no bidder data.
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], minBidders: 1 }),
+    [cannons]
+  )
+})
