@@ -18,7 +18,17 @@ async function callProxy(action, params = {}) {
   const { data, error } = await supabase.functions.invoke('cannon-proxy', {
     body: { action, ...params },
   })
-  if (error) return { error: error.message }
+  if (error) {
+    // FunctionsHttpError carries the raw Response in .context — extract our
+    // structured { error } body from it so the user sees the real reason.
+    if (error.context?.json) {
+      try {
+        const body = await error.context.json()
+        if (body?.error) return { error: body.error }
+      } catch { /* fall through */ }
+    }
+    return { error: error.message }
+  }
   return data ?? {}
 }
 
