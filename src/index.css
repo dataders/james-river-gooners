@@ -1987,6 +1987,120 @@ body {
   background: var(--border);
 }
 
+/* In-app bidding for live Cannon's lots (cannon-proxy place_bid). */
+.bid-panel {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.bid-panel-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--text);
+}
+
+.bid-panel-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.bid-cta {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  transition: background 0.15s, opacity 0.15s;
+}
+.bid-cta:hover {
+  background: var(--accent-hover);
+}
+.bid-cta:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bid-form {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.bid-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 140px;
+}
+
+.bid-input-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 10px;
+}
+
+.bid-currency {
+  color: var(--gold);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.bid-input-row input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 10px 6px;
+  width: 100%;
+}
+.bid-input-row input:focus {
+  outline: none;
+}
+
+.bid-submit {
+  flex-shrink: 0;
+}
+
+.bid-panel-min {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 8px 0 0;
+}
+
+.bid-panel-error {
+  font-size: 0.82rem;
+  color: #e06c75;
+  margin: 8px 0 0;
+}
+
+.bid-panel-result {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+.bid-panel-result.winning {
+  color: #1a7f37;
+}
+.bid-panel-result.outbid {
+  color: #c23030;
+}
+
 .ebay-comps {
   border-top: 1px solid var(--border);
   margin-top: 20px;

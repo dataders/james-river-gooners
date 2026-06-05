@@ -676,6 +676,10 @@ export default function App() {
           margin={margin}
           locked={resaleLocked}
           onSignInClick={() => setAuthOpen(true)}
+          cannonBids={cannonBids}
+          bidStatus={cannonBids.bidStatuses.get(String(selectedItem.id))}
+          user={auth.user}
+          onCannonLinkClick={() => setCannonLinkOpen(true)}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={handleToggleFavorite}
           isIgnored={isIgnored(selectedItem)}
