@@ -81,7 +81,13 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
   return { items, auctions, embeddingEntries, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
-export function useAuctionData(includeArchived = false) {
+// archiveMode: 'active' (active auctions only), 'both' (active + archived),
+// or 'archived' (archived only). Archived data is loaded whenever the mode
+// isn't 'active'; 'archived' then filters the merged set down to archived
+// entries so past-deadline auctions still surface even before the backend
+// moves them into the archive manifest.
+export function useAuctionData(archiveMode = 'active') {
+  const includeArchived = archiveMode !== 'active'
   const [activeItems, setActiveItems] = useState([])
   const [activeAuctions, setActiveAuctions] = useState([])
   const [activeEmbeddingEntries, setActiveEmbeddingEntries] = useState([])
@@ -163,37 +169,41 @@ export function useAuctionData(includeArchived = false) {
   )
 
   const allItems = useMemo(() => {
-    if (includeArchived) {
-      const active = dynamicArchivedIds.size === 0
-        ? activeItems
-        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
-            ? { ...item, archived: true }
-            : item)
-      // The same lot can appear in both the active and archive snapshots while
-      // an auction is mid-transition. De-dupe by the globally-unique composite
-      // key (preferring the active copy) so downstream consumers never see a
-      // collision. Keying on the bare id here would wrongly drop an archive lot
-      // that merely shares an id with an unrelated active lot from another auction.
-      const activeKeys = new Set(active.map(itemKey))
-      const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
-      return [...active, ...archiveOnly]
+    if (!includeArchived) {
+      if (dynamicArchivedIds.size === 0) return activeItems
+      return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
     }
-    if (dynamicArchivedIds.size === 0) return activeItems
-    return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
-  }, [activeItems, archiveItems, includeArchived, dynamicArchivedIds])
+    const active = dynamicArchivedIds.size === 0
+      ? activeItems
+      : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+          ? { ...item, archived: true }
+          : item)
+    // The same lot can appear in both the active and archive snapshots while
+    // an auction is mid-transition. De-dupe by the globally-unique composite
+    // key (preferring the active copy) so downstream consumers never see a
+    // collision. Keying on the bare id here would wrongly drop an archive lot
+    // that merely shares an id with an unrelated active lot from another auction.
+    const activeKeys = new Set(active.map(itemKey))
+    const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
+    const merged = [...active, ...archiveOnly]
+    if (archiveMode === 'archived') return merged.filter(item => item.archived)
+    return merged
+  }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicArchivedIds])
 
   const auctions = useMemo(() => {
-    if (includeArchived) {
-      const active = dynamicArchivedIds.size === 0
-        ? activeAuctions
-        : activeAuctions.map(a => dynamicArchivedIds.has(a.safeId)
-            ? { ...a, archived: true }
-            : a)
-      return [...active, ...archiveAuctions]
+    if (!includeArchived) {
+      if (dynamicArchivedIds.size === 0) return activeAuctions
+      return activeAuctions.filter(a => !dynamicArchivedIds.has(a.safeId))
     }
-    if (dynamicArchivedIds.size === 0) return activeAuctions
-    return activeAuctions.filter(a => !dynamicArchivedIds.has(a.safeId))
-  }, [activeAuctions, archiveAuctions, includeArchived, dynamicArchivedIds])
+    const active = dynamicArchivedIds.size === 0
+      ? activeAuctions
+      : activeAuctions.map(a => dynamicArchivedIds.has(a.safeId)
+          ? { ...a, archived: true }
+          : a)
+    const merged = [...active, ...archiveAuctions]
+    if (archiveMode === 'archived') return merged.filter(a => a.archived)
+    return merged
+  }, [activeAuctions, archiveAuctions, includeArchived, archiveMode, dynamicArchivedIds])
 
   const items = useMemo(() => {
     if (excludedAuctions.length === 0) return allItems
