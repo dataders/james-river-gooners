@@ -59,7 +59,7 @@ page.on('response', async resp => {
 console.log('\nNavigating to login page…')
 await page.goto(`${BASE}/Public/Account/Login`, { waitUntil: 'networkidle' })
 
-// Dump all inputs so we can diagnose selector mismatches
+// Dump all inputs and buttons so we can diagnose selector mismatches
 const loginInputs = await page.locator('input').all()
 console.log('Inputs found on login page:')
 for (const el of loginInputs) {
@@ -68,6 +68,16 @@ for (const el of loginInputs) {
   const id   = await el.getAttribute('id').catch(() => '')
   console.log(`  name="${name}" type="${type}" id="${id}"`)
 }
+const loginButtons = await page.locator('button, a[href*="login" i], [role="button"]').all()
+console.log('Buttons/links found on login page:')
+for (const el of loginButtons) {
+  const tag  = await el.evaluate(n => n.tagName).catch(() => '')
+  const type = await el.getAttribute('type').catch(() => '')
+  const id   = await el.getAttribute('id').catch(() => '')
+  const cls  = await el.getAttribute('class').catch(() => '')
+  const text = await el.textContent().catch(() => '')
+  console.log(`  <${tag.toLowerCase()}> type="${type}" id="${id}" class="${cls}" text="${text?.trim()}"`)
+}
 
 // Cannon's login form field is "Username" (not Email or BidderNumber)
 const emailField = page.locator('input[name="Username"]').first()
@@ -75,7 +85,7 @@ await emailField.fill(CANNON_EMAIL)
 await page.locator('input[type="password"]').first().fill(CANNON_PASS)
 
 console.log('Submitting login…')
-await page.locator('button[type="submit"], input[type="submit"]').first().click()
+await page.locator('button[type="submit"], input[type="submit"], button:has-text("Log"), button:has-text("Sign"), a:has-text("Log")').first().click()
 // Some Maxanet deployments do AJAX login (no full navigation), so wait for
 // either a URL change away from /Login or networkidle, whichever comes first.
 await Promise.race([
