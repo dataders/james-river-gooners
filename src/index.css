@@ -976,6 +976,48 @@ body {
   letter-spacing: 0.01em;
 }
 
+/* Archive mode — segmented control (active / all / archived) */
+.archive-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.archive-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.archive-segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.segmented-option {
+  min-height: 36px;
+  padding: 4px 12px;
+  background: var(--surface);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.segmented-option:last-child {
+  border-right: none;
+}
+.segmented-option:hover {
+  color: var(--text);
+}
+.segmented-option.active {
+  background: color-mix(in srgb, var(--gold) 22%, var(--chip-bg));
+  color: var(--gold);
+  font-weight: 700;
+}
+
 .loader-bench {
   display: inline-flex;
   align-items: center;

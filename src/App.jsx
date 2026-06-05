@@ -33,9 +33,14 @@ import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
 
 export default function App() {
-  const [showArchived, setShowArchived] = useState(
-    () => new URLSearchParams(window.location.search).get('archive') === '1'
-  )
+  // 'active' (live auctions only), 'both' (live + archived), or 'archived'
+  // (past auctions only). 'archive=1' is the legacy URL value for 'both'.
+  const [archiveMode, setArchiveMode] = useState(() => {
+    const v = new URLSearchParams(window.location.search).get('archive')
+    if (v === 'archived') return 'archived'
+    if (v === 'both' || v === '1') return 'both'
+    return 'active'
+  })
   const {
     auctions,
     excludedAuctions,
@@ -50,7 +55,13 @@ export default function App() {
     error,
     archiveLoading,
     archiveError,
-  } = useAuctionData(showArchived)
+  } = useAuctionData(archiveMode)
+
+  const changeArchiveMode = useCallback((mode) => {
+    setArchiveMode(mode)
+    syncUrlParam('archive', mode === 'active' ? '' : mode)
+    captureEvent('archive_mode_changed', { mode })
+  }, [])
 
   const {
     excludedCategories,
@@ -275,18 +286,30 @@ export default function App() {
             />
             <span>Richmond area only</span>
           </label>
-          <label className="local-toggle">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={e => {
-              syncUrlParam('archive', e.target.checked)
-              setShowArchived(e.target.checked)
-              captureEvent('archive_toggled', { enabled: e.target.checked })
-            }}
-            />
-            <span>Archived auctions</span>
-          </label>
+          <div className="archive-control">
+            <span className="archive-label">Auctions</span>
+            <div
+              className="archive-segmented"
+              role="group"
+              aria-label="Which auctions to show"
+            >
+              {[
+                { value: 'active', label: 'Active' },
+                { value: 'both', label: 'All' },
+                { value: 'archived', label: 'Archived' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`segmented-option${archiveMode === opt.value ? ' active' : ''}`}
+                  aria-pressed={archiveMode === opt.value}
+                  onClick={() => changeArchiveMode(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             className={`deals-toggle${showFavoritesOnly ? ' active' : ''}`}
