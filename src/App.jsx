@@ -197,12 +197,19 @@ export default function App() {
     setSelectedItem(null)
   }, [])
 
+  // Resale intelligence (eBay comps + Cannon's sold history) is members-only:
+  // RLS gates the Supabase data to logged-in users (migration 0008), and we hide
+  // the static Cannon's comps to match. `resaleLocked` is true only when auth is
+  // available but no one is signed in — when Supabase is unconfigured (offline
+  // static site, no login possible) it's false, so those builds behave as before.
+  const resaleLocked = auth.available && !auth.user
+
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
-  const allComps = useEbayComps(auctionSafeIds)
-  const allCannonsComps = useCannonsComps(auctionSafeIds)
+  const allComps = useEbayComps(auctionSafeIds, Boolean(auth.user))
+  const allCannonsComps = useCannonsComps(auctionSafeIds, !resaleLocked)
   // Per-category Cannon's sold-price baseline (#95): feeds the "Best margin"
   // sort (#97) and the detail panel's category history (#96).
-  const categorySoldStats = useCategorySoldStats()
+  const categorySoldStats = useCategorySoldStats(Boolean(auth.user))
 
   const localAuctionIds = useMemo(() => {
     const ids = new Set()
@@ -591,6 +598,8 @@ export default function App() {
           cannonsComps={allCannonsComps[selectedItem.auctionSafeId] || {}}
           categoryStats={categorySoldStats[selectedItem.category]}
           margin={margin}
+          locked={resaleLocked}
+          onSignInClick={() => setAuthOpen(true)}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={handleToggleFavorite}
           isIgnored={isIgnored(selectedItem)}

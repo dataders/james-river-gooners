@@ -1798,6 +1798,54 @@ body {
   padding-top: 16px;
 }
 
+/* Logged-out "log in to unlock" card shown in place of the resale-insights
+   cluster (eBay comps + Cannon's sold history + category history + calculator). */
+.resale-gate {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.resale-gate-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.resale-gate-header h3 {
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.resale-gate-lock {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.resale-gate-blurb {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.resale-gate-cta {
+  background: var(--gold);
+  border: none;
+  border-radius: 8px;
+  color: #1a1a1a;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 750;
+  padding: 9px 16px;
+}
+
+.resale-gate-cta:hover {
+  filter: brightness(1.06);
+}
+
 .ebay-comps-header {
   display: flex;
   align-items: baseline;

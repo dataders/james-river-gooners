@@ -4,8 +4,9 @@ import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
 import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
+import { ResaleInsightsGate } from './ResaleInsightsGate'
 
-export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
+export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
 
@@ -147,11 +148,19 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
             </button>
           </div>
 
-          {/* Comps lead — they're the primary signal; the calculator is secondary (#88) */}
-          <EbayComps item={item} soldComps={ebayComps[item.id]} />
-          <CannonsComps comps={cannonsComps[item.id]} />
-          <CategorySoldHistory category={item.category} stats={categoryStats} currentBid={item.currentBid} />
-          <RoiCalculator soldComps={ebayComps[item.id]} margin={margin} />
+          {/* Comps lead — they're the primary signal; the calculator is secondary (#88).
+              The whole resale cluster is members-only: logged out, the data is
+              RLS-gated to empty, so show a single sign-in CTA in its place. */}
+          {locked ? (
+            <ResaleInsightsGate onSignInClick={onSignInClick} />
+          ) : (
+            <>
+              <EbayComps item={item} soldComps={ebayComps[item.id]} />
+              <CannonsComps comps={cannonsComps[item.id]} />
+              <CategorySoldHistory category={item.category} stats={categoryStats} currentBid={item.currentBid} />
+              <RoiCalculator soldComps={ebayComps[item.id]} margin={margin} />
+            </>
+          )}
         </div>
       </div>
     </div>
