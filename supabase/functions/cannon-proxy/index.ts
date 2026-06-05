@@ -120,7 +120,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   return sessionCookies
 }
 
-async function fetchBidHistory(cookies: Record<string, string>): Promise<string[]> {
+async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
   // NOTE: /Account/BidHistory is the standard MVC endpoint guess. If this
@@ -139,7 +139,25 @@ async function fetchBidHistory(cookies: Record<string, string>): Promise<string[
   if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
 
   const html = await resp.text()
-  return parseBidItemIds(html)
+  return { itemIds: parseBidItemIds(html), bidderId: parseBidderId(html) }
+}
+
+function parseBidderId(html: string): string | null {
+  // Common patterns auction platforms use to display a user's bidder number.
+  // These are best-effort regexes; add more once a real BidHistory response
+  // can be inspected in DevTools.
+  const patterns = [
+    /bidder\s*#\s*(\d+)/i,
+    /bidder\s*number[:\s]+(\d+)/i,
+    /BidderNumber[=":\s]+(\d+)/i,
+    /data-bidder-id="(\d+)"/i,
+    /my\s+bidder\s+(?:id|#)[:\s]+(\d+)/i,
+  ]
+  for (const re of patterns) {
+    const m = html.match(re)
+    if (m) return m[1]
+  }
+  return null
 }
 
 function parseBidItemIds(html: string): string[] {
@@ -229,10 +247,21 @@ async function getBids(
   }
 
   let itemIds: string[]
+  let bidderId: string | null
   try {
-    itemIds = await fetchBidHistory(cookies)
+    ;({ itemIds, bidderId } = await fetchBidHistory(cookies))
   } catch (e: unknown) {
     return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
+  }
+
+  // Auto-populate cannon_bidder_id the first time we see it in a response.
+  // Only writes if the field is still null — won't overwrite a manually set value.
+  if (bidderId) {
+    await supabase
+      .from('users')
+      .update({ cannon_bidder_id: bidderId })
+      .eq('id', userId)
+      .is('cannon_bidder_id', null)
   }
 
   return json({ itemIds })
