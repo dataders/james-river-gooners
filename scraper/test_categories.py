@@ -155,5 +155,48 @@ class NormalizeRawWithDescriptionTest(unittest.TestCase):
         )
 
 
+class OtherRecoveryKeywordsTest(unittest.TestCase):
+    """Description-driven recovery for "Other"/placeholder lots, and the ordering
+    that keeps it high-precision (first matching keyword wins)."""
+
+    def test_object_nouns_recover_common_categories(self):
+        cases = {
+            "Antique mahogany drop leaf table": "Furniture",
+            "Pair of Queen Anne dining chairs": "Furniture",
+            "Brass table lamp with shade": "Home & Kitchen",        # lamp → Lighting group
+            "Tall case clock, walnut": "Home & Kitchen",            # clock → Clocks group
+            "Framed oil painting of a harbor": "Art",
+            "Set of ceramic dinner plates": "China & Glass",
+            "Cut glass decanter": "China & Glass",
+        }
+        for desc, group in cases.items():
+            self.assertEqual(normalize_category("Other", desc), group, desc)
+
+    def test_furniture_noun_beats_metal_hardware(self):
+        # A cherry chest with brass pulls is Furniture, not Silver & Metal —
+        # the furniture noun is checked before the bare "brass" material.
+        self.assertEqual(
+            normalize_category("Other", "Cherry Hepplewhite bowfront chest, brass pulls"),
+            "Furniture",
+        )
+
+    def test_precious_metal_beats_china_noun(self):
+        # A sterling platter is silver hollowware, not china — "sterling" is
+        # checked before the generic "platter" object noun.
+        self.assertEqual(
+            normalize_category("Other", "Theodore Starr sterling platter, 1058g"),
+            "Silver & Metal",
+        )
+        self.assertEqual(
+            normalize_raw_with_description("Other", "Pair of 800 silver napkin rings"),
+            "Sterling & Silverplate",
+        )
+
+    def test_new_raw_aliases_map_source_specific_crumbs(self):
+        self.assertEqual(normalize_category("Computers & Elec", ""), "Electronics")
+        self.assertEqual(normalize_category("Prints / Lithographs", ""), "Art")
+        self.assertEqual(normalize_category("COSTUMES", ""), "Fashion")
+
+
 if __name__ == "__main__":
     unittest.main()
