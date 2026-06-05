@@ -43,6 +43,11 @@ from pathlib import Path
 # set one — extraction needs neither effort nor extended thinking.
 MODEL = os.environ.get("GOONERS_ENRICHMENT_MODEL", "claude-haiku-4-5")
 MAX_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_WORKERS", "8"))
+# Concurrent workers blow through a low per-minute org rate limit (e.g. the
+# 50 RPM entry tier), so lean on the SDK's built-in 429 handling: it honors the
+# `retry-after` header and backs off. A generous retry count lets a lot ride out
+# the rate-limit window instead of being dropped. Overridable for higher tiers.
+MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …).
@@ -105,7 +110,7 @@ def _make_client():
     except ImportError:
         print("  enrich: anthropic SDK not installed; skipping enrichment", file=sys.stderr)
         return None
-    return anthropic.Anthropic()
+    return anthropic.Anthropic(max_retries=MAX_RETRIES)
 
 
 def item_images(item: dict) -> list:
