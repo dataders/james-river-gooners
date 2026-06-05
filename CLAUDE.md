@@ -66,13 +66,15 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 When a change moves a read model into Supabase (or adds an auth gate that empties it), the table must be **populated before the new frontend goes live**, or signed-in users briefly see empty sections. The pattern: **populate from the dev branch first, then merge.**
 
 1. **Apply the migration** to the live project (Supabase MCP `apply_migration`, or it's already applied per the PR). New tables are additive — applying early doesn't affect the old frontend still on `main`.
-2. **Run the data-refresh GitHub Action from the PR branch** (`workflow_dispatch` with the branch as the ref) — the branch carries the workflow + scraper changes that write to the new table, so this populates Supabase while `main` is untouched. The Action commits its embedding/cache artifacts back to the **branch**, so `git pull` before pushing more to it. (Triggering needs `actions: write`; the GitHub MCP token lacks it, so a human clicks **Run workflow** → pick the branch, or uses `gh workflow run … --ref <branch>`.)
+2. **Run the data-refresh GitHub Action from the PR branch** with the `gh` CLI: `gh workflow run <name>.yml --repo dataders/james-river-gooners --ref <branch>` (e.g. `cannons-comps.yml`). The branch carries the workflow + scraper changes that write to the new table, so this populates Supabase while `main` is untouched. The Action commits its embedding/cache artifacts back to the **branch**, so `git pull` before pushing more to it. (The GitHub **MCP** token can't dispatch — `403 not accessible by integration` — but the `gh` CLI's PAT can.)
 3. **Verify** the table is populated (service-role count > 0) and the gate holds (anon read = 0 rows).
 4. **Merge → deploy.** The new frontend reads a table that's already full — no gap.
 
 This is the inverse of the frontend-first order used for a pure *gate* (#149, where the data already existed and only access changed); here the data is new, so it must lead.
 
 ## CI / PR Monitoring
+
+**GitHub CLI is available and authenticated** (`gh`, PAT for `dataders`). Use it for GitHub Actions work the MCP can't do — dispatching workflows (`gh workflow run`), watching runs (`gh run list/view/watch`), reading job logs (`gh run view --log`), re-running, cancelling. **Always pass `--repo dataders/james-river-gooners`:** the git remote is a local proxy, so `gh` can't infer the repo and errors with "none of the git remotes … point to a known GitHub host" without it. Prefer the GitHub MCP tools for PR reads/reviews/comments (richer, structured); reach for `gh` for Actions/dispatch and anything the MCP token lacks permission for.
 
 **At the start of every session:** immediately call `mcp__github__list_pull_requests` for `dataders/james-river-gooners` (state: open) and call `mcp__github__subscribe_pr_activity` for every open PR. Do this before the user asks. Subscriptions do not persist across sessions — re-subscribing each session is mandatory.
 
