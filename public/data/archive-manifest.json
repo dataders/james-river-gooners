@@ -1,6 +1,206 @@
 {
   "auctions": [
     {
+      "safeId": "rasmus_SI2pKyb2Hk8uguZoetlU",
+      "title": "Salvage Freight, Closeout & Overstock Liquidation Company - Richmond, VA",
+      "endDate": "2026-03-31T14:43:00+00:00",
+      "scrapedAt": "2026-06-05T01:33:01.844576+00:00",
+      "itemCount": 545,
+      "itemsPath": "data/archive/items/rasmus_SI2pKyb2Hk8uguZoetlU.parquet",
+      "source": "rasmus",
+      "ndjsonPath": "data/archive/items/rasmus_SI2pKyb2Hk8uguZoetlU.ndjson"
+    },
+    {
+      "safeId": "JdlCLZbjkVFqE_MDY2imKQ",
+      "title": "04/27/26: Chesterfield Onsite Estate Auction | Club Car Golf Cart | Gorham Sterling and Gold Jewelry | Gates Bluff Place 23232- Cannon's Online Auctions, LLC",
+      "endDate": "2026-04-27 23:59:59",
+      "scrapedAt": "2026-06-05T01:32:36.005085+00:00",
+      "itemCount": 274,
+      "itemsPath": "data/archive/items/JdlCLZbjkVFqE_MDY2imKQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/JdlCLZbjkVFqE_MDY2imKQ.ndjson"
+    },
+    {
+      "safeId": "53tdNDIj5jn0uUH53zaSQQ",
+      "title": "04/28/26:  Acorn Estate Liquidators at Haywood, VA 22722 Madison County- Cannon's Online Auctions, LLC",
+      "endDate": "2026-04-28 23:59:59",
+      "scrapedAt": "2026-06-05T01:31:04.282663+00:00",
+      "itemCount": 869,
+      "itemsPath": "data/archive/items/53tdNDIj5jn0uUH53zaSQQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/53tdNDIj5jn0uUH53zaSQQ.ndjson"
+    },
+    {
+      "safeId": "vmFbKo00yUjl3lxCvZyAlQ",
+      "title": "04/29/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "2026-04-29 23:59:59",
+      "scrapedAt": "2026-06-05T01:26:26.593894+00:00",
+      "itemCount": 770,
+      "itemsPath": "data/archive/items/vmFbKo00yUjl3lxCvZyAlQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/vmFbKo00yUjl3lxCvZyAlQ.ndjson"
+    },
+    {
+      "safeId": "sxaO7PgFDRLkmW3qascokw",
+      "title": "04/30/26: Mechanicsville VA Online Estate Auction | Antiques Collectibles Jewelry | Rainier Dr 23111- Cannon's Online Auctions, LLC",
+      "endDate": "2026-04-30 23:59:59",
+      "scrapedAt": "2026-06-05T01:22:03.701147+00:00",
+      "itemCount": 741,
+      "itemsPath": "data/archive/items/sxaO7PgFDRLkmW3qascokw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/sxaO7PgFDRLkmW3qascokw.ndjson"
+    },
+    {
+      "safeId": "7_jQ0rs7OQ4ujXMJa0q-Iw",
+      "title": "05/03/26: The Vintage Chics | Estate Sterling and Jewelry | Mechanicsville VA 23111- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-03 23:59:59",
+      "scrapedAt": "2026-06-05T01:17:48.836638+00:00",
+      "itemCount": 271,
+      "itemsPath": "data/archive/items/7_jQ0rs7OQ4ujXMJa0q-Iw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/7_jQ0rs7OQ4ujXMJa0q-Iw.ndjson"
+    },
+    {
+      "safeId": "RdL-JTyt9DqGVkb2y2OF0w",
+      "title": "05/04/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-04 23:59:59",
+      "scrapedAt": "2026-06-05T01:16:18.243118+00:00",
+      "itemCount": 493,
+      "itemsPath": "data/archive/items/RdL-JTyt9DqGVkb2y2OF0w.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/RdL-JTyt9DqGVkb2y2OF0w.ndjson"
+    },
+    {
+      "safeId": "ymj8G83rwEPz15K-9GcBSQ",
+      "title": "05/05/26: Acorn Estate Liquidators | Four Seasons, Ruckersville VA 22968- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-05 23:59:59",
+      "scrapedAt": "2026-06-05T01:13:48.587497+00:00",
+      "itemCount": 552,
+      "itemsPath": "data/archive/items/ymj8G83rwEPz15K-9GcBSQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/ymj8G83rwEPz15K-9GcBSQ.ndjson"
+    },
+    {
+      "safeId": "aEishQMt5bzRYJgbdQEwdw",
+      "title": "05/06/26: Clover Hill Farms,  Midlothian VA 23112 | Online Only Estate Auction- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-06 23:59:59",
+      "scrapedAt": "2026-06-05T01:10:51.367435+00:00",
+      "itemCount": 153,
+      "itemsPath": "data/archive/items/aEishQMt5bzRYJgbdQEwdw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/aEishQMt5bzRYJgbdQEwdw.ndjson"
+    },
+    {
+      "safeId": "AsuPfDpHW89m4S-SJ1K6Xw",
+      "title": "05/06/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-06 23:59:59",
+      "scrapedAt": "2026-06-05T01:10:00.658354+00:00",
+      "itemCount": 826,
+      "itemsPath": "data/archive/items/AsuPfDpHW89m4S-SJ1K6Xw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/AsuPfDpHW89m4S-SJ1K6Xw.ndjson"
+    },
+    {
+      "safeId": "1zYruY7b7Vvps-QAoHwAUQ",
+      "title": "05/07/26: Fine Antiques and Sterling | Online Estate Auction | Greenyard Rd, Chester VA 23831- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-07 23:59:59",
+      "scrapedAt": "2026-06-05T01:05:15.910583+00:00",
+      "itemCount": 206,
+      "itemsPath": "data/archive/items/1zYruY7b7Vvps-QAoHwAUQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/1zYruY7b7Vvps-QAoHwAUQ.ndjson"
+    },
+    {
+      "safeId": "7IMSJA_Zy61uR2gaGFbdcA",
+      "title": "05/11/26: Acorn Estate Liquidators at Culpeper, VA, 22701- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-11 23:59:59",
+      "scrapedAt": "2026-06-05T01:04:07.788057+00:00",
+      "itemCount": 1367,
+      "itemsPath": "data/archive/items/7IMSJA_Zy61uR2gaGFbdcA.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/7IMSJA_Zy61uR2gaGFbdcA.ndjson"
+    },
+    {
+      "safeId": "QCh2BE-Evlvk01UW1xf6Ow",
+      "title": "05/12/26: Stanbrook Dr, Richmond VA 23234 | Online Auction | Home Furnishings, Rugs, Art Works- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-12 23:59:59",
+      "scrapedAt": "2026-06-05T00:57:23.591050+00:00",
+      "itemCount": 91,
+      "itemsPath": "data/archive/items/QCh2BE-Evlvk01UW1xf6Ow.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/QCh2BE-Evlvk01UW1xf6Ow.ndjson"
+    },
+    {
+      "safeId": "T-xEfNn2QOTKtc6i7Gy3Ng",
+      "title": "05/13/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-13 23:59:59",
+      "scrapedAt": "2026-06-05T00:56:53.735617+00:00",
+      "itemCount": 737,
+      "itemsPath": "data/archive/items/T-xEfNn2QOTKtc6i7Gy3Ng.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/T-xEfNn2QOTKtc6i7Gy3Ng.ndjson"
+    },
+    {
+      "safeId": "vPrxP345pzWxFT0dRBNSzw",
+      "title": "05/14/26:  Sheffey Lane, Chesterfield VA 23235 | Online Only Estate Auction | Sterling Silver, Rugs, Antiques and Collectibles- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-14 23:59:59",
+      "scrapedAt": "2026-06-05T00:52:36.779692+00:00",
+      "itemCount": 183,
+      "itemsPath": "data/archive/items/vPrxP345pzWxFT0dRBNSzw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/vPrxP345pzWxFT0dRBNSzw.ndjson"
+    },
+    {
+      "safeId": "TlQ-ix0FOsR5KtsWEzweFA",
+      "title": "05/15/26: Onsite Estate Auction | Firearms, Coins and Jewelry, Home Furnishings | Pine Cove Trail | Powhatan VA 23139- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-15 23:59:59",
+      "scrapedAt": "2026-06-05T00:51:42.279147+00:00",
+      "itemCount": 415,
+      "itemsPath": "data/archive/items/TlQ-ix0FOsR5KtsWEzweFA.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/TlQ-ix0FOsR5KtsWEzweFA.ndjson"
+    },
+    {
+      "safeId": "E3Bx3Lfy03k3AuHcK6EwBQ",
+      "title": "05/16/26: Ample Seller | Online Storage Clearance Auction | Richmond VA 23227- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-16 23:59:59",
+      "scrapedAt": "2026-06-05T00:49:34.361020+00:00",
+      "itemCount": 306,
+      "itemsPath": "data/archive/items/E3Bx3Lfy03k3AuHcK6EwBQ.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/E3Bx3Lfy03k3AuHcK6EwBQ.ndjson"
+    },
+    {
+      "safeId": "AyxzVT4-3BPBUCgNdIRH-g",
+      "title": "05/18/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-18 23:59:59",
+      "scrapedAt": "2026-06-05T00:47:57.345132+00:00",
+      "itemCount": 558,
+      "itemsPath": "data/archive/items/AyxzVT4-3BPBUCgNdIRH-g.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/AyxzVT4-3BPBUCgNdIRH-g.ndjson"
+    },
+    {
+      "safeId": "23vw6deuvMys7YJQBs5DEA",
+      "title": "05/19/26: Aga's Consignments LLC | Fine Jewelry  Collectibles and More | Providence Forge VA 23140- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-19 23:59:59",
+      "scrapedAt": "2026-06-05T00:45:00.914107+00:00",
+      "itemCount": 301,
+      "itemsPath": "data/archive/items/23vw6deuvMys7YJQBs5DEA.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/23vw6deuvMys7YJQBs5DEA.ndjson"
+    },
+    {
+      "safeId": "mPu1wixOLdplvdaKV6qG-w",
+      "title": "05/20/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-20 23:59:59",
+      "scrapedAt": "2026-06-05T00:43:17.472008+00:00",
+      "itemCount": 854,
+      "itemsPath": "data/archive/items/mPu1wixOLdplvdaKV6qG-w.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/mPu1wixOLdplvdaKV6qG-w.ndjson"
+    },
+    {
       "safeId": "Sec_dYsywMiQQGVw7F_2Kg",
       "title": "05/21/26: Estate Auction Part 2 Online | Hillenwood Dr, Powhatan VA 23139- Cannon's Online Auctions, LLC",
       "endDate": "2026-05-21 23:59:59",
@@ -9,6 +209,16 @@
       "itemsPath": "data/archive/items/Sec_dYsywMiQQGVw7F_2Kg.parquet",
       "source": "cannons",
       "ndjsonPath": "data/archive/items/Sec_dYsywMiQQGVw7F_2Kg.ndjson"
+    },
+    {
+      "safeId": "uQCxvWTgTM4VQJomOizg2w",
+      "title": "05/21/26: Goochland County Onsite Auction | Fairstead Road, Manakin Sabot VA 23103- Cannon's Online Auctions, LLC",
+      "endDate": "2026-05-21 23:59:59",
+      "scrapedAt": "2026-06-05T00:38:30.202926+00:00",
+      "itemCount": 131,
+      "itemsPath": "data/archive/items/uQCxvWTgTM4VQJomOizg2w.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/uQCxvWTgTM4VQJomOizg2w.ndjson"
     },
     {
       "safeId": "lC5_JUdif3Suo-R875jvbw",
