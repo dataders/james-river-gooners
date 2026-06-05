@@ -343,8 +343,8 @@ export default function App() {
             >
               {[
                 { value: 'active', label: 'Active' },
-                { value: 'both', label: 'All' },
                 { value: 'archived', label: 'Archived' },
+                { value: 'both', label: 'All' },
               ].map(opt => (
                 <button
                   key={opt.value}
