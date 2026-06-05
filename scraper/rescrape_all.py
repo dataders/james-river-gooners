@@ -215,6 +215,19 @@ def update_manifests() -> None:
     print(f"Archive manifest: {len(archive_manifest['auctions'])} auctions")
 
 
+def _supabase_archive_file(path: Path) -> None:
+    """Sync finalized lots to Supabase as archived before the files are moved."""
+    if not os.environ.get("SUPABASE_SECRET_KEY"):
+        return
+    ndjson = path.with_suffix(".ndjson")
+    if not ndjson.exists():
+        return
+    items = [json.loads(l) for l in ndjson.read_text().splitlines() if l.strip()]
+    if items:
+        from supabase_lots import archive_lots
+        archive_lots(path.stem, items)
+
+
 def archive_closed_and_stale(current_candidate_ids: set[str]) -> None:
     if not ITEMS_DIR.exists():
         update_manifests()
@@ -227,6 +240,7 @@ def archive_closed_and_stale(current_candidate_ids: set[str]) -> None:
             # stale auction merely dropped from discovery may still be live.
             if closed:
                 finalize_closed_file(path)
+            _supabase_archive_file(path)
             archive_file(path)
 
     update_manifests()
