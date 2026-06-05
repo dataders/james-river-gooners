@@ -118,5 +118,90 @@ class AppendTest(unittest.TestCase):
             )
 
 
+class ContentRangeTotalTest(unittest.TestCase):
+    def test_parses_total(self):
+        self.assertEqual(supabase_comps.content_range_total("0-24/137"), 137)
+
+    def test_unknown_or_missing_is_zero(self):
+        self.assertEqual(supabase_comps.content_range_total("*/*"), 0)
+        self.assertEqual(supabase_comps.content_range_total(None), 0)
+        self.assertEqual(supabase_comps.content_range_total(""), 0)
+
+
+class SupabaseCompLedgerTest(unittest.TestCase):
+    def _ledger(self, session):
+        return supabase_comps.SupabaseCompLedger(
+            url="https://x.supabase.co/", key="sb_secret_x", session=session
+        )
+
+    def test_missing_credentials_raise(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "SUPABASE_URL"):
+                supabase_comps.SupabaseCompLedger()
+            with self.assertRaisesRegex(RuntimeError, "SUPABASE_SECRET_KEY"):
+                supabase_comps.SupabaseCompLedger(url="https://x.supabase.co")
+
+    def test_fresh_keys_filters_by_cutoff(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200,
+            json=lambda: [
+                {"auction_safe_id": "A", "item_id": "1"},
+                {"auction_safe_id": "A", "item_id": "2"},
+            ],
+        )
+        ledger = self._ledger(session)
+        now = datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc)
+        keys = ledger.fresh_keys(stale_hours=168, now=now)  # 7 days
+        self.assertEqual(keys, {"A:1", "A:2"})
+        _, kwargs = session.get.call_args
+        self.assertEqual(
+            kwargs["params"]["last_fetched_at"], "gte.2026-05-29T12:00:00+00:00"
+        )
+        self.assertEqual(kwargs["headers"]["Authorization"], "Bearer sb_secret_x")
+        self.assertNotIn("Prefer", kwargs["headers"])  # not a count read
+
+    def test_fresh_keys_skip_attempted_has_no_time_filter(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(status_code=200, json=lambda: [])
+        self._ledger(session).fresh_keys(stale_hours=168, skip_attempted=True)
+        _, kwargs = session.get.call_args
+        self.assertNotIn("last_fetched_at", kwargs["params"])
+
+    def test_fresh_keys_zero_stale_hours_skips_nothing_without_a_request(self):
+        session = unittest.mock.MagicMock()
+        self.assertEqual(self._ledger(session).fresh_keys(stale_hours=0), set())
+        session.get.assert_not_called()
+
+    def test_requests_used_in_month_counts_from_first_of_month(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, headers={"Content-Range": "0-0/42"}
+        )
+        ledger = self._ledger(session)
+        now = datetime(2026, 6, 5, 12, 30, tzinfo=timezone.utc)
+        self.assertEqual(ledger.requests_used_in_month(now), 42)
+        _, kwargs = session.get.call_args
+        self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-01T00:00:00+00:00")
+        self.assertEqual(kwargs["headers"]["Prefer"], "count=exact")
+
+    def test_requests_used_today_counts_from_midnight(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, headers={"Content-Range": "0-0/5"}
+        )
+        ledger = self._ledger(session)
+        now = datetime(2026, 6, 5, 12, 30, tzinfo=timezone.utc)
+        self.assertEqual(ledger.requests_used_today(now), 5)
+        _, kwargs = session.get.call_args
+        self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-05T00:00:00+00:00")
+
+    def test_ledger_read_http_error_raises(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(status_code=500, text="boom")
+        with self.assertRaisesRegex(RuntimeError, "Supabase ledger read failed"):
+            self._ledger(session).fresh_keys(stale_hours=168)
+
+
 if __name__ == "__main__":
     unittest.main()

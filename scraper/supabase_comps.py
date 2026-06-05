@@ -13,10 +13,15 @@ so no comp-fetch call sites change.
 
 import json
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 COMP_SNAPSHOT_TABLE = "ebay_comp_snapshots"
+# Reconstruction views (migration 0005) the scraper reads as its ledger.
+FRESHNESS_VIEW = "comp_item_freshness"
+QUERY_ATTEMPTS_VIEW = "comp_query_attempts"
+# PostgREST caps a response at 1000 rows; freshness reads page past it.
+READ_PAGE_SIZE = 1000
 
 # Columns written per row. `id` (identity) and `ingested_at` (default now())
 # are filled by Postgres and deliberately omitted. Mirrors the MotherDuck insert
@@ -128,3 +133,127 @@ def append_ebay_comp_snapshots(
             )
         written += len(batch)
     return written
+
+
+def content_range_total(value: str | None) -> int:
+    """Parse the row total out of a PostgREST ``Content-Range`` header.
+
+    Header looks like ``0-0/1234`` (or ``*/*`` when unknown); returns the count
+    after the slash, 0 when absent/unknown.
+    """
+    if not value or "/" not in value:
+        return 0
+    total = value.rsplit("/", 1)[1]
+    try:
+        return int(total)
+    except ValueError:
+        return 0
+
+
+class SupabaseCompLedger:
+    """Reads the scraper's freshness + request-budget ledger from Supabase.
+
+    Replaces the per-auction JSON files as the scraper's state store (issue #6
+    phase 2): freshness comes from the ``comp_item_freshness`` view, the request
+    budget from counting ``comp_query_attempts`` rows. Reads use the secret key
+    (service_role, bypasses RLS), the same credentials the writer uses.
+    """
+
+    def __init__(self, url: str | None = None, key: str | None = None, session=None) -> None:
+        url, key = resolve_credentials(url, key)
+        if not url:
+            raise RuntimeError("SUPABASE_URL is required to read the comp ledger")
+        if not key:
+            raise RuntimeError("SUPABASE_SECRET_KEY is required to read the comp ledger")
+        self.url = url.rstrip("/")
+        self.key = key
+        self._session = session
+
+    def _session_obj(self):
+        if self._session is None:
+            import requests
+
+            self._session = requests.Session()
+        return self._session
+
+    def _headers(self, count: bool = False) -> dict:
+        headers = {"apikey": self.key, "Authorization": f"Bearer {self.key}"}
+        if count:
+            # Ask PostgREST for the exact total in the Content-Range header so a
+            # count needs no full row download.
+            headers["Prefer"] = "count=exact"
+        return headers
+
+    def _endpoint(self, view: str) -> str:
+        return f"{self.url}/rest/v1/{view}"
+
+    def _get_all(self, view: str, params: dict) -> list[dict]:
+        rows: list[dict] = []
+        offset = 0
+        session = self._session_obj()
+        while True:
+            page = {**params, "limit": str(READ_PAGE_SIZE), "offset": str(offset)}
+            response = session.get(
+                self._endpoint(view), headers=self._headers(), params=page, timeout=30
+            )
+            if response.status_code >= 400:
+                raise RuntimeError(
+                    f"Supabase ledger read failed ({response.status_code}): "
+                    f"{response.text[:300]}"
+                )
+            batch = response.json() or []
+            rows.extend(batch)
+            if len(batch) < READ_PAGE_SIZE:
+                return rows
+            offset += READ_PAGE_SIZE
+
+    def fresh_keys(self, stale_hours: int, skip_attempted: bool = False, now=None) -> set[str]:
+        """``{auction_safe_id:item_id}`` for items fetched within the window.
+
+        Mirrors :func:`ebay_comps.fresh_comp_keys_from_files`: ``skip_attempted``
+        counts any recorded attempt however old; otherwise items fetched within
+        ``stale_hours`` count, and ``stale_hours <= 0`` skips nothing.
+        """
+        if not skip_attempted and stale_hours <= 0:
+            return set()
+        params = {"select": "auction_safe_id,item_id"}
+        if not skip_attempted:
+            now = now or datetime.now(timezone.utc)
+            cutoff = now.astimezone(timezone.utc) - timedelta(hours=stale_hours)
+            params["last_fetched_at"] = f"gte.{cutoff.isoformat()}"
+        keys = set()
+        for row in self._get_all(FRESHNESS_VIEW, params):
+            safe_id = row.get("auction_safe_id")
+            item_id = row.get("item_id")
+            if safe_id is not None and item_id is not None:
+                keys.add(f"{safe_id}:{item_id}")
+        return keys
+
+    def _count_since(self, start: datetime) -> int:
+        params = {
+            "select": "fetched_at",
+            "fetched_at": f"gte.{start.astimezone(timezone.utc).isoformat()}",
+            "limit": "1",
+        }
+        response = self._session_obj().get(
+            self._endpoint(QUERY_ATTEMPTS_VIEW),
+            headers=self._headers(count=True),
+            params=params,
+            timeout=30,
+        )
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Supabase ledger count failed ({response.status_code}): "
+                f"{response.text[:300]}"
+            )
+        return content_range_total(response.headers.get("Content-Range"))
+
+    def requests_used_in_month(self, now=None) -> int:
+        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return self._count_since(start)
+
+    def requests_used_today(self, now=None) -> int:
+        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return self._count_since(start)

@@ -91,8 +91,9 @@ A scheduled GitHub Action (`.github/workflows/scrape.yml`) runs hourly:
    warehouse through `SnapshotSink` (optional mirror).
 4. Closed/stale auctions are moved to `data/archive/items/`.
 5. Manifests are rebuilt from the Parquet files on disk.
-6. `ebay_comps.py` refreshes a rate-limited subset of eBay comps and updates
-   `data/ebay-comps/*.json`; the same records optionally mirror to the warehouse.
+6. `ebay_comps.py` refreshes a rate-limited subset of eBay comps. With Supabase
+   configured (#6) it writes them to `ebay_comp_snapshots` and commits no JSON;
+   otherwise it updates `data/ebay-comps/*.json` (mirroring to MotherDuck if set).
 7. The Action commits `public/data/` and pushes.
 
 The browser then reads only the static read model: manifest → Parquet/JSON.
@@ -123,10 +124,10 @@ is additive, not a rewrite:
    actually configured (Supabase: `SUPABASE_URL` + `SUPABASE_SECRET_KEY`).
 3. Optionally keep `MotherDuckSink` as a second analytics mirror, or retire it.
 4. The static read model continues to power the public site unchanged. **For
-   comps, the browser now reads Supabase first** (the `public_auction_comps`
-   view, via the publishable key) and falls back to the static
-   `data/ebay-comps/*.json` files per auction, so the CDN remains the safety net
-   during cutover (`src/hooks/useEbayComps.js`).
+   comps, Supabase is now the sole source** (#6 phase 2): the browser reads the
+   `public_auction_comps` view via the publishable key (`src/hooks/useEbayComps.js`),
+   and the scraper uses the table as its own ledger too (see below), so it no
+   longer writes or commits `data/ebay-comps/*.json`.
 5. *Future, optional:* dynamic features that a static site can't serve (favorites
    sync, accounts) can read Supabase live. The public browse stays static.
 
@@ -143,8 +144,14 @@ is additive, not a rewrite:
   never the latest fetch for an active auction (those re-fetch every run), so
   pruning only clears comps for auctions that ended and stopped being scraped,
   keeping the free-tier 500 MB database from accumulating dead rows.
+- **Ledger views** (`comp_query_attempts`, `comp_item_freshness`) — reconstruct
+  the scraper's state from the snapshot table so it no longer needs the JSON to
+  pace itself (#6 phase 2). `comp_item_freshness` gives the latest fetch per
+  (auction, item) for the freshness skip; `comp_query_attempts` is one row per
+  distinct request (matched or not), counted for the monthly/daily budget. Read
+  with the secret key via `SupabaseCompLedger` (`scraper/supabase_comps.py`).
 - **SQL:** `supabase/migrations/0003_ebay_comps.sql`,
-  `supabase/migrations/0004_ebay_comps_retention.sql`.
+  `0004_ebay_comps_retention.sql`, `0005_comp_ledger_views.sql`.
 
 ## Known debt / in-progress normalization
 
@@ -156,8 +163,10 @@ These are tracked targets, not yet fully implemented:
   reading the manifest). The manifest should be the single source of
   auction-level facts; rows should carry only `auctionSafeId` as a foreign key.
   (Refactor phase 4.)
-- **`data/ebay-comps/` has no manifest.** The frontend guesses URLs by safeId
-  and tolerates 404s. Target: add a comps manifest. (Refactor phase 4.)
+- **Stale `data/ebay-comps/*.json` files remain in the repo.** Supabase is the
+  comps source now and the scraper no longer writes them, but the existing files
+  were left in place (not `git rm`'d) to keep this PR reviewable. A janitorial
+  follow-up can delete the directory.
 
 ### Resolved
 
@@ -177,11 +186,16 @@ both the hourly `scrape.yml` refresh and the manual `ebay-comps.yml` run draw
 from the same pool.
 
 Rather than tracking spend in a separate counter file (which two concurrent
-Actions runs could race on), usage is **derived from the read model itself**:
-each item's `attempts` record carries a `queries` count, and
-`requests_used_in_month()` sums those for the current UTC month across all
-`public/data/ebay-comps/*.json` files. Because every run commits the read model,
-the next run sees the updated total.
+Actions runs could race on), usage is **derived from the read model itself**, via
+the `CompLedger` seam (`scraper/ebay_comps.py`):
+
+- **Supabase backend** (`SupabaseCompLedger`) — counts rows in the
+  `comp_query_attempts` view (one per distinct request) for the current UTC
+  month/day. Committed rows are visible to the next run immediately.
+- **File backend** (`FileCompLedger`, legacy/offline) — each item's `attempts`
+  record carries a `queries` count, and `requests_used_in_month()` sums those
+  across all `public/data/ebay-comps/*.json` files. Because every run commits the
+  read model, the next run sees the updated total.
 
 `ebay_comps.py fetch-direct` knobs that govern this:
 
