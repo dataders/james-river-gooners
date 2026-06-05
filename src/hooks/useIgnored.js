@@ -7,7 +7,7 @@ import {
   toggleIgnoredKey,
 } from '../utils/ignored'
 import { supabase } from '../lib/supabase'
-import { captureEvent } from '../lib/analytics'
+import { captureEvent } from '../lib/telemetry'
 
 function loadIgnoredIds() {
   if (typeof document === 'undefined') return []

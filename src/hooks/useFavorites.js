@@ -7,7 +7,7 @@ import {
   toggleFavoriteKey,
 } from '../utils/favorites'
 import { supabase } from '../lib/supabase'
-import { captureEvent } from '../lib/analytics'
+import { captureEvent } from '../lib/telemetry'
 
 function loadFavoriteIds() {
   if (typeof document === 'undefined') return []
