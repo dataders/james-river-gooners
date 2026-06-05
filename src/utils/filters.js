@@ -18,15 +18,20 @@ function hoursUntil(endDate) {
 
 /**
  * Filter auction items based on preferences.
- * excludedCategories now contains rawCategory values.
+ * excludedCategories holds rawCategory values (fine-grained); excludedGroups
+ * holds normalized group names (coarse — e.g. Firearms/Vehicles hidden by
+ * default), matched against item.category.
  *
  * @param {Item[]} items
  * @param {FilterOptions} options
  * @returns {Item[]}
  */
-export function filterItems(items, { excludedCategories, searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours }) {
+export function filterItems(items, { excludedCategories, excludedGroups = [], searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours }) {
   return items.filter(item => {
-    // Exclude filter: hide items by rawCategory
+    // Exclude filter: hide items by normalized group (coarse) or rawCategory (fine)
+    if (excludedGroups.includes(item.category)) {
+      return false
+    }
     if (excludedCategories.includes(item.rawCategory)) {
       return false
     }

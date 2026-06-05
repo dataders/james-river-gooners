@@ -1,14 +1,19 @@
 import { useState } from 'react'
 
-function GroupSection({ group, excludedCategories, onToggle, onShowOnly, onHideGroup, onShowGroup, startExpanded }) {
+function GroupSection({ group, excludedCategories, excludedGroups, onToggle, onShowOnly, onHideGroup, onShowGroup, startExpanded }) {
   const [expanded, setExpanded] = useState(startExpanded)
+  // A group can be hidden coarsely (its name in excludedGroups) or finely (each
+  // raw chip excluded). Coarse hiding also covers future raw categories that
+  // normalize into the group, so it's how the group-level button works.
+  const groupHidden = excludedGroups.includes(group.group)
   const shown = group.rawCategories.filter(c => !excludedCategories.includes(c.name))
   const hidden = group.rawCategories.filter(c => excludedCategories.includes(c.name))
-  const allHidden = shown.length === 0
-  const shownCount = shown.reduce((s, c) => s + c.count, 0)
+  const isHidden = groupHidden || shown.length === 0
+  const shownCount = groupHidden ? 0 : shown.reduce((s, c) => s + c.count, 0)
+  const rawNames = group.rawCategories.map(c => c.name)
 
   return (
-    <div className={`filter-group ${allHidden ? 'all-hidden' : ''}`}>
+    <div className={`filter-group ${isHidden ? 'all-hidden' : ''}`}>
       <div className="filter-group-header">
         <button
           className="filter-group-toggle"
@@ -17,21 +22,21 @@ function GroupSection({ group, excludedCategories, onToggle, onShowOnly, onHideG
           <span className="filter-group-arrow">{expanded ? '▾' : '▸'}</span>
           <span className="filter-group-name">{group.group}</span>
           <span className="filter-group-count">
-            {allHidden ? `hidden (${group.totalCount})` : shownCount}
+            {isHidden ? `hidden (${group.totalCount})` : shownCount}
           </span>
         </button>
         <button
           className="filter-action"
-          onClick={() => allHidden
-            ? onShowGroup(group.rawCategories.map(c => c.name))
-            : onHideGroup(group.rawCategories.map(c => c.name))
+          onClick={() => isHidden
+            ? onShowGroup(group.group, rawNames)
+            : onHideGroup(group.group)
           }
         >
-          {allHidden ? 'show' : 'hide'}
+          {isHidden ? 'show' : 'hide'}
         </button>
       </div>
 
-      {expanded && (
+      {expanded && !groupHidden && (
         <div className="filter-group-body">
           <div className="filter-chips">
             {shown.map(({ name, count }) => (
@@ -74,34 +79,28 @@ function GroupSection({ group, excludedCategories, onToggle, onShowOnly, onHideG
 export function FilterBar({
   groupedCategories,
   excludedCategories,
+  excludedGroups,
   onToggleExcluded,
+  onHideGroup,
+  onShowGroup,
   onHideAll,
   onShowAll,
   onShowOnly,
 }) {
   const totalItems = groupedCategories.reduce((s, g) => s + g.totalCount, 0)
   const allRawNames = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
-  const allHidden = allRawNames.length > 0 && allRawNames.every(n => excludedCategories.includes(n))
-  const noneHidden = !allRawNames.some(n => excludedCategories.includes(n))
+  const isGroupHidden = (g) => excludedGroups.includes(g.group)
+  // A group counts as fully hidden when its name is excluded OR every raw chip is.
+  const allHidden = groupedCategories.length > 0 && groupedCategories.every(g =>
+    isGroupHidden(g) || g.rawCategories.every(c => excludedCategories.includes(c.name))
+  )
+  const noneHidden = excludedGroups.length === 0
+    && !groupedCategories.some(g => g.rawCategories.some(c => excludedCategories.includes(c.name)))
   const excludedCount = groupedCategories.reduce((s, g) =>
-    s + g.rawCategories.filter(c => excludedCategories.includes(c.name)).reduce((s2, c) => s2 + c.count, 0)
+    isGroupHidden(g)
+      ? s + g.totalCount
+      : s + g.rawCategories.filter(c => excludedCategories.includes(c.name)).reduce((s2, c) => s2 + c.count, 0)
   , 0)
-
-  const handleHideGroup = (names) => {
-    for (const name of names) {
-      if (!excludedCategories.includes(name)) {
-        onToggleExcluded(name)
-      }
-    }
-  }
-
-  const handleShowGroup = (names) => {
-    for (const name of names) {
-      if (excludedCategories.includes(name)) {
-        onToggleExcluded(name)
-      }
-    }
-  }
 
   // Isolate one category — exclude every other category across all groups.
   const handleShowOnly = (name) => onShowOnly(name, allRawNames)
@@ -130,10 +129,11 @@ export function FilterBar({
               key={group.group}
               group={group}
               excludedCategories={excludedCategories}
+              excludedGroups={excludedGroups}
               onToggle={onToggleExcluded}
               onShowOnly={handleShowOnly}
-              onHideGroup={handleHideGroup}
-              onShowGroup={handleShowGroup}
+              onHideGroup={onHideGroup}
+              onShowGroup={onShowGroup}
               startExpanded={false}
             />
           ))}

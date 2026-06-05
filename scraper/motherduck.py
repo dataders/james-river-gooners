@@ -21,6 +21,8 @@ create table if not exists {SNAPSHOT_TABLE} (
   title text,
   description text,
   current_bid decimal(12, 2),
+  final_bid decimal(12, 2),
+  closed boolean,
   total_bids integer,
   unique_bidders integer,
   category text,
@@ -38,6 +40,14 @@ ADD_UNIQUE_BIDDERS_SQL = (
     f"alter table {SNAPSHOT_TABLE} add column if not exists unique_bidders integer"
 )
 
+# Backfill final-sold-price tracking columns (#94) on pre-existing tables.
+ADD_FINAL_BID_SQL = (
+    f"alter table {SNAPSHOT_TABLE} add column if not exists final_bid decimal(12, 2)"
+)
+ADD_CLOSED_SQL = (
+    f"alter table {SNAPSHOT_TABLE} add column if not exists closed boolean"
+)
+
 INSERT_SNAPSHOT_SQL = f"""
 insert or ignore into {SNAPSHOT_TABLE} (
   auction_id,
@@ -51,6 +61,8 @@ insert or ignore into {SNAPSHOT_TABLE} (
   title,
   description,
   current_bid,
+  final_bid,
+  closed,
   total_bids,
   unique_bidders,
   category,
@@ -58,7 +70,7 @@ insert or ignore into {SNAPSHOT_TABLE} (
   detail_url,
   images,
   source_url
-) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -104,6 +116,10 @@ def rows_for_snapshots(items: list[dict], source_url: str) -> list[dict]:
             "title": item.get("title", ""),
             "description": item.get("description", ""),
             "current_bid": decimal_text(item.get("currentBid")),
+            # Open lots have no final price yet — keep NULL (not 0.00) so closed
+            # vs. still-live can be told apart in the warehouse.
+            "final_bid": decimal_text(item.get("finalBid")) if item.get("finalBid") is not None else None,
+            "closed": bool(item.get("closed", False)),
             "total_bids": item.get("totalBids", 0),
             "unique_bidders": item.get("uniqueBidders"),
             "category": item.get("category", ""),
@@ -129,6 +145,8 @@ def row_values(row: dict) -> tuple:
         row["title"],
         row["description"],
         row["current_bid"],
+        row["final_bid"],
+        row["closed"],
         row["total_bids"],
         row["unique_bidders"],
         row["category"],
@@ -153,6 +171,8 @@ def append_listing_snapshots(items: list[dict], source_url: str, database: str |
     try:
         connection.execute(CREATE_TABLE_SQL)
         connection.execute(ADD_UNIQUE_BIDDERS_SQL)
+        connection.execute(ADD_FINAL_BID_SQL)
+        connection.execute(ADD_CLOSED_SQL)
         connection.executemany(INSERT_SNAPSHOT_SQL, [row_values(row) for row in rows])
     finally:
         connection.close()

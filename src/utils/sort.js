@@ -2,9 +2,11 @@
 // URL/localStorage state, so don't rename them without a migration.
 
 import { parseAuctionDate } from './dates.js'
+import { itemKey } from './itemKey.js'
 
 export const SORT_OPTIONS = [
   { key: '', label: 'Featured' },
+  { key: 'margin', label: 'Best margin' },
   { key: 'ending', label: 'Ending soonest' },
   { key: 'endingLast', label: 'Ending latest' },
   { key: 'priceAsc', label: 'Price: low to high' },
@@ -60,4 +62,23 @@ export function sortItems(items, sortKey) {
     default:
       return items
   }
+}
+
+/**
+ * Order items by a precomputed margin score, highest first (#97). `marginByKey`
+ * maps an item's composite key to its estimated profit in dollars, or null when
+ * there's no resale signal; unscored lots sort last in their original order.
+ * Pure so it stays testable — App.jsx computes the scores from eBay comps + the
+ * Cannon's category sold baseline, which this module has no access to.
+ *
+ * @param {Item[]} items
+ * @param {Map<string, ?number>} marginByKey
+ * @returns {Item[]}
+ */
+export function sortByMargin(items, marginByKey) {
+  const score = (item) => {
+    const m = marginByKey.get(itemKey(item))
+    return m == null ? -Infinity : m
+  }
+  return [...items].sort((a, b) => score(b) - score(a))
 }

@@ -18,6 +18,8 @@ raw_aliases:
     - painting and prints
     - pictures/artwork
     - paintings & prints
+    - prints / lithographs
+    - lithographs
   Decorative Accessories:
     - decorative accessories
     - decorative
@@ -156,6 +158,7 @@ raw_aliases:
     - cds and dvds
     - cd and dvds
     - dvds
+    - music - cds / records / cassettes
   Video Games:
     - video games
 
@@ -166,6 +169,7 @@ raw_aliases:
   Electronics:
     - electronics
     - computers and printers
+    - computers & elec
     - telephone
   Photography:
     - photography
@@ -175,6 +179,8 @@ raw_aliases:
   Kitchenware:
     - kitchenware
     - kitchen
+    - kitchen / home
+    - kitchen / housewares
     - tableware
     - cookware
     - barware
@@ -210,6 +216,8 @@ raw_aliases:
   # Fashion & Apparel
   Clothing:
     - clothes
+    - costumes
+    - coats / jackets
     - men's apparel
     - women's apparel
     - fashion
@@ -225,6 +233,7 @@ raw_aliases:
   Health & Beauty:
     - health and beauty
     - health & beauty
+    - personal care products
     - eyewear
     - perfumes
     - avon
@@ -374,6 +383,21 @@ groups:
   Tools & Hardware:
     - tools
     - hardware
+  # Business-liquidation equipment categories (emerald_ventures / past_chapters
+  # sources): named, not dumped in "Other". "eqpt" catches the "& Eqpt" crumbs
+  # (Auto Parts & Eqpt, Ind & Warehouse Eqpt, Safety Eqpt & PPE, Food Service
+  # Eqpt, Specialty Eqpt); the rest catch the remaining liquidation crumbs.
+  Industrial & Equipment:
+    - eqpt
+    - hvac
+    - plumbing
+    - packaging
+    - janitorial
+    - shelving
+    - pallet
+    - forklift
+    - warehouse
+    - material handling
   Electronics:
     - audiovisual
     - electronics
@@ -544,3 +568,99 @@ description_keywords:
   vinyl record: [Vinyl & CDs, Books & Media]
   stamp: [Stamps, Collectibles]
   postal history: [Stamps, Collectibles]
+
+  # Description-driven recovery for lots whose site Type is "Other"/unmapped and
+  # whose detail lives entirely in the description (Cannon's "Lot - N"
+  # placeholders). Ordered by reliability since the first matching keyword wins:
+  #   1. furniture / lighting / clock object nouns (so "cherry chest with brass
+  #      pulls" → Furniture, not Silver via the hardware; "table lamp" → Lighting)
+  #   2. pictures
+  #   3. metals (so a "sterling platter" / "brass bowl" → Silver/Metal, not China)
+  #   4. edged / jewelry / money / paper / seasonal / model collectibles
+  #   5. china / glass object nouns
+  #   6. textiles, garden, household, tools
+  #   7. bare material / decorative catch-alls last
+  # -- Lamp compounds first, so "table lamp" → Lighting, not Furniture via "table"
+  table lamp: [Lighting, Home & Kitchen]
+  floor lamp: [Lighting, Home & Kitchen]
+  desk lamp: [Lighting, Home & Kitchen]
+  # -- Furniture
+  cabinet: [Furniture, Furniture]
+  table: [Furniture, Furniture]
+  chair: [Furniture, Furniture]
+  desk: [Furniture, Furniture]
+  stool: [Furniture, Furniture]
+  hutch: [Furniture, Furniture]
+  wardrobe: [Furniture, Furniture]
+  settee: [Furniture, Furniture]
+  credenza: [Furniture, Furniture]
+  chest: [Furniture, Furniture]
+  drawer: [Furniture, Furniture]
+  commode: [Furniture, Furniture]
+  bureau: [Furniture, Furniture]
+  highboy: [Furniture, Furniture]
+  lowboy: [Furniture, Furniture]
+  wall shelf: [Furniture, Furniture]
+  mirror: [Mirrors, Furniture]
+  # -- Lighting / clocks
+  chandelier: [Lighting, Home & Kitchen]
+  sconce: [Lighting, Home & Kitchen]
+  lamp: [Lighting, Home & Kitchen]
+  lantern: [Lighting, Home & Kitchen]
+  clock: [Clocks, Home & Kitchen]
+  # -- Pictures
+  oil painting: [Paintings & Prints, Art]
+  painting: [Paintings & Prints, Art]
+  engraving: [Paintings & Prints, Art]
+  framed: [Paintings & Prints, Art]
+  poster: [Paintings & Prints, Art]
+  canvas: [Paintings & Prints, Art]
+  # -- Metals (beat the generic china nouns below for silver/brass hollowware)
+  sterling: [Sterling & Silverplate, Silver & Metal]
+  silverplated: [Sterling & Silverplate, Silver & Metal]
+  silver plate: [Sterling & Silverplate, Silver & Metal]
+  silver: [Sterling & Silverplate, Silver & Metal]
+  brass: [Brassware & Copper, Silver & Metal]
+  copper: [Brassware & Copper, Silver & Metal]
+  cast iron: [Cast Iron, Silver & Metal]
+  # Flatware before the knife keywords: a flatware set lists "knives, forks,
+  # spoons", which would otherwise read as edged weapons.
+  flatware: [Kitchenware, Home & Kitchen]
+  cutlery: [Kitchenware, Home & Kitchen]
+  # -- Edged collectibles / watches / money / stamps / paper / seasonal / models
+  knife: [Knives & Swords, Collectibles]
+  knives: [Knives & Swords, Collectibles]
+  sword: [Knives & Swords, Collectibles]
+  dagger: [Knives & Swords, Collectibles]
+  bayonet: [Knives & Swords, Collectibles]
+  watch: [Watches, Jewelry & Watches]
+  banknote: [Coins & Currency, Coins & Currency]
+  currency: [Coins & Currency, Coins & Currency]
+  postage: [Stamps, Collectibles]
+  philatelic: [Stamps, Collectibles]
+  postcard: [Ephemera, Books & Media]
+  autograph: [Collectibles, Collectibles]
+  christmas: [Christmas & Holiday, Seasonal]
+  model train: [Hot Wheels & Models, Collectibles]
+  train set: [Hot Wheels & Models, Collectibles]
+  # -- China & glass object nouns
+  teapot: [China & Pottery, China & Glass]
+  tureen: [China & Pottery, China & Glass]
+  platter: [China & Pottery, China & Glass]
+  plates: [China & Pottery, China & Glass]
+  saucer: [China & Pottery, China & Glass]
+  china: [China & Pottery, China & Glass]
+  pottery: [China & Pottery, China & Glass]
+  decanter: [Glassware, China & Glass]
+  goblet: [Glassware, China & Glass]
+  ceramic: [China & Pottery, China & Glass]
+  glassware: [Glassware, China & Glass]
+  # -- Textiles / tools
+  carpet: [Rugs, Rugs & Textiles]
+  tapestry: [Linens & Textiles, Rugs & Textiles]
+  tools: [Tools, Tools & Hardware]
+  # -- Bare material / decorative catch-alls (lowest priority)
+  figurine: [Sculpture, Art]
+  glass: [Glassware, China & Glass]
+  vase: [Decorative Accessories, Art]
+  decorative: [Decorative Accessories, Art]

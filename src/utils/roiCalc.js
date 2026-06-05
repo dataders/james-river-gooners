@@ -39,3 +39,20 @@ export function isDeal(currentBid, soldComps) {
   if (!median) return false
   return (1 - (currentBid * COST_MULTIPLIER) / median) >= DEAL_MARGIN_THRESHOLD
 }
+
+// Estimated resale profit in dollars: eBay comp median minus the all-in cost
+// (current bid + buyer's premium + sales tax). Returns null when there are no
+// usable comps, so callers can distinguish "no margin" from "unknown".
+export function estimatedProfit(currentBid, soldComps) {
+  const median = getCompMedianPrice(soldComps)
+  if (median == null) return null
+  return median - currentBid * COST_MULTIPLIER
+}
+
+// Whether a lot clears a minimum estimated profit. A null threshold is "off"
+// (everything passes); a lot with no comps can't be shown to clear the bar.
+export function meetsMinProfit(currentBid, soldComps, minProfit) {
+  if (minProfit == null) return true
+  const profit = estimatedProfit(currentBid, soldComps)
+  return profit != null && profit >= minProfit
+}

@@ -38,15 +38,9 @@ function normalizeSpaces(value) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-export function compactItemText(item) {
-  const text = [
-    item.description,
-    item.title && !/^lot\s*-/i.test(item.title) ? item.title : '',
-    item.rawCategory,
-  ].filter(Boolean).join(' ')
-
+function cleanCompText(rawText) {
   return normalizeSpaces(
-    text
+    (rawText || '')
       .replace(/\bserial\s+number\b.*$/i, '')
       .replace(/\bthis is a used firearm\b.*$/i, '')
       .replace(/\bplease preview\b.*$/i, '')
@@ -54,6 +48,30 @@ export function compactItemText(item) {
       .replace(/[“”]/g, '"')
       .replace(/[^\w\s".'-]/g, ' ')
   )
+}
+
+export function compactItemText(item) {
+  const text = [
+    item.description,
+    item.title && !/^lot\s*-/i.test(item.title) ? item.title : '',
+    item.rawCategory,
+  ].filter(Boolean).join(' ')
+
+  return cleanCompText(text)
+}
+
+// Quoted exact-phrase query from the lot's most descriptive contiguous text —
+// its real title, or the description when the title is a "Lot - N" placeholder.
+// eBay treats double quotes in _nkw as an exact-phrase match, so this is the
+// precise primary query; the token-bag queries stay as fallbacks. Returns ''
+// when there's no usable multi-word phrase. Mirrors item_exact_phrase in
+// scraper/ebay_comps.py — keep the two in sync.
+export function itemExactPhrase(item, maxWords = 6) {
+  const title = item.title || ''
+  const source = title.trim() && !/^lot\s*-/i.test(title) ? title : (item.description || '')
+  const words = cleanCompText(source).split(' ').filter(Boolean).slice(0, maxWords)
+  if (words.length < 2) return ''
+  return `"${words.join(' ')}"`
 }
 
 function meaningfulTokens(text) {
@@ -202,11 +220,16 @@ export function buildEbaySoldSearches(item) {
   const specificTokens = dedupeWords([...tokens.slice(0, 4), ...modelTokens]).slice(0, 8)
   const categoryTokens = meaningfulTokens(`${item.rawCategory || item.category || ''} ${text}`).slice(0, 7)
 
+  // Primary query is a quoted exact phrase (the lot's actual name) instead of
+  // an OR of its individual words; fall back to the token bag when there's no
+  // usable phrase. Broad/category recover recall when the phrase finds nothing.
+  const specificQuery = itemExactPhrase(item) || specificTokens.join(' ')
+
   const candidates = [
     {
       kind: 'specific',
       label: 'Specific match',
-      query: specificTokens.join(' '),
+      query: specificQuery,
     },
     {
       kind: 'broad',
