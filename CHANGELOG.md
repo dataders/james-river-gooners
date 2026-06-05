@@ -6,6 +6,7 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 
 ## 2026-06-05 — Resale insights & live bidding
 
+- 🔨 **Bid in-app** — bid on Cannon's lots without leaving the site: link your account, enter your max bid, and place it right from the lot's detail panel.
 - 📈 **Cannon's sold-price history** — every lot now shows what similar past lots actually hammered for, and deals are ranked by estimated margin.
 - 🔁 **"Sold previously" comps** — similar past Cannon's lots and their final prices surface right in the detail panel.
 - 🔨 **Bid status on cards** — see at a glance whether you're winning or have been outbid.
