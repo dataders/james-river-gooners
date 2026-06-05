@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { loadPrefs, savePrefs } from '../utils/prefs'
+import { loadPrefs, savePrefs, sanitizePrefs } from '../utils/prefs'
 import { syncUrlParam } from '../utils/urlState'
 
 function loadInitialPrefs() {
@@ -20,7 +20,8 @@ function loadInitialPrefs() {
   if (p.has('hasComp')) merged.hasComp = p.get('hasComp') === '1'
   if (p.has('hasCannonsComp')) merged.hasCannonsComp = p.get('hasCannonsComp') === '1'
   if (p.has('sort')) merged.sort = p.get('sort') || ''
-  return merged
+  // Re-sanitize after the URL merge so a stray ?maxHrs=0 can't blank the grid.
+  return sanitizePrefs(merged)
 }
 
 export function usePreferences() {
