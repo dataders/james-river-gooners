@@ -969,6 +969,24 @@ body {
   font-size: 0.875rem !important;
   line-height: 1.5;
 }
+.no-deals-hint.bids-error {
+  color: var(--danger, #c0392b) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
+.bids-retry-button {
+  border: 1px solid var(--border, #ccc);
+  background: var(--surface, #fff);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.bids-retry-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 
 .view-toggles {
   display: flex;
