@@ -18,6 +18,7 @@ function loadInitialPrefs() {
   if (p.has('cat')) merged.excludedCategories = p.getAll('cat')
   if (p.has('local')) merged.localOnly = p.get('local') === '1'
   if (p.has('hasComp')) merged.hasComp = p.get('hasComp') === '1'
+  if (p.has('hasCannonsComp')) merged.hasCannonsComp = p.get('hasCannonsComp') === '1'
   if (p.has('sort')) merged.sort = p.get('sort') || ''
   return merged
 }
@@ -134,6 +135,15 @@ export function usePreferences() {
     })
   }, [])
 
+  const setHasCannonsComp = useCallback((value) => {
+    syncUrlParam('hasCannonsComp', value)
+    setPrefs(prev => {
+      const next = { ...prev, hasCannonsComp: value }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   const setSort = useCallback((value) => {
     syncUrlParam('sort', value)
     setPrefs(prev => {
@@ -171,6 +181,7 @@ export function usePreferences() {
     setMaxHours,
     setLocalOnly,
     setHasComp,
+    setHasCannonsComp,
     setSort,
     setMargin,
   }

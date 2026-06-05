@@ -15,6 +15,7 @@ import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
+import { hasCannonsComps } from './utils/cannonsComps'
 import { sortItems } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
@@ -79,6 +80,7 @@ export default function App() {
     maxHours,
     localOnly,
     hasComp,
+    hasCannonsComp,
     sort,
     margin,
     toggleExcluded,
@@ -96,6 +98,7 @@ export default function App() {
     setMaxHours,
     setLocalOnly,
     setHasComp,
+    setHasCannonsComp,
     setSort,
     setMargin,
   } = usePreferences()
@@ -263,13 +266,18 @@ export default function App() {
         hasEbayComps(allComps[item.auctionSafeId]?.[item.id])
       )
     }
+    if (hasCannonsComp) {
+      result = result.filter(item =>
+        hasCannonsComps(allCannonsComps[item.auctionSafeId]?.[item.id])
+      )
+    }
     if (bestDeals) {
       result = result.filter(item =>
         isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
       )
     }
     return result
-  }, [filteredItems, hasComp, bestDeals, allComps])
+  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, allComps, allCannonsComps])
 
   const finalItems = useMemo(() => {
     // Ignored bin is its own exclusive view; otherwise ignored items are hidden
@@ -411,7 +419,14 @@ export default function App() {
             className={`deals-toggle${hasComp ? ' active' : ''}`}
             onClick={() => setHasComp(!hasComp)}
           >
-            Has comp
+            Has eBay comp
+          </button>
+          <button
+            type="button"
+            className={`deals-toggle${hasCannonsComp ? ' active' : ''}`}
+            onClick={() => setHasCannonsComp(!hasCannonsComp)}
+          >
+            Has auction comp
           </button>
           <SortBar value={sort} onChange={setSort} />
         </div>
