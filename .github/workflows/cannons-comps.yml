@@ -1,0 +1,92 @@
+name: Refresh Cannon's Comps
+
+# Precomputes "Cannon's comps" — for each active item, the most similar past
+# (archived) lots and what they sold for — using CLIP similarity against the
+# archive. Writes the static read model under public/data/cannons-comps/ and
+# caches the generated .embeddings sidecars so reruns skip re-embedding.
+#
+# Does NOT re-scrape auctions or rebuild manifests — use "Scrape Auction Data"
+# for that. CLIP is heavy on CI, so this runs on demand (and can be scheduled).
+
+on:
+  workflow_dispatch:
+    inputs:
+      top_k:
+        description: 'Max comps to keep per item'
+        required: false
+        type: string
+        default: '3'
+      min_sim:
+        description: 'Minimum cosine similarity (0-1) for a comp to count'
+        required: false
+        type: string
+        default: '0.80'
+      active_limit:
+        description: 'Only process the first N active auctions (blank = all)'
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: 'Compute but do not commit'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  comps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      # Cache the CLIP weights (~350 MB) so only the first run pays the download.
+      - name: Cache HuggingFace model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-clip-vit-b-32
+
+      - name: Build Cannon's comps
+        env:
+          GOONERS_CANNONS_COMPS_TOP_K: ${{ inputs.top_k }}
+          GOONERS_CANNONS_COMPS_MIN_SIM: ${{ inputs.min_sim }}
+        run: |
+          cd scraper
+          LIMIT_FLAG=""
+          if [ -n "${{ inputs.active_limit }}" ]; then
+            LIMIT_FLAG="--active-limit ${{ inputs.active_limit }}"
+          fi
+          DRY_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+            --with sentence-transformers --with pillow --with numpy \
+            python cannons_comps.py $LIMIT_FLAG $DRY_FLAG
+
+      - name: Commit and push
+        if: ${{ inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/cannons-comps/ \
+            'public/data/items/*.embeddings' \
+            'public/data/archive/items/*.embeddings'
+          if git diff --staged --quiet; then
+            echo "No Cannon's comp changes to commit"
+            exit 0
+          fi
+          git commit -m "data: refresh Cannon's comps [$(date -u +%Y-%m-%dT%H:%M)]"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push failed; rebasing on origin/main before retry ${attempt}"
+            git fetch origin main
+            git rebase origin/main
+          done
+          git push

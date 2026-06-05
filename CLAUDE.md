@@ -18,6 +18,7 @@ Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet 
 - Active: `public/data/manifest.json` + `public/data/items/{safeId}.ndjson` (+ `.parquet`, `.embeddings`)
 - Archived: `public/data/archive-manifest.json` + `public/data/archive/items/{safeId}.ndjson` (loaded only when archive toggle is on)
 - eBay comps (#6): Supabase is the sole source. The browser reads the `public_auction_comps` view (publishable key); when Supabase is unconfigured, comps are simply unavailable. The scraper writes comps to `ebay_comp_snapshots` via `scraper/supabase_comps.py` when `GOONERS_WAREHOUSE=supabase` (needs `SUPABASE_URL` + `SUPABASE_SECRET_KEY`) and uses the table as its own ledger — freshness + request budget come from the `comp_item_freshness` / `comp_query_attempts` views (`SupabaseCompLedger`), so no per-run JSON is written. Without Supabase it falls back to the legacy static `public/data/ebay-comps/{safeId}.json` read model + file ledger (`FileCompLedger`).
+- Cannon's comps: similar *past* (archived) lots and what they sold for. Precomputed in the scraper by `cannons_comps.py` (CLIP similarity of each active item vs the archive corpus), written as a static per-auction read model `public/data/cannons-comps/{safeId}.json` (404-tolerant, rendered by `src/components/CannonsComps.jsx` via `useCannonsComps`). The `Refresh Cannon's Comps` GitHub Action regenerates it.
 
 ## Commands
 
@@ -52,6 +53,7 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 - MotherDuck: appends to `listing_snapshots` table in `my_db`; both tokens must stay out of committed files; use `duckdb==1.5.2`
   - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server
   - `MOTHERDUCK_READ_TOKEN` — read-scaling token; safe to expose to browsers/CDN; used in GitHub Actions as `MOTHERDUCK_READ_SCALING_TOKEN` secret for eBay comps export
+- Cannon's comps: `cannons_comps.py` matches each active item to the most similar archived lots that sold (CLIP cosine, top-K above `--min-sim`; defaults top-3/0.80, tunable via `--top-k`/`--min-sim` or `GOONERS_CANNONS_COMPS_*` env). Lot titles are generic ("Lot - 207"), so the comp label falls back to the description. `--no-embed` uses only cached `.embeddings` sidecars (never loads the model) for fast incremental runs. Run with `--with sentence-transformers --with pillow --with numpy`.
 - CLIP embeddings: `GOONERS_EMBEDDINGS=1` triggers `embed.py` after each scrape; writes `{safe_id}.embeddings` binary alongside `.ndjson`; manifest gains `embeddingsPath`; requires `sentence-transformers` + `pillow`; model cached in `~/.cache/huggingface` after first download
 - Served from a custom domain (`public/CNAME` → `gooners.anders.omg.lol`), so vite uses `base: '/'` (root) in all environments
 - The browser reads NDJSON, so numeric fields (`lotNumber`, `totalBids`, `currentBid`) arrive as plain JS numbers — no Arrow/BigInt conversion needed. (The old `parquet-wasm` loader was removed in #52.)

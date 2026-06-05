@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
+import { useCannonsComps } from './hooks/useCannonsComps'
 import { useFavorites } from './hooks/useFavorites'
 import { useIgnored } from './hooks/useIgnored'
 import { useAuth } from './hooks/useAuth'
@@ -187,6 +188,7 @@ export default function App() {
 
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds)
+  const allCannonsComps = useCannonsComps(auctionSafeIds)
 
   const localAuctionIds = useMemo(() => {
     const ids = new Set()
@@ -531,6 +533,7 @@ export default function App() {
         <ItemDetail
           item={selectedItem}
           ebayComps={allComps[selectedItem.auctionSafeId] || {}}
+          cannonsComps={allCannonsComps[selectedItem.auctionSafeId] || {}}
           margin={margin}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={handleToggleFavorite}
