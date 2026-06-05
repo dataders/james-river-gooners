@@ -41,7 +41,9 @@ page.on('request', req => {
   console.log('URL    :', req.url())
   console.log('Headers:', JSON.stringify(req.headers(), null, 2))
   const body = req.postData()
-  console.log('Body   :', body ?? '(empty)')
+  // Redact password from logged output
+  const redacted = body?.replace(/(?<=Password=)[^&]*/g, '***') ?? '(empty)'
+  console.log('Body   :', redacted)
 })
 
 page.on('response', async resp => {

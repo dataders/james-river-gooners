@@ -88,8 +88,12 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   const tokenMatch = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)
   const verificationToken = tokenMatch?.[1] ?? ''
 
-  // Step 2 — POST credentials
-  const loginResp = await fetch(`${base}/Public/Account/Login`, {
+  // Extract TenantCode hidden field (Cannon's value is "Can399")
+  const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
+  const tenantCode = tenantMatch?.[1] ?? ''
+
+  // Step 2 — POST credentials to the actual login handler (different from the page URL)
+  const loginResp = await fetch(`${base}/Public/Login/Login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -98,9 +102,10 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
       'Referer': `${base}/Public/Account/Login`,
     },
     body: new URLSearchParams({
+      ReturnUrl: '',
+      TenantCode: tenantCode,
       Username: username,
       Password: password,
-      RememberMe: 'false',
       __RequestVerificationToken: verificationToken,
     }).toString(),
     redirect: 'manual', // catch redirect so we can check status
