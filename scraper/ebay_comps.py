@@ -275,6 +275,24 @@ def item_exact_phrase(item: dict, max_words: int = 6) -> str:
     return '"' + " ".join(words) + '"'
 
 
+def enriched_exact_phrase(item: dict, max_words: int = 6) -> str:
+    """Quoted ``brand model`` exact-phrase query from LLM enrichment (enrich.py),
+    used as the primary eBay query when the enrichment is confident (#99). Generic
+    lots ("box of assorted hardware") enrich poorly, so only medium/high
+    confidence drives the query — low confidence and absent enrichment fall
+    through to the description-derived phrase and token bag below, so enrichment
+    never makes comps worse than the keyword path. Returns "" when there's no
+    usable multi-word brand+model pair."""
+    if str(item.get("enrichmentConfidence") or "").lower() not in ("medium", "high"):
+        return ""
+    brand = clean_comp_text(str(item.get("brand") or ""))
+    model = clean_comp_text(str(item.get("modelOrSku") or ""))
+    words = [word for word in normalize_spaces(f"{brand} {model}").split(" ") if word][:max_words]
+    if len(words) < 2:
+        return ""
+    return '"' + " ".join(words) + '"'
+
+
 def meaningful_tokens(text: str) -> list[str]:
     tokens = []
     for token in normalize_spaces(text).split(" "):
@@ -322,10 +340,15 @@ def build_ebay_sold_searches(item: dict) -> list[dict]:
 
     # Primary query is a quoted exact phrase so eBay/SoldComps match the lot's
     # actual name instead of OR-ing its individual words (which surfaced
-    # irrelevant comps and burned the SoldComps quota). Fall back to the token
-    # bag only when there's no usable phrase; broad/category recover recall when
-    # the exact phrase returns nothing.
-    specific_query = item_exact_phrase(item) or " ".join(specific_tokens)
+    # irrelevant comps and burned the SoldComps quota). Prefer the confident
+    # brand+model from LLM enrichment (#99), then the lot's own title/description
+    # phrase, then the token bag; broad/category recover recall when the exact
+    # phrase returns nothing.
+    specific_query = (
+        enriched_exact_phrase(item)
+        or item_exact_phrase(item)
+        or " ".join(specific_tokens)
+    )
 
     candidates = [
         {"kind": "specific", "label": "Specific match", "query": specific_query},
