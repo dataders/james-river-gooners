@@ -15,6 +15,7 @@ import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { sortItems } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
+import { captureEvent } from './lib/analytics'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { SortBar } from './components/SortBar'
 import { AuctionFilter } from './components/AuctionFilter'
@@ -126,6 +127,10 @@ export default function App() {
   const handleItemClick = useCallback((item) => {
     syncUrlParam('item', itemKey(item))
     setSelectedItem(item)
+    captureEvent('item_opened', {
+      category: item.category ?? null,
+      auction: item.auctionSafeId ?? null,
+    })
   }, [])
 
   const handleItemClose = useCallback(() => {
@@ -172,6 +177,22 @@ export default function App() {
     if (miniSearchIds.size === 0) return semanticIds
     return new Set([...miniSearchIds].filter(id => semanticIds.has(id)))
   }, [searchQuery, miniSearchIds, semanticIds])
+
+  // Search telemetry — debounced so it fires once the query settles, not on
+  // every keystroke. We log the query *shape* (length, result count, whether
+  // semantic search contributed), never the raw text, to keep it anonymous.
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q) return
+    const timer = setTimeout(() => {
+      captureEvent('search_performed', {
+        query_length: q.length,
+        result_count: searchIds ? searchIds.size : 0,
+        semantic: semanticStatus === 'ready',
+      })
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [searchQuery, searchIds, semanticStatus])
 
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
   const preFilteredItems = useMemo(
@@ -261,6 +282,7 @@ export default function App() {
               onChange={e => {
               syncUrlParam('archive', e.target.checked)
               setShowArchived(e.target.checked)
+              captureEvent('archive_toggled', { enabled: e.target.checked })
             }}
             />
             <span>Archived auctions</span>
