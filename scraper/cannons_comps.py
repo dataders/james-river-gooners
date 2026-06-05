@@ -15,9 +15,11 @@ Pipeline:
      across all sources (Cannon's, Rasmus, HiBid).
   3. For each active item, take its embedding, score it against the whole corpus,
      and keep the top-K matches above a similarity threshold.
-  4. Write a per-auction static read model under public/data/cannons-comps/
-     ``{safeId}.json`` (same envelope shape as the eBay comps read model) that the
-     browser renders directly.
+  4. Write the matches to Supabase (the ``cannons_comp_snapshots`` table) when
+     ``SUPABASE_SECRET_KEY`` is set — the browser reads the auth-gated
+     ``public_cannons_comps`` view (#132 part 3 / #150). Without the secret key
+     it falls back to the legacy per-auction static read model under
+     public/data/cannons-comps/ ``{safeId}.json`` (local dev / offline).
 
 Usage (from scraper/):
     uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
@@ -226,9 +228,23 @@ def build_comps(
     active_limit: int | None = None,
     embed_missing: bool = True,
     dry_run: bool = False,
+    supabase_url: str | None = None,
+    supabase_key: str | None = None,
 ) -> dict:
-    """Match active items to archived sold lots and write the comp read model."""
-    summary = {"auctions": 0, "items_with_comps": 0, "matches": 0, "files_written": 0}
+    """Match active items to archived sold lots and write the comp read model.
+
+    With ``supabase_key`` set, each auction's comps are written to the Supabase
+    ``cannons_comp_snapshots`` table (the auth-gated read model); otherwise they
+    fall back to the legacy per-auction static JSON under ``output_dir``.
+    """
+    summary = {
+        "auctions": 0,
+        "items_with_comps": 0,
+        "matches": 0,
+        "files_written": 0,
+        "auctions_written": 0,
+        "rows_written": 0,
+    }
 
     archive_entries = read_manifest(data_dir / "archive-manifest.json")
     active_entries = read_manifest(data_dir / "manifest.json")
@@ -245,6 +261,14 @@ def build_comps(
         return summary
 
     generated_at = utc_now_text()
+    use_supabase = bool(supabase_key) and not dry_run
+    sb_session = None
+    if use_supabase:
+        import requests
+
+        sb_session = requests.Session()
+        print("  Writing comps to Supabase (cannons_comp_snapshots)")
+
     for entry in active_entries:
         safe_id = entry.get("safeId")
         items = load_items(entry)
@@ -270,22 +294,36 @@ def build_comps(
         if not item_exports:
             continue
 
-        payload = {
-            "schemaVersion": SCHEMA_VERSION,
-            "generatedAt": generated_at,
-            "source": "scraper",
-            "items": item_exports,
-        }
-        if not dry_run:
+        if dry_run:
+            pass
+        elif use_supabase:
+            from supabase_cannons_comps import write_auction_comps
+
+            written = write_auction_comps(
+                safe_id, item_exports, generated_at,
+                url=supabase_url, key=supabase_key, session=sb_session,
+            )
+            summary["auctions_written"] += 1
+            summary["rows_written"] += written
+        else:
+            payload = {
+                "schemaVersion": SCHEMA_VERSION,
+                "generatedAt": generated_at,
+                "source": "scraper",
+                "items": item_exports,
+            }
             output_dir.mkdir(parents=True, exist_ok=True)
             (output_dir / f"{safe_id}.json").write_text(json.dumps(payload, indent=2) + "\n")
             summary["files_written"] += 1
         print(f"  {safe_id}: {len(item_exports)} items matched")
 
+    if use_supabase:
+        sink = f"{summary['rows_written']} rows → Supabase ({summary['auctions_written']} auctions)"
+    else:
+        sink = f"{summary['files_written']} files written"
     print(
         f"Cannon's comps: {summary['items_with_comps']} items matched across "
-        f"{summary['auctions']} auctions, {summary['matches']} matches, "
-        f"{summary['files_written']} files written"
+        f"{summary['auctions']} auctions, {summary['matches']} matches, {sink}"
     )
     return summary
 
@@ -320,6 +358,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
+    # Write to Supabase when the secret key is configured; otherwise fall back to
+    # the static JSON read model (local dev / offline).
+    from supabase_comps import resolve_credentials
+
+    supabase_url, supabase_key = resolve_credentials()
     build_comps(
         data_dir=args.data_dir,
         output_dir=args.output_dir,
@@ -328,6 +371,8 @@ def main(argv: list[str] | None = None) -> int:
         active_limit=args.active_limit,
         embed_missing=not args.no_embed,
         dry_run=args.dry_run,
+        supabase_url=supabase_url,
+        supabase_key=supabase_key,
     )
     return 0
 
