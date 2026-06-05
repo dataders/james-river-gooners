@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { LATEST_CHANGELOG_DATE } from '../data/changelog'
+import { allChangeIds, parseSeen, serializeSeen, hasUnseenChanges } from '../utils/whatsNew'
 
 const STORAGE_KEY = 'gooners-whatsnew-seen'
 
-function readSeen() {
+function readRaw() {
   try {
     return localStorage.getItem(STORAGE_KEY) || ''
   } catch {
@@ -11,18 +11,17 @@ function readSeen() {
   }
 }
 
-// "What's New" panel state + an unseen-updates badge. The badge shows when the
-// newest changelog entry is dated after the last date the user opened the
-// panel. Unlike the tutorial it never auto-opens — it's opt-in via the header.
+// "What's New" panel state + per-change "seen" tracking. Each changelog line has
+// a stable id; we remember the set the user has already seen in localStorage, so
+// a newly added line flags "New" even on an existing day. The header button
+// shows a dot while anything is unseen; the panel never auto-opens (opt-in).
 export function useWhatsNew() {
   const [open, setOpen] = useState(false)
-  // The date the user had already seen when this session loaded. Captured once
-  // so the per-release "New" markers in the panel stay stable while it's open —
-  // closeWhatsNew bumps the stored value, but this snapshot doesn't move until
-  // the next reload. Compare ISO date strings lexicographically (YYYY-MM-DD
-  // sorts correctly).
-  const [lastSeen] = useState(readSeen)
-  const [hasUnseen, setHasUnseen] = useState(() => readSeen() < LATEST_CHANGELOG_DATE)
+  // Snapshot the seen set at load so the "New" markers stay stable while the
+  // panel is open — closeWhatsNew bumps storage, but this doesn't move until
+  // the next reload.
+  const [seenIds] = useState(() => parseSeen(readRaw()))
+  const [hasUnseen, setHasUnseen] = useState(() => hasUnseenChanges(seenIds))
 
   function openWhatsNew() {
     setOpen(true)
@@ -30,7 +29,7 @@ export function useWhatsNew() {
 
   function closeWhatsNew() {
     try {
-      localStorage.setItem(STORAGE_KEY, LATEST_CHANGELOG_DATE)
+      localStorage.setItem(STORAGE_KEY, serializeSeen(new Set(allChangeIds())))
     } catch {
       // ignore
     }
@@ -38,5 +37,5 @@ export function useWhatsNew() {
     setOpen(false)
   }
 
-  return { whatsNewOpen: open, hasUnseen, lastSeen, openWhatsNew, closeWhatsNew }
+  return { whatsNewOpen: open, hasUnseen, seenIds, openWhatsNew, closeWhatsNew }
 }

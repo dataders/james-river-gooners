@@ -9,7 +9,8 @@ function formatDate(iso) {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, DATE_FMT)
 }
 
-export function WhatsNewModal({ onClose, lastSeen = '' }) {
+export function WhatsNewModal({ onClose, seenIds }) {
+  const seen = seenIds ?? new Set()
   const overlayRef = useRef(null)
   const closeRef = useRef(null)
 
@@ -53,24 +54,25 @@ export function WhatsNewModal({ onClose, lastSeen = '' }) {
           {CHANGELOG.map(release => (
             <section key={release.date} className="changelog-release">
               <div className="changelog-release-head">
-                <h3 className="changelog-release-title">
-                  {release.title}
-                  {/* Mark releases the user hasn't seen since their last visit. */}
-                  {release.date > lastSeen && (
-                    <span className="changelog-new-pill">New</span>
-                  )}
-                </h3>
+                <h3 className="changelog-release-title">{release.title}</h3>
                 <time className="changelog-release-date" dateTime={release.date}>
                   {formatDate(release.date)}
                 </time>
               </div>
               <ul className="changelog-changes">
-                {release.changes.map((change, i) => (
-                  <li key={i} className="changelog-change">
-                    <span className="changelog-change-icon" aria-hidden="true">{change.icon}</span>
-                    <span className="changelog-change-text">{change.text}</span>
-                  </li>
-                ))}
+                {release.changes.map(change => {
+                  // Badge each individual line the user hasn't seen yet.
+                  const isNew = !seen.has(change.id)
+                  return (
+                    <li key={change.id} className={`changelog-change${isNew ? ' is-new' : ''}`}>
+                      <span className="changelog-change-icon" aria-hidden="true">{change.icon}</span>
+                      <span className="changelog-change-text">
+                        {change.text}
+                        {isNew && <span className="changelog-new-pill">New</span>}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             </section>
           ))}
