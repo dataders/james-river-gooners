@@ -87,12 +87,17 @@ jobs:
             exit 0
           fi
           git commit -m "data: refresh Cannon's comp embeddings [$(date -u +%Y-%m-%dT%H:%M)]"
+          # Push the embedding cache back to whatever branch this ran on (main on
+          # the schedule, a PR branch for a populate-from-branch run). On a
+          # concurrent push, rebase onto the SAME branch — never onto main, which
+          # would conflict when running from a feature branch.
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
           for attempt in 1 2 3; do
-            if git push; then
+            if git push origin "HEAD:${BRANCH}"; then
               exit 0
             fi
-            echo "Push failed; rebasing on origin/main before retry ${attempt}"
-            git fetch origin main
-            git rebase origin/main
+            echo "Push failed; rebasing on origin/${BRANCH} before retry ${attempt}"
+            git fetch origin "${BRANCH}"
+            git rebase "origin/${BRANCH}"
           done
-          git push
+          git push origin "HEAD:${BRANCH}"
