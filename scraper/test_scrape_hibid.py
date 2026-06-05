@@ -9,11 +9,44 @@ from unittest import mock
 
 from scrape_hibid import (
     extract_catalog_id,
+    fetch_lot_details,
     hibid_safe_id,
     is_real_estate_auction,
     parse_date_range_end,
     parse_relative_close_time,
 )
+
+
+def _fake_session(html: str):
+    resp = mock.Mock()
+    resp.text = html
+    resp.raise_for_status = mock.Mock()
+    sess = mock.Mock()
+    sess.get = mock.Mock(return_value=resp)
+    return sess
+
+
+class FetchLotPriceTest(unittest.TestCase):
+    NOW = datetime(2026, 6, 1, tzinfo=timezone.utc)
+
+    def test_live_lot_uses_high_bid(self):
+        html = "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD 5 Bids</body></html>"
+        item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        self.assertEqual(item["currentBid"], 50.0)
+
+    def test_closed_lot_uses_price_realized(self):
+        # A closed HiBid lot drops "High Bid" and shows the hammer price instead.
+        html = "<html><body><h1>Cool Stamp</h1> Price Realized: 21.00 USD</body></html>"
+        item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        self.assertEqual(item["currentBid"], 21.0)
+
+    def test_high_bid_wins_when_both_present(self):
+        html = (
+            "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD "
+            "Price Realized: 21.00 USD</body></html>"
+        )
+        item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        self.assertEqual(item["currentBid"], 50.0)
 
 
 class IsRealEstateAuctionTest(unittest.TestCase):

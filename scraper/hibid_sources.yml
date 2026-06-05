@@ -9,6 +9,12 @@
 # (which is blocked by HiBid's bot protection on CI runners). Update this list
 # each time auctions roll over — closed auctions are archived automatically
 # by rescrape_all.py based on their end dates.
+#
+# closed_catalog_ids: optional list of already-closed catalog IDs to backfill
+# into the archive (sold-price corpus for comps). HiBid blocks automated
+# past-auction discovery, so these are added by hand — find them on a company's
+# HiBid page under its past/archived auctions. `backfill_closed.py --source hibid`
+# scrapes these; closed lot pages expose "Price Realized" as the final price.
 
 companies:
   - id: 79243
@@ -23,6 +29,9 @@ companies:
       - 745663   # Jun 21 Weekly Stamp
       - 745666   # Jun 21 Graded & Raw Coin
       - 747559   # Jun 28 Weekly Stamp
+    closed_catalog_ids:
+      # Add already-closed catalog IDs here to backfill their sold prices, e.g.:
+      # - 739418   # May 31 Stamps & Postal History (already archived)
 
   - id: 138254
     slug: past_chapters

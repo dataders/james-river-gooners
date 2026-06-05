@@ -52,8 +52,17 @@ def extract_auction_item_urls(page_html: str, base_url: str = BASE_URL) -> list[
     return urls
 
 
-def discover_current_auction_urls(page_size: int = 100, max_pages: int = 10) -> list[str]:
-    """Fetch current auction cards and return full AuctionItems URLs."""
+def _discover_auction_urls(
+    auction_filter: str,
+    page_size: int = 100,
+    max_pages: int = 10,
+    limit: int | None = None,
+) -> list[str]:
+    """Fetch auction cards for a GetAuctions ``filter`` and return item URLs.
+
+    ``filter="Current"`` returns live auctions; ``filter="Past"`` returns closed
+    auctions (newest first). ``limit`` caps the number of URLs returned.
+    """
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
@@ -68,7 +77,7 @@ def discover_current_auction_urls(page_size: int = 100, max_pages: int = 10) -> 
             f"{BASE_URL}{GET_AUCTIONS_PATH}",
             params={
                 "pageNumber": page,
-                "filter": "Current",
+                "filter": auction_filter,
                 "auctionTypeFilter": "",
                 "pageSize": page_size,
                 "viewType": "Grid",
@@ -84,7 +93,23 @@ def discover_current_auction_urls(page_size: int = 100, max_pages: int = 10) -> 
             if key not in seen:
                 seen.add(key)
                 urls.append(url)
+                if limit is not None and len(urls) >= limit:
+                    return urls
         if len(page_urls) < page_size:
             break
 
     return urls
+
+
+def discover_current_auction_urls(page_size: int = 100, max_pages: int = 10) -> list[str]:
+    """Fetch current auction cards and return full AuctionItems URLs."""
+    return _discover_auction_urls("Current", page_size=page_size, max_pages=max_pages)
+
+
+def discover_past_auction_urls(
+    limit: int | None = None, page_size: int = 100, max_pages: int = 10
+) -> list[str]:
+    """Fetch closed (past) auction cards, newest first, and return item URLs."""
+    return _discover_auction_urls(
+        "Past", page_size=page_size, max_pages=max_pages, limit=limit
+    )
