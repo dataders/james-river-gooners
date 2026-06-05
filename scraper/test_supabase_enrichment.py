@@ -1,6 +1,8 @@
 import json
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import requests
 
 import supabase_enrichment
 
@@ -94,7 +96,8 @@ class UpsertTest(unittest.TestCase):
         self.assertEqual(supabase_enrichment.upsert_enrichment([], session=session), 0)
         session.post.assert_not_called()
 
-    def test_raises_on_http_error(self):
+    def test_raises_on_permanent_http_error(self):
+        # A 4xx (other than 429) is permanent — no retry, raises immediately.
         session = MagicMock()
         session.post.return_value = MagicMock(status_code=400, text="bad")
         with self.assertRaises(RuntimeError):
@@ -104,15 +107,70 @@ class UpsertTest(unittest.TestCase):
                 key="secret",
                 session=session,
             )
+        self.assertEqual(session.post.call_count, 1)
 
-    def test_maybe_export_noop_without_credentials(self):
-        # Force resolve_credentials to return no key.
-        orig = supabase_enrichment.resolve_credentials
-        supabase_enrichment.resolve_credentials = lambda *a, **k: ("https://x", None)
-        try:
+    @patch("supabase_enrichment.time.sleep")
+    def test_retries_transient_5xx_then_succeeds(self, sleep):
+        session = MagicMock()
+        session.post.side_effect = [
+            MagicMock(status_code=503, text="busy"),
+            MagicMock(status_code=201),
+        ]
+        n = supabase_enrichment.upsert_enrichment(
+            [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+            url="https://proj.supabase.co", key="secret", session=session,
+        )
+        self.assertEqual(n, 1)
+        self.assertEqual(session.post.call_count, 2)
+        sleep.assert_called_once()  # backed off once before the retry
+
+    @patch("supabase_enrichment.time.sleep")
+    def test_retries_on_network_error_then_succeeds(self, sleep):
+        session = MagicMock()
+        session.post.side_effect = [
+            requests.exceptions.ConnectionError("boom"),
+            MagicMock(status_code=201),
+        ]
+        n = supabase_enrichment.upsert_enrichment(
+            [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+            url="https://proj.supabase.co", key="secret", session=session,
+        )
+        self.assertEqual(n, 1)
+        self.assertEqual(session.post.call_count, 2)
+
+    @patch("supabase_enrichment.time.sleep")
+    def test_gives_up_after_retries_on_persistent_5xx(self, sleep):
+        session = MagicMock()
+        session.post.return_value = MagicMock(status_code=503, text="busy")
+        with self.assertRaises(RuntimeError):
+            supabase_enrichment.upsert_enrichment(
+                [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+                url="https://proj.supabase.co", key="secret", session=session,
+                max_retries=2,
+            )
+        self.assertEqual(session.post.call_count, 3)  # 1 try + 2 retries
+        self.assertEqual(sleep.call_count, 2)
+
+
+class MaybeExportTest(unittest.TestCase):
+    def test_noop_without_any_credentials(self):
+        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: (None, None)):
             self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
-        finally:
-            supabase_enrichment.resolve_credentials = orig
+
+    def test_warns_when_url_set_but_key_missing(self):
+        # Half-configured is a likely misconfiguration — warn rather than stay silent.
+        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: ("https://x", None)):
+            with patch("builtins.print") as printed:
+                self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
+        self.assertTrue(any("WARNING" in str(c) for c in printed.call_args_list))
+
+    def test_warns_and_does_not_crash_on_upsert_failure(self):
+        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: ("https://x", "secret")):
+            with patch.object(supabase_enrichment, "upsert_enrichment", side_effect=RuntimeError("down")):
+                with patch("builtins.print") as printed:
+                    # Must NOT raise — the scrape's read model is the primary deliverable.
+                    self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
+        self.assertTrue(any("WARNING" in str(c) for c in printed.call_args_list))
 
 
 if __name__ == "__main__":
