@@ -2251,6 +2251,12 @@ body {
     padding-top: 12px;
   }
 
+  /* min-width:0 lets the grid track shrink below its content's intrinsic width
+     so the masonry can never push cards past the viewport edge. */
+  .app-body > main {
+    min-width: 0;
+  }
+
   .filter-sidebar {
     position: sticky;
     top: var(--header-height, 0px);
