@@ -21,6 +21,9 @@ export const DEFAULT_PREFS = {
   maxBidders: null,
   minHours: null,
   maxHours: null,
+  // Minimum estimated profit (eBay comp median − all-in cost) to keep a lot.
+  // null = off. Lots can't clear a worthwhile margin below this get hidden.
+  minProfit: null,
   localOnly: false,
   hasComp: false,
   hasCannonsComp: false,
@@ -41,6 +44,7 @@ const PERSISTED_KEYS = [
   'maxBidders',
   'minHours',
   'maxHours',
+  'minProfit',
   'localOnly',
   'hasComp',
   'hasCannonsComp',
