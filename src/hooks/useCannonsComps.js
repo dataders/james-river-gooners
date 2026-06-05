@@ -3,6 +3,9 @@ import { fetchWithRetry } from '../utils/net'
 
 const BASE = import.meta.env.BASE_URL
 
+// Stable empty result for the logged-out (hidden) path.
+const EMPTY = {}
+
 function dataUrl(path) {
   return `${BASE}${path.replace(/^\//, '')}`
 }
@@ -25,11 +28,18 @@ async function fetchCannonsComps(id) {
 
 // Accepts a single auction ID string or an array of IDs.
 // Returns { [auctionSafeId]: { [itemId]: { matches: [...] } } } for all loaded auctions.
-export function useCannonsComps(auctionSafeIds) {
+// `enabled` hides these from logged-out users alongside the RLS-gated comps so
+// the resale-insights cluster is consistently members-only. NOTE: this is a
+// UI-level hide only — the static cannons-comps JSON stays directly fetchable
+// until it's moved behind auth (follow-up). Defaults true so the offline/static
+// site (no auth available) still shows them to everyone.
+export function useCannonsComps(auctionSafeIds, enabled = true) {
   const [compsByAuction, setCompsByAuction] = useState({})
   const fetchedIds = useRef(new Set())
 
   useEffect(() => {
+    // Logged out: don't fetch; the hook returns EMPTY below so these stay hidden.
+    if (!enabled) return
     const ids = Array.isArray(auctionSafeIds)
       ? auctionSafeIds.filter(Boolean)
       : auctionSafeIds ? [auctionSafeIds] : []
@@ -51,7 +61,7 @@ export function useCannonsComps(auctionSafeIds) {
     })
 
     return () => { cancelled = true }
-  }, [auctionSafeIds])
+  }, [auctionSafeIds, enabled])
 
-  return compsByAuction
+  return enabled ? compsByAuction : EMPTY
 }
