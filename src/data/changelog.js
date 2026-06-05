@@ -1,0 +1,50 @@
+// Single source of truth for the in-app "What's New" feed and CHANGELOG.md.
+// Newest release first. Each change carries a stable, unique `id`: useWhatsNew
+// tracks which individual lines a visitor has already seen by that id, so a new
+// line flags "New" even when added to an existing day. NEVER reuse or rename an
+// id (that would mark the line seen/unseen for the wrong people) — pick a fresh
+// slug for every new line. Keep wording user-facing: describe what changed for
+// someone browsing auctions, not the implementation.
+
+export const CHANGELOG = [
+  {
+    date: '2026-06-05',
+    title: 'Resale insights & live bidding',
+    changes: [
+      { id: 'cannons-sold-history', icon: '📈', text: "Cannon's sold-price history: every lot now shows what similar past lots actually hammered for, and deals are ranked by estimated margin." },
+      { id: 'sold-previously-comps', icon: '🔁', text: "“Sold previously” comps surface similar past Cannon's lots and their final prices, right in the detail panel." },
+      { id: 'bid-status-cards', icon: '🔨', text: 'Bid status shows up on cards — see at a glance whether you’re winning or have been outbid.' },
+      { id: 'resale-members-only', icon: '🔒', text: 'Resale intelligence (eBay comps + sold-price history) is now a members perk — sign in to unlock it.' },
+      { id: 'share-button', icon: '🔗', text: 'Share replaces Copy Link, using your device’s native share sheet on mobile.' },
+      { id: 'min-profit-filter', icon: '💰', text: 'New minimum-estimated-profit filter to cut straight to the worthwhile flips.' },
+      { id: 'sort-by-bidders', icon: '↕️', text: 'Sort by number of bidders, plus a fix for the price/bid range sliders getting stuck.' },
+      { id: 'cleaner-categories', icon: '🏷️', text: 'Cleaner categories: thousands of “Other” lots reclassified, and Firearms & Vehicles hidden by default.' },
+    ],
+  },
+  {
+    date: '2026-06-04',
+    title: 'More sources, smarter triage',
+    changes: [
+      { id: 'rasmus-source', icon: '🆕', text: 'Rasmus Auctions added as a Richmond-area source — more local lots in one place.' },
+      { id: 'swipe-deck', icon: '🃏', text: '“Not interested” list + a Tinder-style swipe deck to triage undecided lots one card at a time.' },
+      { id: 'bidder-count', icon: '👥', text: 'Each lot now shows its unique bidder count, and you can filter by a bidders range.' },
+      { id: 'archive-filter', icon: '🗂️', text: 'Three-state Active / Archived / All auction filter, plus per-source show/hide/only controls.' },
+      { id: 'google-signin', icon: '🔑', text: 'Sign in with Google, and link your Cannon’s account to see a My Bids filter.' },
+      { id: 'only-this-category', icon: '👆', text: 'One-click “only this category” filtering from any lot.' },
+      { id: 'laptop-grid-fix', icon: '🖥️', text: 'Fixed laptop grid overflow and the email-confirmation redirect.' },
+    ],
+  },
+  {
+    date: '2026-06-03',
+    title: 'Accounts & cloud favorites',
+    changes: [
+      { id: 'accounts-cloud-favorites', icon: '⭐', text: 'Create an account (email/password) and your favorites now sync to the cloud across devices.' },
+      { id: 'detail-panel-reorg', icon: '📋', text: 'Detail panel reorganized — comps come first, with the margin slider moved into preferences.' },
+      { id: 'wider-grid', icon: '📐', text: 'Wider grid on large screens and unified filter headers.' },
+    ],
+  },
+]
+
+// Newest entry's date — handy for display; the unseen dot uses per-change ids
+// (see src/utils/whatsNew.js), not this.
+export const LATEST_CHANGELOG_DATE = CHANGELOG[0]?.date ?? ''
