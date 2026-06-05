@@ -393,6 +393,11 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
         "description": description[:500],  # Truncate long descriptions
         "currentBid": current_bid,
         "totalBids": total_bids,
+        # Final/sold-price tracking (#94). Live lots are open: closed=False and
+        # finalBid=None. The archive step stamps finalBid (= last-seen
+        # currentBid) and closed=True when an auction actually closes.
+        "closed": False,
+        "finalBid": None,
         "endDate": end_date,
         "images": images[:5],  # Keep first 5 images
         "category": normalize_category(raw_category, description),

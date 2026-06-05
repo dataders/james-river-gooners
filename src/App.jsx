@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useCannonsComps } from './hooks/useCannonsComps'
+import { useCategorySoldStats } from './hooks/useCategorySoldStats'
 import { useFavorites } from './hooks/useFavorites'
 import { useIgnored } from './hooks/useIgnored'
 import { useAuth } from './hooks/useAuth'
@@ -12,11 +13,12 @@ import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
 import { useSemanticSearch } from './hooks/useSemanticSearch'
-import { isDeal } from './utils/roiCalc'
+import { isDeal, meetsMinProfit } from './utils/roiCalc'
+import { marginForItem } from './utils/soldHistory'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { hasCannonsComps } from './utils/cannonsComps'
-import { sortItems } from './utils/sort'
+import { sortItems, sortByMargin } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
@@ -25,6 +27,7 @@ import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
 import { MarginPreference } from './components/MarginPreference'
+import { MinProfitFilter } from './components/MinProfitFilter'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -69,6 +72,7 @@ export default function App() {
 
   const {
     excludedCategories,
+    excludedGroups,
     searchQuery,
     minPrice,
     maxPrice,
@@ -78,12 +82,15 @@ export default function App() {
     maxBidders,
     minHours,
     maxHours,
+    minProfit,
     localOnly,
     hasComp,
     hasCannonsComp,
     sort,
     margin,
     toggleExcluded,
+    hideGroup,
+    showGroup,
     hideAll,
     showAll,
     showOnly,
@@ -96,6 +103,7 @@ export default function App() {
     setMaxBidders,
     setMinHours,
     setMaxHours,
+    setMinProfit,
     setLocalOnly,
     setHasComp,
     setHasCannonsComp,
@@ -192,6 +200,9 @@ export default function App() {
   const auctionSafeIds = useMemo(() => auctions.map(a => a.safeId), [auctions])
   const allComps = useEbayComps(auctionSafeIds)
   const allCannonsComps = useCannonsComps(auctionSafeIds)
+  // Per-category Cannon's sold-price baseline (#95): feeds the "Best margin"
+  // sort (#97) and the detail panel's category history (#96).
+  const categorySoldStats = useCategorySoldStats()
 
   const localAuctionIds = useMemo(() => {
     const ids = new Set()
@@ -255,8 +266,11 @@ export default function App() {
   const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
 
   const filteredItems = useMemo(
-    () => preFilteredItems.filter(item => !excludedCategories.includes(item.rawCategory)),
-    [preFilteredItems, excludedCategories]
+    () => preFilteredItems.filter(item =>
+      !excludedGroups.includes(item.category) &&
+      !excludedCategories.includes(item.rawCategory)
+    ),
+    [preFilteredItems, excludedCategories, excludedGroups]
   )
 
   const displayItems = useMemo(() => {
@@ -276,8 +290,13 @@ export default function App() {
         isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
       )
     }
+    if (minProfit != null) {
+      result = result.filter(item =>
+        meetsMinProfit(item.currentBid, allComps[item.auctionSafeId]?.[item.id], minProfit)
+      )
+    }
     return result
-  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, allComps, allCannonsComps])
+  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, minProfit, allComps, allCannonsComps])
 
   const finalItems = useMemo(() => {
     // Ignored bin is its own exclusive view; otherwise ignored items are hidden
@@ -298,7 +317,27 @@ export default function App() {
     captureEvent('swipe_deck_opened', { count: deck.length })
   }, [displayItems, isIgnored, isFavorite])
 
-  const sortedItems = useMemo(() => sortItems(finalItems, sort), [finalItems, sort])
+  // Estimated profit per item ($) for the "Best margin" sort (#97): eBay comp
+  // median when present, else the Cannon's category median sold (#95). Only
+  // computed when that sort is active.
+  const marginByKey = useMemo(() => {
+    const map = new Map()
+    if (sort !== 'margin') return map
+    for (const item of finalItems) {
+      const m = marginForItem(
+        item.currentBid,
+        allComps[item.auctionSafeId]?.[item.id],
+        categorySoldStats[item.category]
+      )
+      map.set(itemKey(item), m ? m.profit : null)
+    }
+    return map
+  }, [sort, finalItems, allComps, categorySoldStats])
+
+  const sortedItems = useMemo(
+    () => sort === 'margin' ? sortByMargin(finalItems, marginByKey) : sortItems(finalItems, sort),
+    [finalItems, sort, marginByKey]
+  )
 
   if (error) {
     return <div className="error">Error: {error}</div>
@@ -454,6 +493,7 @@ export default function App() {
             onMinHoursChange={v => setMinHours(v)}
             onMaxHoursChange={v => setMaxHours(v)}
           />
+          <MinProfitFilter value={minProfit} onChange={setMinProfit} />
           <MarginPreference value={margin} onChange={setMargin} />
           <AuctionFilter
             auctions={visibleAuctions}
@@ -473,11 +513,11 @@ export default function App() {
           <FilterBar
             groupedCategories={groupedCategories}
             excludedCategories={excludedCategories}
+            excludedGroups={excludedGroups}
             onToggleExcluded={toggleExcluded}
-            onHideAll={() => {
-              const allRaw = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
-              hideAll(allRaw)
-            }}
+            onHideGroup={hideGroup}
+            onShowGroup={showGroup}
+            onHideAll={() => hideAll(groupedCategories.map(g => g.group))}
             onShowAll={showAll}
             onShowOnly={showOnly}
           />
@@ -549,6 +589,7 @@ export default function App() {
           item={selectedItem}
           ebayComps={allComps[selectedItem.auctionSafeId] || {}}
           cannonsComps={allCannonsComps[selectedItem.auctionSafeId] || {}}
+          categoryStats={categorySoldStats[selectedItem.category]}
           margin={margin}
           isFavorite={isFavorite(selectedItem)}
           onToggleFavorite={handleToggleFavorite}

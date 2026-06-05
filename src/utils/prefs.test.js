@@ -51,6 +51,19 @@ test('savePrefs + loadPrefs round-trips category arrays', () => {
   assert.deepEqual(loadPrefs().excludedCategories, cats)
 })
 
+test('Firearms and Vehicles groups are excluded by default', () => {
+  localStorage.clear()
+  assert.deepEqual(loadPrefs().excludedGroups, ['Firearms', 'Vehicles'])
+})
+
+test('savePrefs + loadPrefs round-trips a re-enabled (empty) group exclusion', () => {
+  localStorage.clear()
+  // User chose to show firearms/vehicles — the empty set must persist, not
+  // snap back to the default on reload.
+  savePrefs({ ...DEFAULT_PREFS, excludedGroups: [] })
+  assert.deepEqual(loadPrefs().excludedGroups, [])
+})
+
 test('savePrefs does not persist searchQuery', () => {
   localStorage.clear()
   savePrefs({ ...DEFAULT_PREFS, searchQuery: 'antique' })

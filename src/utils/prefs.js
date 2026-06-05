@@ -1,8 +1,17 @@
 export const STORAGE_KEY = 'gooners-preferences'
 
+// Normalized category groups hidden out of the box. These are noise for this
+// use case (the maintainers don't buy/sell firearms or vehicles off Cannon's),
+// so they're excluded by default but re-enableable in the category filter.
+// Exclusion is by normalized group, not rawCategory, because firearm lots carry
+// wildly inconsistent rawCategory strings ("Daisy Pellet Gun", "AMMO", a stray
+// "Basketball Trading Cards", …) that all normalize to the Firearms group.
+export const DEFAULT_EXCLUDED_GROUPS = ['Firearms', 'Vehicles']
+
 export const DEFAULT_PREFS = {
   includedCategories: [],
   excludedCategories: [],
+  excludedGroups: [...DEFAULT_EXCLUDED_GROUPS],
   searchQuery: '',
   minPrice: null,
   maxPrice: null,
@@ -12,6 +21,9 @@ export const DEFAULT_PREFS = {
   maxBidders: null,
   minHours: null,
   maxHours: null,
+  // Minimum estimated profit (eBay comp median − all-in cost) to keep a lot.
+  // null = off. Lots can't clear a worthwhile margin below this get hidden.
+  minProfit: null,
   localOnly: false,
   hasComp: false,
   hasCannonsComp: false,
@@ -23,6 +35,7 @@ export const DEFAULT_PREFS = {
 const PERSISTED_KEYS = [
   'includedCategories',
   'excludedCategories',
+  'excludedGroups',
   'minPrice',
   'maxPrice',
   'minBids',
@@ -31,6 +44,7 @@ const PERSISTED_KEYS = [
   'maxBidders',
   'minHours',
   'maxHours',
+  'minProfit',
   'localOnly',
   'hasComp',
   'hasCannonsComp',

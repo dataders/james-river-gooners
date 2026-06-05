@@ -163,10 +163,6 @@ These are tracked targets, not yet fully implemented:
   reading the manifest). The manifest should be the single source of
   auction-level facts; rows should carry only `auctionSafeId` as a foreign key.
   (Refactor phase 4.)
-- **Stale `data/ebay-comps/*.json` files remain in the repo.** Supabase is the
-  comps source now and the scraper no longer writes them, but the existing files
-  were left in place (not `git rm`'d) to keep this PR reviewable. A janitorial
-  follow-up can delete the directory.
 
 ### Resolved
 

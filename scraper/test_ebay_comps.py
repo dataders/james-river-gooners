@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 from ebay_comps import (
     USER_AGENTS,
     append_ebay_comp_snapshots,
+    build_ebay_sold_searches,
     build_public_exports,
     comp_rows_for_item,
     ensure_comp_tables,
@@ -17,6 +18,7 @@ from ebay_comps import (
     fetch_direct,
     fetch_sold_matches,
     fresh_comp_keys_from_files,
+    item_exact_phrase,
     jitter_sleep,
     merge_comp_files,
     normalize_match_row,
@@ -25,6 +27,37 @@ from ebay_comps import (
     soldcomps_sold_matches,
     utc_now_text,
 )
+
+
+class ExactPhraseSearchTests(unittest.TestCase):
+    def test_specific_query_is_a_quoted_exact_phrase(self):
+        # The motivating bug: tokenized queries matched any single word, so a
+        # trumpet matched fever OR brand OR brass OR student OR trumpet.
+        searches = build_ebay_sold_searches({
+            "title": "Fever Brand Brass Student Trumpet",
+            "description": "",
+            "category": "Musical Instruments",
+            "rawCategory": "Musical Instruments",
+        })
+        self.assertEqual(searches[0]["kind"], "specific")
+        self.assertEqual(searches[0]["query"], '"Fever Brand Brass Student Trumpet"')
+        # The eBay link carries the quoted phrase into _nkw.
+        self.assertIn("%22Fever", searches[0]["url"])
+        # Broad/category fallbacks remain, and are not quoted.
+        self.assertTrue(any(
+            s["kind"] == "broad" and '"' not in s["query"] for s in searches
+        ))
+
+    def test_item_exact_phrase_caps_falls_back_and_skips_single_word(self):
+        self.assertEqual(
+            item_exact_phrase({"title": "Vintage Omega Seamaster De Ville Automatic Wristwatch"}),
+            '"Vintage Omega Seamaster De Ville Automatic"',
+        )
+        self.assertEqual(
+            item_exact_phrase({"title": "Lot - 12", "description": "Pair of brass candlesticks"}),
+            '"Pair of brass candlesticks"',
+        )
+        self.assertEqual(item_exact_phrase({"title": "Trumpet", "description": ""}), "")
 
 
 _SOLD_ITEM_HTML = """

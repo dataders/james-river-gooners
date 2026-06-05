@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { itemTimeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
+import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
 
-export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
+export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
 
@@ -149,6 +150,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, margin, is
           {/* Comps lead — they're the primary signal; the calculator is secondary (#88) */}
           <EbayComps item={item} soldComps={ebayComps[item.id]} />
           <CannonsComps comps={cannonsComps[item.id]} />
+          <CategorySoldHistory category={item.category} stats={categoryStats} currentBid={item.currentBid} />
           <RoiCalculator soldComps={ebayComps[item.id]} margin={margin} />
         </div>
       </div>

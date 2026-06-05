@@ -26,6 +26,8 @@ class BackfillSkipAndLimitTest(unittest.TestCase):
         ), mock.patch.object(
             backfill_closed, "scrape_auction", side_effect=lambda u: scraped.append(u)
         ), mock.patch.object(
+            backfill_closed, "finalize_closed_file"
+        ), mock.patch.object(
             backfill_closed, "archive_file"
         ) as archive, mock.patch.object(
             backfill_closed.Path, "exists", return_value=True
@@ -52,6 +54,8 @@ class BackfillSkipAndLimitTest(unittest.TestCase):
             backfill_closed, "existing_safe_ids", return_value=set()
         ), mock.patch.object(
             backfill_closed, "scrape_auction", side_effect=flaky
+        ), mock.patch.object(
+            backfill_closed, "finalize_closed_file"
         ), mock.patch.object(
             backfill_closed, "archive_file"
         ), mock.patch.object(
