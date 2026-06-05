@@ -822,6 +822,36 @@ body {
   margin-bottom: 4px;
 }
 
+/* LLM enrichment surfaced on the card (#99/#104) — only on high-confidence lots. */
+.item-product {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  min-width: 0;
+}
+
+.item-product-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-condition {
+  flex: none;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  border: 1px solid var(--border, currentColor);
+  border-radius: 3px;
+  padding: 1px 5px;
+  opacity: 0.85;
+}
+
 .item-bid-row {
   display: flex;
   justify-content: space-between;
@@ -1701,6 +1731,27 @@ body {
   font-size: 0.8rem;
   color: var(--text-muted);
   margin-bottom: 12px;
+}
+
+/* LLM enrichment block in the detail view (#99/#104). */
+.detail-enrichment {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detail-product-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.detail-product-link {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: underline;
 }
 
 .detail-price-section {
