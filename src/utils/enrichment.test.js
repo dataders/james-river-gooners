@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getDisplayEnrichment, isHighConfidence, hasEnrichment } from './enrichment.js'
+import {
+  getDisplayEnrichment,
+  isHighConfidence,
+  hasEnrichment,
+  mapEnrichmentRow,
+  groupEnrichmentRows,
+  overlayEnrichment,
+} from './enrichment.js'
 
 test('hasEnrichment matches what the UI can actually show', () => {
   // Medium or high with a brand/model => identified.
@@ -59,4 +66,65 @@ test('getDisplayEnrichment is null when high confidence but no brand/model', () 
 test('getDisplayEnrichment drops a non-http productUrl', () => {
   const out = getDisplayEnrichment({ enrichmentConfidence: 'high', brand: 'Dietz', modelOrSku: 'Lantern', productUrl: 'gillette.com' })
   assert.equal(out.productUrl, '')
+})
+
+test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
+  const out = mapEnrichmentRow({
+    item_id: '5',
+    brand: 'Delta',
+    model_or_sku: '36-220C',
+    condition: 'used',
+    product_url: 'https://delta.com/36-220c',
+    confidence: 'high',
+    model: 'claude-haiku-4-5',
+  })
+  assert.deepEqual(out, {
+    brand: 'Delta',
+    modelOrSku: '36-220C',
+    condition: 'used',
+    productUrl: 'https://delta.com/36-220c',
+    enrichmentConfidence: 'high',
+    enrichmentModel: 'claude-haiku-4-5',
+  })
+  // The mapped shape feeds getDisplayEnrichment unchanged.
+  assert.equal(getDisplayEnrichment(out).label, 'Delta 36-220C')
+})
+
+test('mapEnrichmentRow fills missing columns with empty strings', () => {
+  assert.deepEqual(mapEnrichmentRow({ item_id: '1', brand: 'Giant' }), {
+    brand: 'Giant', modelOrSku: '', condition: '', productUrl: '',
+    enrichmentConfidence: '', enrichmentModel: '',
+  })
+})
+
+test('groupEnrichmentRows keys by stringified item id and skips id-less rows', () => {
+  const byItem = groupEnrichmentRows([
+    { item_id: 1, brand: 'Genesis', confidence: 'medium' },
+    { item_id: '2', brand: 'Giant', confidence: 'medium' },
+    { brand: 'NoId' },
+    null,
+  ])
+  assert.deepEqual(Object.keys(byItem), ['1', '2'])
+  assert.equal(byItem['1'].brand, 'Genesis')
+})
+
+test('overlayEnrichment applies backend fields by (auctionSafeId, id)', () => {
+  const items = [
+    { auctionSafeId: 'a', id: 1, brand: 'old', enrichmentConfidence: 'low' },
+    { auctionSafeId: 'a', id: 2, brand: 'keep' },
+  ]
+  const byAuction = { a: { 1: { brand: 'Delta', enrichmentConfidence: 'high' } } }
+  const out = overlayEnrichment(items, byAuction)
+  assert.equal(out[0].brand, 'Delta')
+  assert.equal(out[0].enrichmentConfidence, 'high')
+  // Item without a backend row is untouched (NDJSON fallback) — same reference.
+  assert.equal(out[1], items[1])
+  assert.equal(out[1].brand, 'keep')
+})
+
+test('overlayEnrichment returns the original array when nothing overlays', () => {
+  const items = [{ auctionSafeId: 'a', id: 1, brand: 'keep' }]
+  // Empty map (Supabase unconfigured / no rows) => identical reference, no churn.
+  assert.equal(overlayEnrichment(items, {}), items)
+  assert.equal(overlayEnrichment(items, { b: { 9: { brand: 'x' } } }), items)
 })
