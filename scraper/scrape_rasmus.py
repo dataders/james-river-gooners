@@ -210,6 +210,60 @@ def fetch_active_auction_ids(
     return aids
 
 
+def fetch_past_auction_ids(
+    session: requests.Session,
+    sid: str,
+    since_ms: int,
+    until_ms: int | None = None,
+) -> dict[str, int]:
+    """Return {aid: max_time_end_ms} for the tenant's auctions that closed in a window.
+
+    Mirrors :func:`fetch_active_auction_ids` but bounds ``time_end`` to
+    ``[since_ms, until_ms)`` (a past window). Ordering stays ASCENDING on
+    ``time_end`` so it reuses the same Firestore index the active query relies on
+    (a DESCENDING order would need a separate index and 400s).
+    """
+    if until_ms is None:
+        until_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    aids: dict[str, int] = {}
+    offset = 0
+    while True:
+        body = {
+            "structuredQuery": {
+                "from": [{"collectionId": "items"}],
+                "where": {"compositeFilter": {"op": "AND", "filters": [
+                    _eq_filter("origin_sid", sid),
+                    {"fieldFilter": {"field": {"fieldPath": "time_end"},
+                                     "op": "GREATER_THAN",
+                                     "value": {"integerValue": str(since_ms)}}},
+                    {"fieldFilter": {"field": {"fieldPath": "time_end"},
+                                     "op": "LESS_THAN",
+                                     "value": {"integerValue": str(until_ms)}}},
+                ]}},
+                "select": {"fields": [{"fieldPath": "aid"},
+                                      {"fieldPath": "time_end"}]},
+                "orderBy": [{"field": {"fieldPath": "time_end"},
+                             "direction": "ASCENDING"}],
+                "offset": offset,
+                "limit": PAGE_SIZE,
+            }
+        }
+        docs = _run_query(session, body)
+        for doc in docs:
+            f = _fs_fields(doc)
+            aid = f.get("aid")
+            if not aid:
+                continue
+            end = int(f.get("time_end") or 0)
+            if end > aids.get(aid, 0):
+                aids[aid] = end
+        if len(docs) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+    return aids
+
+
 def fetch_auction_items(session: requests.Session, aid: str) -> list[dict]:
     """Return every decoded lot document for an auction id (paginated)."""
     items: list[dict] = []
@@ -279,22 +333,16 @@ def load_sources(sources_file: Path | None = None) -> dict:
         return yaml.safe_load(f)
 
 
-def discover_rasmus_specs(sources_file: Path | None = None) -> list[dict]:
-    """Return {aid, title, source_slug, company_name, image} for Richmond auctions."""
-    config = load_sources(sources_file)
-    site = config["site"]
-    sid = site["sid"]
-    slug = site["slug"]
-    name = site["name"]
-    keywords = config.get("location_keywords", [])
-
-    session = create_session()
-    print(f"  Finding active {name} auctions (sid={sid})...")
-    active = fetch_active_auction_ids(session, sid)
-    print(f"  {len(active)} active auction(s); checking which are Richmond-area")
-
+def _richmond_specs_from_aids(
+    session: requests.Session,
+    aids,
+    slug: str,
+    name: str,
+    keywords: list[str],
+) -> list[dict]:
+    """Filter candidate auction ids down to Richmond-area, non-real-estate specs."""
     specs: list[dict] = []
-    for aid in active:
+    for aid in aids:
         meta = fetch_auction_meta(session, aid)
         title = meta["title"]
         haystack = f"{title} {meta['description']}"
@@ -314,6 +362,47 @@ def discover_rasmus_specs(sources_file: Path | None = None) -> list[dict]:
             "image": meta["image"],
         })
     return specs
+
+
+def discover_rasmus_specs(sources_file: Path | None = None) -> list[dict]:
+    """Return {aid, title, source_slug, company_name, image} for Richmond auctions."""
+    config = load_sources(sources_file)
+    site = config["site"]
+    sid = site["sid"]
+    slug = site["slug"]
+    name = site["name"]
+    keywords = config.get("location_keywords", [])
+
+    session = create_session()
+    print(f"  Finding active {name} auctions (sid={sid})...")
+    active = fetch_active_auction_ids(session, sid)
+    print(f"  {len(active)} active auction(s); checking which are Richmond-area")
+    return _richmond_specs_from_aids(session, active, slug, name, keywords)
+
+
+def discover_rasmus_past_specs(
+    days: int = 90, sources_file: Path | None = None
+) -> list[dict]:
+    """Return Richmond-area auctions that *closed* within the last ``days``.
+
+    Rasmus sells nationwide, so this scans every tenant auction whose
+    ``time_end`` falls in the past window and keeps only Richmond-area,
+    non-real-estate ones — the historical sold-price corpus for Cannon's comps.
+    """
+    config = load_sources(sources_file)
+    site = config["site"]
+    sid = site["sid"]
+    slug = site["slug"]
+    name = site["name"]
+    keywords = config.get("location_keywords", [])
+
+    session = create_session()
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    since_ms = now_ms - days * 24 * 60 * 60 * 1000
+    print(f"  Finding {name} auctions closed in the last {days} days (sid={sid})...")
+    past = fetch_past_auction_ids(session, sid, since_ms, now_ms)
+    print(f"  {len(past)} closed auction(s); checking which are Richmond-area")
+    return _richmond_specs_from_aids(session, past, slug, name, keywords)
 
 
 # ---------------------------------------------------------------------------

@@ -191,6 +191,29 @@ def has_bid_changes(new_items: list[dict], existing_bids: dict[str, tuple[float,
     )
 
 
+def auction_date_from_title(title: str) -> str:
+    """Derive an auction end date from a Cannon's auction title.
+
+    Closed auction item cards carry no live countdown, so their per-lot
+    ``endDate`` is blank. Cannon's titles are prefixed with the auction date,
+    e.g. ``"06/04/26: Children's Museum of Richmond | ..."``. Return that date
+    at end-of-day in a ``%Y-%m-%d %H:%M:%S`` string (parsed as Eastern by
+    ``dates.py``) so backfilled closed auctions still sort and archive
+    correctly. Returns ``""`` when no leading date is found.
+    """
+    match = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{2,4})", title or "")
+    if not match:
+        return ""
+    month, day, year = (int(part) for part in match.groups())
+    if year < 100:
+        year += 2000
+    try:
+        datetime(year, month, day)
+    except ValueError:
+        return ""
+    return f"{year:04d}-{month:02d}-{day:02d} 23:59:59"
+
+
 def extract_auction_id(url: str) -> str:
     """Extract AuctionId parameter from a Cannon's auction URL."""
     parsed = urlparse(url)
@@ -450,7 +473,9 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     ITEMS_DIR.mkdir(parents=True, exist_ok=True)
 
     end_dates = [item["endDate"] for item in all_items if item["endDate"]]
-    latest_end = max(end_dates) if end_dates else ""
+    # Closed/backfilled auctions have no per-lot end date; fall back to the
+    # date in the auction title so they still sort and archive correctly.
+    latest_end = max(end_dates) if end_dates else auction_date_from_title(auction_title)
     scraped_at = datetime.now(timezone.utc).isoformat()
 
     for item in all_items:

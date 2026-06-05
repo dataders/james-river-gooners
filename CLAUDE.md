@@ -44,6 +44,10 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 - Auction URLs must include all query params (`AuctionId`, `Title`, etc.) — Maxanet redirects to homepage without them
 - Maxanet API needs session cookies + `X-Requested-With: XMLHttpRequest`; `GetAuctionItems` returns HTML fragments (not JSON); `GetCategories` returns JSON
 - `rescrape_all.py` auto-discovers auctions; `scraper/auction_urls.txt` is a manual fallback only
+- `backfill_closed.py --source {cannons,rasmus,hibid}` backfills already-closed auctions straight into the archive — the historical sold-price corpus for future comps. Auctions already in the active/archive read model are skipped by default (re-scraping clobbers data captured while live). Per source:
+  - `cannons` — `GetAuctions` `filter=Past`. Closed lots carry no countdown, so `scrape.py`'s `auction_date_from_title` derives the end date from the title's `MM/DD/YY` prefix. `--limit N`.
+  - `rasmus` — Firestore lots whose `time_end` is in the last `--days` (default 90), filtered to Richmond-area (Rasmus is nationwide, so this scan is heavy). `--limit N --days 90`.
+  - `hibid` — closed catalog IDs listed under `closed_catalog_ids` in `hibid_sources.yml` (HiBid blocks automated past-auction discovery, so IDs are config-driven). Closed lot pages expose `Price Realized: N USD` as the final price.
 - Category normalization: `scraper/categories.py` + `scraper/category_mappings.yml`
 - MotherDuck: appends to `listing_snapshots` table in `my_db`; both tokens must stay out of committed files; use `duckdb==1.5.2`
   - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server

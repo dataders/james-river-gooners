@@ -12,12 +12,34 @@ import pyarrow.parquet as pq
 from unittest.mock import MagicMock
 
 from scrape import (
+    auction_date_from_title,
     count_unique_bidders,
     enrich_unique_bidders,
     has_bid_changes,
     load_existing_bids,
     load_existing_unique_bidders,
 )
+
+
+class AuctionDateFromTitleTest(unittest.TestCase):
+    def test_parses_two_digit_year_prefix(self):
+        title = "06/04/26: Children's Museum of Richmond | Midlothian VA"
+        self.assertEqual(auction_date_from_title(title), "2026-06-04 23:59:59")
+
+    def test_parses_four_digit_year_prefix(self):
+        self.assertEqual(
+            auction_date_from_title("12/31/2025: Year End Estate Auction"),
+            "2025-12-31 23:59:59",
+        )
+
+    def test_no_leading_date_returns_empty(self):
+        self.assertEqual(auction_date_from_title("Estate Auction | Richmond"), "")
+
+    def test_invalid_calendar_date_returns_empty(self):
+        self.assertEqual(auction_date_from_title("13/40/26: Bogus"), "")
+
+    def test_empty_title_returns_empty(self):
+        self.assertEqual(auction_date_from_title(""), "")
 
 
 BID_ROW = """
