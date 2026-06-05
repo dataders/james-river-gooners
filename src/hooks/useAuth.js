@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { identifyUser, resetAnalytics } from '../lib/analytics'
+import { identifyUser, resetAnalytics } from '../lib/telemetry'
 
 const NOT_CONFIGURED = { error: 'Sign-in is not available right now.' }
 
