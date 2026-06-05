@@ -75,7 +75,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   const base = 'https://bid.cannonsauctions.com'
 
   // Step 1 — fetch login page for anti-forgery token + initial cookies
-  const pageResp = await fetch(`${base}/Account/Login`, {
+  const pageResp = await fetch(`${base}/Public/Account/Login`, {
     headers: { 'User-Agent': UA },
     redirect: 'follow',
   })
@@ -89,13 +89,13 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   const verificationToken = tokenMatch?.[1] ?? ''
 
   // Step 2 — POST credentials
-  const loginResp = await fetch(`${base}/Account/Login`, {
+  const loginResp = await fetch(`${base}/Public/Account/Login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
-      'Referer': `${base}/Account/Login`,
+      'Referer': `${base}/Public/Account/Login`,
     },
     body: new URLSearchParams({
       Email: username,
@@ -123,10 +123,10 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
 async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
-  // NOTE: /Account/BidHistory is the standard MVC endpoint guess. If this
-  // returns 404, try /Account/MyBids or /Account/BiddingHistory, then
-  // inspect the Network tab on a live logged-in session to find the real URL.
-  const resp = await fetch(`${base}/Account/BidHistory`, {
+  // NOTE: /Public/Account/BidHistory is the standard MVC endpoint guess. If this
+  // returns 404, try /Public/Account/MyBids or /Public/Account/BiddingHistory,
+  // then inspect the Network tab on a live logged-in session to find the real URL.
+  const resp = await fetch(`${base}/Public/Account/BidHistory`, {
     headers: {
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
