@@ -16,6 +16,15 @@
 //   CANNON_ENCRYPTION_KEY      (set in Edge Function secrets — any 32+ char string)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  parseCookies,
+  mergeCookies,
+  cookieHeader,
+  parseHiddenInputs,
+  parseBidItems,
+  parseBidderId,
+  parseRefreshItemHtml,
+} from './parsers.js'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -53,36 +62,6 @@ async function decryptText(ciphertext: string): Promise<string> {
 }
 
 // ── Maxanet helpers ───────────────────────────────────────────────────────────
-
-function parseCookies(setCookieHeader: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const chunk of setCookieHeader.split(/,(?=[^ ])/)) {
-    const pair = chunk.trim().split(';')[0]
-    const eq = pair.indexOf('=')
-    if (eq > 0) out[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim()
-  }
-  return out
-}
-
-function mergeCookies(a: Record<string, string>, b: Record<string, string>): Record<string, string> {
-  return { ...a, ...b }
-}
-
-function cookieHeader(cookies: Record<string, string>): string {
-  return Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
-}
-
-// Extracts all <input type="hidden" name="..." value="..."> from an HTML fragment.
-function parseHiddenInputs(html: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const m of html.matchAll(/<input[^>]+type="hidden"[^>]*>/gi)) {
-    const tag = m[0]
-    const name = tag.match(/name="([^"]+)"/)?.[1]
-    const value = tag.match(/value="([^"]*)"/)?.[1] ?? ''
-    if (name) out[name] = value
-  }
-  return out
-}
 
 async function maxanetLogin(username: string, password: string): Promise<Record<string, string>> {
   const base = 'https://bid.cannonsauctions.com'
@@ -148,50 +127,6 @@ interface BidStatus {
   minimumNextBid: number | null
 }
 
-// Parses bid history HTML into item+auction ID pairs.
-// Prefers full AuctionItemDetail URLs (which carry both IDs); falls back to
-// any AuctionItemId mention for items where AuctionId isn't available.
-function parseBidItems(html: string): BidItem[] {
-  const seen = new Set<string>()
-  const out: BidItem[] = []
-
-  // href/data-url attributes containing AuctionItemId query params
-  for (const m of html.matchAll(/(?:href|data-url)="([^"]*?AuctionItemId[^"]+)"/gi)) {
-    const raw = m[1].replace(/&amp;/g, '&')
-    const q = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : raw
-    const p = new URLSearchParams(q)
-    const itemId = p.get('AuctionItemId')
-    if (!itemId || seen.has(itemId)) continue
-    seen.add(itemId)
-    out.push({ itemId, auctionId: p.get('AuctionId') ?? '' })
-  }
-
-  // Fallback: plain AuctionItemId mentions (onclick handlers, hidden inputs)
-  for (const m of html.matchAll(/AuctionItemId[=:]["']?(\d+)/g)) {
-    if (!seen.has(m[1])) {
-      seen.add(m[1])
-      out.push({ itemId: m[1], auctionId: '' })
-    }
-  }
-
-  return out
-}
-
-function parseBidderId(html: string): string | null {
-  const patterns = [
-    /bidder\s*#\s*(\d+)/i,
-    /bidder\s*number[:\s]+(\d+)/i,
-    /BidderNumber[=":\s]+(\d+)/i,
-    /data-bidder-id="(\d+)"/i,
-    /my\s+bidder\s+(?:id|#)[:\s]+(\d+)/i,
-  ]
-  for (const re of patterns) {
-    const m = html.match(re)
-    if (m) return m[1]
-  }
-  return null
-}
-
 // Calls RefreshItem for a single bid and parses winning/outbid status from
 // the rendered HTML. Non-fatal — returns null fields on any failure.
 async function refreshItemStatus(
@@ -232,18 +167,8 @@ async function refreshItemStatus(
         }),
       }).toString(),
     })
-    const html = await resp.text()
-    const cb = html.match(/name="CurrentBidAmount"[^>]*value="([^"]+)"/)?.[1]
-    const mnb = html.match(/name="MinimumNextBidAmount"[^>]*value="([^"]+)"/)?.[1]
-    const winning = html.includes('<span>Winning :') ? true
-      : html.includes('<span>Outbid :') ? false
-      : null
-    return {
-      auctionItemId: itemId,
-      winning,
-      currentBid: cb ? parseFloat(cb) : null,
-      minimumNextBid: mnb ? parseFloat(mnb) : null,
-    }
+    const { winning, currentBid, minimumNextBid } = parseRefreshItemHtml(await resp.text())
+    return { auctionItemId: itemId, winning, currentBid, minimumNextBid }
   } catch {
     return { auctionItemId: itemId, winning: null, currentBid: null, minimumNextBid: null }
   }
@@ -559,13 +484,7 @@ async function placeBid(
         }),
       }).toString(),
     })
-    const html = await refreshResp.text()
-    const cbMatch = html.match(/name="CurrentBidAmount"[^>]*value="([^"]+)"/)
-    const mnbMatch = html.match(/name="MinimumNextBidAmount"[^>]*value="([^"]+)"/)
-    currentBid = cbMatch ? parseFloat(cbMatch[1]) : null
-    minimumNextBid = mnbMatch ? parseFloat(mnbMatch[1]) : null
-    if (html.includes('<span>Winning :')) winning = true
-    else if (html.includes('<span>Outbid :')) winning = false
+    ;({ winning, currentBid, minimumNextBid } = parseRefreshItemHtml(await refreshResp.text()))
   } catch { /* non-fatal — SaveBid result is still returned */ }
 
   return json({
