@@ -80,7 +80,8 @@
  * Filter inputs accepted by {@link filterItems}.
  *
  * @typedef {Object} FilterOptions
- * @property {string[]} excludedCategories  rawCategory values to hide
+ * @property {string[]} excludedCategories  rawCategory values to hide (fine-grained)
+ * @property {string[]} [excludedGroups]    normalized group names to hide (coarse, e.g. Firearms/Vehicles)
  * @property {?Set<string>} [searchIds]     composite item keys (`${auctionSafeId}:${id}`) to keep, or null/undefined for no search filter
  * @property {?number} [minPrice]
  * @property {?number} [maxPrice]

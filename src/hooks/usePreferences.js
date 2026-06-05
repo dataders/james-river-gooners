@@ -16,6 +16,7 @@ function loadInitialPrefs() {
   if (p.has('minHrs')) merged.minHours = Number(p.get('minHrs'))
   if (p.has('maxHrs')) merged.maxHours = Number(p.get('maxHrs'))
   if (p.has('cat')) merged.excludedCategories = p.getAll('cat')
+  if (p.has('grp')) merged.excludedGroups = p.getAll('grp')
   if (p.has('local')) merged.localOnly = p.get('local') === '1'
   if (p.has('hasComp')) merged.hasComp = p.get('hasComp') === '1'
   if (p.has('hasCannonsComp')) merged.hasCannonsComp = p.get('hasCannonsComp') === '1'
@@ -65,10 +66,39 @@ export function usePreferences() {
     })
   }, [])
 
-  const hideAll = useCallback((allCategories) => {
-    syncUrlParam('cat', allCategories)
+  // Hide an entire normalized group (coarse switch — also catches future raw
+  // categories that normalize into the group, unlike toggling each chip).
+  const hideGroup = useCallback((group) => {
     setPrefs(prev => {
-      const next = { ...prev, excludedCategories: [...allCategories] }
+      if (prev.excludedGroups.includes(group)) return prev
+      const excludedGroups = [...prev.excludedGroups, group]
+      syncUrlParam('grp', excludedGroups)
+      const next = { ...prev, excludedGroups }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
+  // Fully reveal a group: drop it from the group exclusions and un-hide any of
+  // its individual raw chips that were excluded.
+  const showGroup = useCallback((group, rawNames = []) => {
+    setPrefs(prev => {
+      const excludedGroups = prev.excludedGroups.filter(g => g !== group)
+      const rawSet = new Set(rawNames)
+      const excludedCategories = prev.excludedCategories.filter(c => !rawSet.has(c))
+      syncUrlParam('grp', excludedGroups)
+      syncUrlParam('cat', excludedCategories)
+      const next = { ...prev, excludedGroups, excludedCategories }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
+  // Hide everything: exclude every group (covers all raw categories too).
+  const hideAll = useCallback((allGroups) => {
+    syncUrlParam('grp', allGroups)
+    setPrefs(prev => {
+      const next = { ...prev, excludedGroups: [...allGroups] }
       savePrefs(next)
       return next
     })
@@ -76,19 +106,22 @@ export function usePreferences() {
 
   const showAll = useCallback(() => {
     syncUrlParam('cat', [])
+    syncUrlParam('grp', [])
     setPrefs(prev => {
-      const next = { ...prev, excludedCategories: [] }
+      const next = { ...prev, excludedCategories: [], excludedGroups: [] }
       savePrefs(next)
       return next
     })
   }, [])
 
-  // Isolate a single category: exclude every category except `keep`.
+  // Isolate a single raw category: exclude every other category, and clear group
+  // exclusions so the kept category shows even if its group was hidden.
   const showOnly = useCallback((keep, allCategories) => {
     const excluded = allCategories.filter(c => c !== keep)
     syncUrlParam('cat', excluded)
+    syncUrlParam('grp', [])
     setPrefs(prev => {
-      const next = { ...prev, excludedCategories: excluded }
+      const next = { ...prev, excludedCategories: excluded, excludedGroups: [] }
       savePrefs(next)
       return next
     })
@@ -167,6 +200,8 @@ export function usePreferences() {
     toggleIncluded,
     toggleExcluded,
     clearIncluded,
+    hideGroup,
+    showGroup,
     hideAll,
     showAll,
     showOnly,
