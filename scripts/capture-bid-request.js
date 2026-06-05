@@ -57,7 +57,17 @@ page.on('response', async resp => {
 // ── Log in ────────────────────────────────────────────────────────────────────
 
 console.log('\nNavigating to login page…')
-await page.goto(`${BASE}/Public/Account/Login`, { waitUntil: 'domcontentloaded' })
+await page.goto(`${BASE}/Public/Account/Login`, { waitUntil: 'networkidle' })
+
+// Dump all inputs so we can diagnose selector mismatches
+const loginInputs = await page.locator('input').all()
+console.log('Inputs found on login page:')
+for (const el of loginInputs) {
+  const name = await el.getAttribute('name').catch(() => '')
+  const type = await el.getAttribute('type').catch(() => '')
+  const id   = await el.getAttribute('id').catch(() => '')
+  console.log(`  name="${name}" type="${type}" id="${id}"`)
+}
 
 // Cannon's login form uses "Email" or "BidderNumber" label
 const emailField = page.locator('input[name="Email"], input[type="email"], input[name="BidderNumber"]').first()
