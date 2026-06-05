@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      enrichment:
+        description: 'Enrich lots with Claude (brand/model/condition) before eBay comps'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -31,6 +36,12 @@ jobs:
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       GOONERS_EMBEDDINGS: '1'
+      # LLM lot enrichment (#99/#104). Opt-in: scheduled runs leave it off
+      # (inputs.enrichment is unset → '0') so quality can be validated via a
+      # manual dispatch before it becomes a standing per-scrape cost. The
+      # enrich step is a no-op without both this flag and the key.
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOONERS_ENRICHMENT: ${{ inputs.enrichment && '1' || '0' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -59,12 +70,12 @@ jobs:
           if [ -n "${{ inputs.auction_url }}" ]; then
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              --with sentence-transformers --with pillow \
+              --with sentence-transformers --with pillow --with anthropic \
               python scrape.py "${{ inputs.auction_url }}"
           else
             echo "Re-scraping all Cannon's auctions..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              --with sentence-transformers --with pillow \
+              --with sentence-transformers --with pillow --with anthropic \
               python rescrape_all.py --source maxanet
           fi
 
@@ -81,7 +92,7 @@ jobs:
           fi
           echo "Re-scraping HiBid auctions..."
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-            --with sentence-transformers --with pillow \
+            --with sentence-transformers --with pillow --with anthropic \
             python rescrape_all.py --source hibid
 
       - name: Archive closed auctions and rebuild manifests

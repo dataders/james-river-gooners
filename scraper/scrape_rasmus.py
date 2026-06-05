@@ -570,6 +570,13 @@ def scrape_rasmus_auction(
         item["scrapedAt"] = scraped_at_str
         item["source"] = source_slug
 
+    # LLM metadata enrichment (#99/#104): no-op unless GOONERS_ENRICHMENT=1 + a
+    # key is set. Runs while images are still arrays.
+    from enrich import enrich_items
+    enrich_items(all_items)
+    from supabase_enrichment import maybe_export_enrichment
+    maybe_export_enrichment(all_items)
+
     # Write NDJSON (images as real array)
     ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
     ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]

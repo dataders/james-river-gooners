@@ -18,6 +18,7 @@ import { marginForItem } from './utils/soldHistory'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { hasCannonsComps } from './utils/cannonsComps'
+import { hasEnrichment } from './utils/enrichment'
 import { sortItems, sortByMargin } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
@@ -150,6 +151,7 @@ export default function App() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [showIgnoredOnly, setShowIgnoredOnly] = useState(false)
   const [showMyBidsOnly, setShowMyBidsOnly] = useState(false)
+  const [showEnrichedOnly, setShowEnrichedOnly] = useState(false)
   const [swipeOpen, setSwipeOpen] = useState(false)
   const [swipeItems, setSwipeItems] = useState([])
 
@@ -312,8 +314,9 @@ export default function App() {
     let result = displayItems.filter(item => !isIgnored(item))
     if (showFavoritesOnly) result = result.filter(isFavorite)
     if (showMyBidsOnly) result = result.filter(item => cannonBids.bidItemIds.has(String(item.id)))
+    if (showEnrichedOnly) result = result.filter(hasEnrichment)
     return result
-  }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds])
+  }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds, showEnrichedOnly])
 
   // Snapshot the not-yet-decided items when the swipe deck opens so the deck
   // doesn't reshuffle as the user favorites/ignores its way through.
@@ -427,6 +430,19 @@ export default function App() {
             onClick={toggleIgnoredView}
           >
             {ignoredIds.length > 0 ? `Ignored (${ignoredIds.length})` : 'Ignored'}
+          </button>
+          <button
+            type="button"
+            className={`deals-toggle${showEnrichedOnly ? ' active' : ''}`}
+            onClick={() => {
+              setShowEnrichedOnly(v => {
+                captureEvent('enriched_filter_toggled', { active: !v })
+                return !v
+              })
+            }}
+            title="Show only lots with an identified brand/model"
+          >
+            ✨ Identified
           </button>
           <button
             type="button"
@@ -557,6 +573,17 @@ export default function App() {
               <p>Nothing ignored.</p>
               <p className="no-deals-hint">
                 Hit the ✕ on an item to hide it from the grid. Ignored items show up here.
+              </p>
+            </div>
+          ) : showEnrichedOnly && finalItems.length === 0 ? (
+            <div className="no-deals-message">
+              <div className="item-count">0 items</div>
+              <p>No identified lots here yet.</p>
+              <p className="no-deals-hint">
+                Identification (brand &amp; model) is added by the enrichment step
+                after a scrape. None of the lots in this view have a confident
+                match yet — try clearing other filters or check back after the
+                next run.
               </p>
             </div>
           ) : showMyBidsOnly && finalItems.length === 0 ? (

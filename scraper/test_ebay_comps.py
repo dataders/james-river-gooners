@@ -59,6 +59,35 @@ class ExactPhraseSearchTests(unittest.TestCase):
         )
         self.assertEqual(item_exact_phrase({"title": "Trumpet", "description": ""}), "")
 
+    def test_confident_enrichment_drives_the_specific_query(self):
+        # A "Lot - N" placeholder whose description is weak, but enrichment
+        # identified the brand+model with high confidence: that wins the query.
+        searches = build_ebay_sold_searches({
+            "title": "Lot - 207",
+            "description": "cordless drill, works",
+            "category": "Tools",
+            "rawCategory": "Tools",
+            "brand": "DeWalt",
+            "modelOrSku": "DCD771",
+            "enrichmentConfidence": "high",
+        })
+        self.assertEqual(searches[0]["kind"], "specific")
+        self.assertEqual(searches[0]["query"], '"DeWalt DCD771"')
+
+    def test_low_confidence_enrichment_falls_back_to_text(self):
+        # Low confidence must not steer the query — fall through to the
+        # description phrase, exactly as before enrichment existed.
+        searches = build_ebay_sold_searches({
+            "title": "Lot - 12",
+            "description": "Pair of brass candlesticks",
+            "category": "Other",
+            "rawCategory": "Other",
+            "brand": "Maybe Acme",
+            "modelOrSku": "X1",
+            "enrichmentConfidence": "low",
+        })
+        self.assertEqual(searches[0]["query"], '"Pair of brass candlesticks"')
+
 
 _SOLD_ITEM_HTML = """
 <li class="s-item">

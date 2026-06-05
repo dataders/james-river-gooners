@@ -4,6 +4,7 @@ import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
 import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
+import { getDisplayEnrichment } from '../utils/enrichment'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
 
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
@@ -61,6 +62,10 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const prev = () => setCurrentImgIndex(i => (i - 1 + images.length) % images.length)
   const next = () => setCurrentImgIndex(i => (i + 1) % images.length)
 
+  const enrichment = getDisplayEnrichment(item)
+  const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
+  const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
+
   return (
     <div className="detail-overlay" onClick={onClose}>
       <div className="detail-panel" onClick={e => e.stopPropagation()}>
@@ -89,7 +94,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
         <div className="detail-body">
           <div className="detail-title-row">
-            <h2 className="detail-title">{item.title}</h2>
+            <h2 className="detail-title">{displayTitle}</h2>
             <button
               type="button"
               className={`ignore-button detail-ignore${isIgnored ? ' active' : ''}`}
@@ -108,7 +113,27 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
               {isFavorite ? '★' : '☆'}
             </button>
           </div>
-          <div className="detail-category">{item.rawCategory || item.category}</div>
+          <div className="detail-category">
+            {usedLabelAsTitle && item.lotNumber ? `Lot ${item.lotNumber} · ` : ''}
+            {item.rawCategory || item.category}
+          </div>
+
+          {enrichment && (
+            <div className="detail-enrichment">
+              {!usedLabelAsTitle && <span className="detail-product-label">{enrichment.label}</span>}
+              {enrichment.condition && <span className="item-condition">{enrichment.condition}</span>}
+              {enrichment.productUrl && (
+                <a
+                  href={enrichment.productUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="detail-product-link"
+                >
+                  View product
+                </a>
+              )}
+            </div>
+          )}
 
           <div className="detail-price-section">
             <div className="detail-price-label">Current bid</div>

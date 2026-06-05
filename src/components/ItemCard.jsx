@@ -1,10 +1,17 @@
 import { memo } from 'react'
 import { itemTimeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
+import { getDisplayEnrichment } from '../utils/enrichment'
 
 export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
   const imgSrc = item.images?.[0] || null
   const remaining = itemTimeRemaining(item)
+  const enrichment = getDisplayEnrichment(item)
+  // "Lot - N" titles carry no detail (the lot's identity lives in the
+  // description), so when we have a confident product name, show it as the
+  // title instead and keep the lot number on the category line for reference.
+  const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
+  const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
 
   const compMedian = getCompMedianPrice(itemComps)
   const maxBid = compMedian != null ? calcMaxBid(compMedian, DEFAULT_MARGIN) : null
@@ -53,8 +60,17 @@ export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, on
         )}
       </div>
       <div className="item-info">
-        <div className="item-title">{item.title}</div>
-        <div className="item-category">{item.rawCategory || item.category}</div>
+        <div className="item-title">{displayTitle}</div>
+        {enrichment && (!usedLabelAsTitle || enrichment.condition) && (
+          <div className="item-product">
+            {!usedLabelAsTitle && <span className="item-product-label">{enrichment.label}</span>}
+            {enrichment.condition && <span className="item-condition">{enrichment.condition}</span>}
+          </div>
+        )}
+        <div className="item-category">
+          {usedLabelAsTitle && item.lotNumber ? `Lot ${item.lotNumber} · ` : ''}
+          {item.rawCategory || item.category}
+        </div>
         {bidStatus?.winning != null && (
           <div className={`bid-status-badge${bidStatus.winning ? ' bid-status-winning' : ' bid-status-outbid'}`}>
             {bidStatus.winning
