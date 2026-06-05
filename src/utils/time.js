@@ -12,3 +12,13 @@ export function timeRemaining(endDate) {
   const mins = Math.floor((diff % 3600000) / 60000)
   return `${hours}h ${mins}m`
 }
+
+// Closed Cannon's lots have no live countdown, so their per-lot `endDate` is
+// blank and `timeRemaining` would return '' — leaving the card with no time
+// line at all (not even "Ended"). Fall back to the auction-level
+// `auctionEndDate`, which the scraper always populates (from the title date for
+// closed auctions), so closed lots show "Ended" and active lots still get a
+// real countdown.
+export function itemTimeRemaining(item) {
+  return timeRemaining(item?.endDate || item?.auctionEndDate)
+}
