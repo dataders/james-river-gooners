@@ -38,7 +38,7 @@ from supabase_comps import json_safe, resolve_credentials
 ENRICHMENT_TABLE = "lot_enrichment"
 
 # Columns written per row; mirrors the `lot_enrichment` table
-# (0007_lot_enrichment.sql). `updated_at` is Postgres-filled and omitted.
+# (0009_lot_enrichment.sql). `updated_at` is Postgres-filled and omitted.
 ENRICHMENT_COLUMNS = (
     "auction_safe_id",
     "item_id",
