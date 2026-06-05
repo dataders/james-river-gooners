@@ -50,7 +50,7 @@ GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow
   - `cannons` — `GetAuctions` `filter=Past`. Closed lots carry no countdown, so `scrape.py`'s `auction_date_from_title` derives the end date from the title's `MM/DD/YY` prefix. `--limit N`.
   - `rasmus` — Firestore lots whose `time_end` is in the last `--days` (default 90), filtered to Richmond-area (Rasmus is nationwide, so this scan is heavy). `--limit N --days 90`.
   - `hibid` — closed catalog IDs listed under `closed_catalog_ids` in `hibid_sources.yml` (HiBid blocks automated past-auction discovery, so IDs are config-driven). Closed lot pages expose `Price Realized: N USD` as the final price.
-- Category normalization: `scraper/categories.py` + `scraper/category_mappings.yml`
+- Category normalization: `scraper/categories.py` + `scraper/category_mappings.yml`. Cannon's lots whose site Type is "Other" carry their detail in the description (the title is a `Lot - N` placeholder), so `category_mappings.yml` `description_keywords` are ordered by reliability (furniture nouns → precious metals → china nouns → bare materials; first match wins). `scraper/recategorize.py` re-derives `category`/`rawCategory` across the read model from the current mappings (idempotent, only improves "Other"; rewrites NDJSON + Parquet); re-run `sold_history.py` afterward so the Supabase category stats follow.
 - MotherDuck: appends to `listing_snapshots` table in `my_db`; both tokens must stay out of committed files; use `duckdb==1.5.2`
   - `MOTHERDUCK_TOKEN` — read/write PAT; used by scraper and Claude Code MCP server
   - `MOTHERDUCK_READ_TOKEN` — read-scaling token; safe to expose to browsers/CDN; used in GitHub Actions as `MOTHERDUCK_READ_SCALING_TOKEN` secret for eBay comps export
