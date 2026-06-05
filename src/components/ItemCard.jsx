@@ -3,7 +3,7 @@ import { itemTimeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { getDisplayEnrichment } from '../utils/enrichment'
 
-export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick }) {
+export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
   const imgSrc = item.images?.[0] || null
   const remaining = itemTimeRemaining(item)
   const enrichment = getDisplayEnrichment(item)
@@ -71,6 +71,13 @@ export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, on
           {usedLabelAsTitle && item.lotNumber ? `Lot ${item.lotNumber} · ` : ''}
           {item.rawCategory || item.category}
         </div>
+        {bidStatus?.winning != null && (
+          <div className={`bid-status-badge${bidStatus.winning ? ' bid-status-winning' : ' bid-status-outbid'}`}>
+            {bidStatus.winning
+              ? '✓ Winning'
+              : `Outbid · $${bidStatus.currentBid != null ? bidStatus.currentBid.toLocaleString() : '?'}`}
+          </div>
+        )}
         <div className="item-bid-row">
           <span className="item-bid">${item.currentBid.toLocaleString()}</span>
           <span className="item-bids">
