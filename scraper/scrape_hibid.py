@@ -656,8 +656,12 @@ def scrape_hibid_auction(
     ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
     print(f"  Wrote {len(all_items)} items → {ndjson_path.name}")
 
-    # Generate CLIP embeddings (images still arrays at this point)
     import os
+    if os.environ.get("SUPABASE_SECRET_KEY"):
+        from supabase_lots import upsert_lots
+        upsert_lots(all_items, safe_id)
+
+    # Generate CLIP embeddings (images still arrays at this point)
     if os.environ.get("GOONERS_EMBEDDINGS") == "1":
         from embed import generate_and_write as _gen_embeddings
         _gen_embeddings(all_items, items_path, None)

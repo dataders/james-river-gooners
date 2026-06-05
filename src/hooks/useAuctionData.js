@@ -5,6 +5,7 @@ import { normalizeManifest } from '../utils/manifest'
 import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
 import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 // How often to re-check active auctions for a passed deadline (ms). Auctions
 // rarely turn over second-to-second, so a coarse tick keeps the page reactive
@@ -57,6 +58,82 @@ function normalizeRowsNdjson(results, archived) {
     }
   }
   return { items, auctions: Object.values(auctionMap) }
+}
+
+// --- Supabase dataset fetch ---
+
+async function fetchAllFromView(viewName) {
+  const PAGE = 2000
+  const rows = []
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase.from(viewName).select('*').range(from, from + PAGE - 1)
+    if (error) throw new Error(error.message)
+    rows.push(...data)
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+  return rows
+}
+
+function normalizeLotRow(row) {
+  return {
+    id: row.item_id,
+    lotNumber: row.lot_number,
+    title: row.title,
+    description: row.description,
+    currentBid: row.current_bid != null ? Number(row.current_bid) : 0,
+    totalBids: row.total_bids ?? 0,
+    uniqueBidders: row.unique_bidders ?? 0,
+    endDate: row.end_date,
+    images: row.images ?? [],
+    category: row.category,
+    rawCategory: row.raw_category,
+    detailUrl: row.detail_url,
+    auctionId: row.auction_id,
+    auctionSafeId: row.auction_safe_id,
+    auctionTitle: row.auction_title,
+    auctionEndDate: row.auction_end_date,
+    scrapedAt: row.scraped_at,
+    source: row.source,
+    ...(row.final_bid != null ? { finalBid: Number(row.final_bid) } : {}),
+    ...(row.closed != null ? { closed: row.closed } : {}),
+  }
+}
+
+function normalizeRowsSupabase(rows, archived) {
+  const items = []
+  const auctionMap = {}
+  for (const row of rows) {
+    const item = { ...normalizeLotRow(row), archived }
+    items.push(item)
+    const sid = item.auctionSafeId
+    if (sid && !auctionMap[sid]) {
+      auctionMap[sid] = {
+        safeId: sid,
+        id: item.auctionId,
+        title: item.auctionTitle,
+        endDate: item.auctionEndDate,
+        scrapedAt: item.scrapedAt,
+        source: item.source || 'cannons',
+        archived,
+        isLocal: isLocalAuction(item.auctionTitle),
+        totalItems: 0,
+      }
+    }
+    if (sid) auctionMap[sid].totalItems++
+  }
+  return { items, auctions: Object.values(auctionMap) }
+}
+
+async function fetchSupabaseDataset({ archived = false } = {}) {
+  const t0 = performance.now()
+  const viewName = archived ? 'public_archived_lots' : 'public_active_lots'
+  const rows = await fetchAllFromView(viewName)
+  const { items, auctions } = normalizeRowsSupabase(rows, archived)
+  // Embeddings sidecars are not yet in Supabase (#132); semantic search
+  // is unavailable when using the Supabase path.
+  return { items, auctions, embeddingEntries: [], loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 // --- Shared dataset fetch ---
@@ -113,7 +190,10 @@ export function useAuctionData(archiveMode = 'active') {
 
   useEffect(() => {
     let cancelled = false
-    fetchDataset('data/manifest.json')
+    const activeLoader = isSupabaseConfigured
+      ? () => fetchSupabaseDataset({ archived: false })
+      : () => fetchDataset('data/manifest.json')
+    activeLoader()
       .then(({ items, auctions, embeddingEntries, loadTimeMs }) => {
         if (cancelled) return
         setActiveItems(items)
@@ -134,7 +214,10 @@ export function useAuctionData(archiveMode = 'active') {
     if (!includeArchived || archiveLoaded || archiveError || archiveLoadingRef.current) return
     let cancelled = false
     archiveLoadingRef.current = true
-    fetchDataset('data/archive-manifest.json', { archived: true })
+    const archiveLoader = isSupabaseConfigured
+      ? () => fetchSupabaseDataset({ archived: true })
+      : () => fetchDataset('data/archive-manifest.json', { archived: true })
+    archiveLoader()
       .then(({ items, auctions }) => {
         if (cancelled) return
         setArchiveItems(items)
