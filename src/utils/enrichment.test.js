@@ -1,6 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getDisplayEnrichment, isHighConfidence } from './enrichment.js'
+import { getDisplayEnrichment, isHighConfidence, hasEnrichment } from './enrichment.js'
+
+test('hasEnrichment matches what the UI can actually show', () => {
+  // High confidence with a brand/model => identified.
+  assert.equal(hasEnrichment({ enrichmentConfidence: 'high', brand: 'Dietz', modelOrSku: 'Lantern' }), true)
+  // High confidence but nothing to show => not identified.
+  assert.equal(hasEnrichment({ enrichmentConfidence: 'high', brand: '', modelOrSku: '' }), false)
+  // Below the confidence bar => not identified.
+  assert.equal(hasEnrichment({ enrichmentConfidence: 'medium', brand: 'Dietz' }), false)
+  assert.equal(hasEnrichment({}), false)
+})
 
 test('isHighConfidence only true for high (case-insensitive)', () => {
   assert.equal(isHighConfidence({ enrichmentConfidence: 'high' }), true)
