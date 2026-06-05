@@ -45,6 +45,15 @@ export async function openRoiCard(page) {
   return true
 }
 
+// Select a view from the segmented archive "Auctions" control (Active / All /
+// Archived). Replaced the old "Archived auctions" checkbox in the three-state
+// archive filter.
+export async function selectArchiveView(page, name) {
+  await page.getByRole('group', { name: 'Which auctions to show' })
+    .getByRole('button', { name, exact: true })
+    .click()
+}
+
 // Read the visible item count from the grid header
 export async function getItemCount(page) {
   const text = await page.locator('.item-count').textContent()

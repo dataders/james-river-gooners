@@ -129,14 +129,21 @@ test.describe('Filters', () => {
     await expect(checkbox).toBeChecked({ checked: before })
   })
 
-  test('"Archived auctions" checkbox is interactive', async ({ page }) => {
-    const label = page.locator('label.local-toggle', { hasText: 'Archived auctions' })
-    const checkbox = label.locator('input[type="checkbox"]')
-    await expect(checkbox).not.toBeChecked()
-    await checkbox.click()
-    await expect(checkbox).toBeChecked()
-    await checkbox.click()
-    await expect(checkbox).not.toBeChecked()
+  test('archive view segmented control switches between Active and Archived', async ({ page }) => {
+    const group = page.getByRole('group', { name: 'Which auctions to show' })
+    const active = group.getByRole('button', { name: 'Active', exact: true })
+    const archived = group.getByRole('button', { name: 'Archived', exact: true })
+
+    // Defaults to Active.
+    await expect(active).toHaveAttribute('aria-pressed', 'true')
+
+    await archived.click()
+    await expect(archived).toHaveAttribute('aria-pressed', 'true')
+    await expect(active).toHaveAttribute('aria-pressed', 'false')
+
+    await active.click()
+    await expect(active).toHaveAttribute('aria-pressed', 'true')
+    await expect(archived).toHaveAttribute('aria-pressed', 'false')
   })
 
   test('"Richmond area only" item count is a subset of the total', async ({ page }) => {
