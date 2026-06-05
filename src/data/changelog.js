@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-05',
+    title: 'My Bids & bid panel',
+    changes: [
+      { id: 'mybids-login-error-ux', icon: '🔑', text: "When Cannon's login fails in My Bids, you now get a clear prompt to update your credentials instead of a raw error message." },
+    ],
+  },
+  {
+    date: '2026-06-05',
     title: 'Resale insights & live bidding',
     changes: [
       { id: 'cannons-sold-history', icon: '📈', text: "Cannon's sold-price history: every lot now shows what similar past lots actually hammered for, and deals are ranked by estimated margin." },

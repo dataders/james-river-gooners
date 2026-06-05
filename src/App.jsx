@@ -618,9 +618,22 @@ export default function App() {
               {cannonBids.error ? (
                 <>
                   <p>Couldn't load your bids from Cannon's.</p>
-                  <p className="no-deals-hint bids-error">{cannonBids.error}</p>
+                  {/session expired|not logged in|login failed/i.test(cannonBids.error) ? (
+                    <p className="no-deals-hint">
+                      Your Cannon&apos;s login didn&apos;t work — your password may have changed.{' '}
+                      <button
+                        type="button"
+                        className="bids-retry-button"
+                        onClick={() => setCannonLinkOpen(true)}
+                      >
+                        Update credentials
+                      </button>
+                    </p>
+                  ) : (
+                    <p className="no-deals-hint bids-error">{cannonBids.error}</p>
+                  )}
                   <p className="no-deals-hint">
-                    This is a problem reaching Cannon's — not a missing match.{' '}
+                    This is a problem reaching Cannon&apos;s — not a missing match.{' '}
                     <button
                       type="button"
                       className="bids-retry-button"
