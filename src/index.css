@@ -783,6 +783,7 @@ body {
 .item-image {
   width: 100%;
   aspect-ratio: auto;
+  max-height: 380px;
   overflow: hidden;
   background: var(--border);
 }
