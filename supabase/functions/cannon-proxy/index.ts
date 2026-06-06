@@ -512,7 +512,39 @@ async function debugAuthV2(
   const realLoginBody: Record<string, string> = { ...loginBody, Password: password }
   await followChain(loginPostUrl, 'POST', new URLSearchParams(realLoginBody).toString())
 
-  // Step D: try GetWatchlist with the current session and report the result
+  // Step D: after a successful /Public/Account/Login, try GET /Authentication/Login
+  // with the authenticated session. In some Maxanet deployments this endpoint acts
+  // as an SSO bridge — when the Maxanet session is already authenticated it fires
+  // FormsAuthentication.SetAuthCookie() and issues .ASPXAUTH.
+  // Also try with a ReturnUrl in case the route handler checks it.
+  for (const suffix of ['', '?ReturnUrl=%2fPublic%2fAuction%2fWatchlist']) {
+    const authUrl = `${base}/Authentication/Login${suffix}`
+    const authResp = await fetch(authUrl, {
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Cookie': cookieHeader(sessionCookies),
+        'Referer': `${base}/Public`,
+      },
+      redirect: 'manual',
+    })
+    const authCookies = getSetCookies(authResp.headers)
+    const authRaw: string[] = (authResp as Response & { headers: Headers & { getSetCookie?(): string[] } }).headers.getSetCookie?.() ?? []
+    sessionCookies = mergeCookies(sessionCookies, authCookies)
+    trace.push({
+      step: `step_D_auth_login${suffix ? '_with_returnurl' : ''}`,
+      url: authUrl,
+      method: 'GET',
+      status: authResp.status,
+      location: authResp.headers.get('location'),
+      setCookieRaw: authRaw,
+      newCookieKeys: Object.keys(authCookies),
+      sessionCookieKeys: Object.keys(sessionCookies),
+    } as typeof trace[0])
+    if ('.ASPXAUTH' in authCookies) break
+  }
+
+  // Step E: try GetWatchlist with the final session (may now have .ASPXAUTH)
   const wlResp = await fetch(
     `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=Current`,
     {
