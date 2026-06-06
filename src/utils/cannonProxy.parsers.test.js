@@ -39,6 +39,17 @@ test('parseCookies returns empty object for empty string', () => {
   assert.deepEqual(parseCookies(''), {})
 })
 
+test('parseCookies does not split on comma-space separator (known limitation)', () => {
+  // headers.get('set-cookie') joins multiple Set-Cookie headers with ', ' (comma-space).
+  // parseCookies only splits on ',(?=[^ ])' so a comma-space boundary is NOT recognized —
+  // only the first cookie survives. This is why the edge function uses getSetCookie()
+  // (returns the full array) instead of headers.get('set-cookie').
+  const joined = 'ASP.NET_SessionId=abc; path=/; HttpOnly, .AspNet.Cookies=tok; path=/; Secure'
+  const result = parseCookies(joined)
+  assert.equal(result['ASP.NET_SessionId'], 'abc')
+  assert.equal(result['.AspNet.Cookies'], undefined) // silently dropped
+})
+
 test('parseCookies handles cookie value containing equals sign', () => {
   // Base64 values may contain trailing "="
   const header = 'token=abc==; path=/'

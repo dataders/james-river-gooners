@@ -81,3 +81,33 @@ def test_inference_only_when_no_raw():
 
 def test_unknown_raw_without_signal_is_other():
     assert group_of("cannons", "zzz totally unknown thing") == "Other"
+
+
+# --- scrapers use the canonical path via categories.py -----------------------
+
+def test_scrapers_route_through_canonical():
+    """Verify categories.normalize_category uses source-aware canonical resolution.
+
+    Each scraper passes its source name; these cases only resolve correctly via
+    the canonical table, not through the legacy source-blind alias lookup.
+    """
+    from categories import normalize_category, normalize_raw_with_description
+
+    # Rasmus industrial vocab resolves with the rasmus source
+    assert normalize_category("Ind & Warehouse Eqpt", source="rasmus") == "Industrial & Equipment"
+    assert normalize_category("HVAC & Plumbing", source="rasmus") == "Industrial & Equipment"
+    assert normalize_category("Safety Eqpt & PPE", source="rasmus") == "Industrial & Equipment"
+
+    # HiBid coin denomination breadcrumbs resolve with the hibid source
+    assert normalize_category("Half Dollars", source="hibid") == "Coins & Currency"
+    assert normalize_category("Quarters", source="hibid") == "Coins & Currency"
+
+    # Cannon's site-specific strings resolve with the cannons source
+    assert normalize_category("Art", source="cannons") == "Art"
+
+    # rawCategory is the canonical subcategory name when source is supplied
+    assert normalize_raw_with_description("Ind & Warehouse Eqpt", source="rasmus") == "Industrial Equipment"
+    assert normalize_raw_with_description("Half Dollars", source="hibid") == "Coins & Currency"
+
+    # Legacy description inference still works as fallback when canonical has no match
+    assert normalize_category("", "Winchester rifle, .30-30 lever action", source="cannons") == "Firearms"

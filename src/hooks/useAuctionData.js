@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { isLocalAuction } from '../utils/locality'
 import { itemKey } from '../utils/itemKey'
 import { normalizeManifest } from '../utils/manifest'
 import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
 import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import {
+  normalizeRowsNdjson,
+  normalizeRowsSupabase,
+} from '../utils/auctionNormalize'
 
 // How often to re-check active auctions for a passed deadline (ms). Auctions
 // rarely turn over second-to-second, so a coarse tick keeps the page reactive
@@ -33,33 +36,6 @@ async function fetchNdjson(url) {
   return rows
 }
 
-function normalizeRowsNdjson(results, archived) {
-  const items = []
-  const auctionMap = {}
-  for (const rows of results) {
-    for (const row of rows) {
-      row.archived = archived
-      items.push(row)
-      const sid = row.auctionSafeId
-      if (sid && !auctionMap[sid]) {
-        auctionMap[sid] = {
-          safeId: sid,
-          id: row.auctionId,
-          title: row.auctionTitle,
-          endDate: row.auctionEndDate,
-          scrapedAt: row.scrapedAt,
-          source: row.source || 'cannons',
-          archived,
-          isLocal: isLocalAuction(row.auctionTitle),
-          totalItems: 0,
-        }
-      }
-      if (sid) auctionMap[sid].totalItems++
-    }
-  }
-  return { items, auctions: Object.values(auctionMap) }
-}
-
 // --- Supabase dataset fetch ---
 
 async function fetchAllFromView(viewName) {
@@ -80,56 +56,6 @@ async function fetchAllFromView(viewName) {
     from += data.length
   }
   return rows
-}
-
-function normalizeLotRow(row) {
-  return {
-    id: row.item_id,
-    lotNumber: row.lot_number,
-    title: row.title,
-    description: row.description,
-    currentBid: row.current_bid != null ? Number(row.current_bid) : 0,
-    totalBids: row.total_bids ?? 0,
-    uniqueBidders: row.unique_bidders ?? 0,
-    endDate: row.end_date,
-    images: row.images ?? [],
-    category: row.category,
-    rawCategory: row.raw_category,
-    detailUrl: row.detail_url,
-    auctionId: row.auction_id,
-    auctionSafeId: row.auction_safe_id,
-    auctionTitle: row.auction_title,
-    auctionEndDate: row.auction_end_date,
-    scrapedAt: row.scraped_at,
-    source: row.source,
-    ...(row.final_bid != null ? { finalBid: Number(row.final_bid) } : {}),
-    ...(row.closed != null ? { closed: row.closed } : {}),
-  }
-}
-
-function normalizeRowsSupabase(rows, archived) {
-  const items = []
-  const auctionMap = {}
-  for (const row of rows) {
-    const item = { ...normalizeLotRow(row), archived }
-    items.push(item)
-    const sid = item.auctionSafeId
-    if (sid && !auctionMap[sid]) {
-      auctionMap[sid] = {
-        safeId: sid,
-        id: item.auctionId,
-        title: item.auctionTitle,
-        endDate: item.auctionEndDate,
-        scrapedAt: item.scrapedAt,
-        source: item.source || 'cannons',
-        archived,
-        isLocal: isLocalAuction(item.auctionTitle),
-        totalItems: 0,
-      }
-    }
-    if (sid) auctionMap[sid].totalItems++
-  }
-  return { items, auctions: Object.values(auctionMap) }
 }
 
 async function fetchSupabaseDataset({ archived = false } = {}) {
@@ -153,7 +79,7 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
     const path = entry.ndjsonPath || entry.itemsPath.replace('.parquet', '.ndjson')
     return fetchNdjson(dataUrl(path))
   }))
-  const { items, auctions } = normalizeRowsNdjson(results, archived)
+  const { items, auctions } = normalizeRowsNdjson(results, entries, archived)
 
   // Carry each auction's safeId with its embeddings path: the .embeddings binary
   // stores bare item ids (unique within one auction), so the loader must namespace
@@ -258,25 +184,39 @@ export function useAuctionData(archiveMode = 'active') {
   )
 
   const allItems = useMemo(() => {
+    let merged
     if (!includeArchived) {
-      if (dynamicArchivedIds.size === 0) return activeItems
-      return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+      merged = dynamicArchivedIds.size === 0
+        ? activeItems
+        : activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+    } else {
+      const active = dynamicArchivedIds.size === 0
+        ? activeItems
+        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+            ? { ...item, archived: true }
+            : item)
+      // The same lot can appear in both the active and archive snapshots while
+      // an auction is mid-transition. De-dupe by the globally-unique composite
+      // key (preferring the active copy) so downstream consumers never see a
+      // collision. Keying on the bare id here would wrongly drop an archive lot
+      // that merely shares an id with an unrelated active lot from another auction.
+      const activeKeys = new Set(active.map(itemKey))
+      const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
+      merged = archiveMode === 'archived'
+        ? [...active, ...archiveOnly].filter(item => item.archived)
+        : [...active, ...archiveOnly]
     }
-    const active = dynamicArchivedIds.size === 0
-      ? activeItems
-      : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
-          ? { ...item, archived: true }
-          : item)
-    // The same lot can appear in both the active and archive snapshots while
-    // an auction is mid-transition. De-dupe by the globally-unique composite
-    // key (preferring the active copy) so downstream consumers never see a
-    // collision. Keying on the bare id here would wrongly drop an archive lot
-    // that merely shares an id with an unrelated active lot from another auction.
-    const activeKeys = new Set(active.map(itemKey))
-    const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
-    const merged = [...active, ...archiveOnly]
-    if (archiveMode === 'archived') return merged.filter(item => item.archived)
-    return merged
+
+    // De-dupe by composite key — a data-source bug (duplicate NDJSON row or
+    // Supabase view returning the same lot twice) would otherwise crash the
+    // MiniSearch index with "duplicate ID".
+    const seen = new Set()
+    return merged.filter(item => {
+      const k = itemKey(item)
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
   }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicArchivedIds])
 
   const auctions = useMemo(() => {

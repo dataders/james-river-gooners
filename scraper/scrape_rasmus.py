@@ -38,6 +38,7 @@ import yaml
 
 from categories import normalize_category, normalize_raw_with_description
 from scrape_hibid import is_real_estate_auction
+from scraper_common import has_bid_changes, load_existing_bids
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 ITEMS_DIR = DATA_DIR / "items"
@@ -458,50 +459,12 @@ def map_item(doc: dict, aid: str) -> dict | None:
         "uniqueBidders": unique_bidders,
         "endDate": ms_to_iso(f.get("time_end")),
         "images": images,
-        "category": normalize_category(raw_cat, combined),
-        "rawCategory": normalize_raw_with_description(raw_cat, combined),
+        "category": normalize_category(raw_cat, combined, source="rasmus"),
+        "rawCategory": normalize_raw_with_description(raw_cat, combined, source="rasmus"),
         "detailUrl": f"{RASMUS_BASE}/auctions/{aid}/lot/{lot_number}",
     }
 
 
-# ---------------------------------------------------------------------------
-# Bid-change detection (mirrors scrape_hibid)
-# ---------------------------------------------------------------------------
-
-def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
-    ndjson_path = path.with_suffix(".ndjson")
-    if ndjson_path.exists():
-        try:
-            rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
-            return {
-                row["id"]: (float(row.get("currentBid") or 0), int(row.get("totalBids") or 0))
-                for row in rows
-            }
-        except Exception:
-            pass
-    if not path.exists():
-        return {}
-    try:
-        table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
-        return {
-            row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
-            for row in table.to_pylist()
-        }
-    except Exception:
-        return {}
-
-
-def has_bid_changes(new_items: list[dict], existing_bids: dict) -> bool:
-    if not existing_bids:
-        return True
-    new_ids = {item["id"] for item in new_items}
-    if new_ids != set(existing_bids):
-        return True
-    return any(
-        (float(item.get("currentBid") or 0), int(item.get("totalBids") or 0))
-        != existing_bids.get(item["id"])
-        for item in new_items
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -572,8 +535,8 @@ def scrape_rasmus_auction(
 
     # LLM metadata enrichment (#99/#104): no-op unless GOONERS_ENRICHMENT=1 + a
     # key is set. Runs while images are still arrays.
-    from enrich import enrich_items
-    enrich_items(all_items)
+    from enrich import enrich_items, load_prior_enrichment
+    enrich_items(all_items, prior_by_id=load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson"))
     from supabase_enrichment import maybe_export_enrichment
     maybe_export_enrichment(all_items)
 
