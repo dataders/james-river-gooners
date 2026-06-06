@@ -38,6 +38,7 @@ import { TutorialModal } from './components/TutorialModal'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { AuthModal } from './components/AuthModal'
 import { CannonLinkModal } from './components/CannonLinkModal'
+import { ImageSearchModal } from './components/ImageSearchModal'
 import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
 import { useWhatsNew } from './hooks/useWhatsNew'
@@ -167,6 +168,7 @@ export default function App() {
   const [showEnrichedOnly, setShowEnrichedOnly] = useState(false)
   const [swipeOpen, setSwipeOpen] = useState(false)
   const [swipeItems, setSwipeItems] = useState([])
+  const [imageSearchOpen, setImageSearchOpen] = useState(false)
 
   // Favorites and the ignore bin are opposite views of the same "Show" segmented
   // control — only one can be active at a time, and 'all' clears both.
@@ -539,7 +541,12 @@ export default function App() {
 
       <div className="app-body">
         <aside className="filter-sidebar">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} semanticStatus={semanticStatus} />
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            semanticStatus={semanticStatus}
+            onCameraClick={() => setImageSearchOpen(true)}
+          />
           <RangeFilters
             items={visibleItems}
             minPrice={minPrice}
@@ -725,6 +732,22 @@ export default function App() {
           isIgnored={isIgnored(selectedItem)}
           onToggleIgnored={handleToggleIgnored}
           onClose={handleItemClose}
+        />
+      )}
+
+      {imageSearchOpen && (
+        <ImageSearchModal
+          onClose={() => setImageSearchOpen(false)}
+          items={visibleItems}
+          user={auth.user}
+          onSearchInGrid={(terms) => {
+            setSearchQuery(terms)
+            setImageSearchOpen(false)
+          }}
+          onSignInClick={() => {
+            setImageSearchOpen(false)
+            setAuthOpen(true)
+          }}
         />
       )}
 
