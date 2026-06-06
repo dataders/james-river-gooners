@@ -184,25 +184,39 @@ export function useAuctionData(archiveMode = 'active') {
   )
 
   const allItems = useMemo(() => {
+    let merged
     if (!includeArchived) {
-      if (dynamicArchivedIds.size === 0) return activeItems
-      return activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+      merged = dynamicArchivedIds.size === 0
+        ? activeItems
+        : activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+    } else {
+      const active = dynamicArchivedIds.size === 0
+        ? activeItems
+        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+            ? { ...item, archived: true }
+            : item)
+      // The same lot can appear in both the active and archive snapshots while
+      // an auction is mid-transition. De-dupe by the globally-unique composite
+      // key (preferring the active copy) so downstream consumers never see a
+      // collision. Keying on the bare id here would wrongly drop an archive lot
+      // that merely shares an id with an unrelated active lot from another auction.
+      const activeKeys = new Set(active.map(itemKey))
+      const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
+      merged = archiveMode === 'archived'
+        ? [...active, ...archiveOnly].filter(item => item.archived)
+        : [...active, ...archiveOnly]
     }
-    const active = dynamicArchivedIds.size === 0
-      ? activeItems
-      : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
-          ? { ...item, archived: true }
-          : item)
-    // The same lot can appear in both the active and archive snapshots while
-    // an auction is mid-transition. De-dupe by the globally-unique composite
-    // key (preferring the active copy) so downstream consumers never see a
-    // collision. Keying on the bare id here would wrongly drop an archive lot
-    // that merely shares an id with an unrelated active lot from another auction.
-    const activeKeys = new Set(active.map(itemKey))
-    const archiveOnly = archiveItems.filter(i => !activeKeys.has(itemKey(i)))
-    const merged = [...active, ...archiveOnly]
-    if (archiveMode === 'archived') return merged.filter(item => item.archived)
-    return merged
+
+    // De-dupe by composite key — a data-source bug (duplicate NDJSON row or
+    // Supabase view returning the same lot twice) would otherwise crash the
+    // MiniSearch index with "duplicate ID".
+    const seen = new Set()
+    return merged.filter(item => {
+      const k = itemKey(item)
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
   }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicArchivedIds])
 
   const auctions = useMemo(() => {
