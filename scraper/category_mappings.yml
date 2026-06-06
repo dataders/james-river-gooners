@@ -313,6 +313,8 @@ raw_aliases:
   # Seasonal
   Christmas & Holiday:
     - christmas
+    - christmas/holiday
+    - christmas & holiday
     - holiday
     - holiday and seasonal
     - angels
