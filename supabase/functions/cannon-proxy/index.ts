@@ -445,6 +445,50 @@ async function debugLogin(
       const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
       diag.loginError = errMatch ? errMatch[1].replace(/<[^>]+>/g, '').trim() : '(no validation-summary found)'
       diag.hasLoginForm = body.includes('__RequestVerificationToken')
+    } else if (loginResp.status === 302) {
+      // Follow redirect chain to landing page and dump its nav hrefs
+      let nextUrl: string | null = loginResp.headers.get('location')
+      if (nextUrl && !nextUrl.startsWith('http')) nextUrl = `${base}${nextUrl.startsWith('/') ? '' : '/'}${nextUrl}`
+      const loginCookies2 = mergeCookies(pageCookies, getSetCookies(loginResp.headers))
+      let hops = 0
+      while (nextUrl && hops < 6) {
+        hops++
+        const hopUrl = nextUrl
+        const hopResp = await fetch(hopUrl, {
+          headers: {
+            'Cookie': cookieHeader(loginCookies2),
+            'User-Agent': UA,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          redirect: 'manual',
+        })
+        const hopNewCookies = getSetCookies(hopResp.headers)
+        Object.assign(loginCookies2, hopNewCookies)
+        if (hopResp.status === 302) {
+          const loc = hopResp.headers.get('location')
+          nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
+        } else {
+          nextUrl = null
+          const hopHtml = await hopResp.text()
+          diag.landingUrl = hopUrl
+          diag.landingStatus = hopResp.status
+          diag.landingIsLoggedIn = hopHtml.includes('logout') || hopHtml.includes('Logout') || hopHtml.includes('log-out') || hopHtml.includes('sign-out')
+          // Dump ALL hrefs that look account/bid related
+          const hrefs: string[] = []
+          for (const m of hopHtml.matchAll(/href="([^"]+)"/gi)) {
+            const h = m[1]
+            if (/account|bid|history|profile|my[- ]|dashboard/i.test(h)) hrefs.push(h)
+          }
+          diag.accountHrefs = hrefs
+          // Also dump nav link text+href pairs for full picture
+          const navLinks: string[] = []
+          for (const m of hopHtml.matchAll(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]{0,60}?)<\/a>/gi)) {
+            const href = m[1], text = m[2].replace(/<[^>]+>/g, '').trim()
+            if (text && !/^\s*$/.test(text)) navLinks.push(`${text} → ${href}`)
+          }
+          diag.navLinks = navLinks.slice(0, 40)
+        }
+      }
     }
   } catch (e) {
     diag.loginException = (e as Error).message
