@@ -111,7 +111,31 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   }
   if (loginResp.status !== 302) throw new Error(`Unexpected login response: ${loginResp.status}`)
 
-  const sessionCookies = mergeCookies(cookies, parseCookies(loginResp.headers.get('set-cookie') ?? ''))
+  let sessionCookies = mergeCookies(cookies, parseCookies(loginResp.headers.get('set-cookie') ?? ''))
+
+  // Follow the post-login redirect once — Maxanet may set the final auth cookie
+  // on the landing page rather than on the login POST response itself.
+  const location = loginResp.headers.get('location')
+  if (location) {
+    const redirectUrl = location.startsWith('http') ? location : `${base}${location.startsWith('/') ? '' : '/'}${location}`
+    try {
+      const landingResp = await fetch(redirectUrl, {
+        headers: {
+          'Cookie': cookieHeader(sessionCookies),
+          'User-Agent': UA,
+          'Referer': `${base}/Public/Account/Login`,
+        },
+        redirect: 'manual',
+      })
+      const landingCookies = parseCookies(landingResp.headers.get('set-cookie') ?? '')
+      sessionCookies = mergeCookies(sessionCookies, landingCookies)
+      console.log('[cannon-proxy] login landing status:', landingResp.status, 'added cookie keys:', Object.keys(landingCookies).join(', ') || '(none)')
+    } catch (e) {
+      console.log('[cannon-proxy] failed to follow login redirect:', (e as Error).message)
+    }
+  }
+
+  console.log('[cannon-proxy] session cookie keys after login:', Object.keys(sessionCookies).join(', '))
   return sessionCookies
 }
 
@@ -177,15 +201,20 @@ async function refreshItemStatus(
 async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
+  // BidHistory is a regular page load — don't send X-Requested-With (that's
+  // for AJAX calls) and include standard browser headers to avoid bot detection.
   const resp = await fetch(`${base}/Public/Account/BidHistory`, {
     headers: {
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
-      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Referer': `${base}/`,
     },
     redirect: 'manual',
   })
 
+  console.log('[cannon-proxy] BidHistory response status:', resp.status)
   if (resp.status === 302) throw new Error('Session expired or not logged in (got redirect on BidHistory)')
   if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
 
