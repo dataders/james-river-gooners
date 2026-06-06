@@ -100,6 +100,7 @@ interface LoginResult {
   loginPostCookieKeys: string[]
   loginPostRawSetCookie: string
   bidHistoryHtml?: string
+  bidHistoryUrl?: string
 }
 
 async function maxanetLogin(username: string, password: string): Promise<LoginResult> {
@@ -180,10 +181,12 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
 
   let sessionCookies = mergeCookies(cookies, loginPostCookies)
   let bidHistoryHtml: string | undefined
+  let bidHistoryUrl: string | undefined
 
   // Follow ALL post-login redirects manually so we capture Set-Cookie headers at
-  // every hop. With ReturnUrl set to BidHistory, the redirect chain should land
-  // there — we capture the HTML in-flight so getBids can skip a second request.
+  // every hop. When the chain lands on a 200, read the HTML to either:
+  //   a) detect if we landed directly on BidHistory (captured → skip second request)
+  //   b) discover the real BidHistory URL from the page's navigation links
   let nextUrl: string | null = loginResp.headers.get('location')
   if (nextUrl && !nextUrl.startsWith('http')) nextUrl = `${base}${nextUrl.startsWith('/') ? '' : '/'}${nextUrl}`
   let hops = 0
@@ -209,10 +212,22 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
         nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
       } else {
         nextUrl = null
-        // If this 200 response is the BidHistory page, capture it to avoid a second round-trip
-        if (/\/Account\/BidHistory/i.test(hopUrl)) {
-          bidHistoryHtml = await hopResp.text()
+        const hopHtml = await hopResp.text()
+        if (/BidHistory/i.test(hopUrl)) {
+          // Redirect chain landed directly on BidHistory — use HTML in-flight
+          bidHistoryHtml = hopHtml
           console.log('[cannon-proxy] captured BidHistory HTML in redirect chain, length:', bidHistoryHtml.length)
+        } else {
+          // Landed on a different page (e.g. home). Scan its nav for the real
+          // BidHistory URL — Maxanet instances vary in their routing.
+          const linkMatch = hopHtml.match(/href="([^"]*(?:BidHistory|MyBids|bid-history)[^"]*)"/)
+          if (linkMatch) {
+            const href = linkMatch[1]
+            bidHistoryUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`
+            console.log('[cannon-proxy] discovered bid history URL from landing page nav:', bidHistoryUrl)
+          } else {
+            console.log('[cannon-proxy] landing page', hopUrl, '— no bid history link found; will try default path')
+          }
         }
       }
     } catch (e) {
@@ -222,7 +237,7 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
   }
 
   console.log('[cannon-proxy] session cookie keys after login:', Object.keys(sessionCookies).join(', '))
-  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml }
+  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml, bidHistoryUrl }
 }
 
 interface BidItem {
@@ -290,12 +305,14 @@ function parseBidHistoryHtml(html: string): { itemIds: string[]; items: BidItem[
   return { itemIds: items.map(b => b.itemId), items, csrf, bidderId: parseBidderId(html) }
 }
 
-async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[], loginPostRawSetCookie: string): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
+async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[], loginPostRawSetCookie: string, bidHistoryUrl?: string): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
+  const url = bidHistoryUrl ?? `${base}/Public/Account/BidHistory`
+  console.log('[cannon-proxy] fetching bid history from:', url)
 
   // BidHistory is a regular page load — don't send X-Requested-With (that's
   // for AJAX calls) and include standard browser headers to avoid bot detection.
-  const resp = await fetch(`${base}/Public/Account/BidHistory`, {
+  const resp = await fetch(url, {
     headers: {
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
@@ -462,7 +479,7 @@ async function getBids(
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
-  const { cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml } = loginResult
+  const { cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml, bidHistoryUrl } = loginResult
 
   let history: { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }
   if (bidHistoryHtml) {
@@ -471,7 +488,7 @@ async function getBids(
     console.log('[cannon-proxy] using BidHistory HTML from redirect chain, items:', history.itemIds.length)
   } else {
     try {
-      history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie)
+      history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryUrl)
     } catch (e: unknown) {
       return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
     }
