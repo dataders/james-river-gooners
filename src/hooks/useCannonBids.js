@@ -93,16 +93,17 @@ export function useCannonBids(user) {
   // minimum increment is enforced by Maxanet — we pass the best floor we know
   // (the live minimum from a prior bid, else current bid + $1) so the function's
   // own guard passes and Maxanet's own error (if any) flows back as the message.
-  const placeBid = useCallback(async (item, amount) => {
+  const placeBid = useCallback(async (item, bidAmount, maxBidAmount = bidAmount) => {
     setError(null)
     const known = bidStatuses.get(String(item.id))
     const minimumNextBid = known?.minimumNextBid ?? (item.currentBid + 1)
     const currentBid = known?.currentBid ?? item.currentBid
+    const effectiveMax = (maxBidAmount != null && maxBidAmount >= bidAmount) ? maxBidAmount : bidAmount
     const result = await callProxy('place_bid', {
       auctionItemId: String(item.id),
       auctionId: String(item.auctionId),
-      newBidAmount: amount,
-      maxBidAmount: amount,
+      newBidAmount: bidAmount,
+      maxBidAmount: effectiveMax,
       currentBid,
       minimumNextBid,
       itemName: item.title,

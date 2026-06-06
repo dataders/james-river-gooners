@@ -2170,6 +2170,43 @@ body {
   color: #c23030;
 }
 
+.bid-modal-panel {
+  max-width: 420px;
+  width: 100%;
+}
+
+.bid-modal-item-name {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.bid-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bid-field-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.bid-field-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.bid-modal-submit {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 1rem;
+  margin-top: 4px;
+}
+
 .ebay-comps {
   border-top: 1px solid var(--border);
   margin-top: 20px;
