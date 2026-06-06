@@ -467,19 +467,20 @@ async function debugAuthV2(
     }
   }
 
-  // Step A: trace GET /Authentication/Login hop-by-hop
-  await followChain(`${base}/Authentication/Login`, 'GET')
+  // Step A: GET /Public/Account/Login directly.
+  // /Authentication/Login on this instance just redirects to /Public (the
+  // homepage), so we skip it and go straight to the user-facing login form.
+  const landingUrl = `${base}/Public/Account/Login`
+  await followChain(landingUrl, 'GET')
 
-  // Step B: find the last 200 landing page and extract the login form fields
-  const lastLanding = trace.slice().reverse().find(t => t.status === 200)
-  const formAction = (lastLanding as Record<string, unknown> | undefined)?.formAction as string | undefined
-  const landingUrl = (lastLanding as Record<string, unknown> | undefined)?.finalUrl as string | undefined ?? `${base}/Public/Account/Login`
-
-  // Re-fetch that page to extract the form
+  // Step B: re-fetch the login page to extract form fields
+  // (followChain captured cookies; now read the HTML to parse the form)
   const loginPage = await fetch(landingUrl, {
     headers: { 'User-Agent': UA, 'Cookie': cookieHeader(sessionCookies) },
-    redirect: 'manual',
+    redirect: 'follow',
   })
+  const newPageCookies = getSetCookies(loginPage.headers)
+  sessionCookies = mergeCookies(sessionCookies, newPageCookies)
   const loginHtml = await loginPage.text()
   const verificationToken = loginHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
   const tenantCode = loginHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)?.[1] ?? ''
