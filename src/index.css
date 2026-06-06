@@ -682,6 +682,48 @@ body {
   min-width: 0;
 }
 
+/* Compact list view — single column of thumbnail + details rows */
+.compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.item-card.compact {
+  display: flex;
+  align-items: stretch;
+  contain-intrinsic-size: auto 132px;
+}
+.item-card.compact .item-image {
+  width: 140px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.item-card.compact .item-image img {
+  max-height: 132px;
+}
+.item-card.compact .item-info {
+  flex: 1;
+  min-width: 0;
+}
+/* The favorite/ignore buttons overlap the thumbnail in compact rows too, so
+   keep the title clear of the top-right star. */
+.item-card.compact .item-title {
+  white-space: normal;
+  padding-right: 36px;
+}
+.item-description {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Item card */
 .item-card {
   position: relative;
@@ -996,12 +1038,17 @@ body {
   margin-bottom: 8px;
 }
 
-/* Sort control — sits at the end of the view-toggles row */
+/* View + sort controls — pushed to the end of the view-toggles row */
+.view-controls-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
 .sort-bar {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
 }
 .sort-label {
   font-size: 0.75rem;
@@ -1354,6 +1401,27 @@ body {
   transition: border-color 0.15s;
 }
 .whatsnew-button:hover {
+  border-color: var(--accent);
+}
+
+/* Swipe launcher in the header banner (moved out of the view-toggles row) */
+.swipe-banner-button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  min-height: 40px;
+  padding: 4px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+.swipe-banner-button:hover {
   border-color: var(--accent);
 }
 .whatsnew-button.has-unseen::after {
@@ -2547,49 +2615,59 @@ a.cannons-comp-card:hover {
   font-size: 0.68rem;
 }
 
-/* Sidebar resale-margin preference */
-.margin-pref-slider-group {
-  align-items: center;
+/* Sidebar "Has" presence-filter checkboxes */
+.has-filters .has-filter-row {
   display: flex;
+  align-items: center;
   gap: 8px;
+  padding: 3px 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.has-filters .has-filter-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
-/* Minimum-profit filter (#101) */
-.min-profit-toggle .filter-label-text {
+/* Arsenal Trivia — header-banner button + popover */
+.trivia-menu {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
-.min-profit-amount {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--text-muted);
-}
-.min-profit-amount input {
-  width: 56px;
-  padding: 2px 4px;
-  font: inherit;
-  text-align: right;
+.trivia-button {
   background: var(--surface);
-  color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  transition: border-color 0.15s;
 }
-.min-profit-amount input:disabled {
-  opacity: 0.5;
+.trivia-button:hover {
+  border-color: var(--accent);
 }
-.min-profit-hint {
-  margin: 6px 0 0;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  color: var(--text-muted);
+.trivia-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(320px, 80vw);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
-/* Arsenal Trivia */
 .trivia-card {
-  margin-bottom: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--surface);
   border: 1px solid var(--accent);
   border-left: 4px solid var(--accent);
@@ -2597,36 +2675,17 @@ a.cannons-comp-card:hover {
   user-select: none;
   transition: background 0.15s, border-color 0.15s;
 }
-
-.trivia-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-}
-.trivia-header:hover {
-  background: none;
-}
 .trivia-card:has(.trivia-body:hover) {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
 
 .trivia-label {
+  display: block;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent);
-}
-
-.trivia-chevron {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  transition: transform 0.2s;
-  line-height: 1;
-}
-.trivia-chevron-closed {
-  transform: rotate(-180deg);
 }
 
 .trivia-body {

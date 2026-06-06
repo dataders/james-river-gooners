@@ -3,7 +3,7 @@
 // — plus per-item eBay comps when present — into a resale/margin estimate the
 // grid ranks by (#97) and the detail panel shows (#96).
 
-import { COST_MULTIPLIER, getCompMedianPrice } from './roiCalc.js'
+import { COST_MULTIPLIER, getCompMedianPrice, calcMaxBid } from './roiCalc.js'
 
 const toNum = (v) => {
   const n = Number(v)
@@ -57,4 +57,16 @@ export function marginForItem(currentBid, soldComps, categoryStats) {
     profit,
     marginPct: resale.value > 0 ? profit / resale.value : 0,
   }
+}
+
+/**
+ * Recommended max bid for a lot: the resale estimate (eBay comp median, else the
+ * Cannon's category median) backed out through the target `marginFraction` and
+ * the all-in cost multiplier. Returns null when there's no resale signal, so the
+ * "Max bid" sort (#) can sink unpriced lots to the bottom.
+ */
+export function maxBidForItem(soldComps, categoryStats, marginFraction) {
+  const resale = resaleEstimate(soldComps, categoryStats)
+  if (!resale) return null
+  return calcMaxBid(resale.value, marginFraction)
 }
