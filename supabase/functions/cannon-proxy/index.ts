@@ -75,11 +75,12 @@ function getSetCookies(headers: Headers): Record<string, string> {
   if (typeof h.getSetCookie === 'function') {
     list = h.getSetCookie()
   } else {
+    // forEach is universally available; note callback order is (value, name)
     list = []
-    for (const [name, value] of headers) {
+    headers.forEach((value, name) => {
       if (name.toLowerCase() === 'set-cookie') list.push(value)
-    }
-    // If entries() also joined them into one string, split on comma-nonspace
+    })
+    // If forEach also joined them into one string, split on comma-nonspace
     if (list.length === 1) {
       list = list[0].split(/,(?=[^ ])/).map(s => s.trim())
     }
