@@ -126,13 +126,16 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
 
   let sessionCookies = mergeCookies(cookies, parseCookies(loginResp.headers.get('set-cookie') ?? ''))
 
-  // Follow the post-login redirect once — Maxanet may set the final auth cookie
-  // on the landing page rather than on the login POST response itself.
-  const location = loginResp.headers.get('location')
-  if (location) {
-    const redirectUrl = location.startsWith('http') ? location : `${base}${location.startsWith('/') ? '' : '/'}${location}`
+  // Follow ALL post-login redirects manually so we capture Set-Cookie headers at
+  // every hop. Maxanet may chain several 302s before landing on the dashboard,
+  // and the final auth cookie might only appear on the last hop.
+  let nextUrl: string | null = loginResp.headers.get('location')
+  if (nextUrl && !nextUrl.startsWith('http')) nextUrl = `${base}${nextUrl.startsWith('/') ? '' : '/'}${nextUrl}`
+  let hops = 0
+  while (nextUrl && hops < 6) {
+    hops++
     try {
-      const landingResp = await fetch(redirectUrl, {
+      const hopResp = await fetch(nextUrl, {
         headers: {
           'Cookie': cookieHeader(sessionCookies),
           'User-Agent': UA,
@@ -140,11 +143,18 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
         },
         redirect: 'manual',
       })
-      const landingCookies = parseCookies(landingResp.headers.get('set-cookie') ?? '')
-      sessionCookies = mergeCookies(sessionCookies, landingCookies)
-      console.log('[cannon-proxy] login landing status:', landingResp.status, 'added cookie keys:', Object.keys(landingCookies).join(', ') || '(none)')
+      const hopCookies = parseCookies(hopResp.headers.get('set-cookie') ?? '')
+      sessionCookies = mergeCookies(sessionCookies, hopCookies)
+      console.log(`[cannon-proxy] redirect hop ${hops}: status=${hopResp.status} url=${nextUrl} newCookies=${Object.keys(hopCookies).join(',') || '(none)'}`)
+      if (hopResp.status === 302) {
+        const loc = hopResp.headers.get('location')
+        nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
+      } else {
+        nextUrl = null
+      }
     } catch (e) {
-      console.log('[cannon-proxy] failed to follow login redirect:', (e as Error).message)
+      console.log(`[cannon-proxy] redirect hop ${hops} failed:`, (e as Error).message)
+      nextUrl = null
     }
   }
 
@@ -273,6 +283,88 @@ async function getStatus(
     .maybeSingle()
   if (error) return json({ error: error.message }, 500)
   return json({ linked: !!data, username: data?.cannon_username ?? null })
+}
+
+async function debugLogin(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<Response> {
+  const { data } = await supabase
+    .from('cannon_credentials')
+    .select('cannon_username, cannon_password_enc')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!data) return json({ error: 'No credentials stored' }, 400)
+
+  const base = 'https://bid.cannonsauctions.com'
+
+  // Step 1: inspect the login page
+  const pageResp = await fetch(`${base}/Public/Account/Login`, {
+    headers: { 'User-Agent': UA },
+    redirect: 'follow',
+  })
+  const pageHtml = await pageResp.text()
+  const pageCookies = parseCookies(pageResp.headers.get('set-cookie') ?? '')
+  const tokenMatch = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)
+  const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
+  const formActionMatch = pageHtml.match(/<form[^>]+action="([^"]+)"/)
+
+  const diag: Record<string, unknown> = {
+    pageStatus: pageResp.status,
+    pageUrl: pageResp.url,
+    cookieKeys: Object.keys(pageCookies),
+    hasToken: !!tokenMatch,
+    tokenLength: tokenMatch?.[1]?.length ?? 0,
+    tenantCode: tenantMatch?.[1] ?? '(not found)',
+    formAction: formActionMatch?.[1] ?? '(not found)',
+    username: data.cannon_username,
+  }
+
+  // Step 2: attempt login and report the outcome
+  try {
+    const password = await decryptText(data.cannon_password_enc)
+    const cookies = pageCookies
+    const verificationToken = tokenMatch?.[1] ?? ''
+    const tenantCode = tenantMatch?.[1] ?? ''
+    const loginPostUrl = formActionMatch?.[1]
+      ? (formActionMatch[1].startsWith('http') ? formActionMatch[1] : `${base}${formActionMatch[1]}`)
+      : `${base}/Public/Account/Login`
+
+    const loginResp = await fetch(loginPostUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookieHeader(cookies),
+        'User-Agent': UA,
+        'Referer': `${base}/Public/Account/Login`,
+      },
+      body: new URLSearchParams({
+        ReturnUrl: '',
+        TenantCode: tenantCode,
+        Username: data.cannon_username,
+        Password: password,
+        __RequestVerificationToken: verificationToken,
+      }).toString(),
+      redirect: 'manual',
+    })
+
+    const loginCookies = parseCookies(loginResp.headers.get('set-cookie') ?? '')
+    diag.loginStatus = loginResp.status
+    diag.loginLocation = loginResp.headers.get('location')
+    diag.loginCookieKeys = Object.keys(loginCookies)
+    diag.loginPostUrl = loginPostUrl
+
+    if (loginResp.status === 200) {
+      const body = await loginResp.text()
+      const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
+      diag.loginError = errMatch ? errMatch[1].replace(/<[^>]+>/g, '').trim() : '(no validation-summary found)'
+      diag.hasLoginForm = body.includes('__RequestVerificationToken')
+    }
+  } catch (e) {
+    diag.loginException = (e as Error).message
+  }
+
+  return json(diag)
 }
 
 async function getBids(
@@ -583,6 +675,8 @@ Deno.serve(async (req: Request) => {
       return getStatus(supabase, user.id)
     case 'get_bids':
       return getBids(supabase, user.id)
+    case 'debug_login':
+      return debugLogin(supabase, user.id)
     case 'place_bid': {
       const { auctionItemId, auctionId, newBidAmount, maxBidAmount, currentBid, minimumNextBid,
               itemName, endDate, totalBids, category, skuNumber } = body
