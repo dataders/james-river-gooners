@@ -1,0 +1,30 @@
+gooners:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      # Supabase direct connection: db.<project-ref>.supabase.co
+      host: "{{ env_var('SUPABASE_DB_HOST') }}"
+      port: "{{ env_var('SUPABASE_DB_PORT', '5432') | int }}"
+      dbname: postgres
+      user: postgres
+      password: "{{ env_var('SUPABASE_DB_PASSWORD') }}"
+      schema: public
+      threads: 4
+      connect_timeout: 30
+      keepalives_idle: 0
+      # Supabase requires SSL
+      sslmode: require
+
+    prod:
+      type: postgres
+      host: "{{ env_var('SUPABASE_DB_HOST') }}"
+      port: "{{ env_var('SUPABASE_DB_PORT', '5432') | int }}"
+      dbname: postgres
+      user: postgres
+      password: "{{ env_var('SUPABASE_DB_PASSWORD') }}"
+      schema: public
+      threads: 8
+      connect_timeout: 30
+      keepalives_idle: 0
+      sslmode: require

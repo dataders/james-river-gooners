@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: dim_auctions
+    description: >
+      One row per auction with aggregate sold-lot stats. Only auctions with
+      at least one lot sold above the min_sold_price threshold appear.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null, unique]
+      - name: lots_sold
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: total_gmv
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+
+  - name: dim_categories
+    description: >
+      One row per category with lifetime sell-through stats across all sources
+      and auctions. Ordered by lifetime GMV descending.
+    columns:
+      - name: category
+        tests: [not_null, unique]
+      - name: lifetime_lots_sold
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+
+  - name: fct_lot_bidding
+    description: >
+      One row per sold lot. Combines realized price, bidding intensity ratios,
+      enrichment context, and comp benchmarks for detailed per-lot analysis.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: final_bid
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: bids_per_bidder
+        description: >
+          Average number of bids each bidder placed. High values indicate
+          a contested back-and-forth between a small group of determined bidders.
+      - name: pct_vs_ebay_comp
+        description: >
+          Percentage premium (positive) or discount (negative) relative to the
+          best matching eBay sold comp. Null when no eBay comp exists.
+
+  - name: fct_category_monthly_stats
+    description: >
+      Historical listing performance by category × month × source. Use for
+      trend charts and seasonality analysis.
+    columns:
+      - name: category
+        tests: [not_null]
+      - name: sold_month
+        tests: [not_null]
+      - name: lots_sold
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+
+  - name: fct_auction_stats
+    description: >
+      Per-auction summary: GMV, bidding intensity, price distribution, category
+      breadth, and top category by revenue.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null, unique]
+      - name: lots_sold
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: pct_competitive
+        description: Percentage of lots with 2+ unique bidders.

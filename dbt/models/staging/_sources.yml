@@ -1,0 +1,68 @@
+version: 2
+
+sources:
+  - name: gooners
+    description: Supabase Postgres tables backing the James River Gooners auction app.
+    database: postgres
+    schema: public
+    tables:
+      - name: sold_lots
+        description: >
+          Every closed lot's final hammer price. Written by scraper/sold_history.py
+          from the archive NDJSON. Only lots with final_bid > 0 are meaningful.
+        columns:
+          - name: auction_safe_id
+            description: URL-safe auction identifier (primary key component).
+            tests: [not_null]
+          - name: item_id
+            description: Lot identifier within the auction (primary key component).
+            tests: [not_null]
+          - name: final_bid
+            description: Realized hammer price in USD.
+          - name: total_bids
+            description: Total number of bids placed on the lot.
+          - name: unique_bidders
+            description: Count of distinct bidders who bid on the lot.
+          - name: sold_at
+            description: Auction end timestamp (UTC).
+          - name: source
+            description: Originating scraper — cannons, hibid, or rasmus.
+
+      - name: lots
+        description: >
+          Active and archived lot listings. archived=false means the auction is still
+          running; archived=true means it closed (may or may not have sold).
+        columns:
+          - name: auction_safe_id
+            tests: [not_null]
+          - name: item_id
+            tests: [not_null]
+          - name: archived
+            description: True once the auction is moved to the archive.
+
+      - name: lot_enrichment
+        description: >
+          LLM-extracted product metadata (brand, model, condition) for lots where
+          Claude Haiku identified a specific product with medium or high confidence.
+
+      - name: ebay_comp_snapshots
+        description: >
+          eBay sold-listing comps fetched by the scraper. Multiple rows per lot
+          (one per matched eBay item per fetch run). Pruned after 90 days.
+
+      - name: cannons_comp_snapshots
+        description: >
+          Cannon's own historical comps: the most similar archived lots (by CLIP
+          cosine similarity) for each active lot. Multiple rows per lot per
+          scraper run (rank 0-based, best first). Only latest generation is current.
+
+      - name: favorites
+        description: One row per (user, favorited item). item_key = "<auctionSafeId>:<itemId>".
+
+      - name: ignored
+        description: One row per (user, ignored item). Same item_key format as favorites.
+
+      - name: users
+        description: >
+          One row per registered app user. Backend-only; not accessible via the
+          publishable key. Populated by a trigger on auth.users.
