@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
+    "type-check": "tsc --noEmit",
     "preview": "vite preview",
-    "test:unit": "node --test src/utils/*.test.js",
-    "test:unit:coverage": "node --test --experimental-test-coverage src/utils/*.test.js",
+    "test:unit": "node --test src/utils/*.test.js src/utils/*.test.ts",
+    "test:unit:coverage": "node --test --experimental-test-coverage src/utils/*.test.js src/utils/*.test.ts",
     "test:e2e": "playwright test",
     "test:usability": "playwright test --config playwright.usability.config.js",
     "test": "npm run test:unit && npm run test:e2e",
@@ -34,6 +35,8 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.1",
     "vite": "^8.0.0"
   }
 }
