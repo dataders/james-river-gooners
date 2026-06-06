@@ -20,9 +20,9 @@ import {
   mergeCookies,
   cookieHeader,
   parseHiddenInputs,
-  parseBidItems,
   parseBidderId,
   parseRefreshItemHtml,
+  parseWatchlistItems,
 } from './parsers.js'
 
 const CORS_HEADERS = {
@@ -299,38 +299,63 @@ async function refreshItemStatus(
   }
 }
 
-function parseBidHistoryHtml(html: string): { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null } {
-  const items = parseBidItems(html)
-  const csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
-  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId: parseBidderId(html) }
-}
-
-async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[], loginPostRawSetCookie: string, bidHistoryUrl?: string): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
+async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
-  const url = bidHistoryUrl ?? `${base}/Public/Account/BidHistory`
-  console.log('[cannon-proxy] fetching bid history from:', url)
 
-  // BidHistory is a regular page load — don't send X-Requested-With (that's
-  // for AJAX calls) and include standard browser headers to avoid bot detection.
+  // Fetch the Watchlist page first to get a live CSRF token (the page shell
+  // always has one even before the AJAX call populates the item list).
+  let csrf = ''
+  try {
+    const pageResp = await fetch(`${base}/Public/Auction/Watchlist`, {
+      headers: {
+        'Cookie': cookieHeader(cookies),
+        'User-Agent': UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': `${base}/Public`,
+      },
+      redirect: 'manual',
+    })
+    if (pageResp.ok) {
+      const pageHtml = await pageResp.text()
+      csrf = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+      Object.assign(cookies, getSetCookies(pageResp.headers))
+      console.log('[cannon-proxy] Watchlist page csrf:', !!csrf)
+    }
+  } catch (e) {
+    console.log('[cannon-proxy] Watchlist page fetch failed (non-fatal):', (e as Error).message)
+  }
+
+  // GetWatchlist AJAX — returns one item card per active watched bid.
+  const url = `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=Current`
+  console.log('[cannon-proxy] fetching watchlist items from:', url)
+
   const resp = await fetch(url, {
     headers: {
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Referer': `${base}/`,
+      'Accept': '*/*',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Referer': `${base}/Public/Auction/Watchlist`,
     },
     redirect: 'manual',
   })
 
   const cookieKeys = Object.keys(cookies).join(',')
-  const loginDiag = `loginTo:${loginPostTo || '?'} loginPostCookies:${loginPostCookieKeys.join(',') || 'none'} rawSetCookie:${loginPostRawSetCookie || 'null'}`
-  const bidHistoryRedirectTo = resp.headers.get('location') ?? '?'
-  console.log('[cannon-proxy] BidHistory response status:', resp.status, '| cookies:', cookieKeys)
-  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→${bidHistoryRedirectTo}, ${loginDiag}, cookies: ${cookieKeys})`)
-  if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
+  console.log('[cannon-proxy] GetWatchlist status:', resp.status, '| cookies:', cookieKeys)
+  if (resp.status === 302) {
+    const redirectTo = resp.headers.get('location') ?? '?'
+    throw new Error(`Session expired (GetWatchlist→${redirectTo}, cookies: ${cookieKeys})`)
+  }
+  if (!resp.ok) throw new Error(`GetWatchlist returned ${resp.status}`)
 
-  return parseBidHistoryHtml(await resp.text())
+  const html = await resp.text()
+  const items = parseWatchlistItems(html)
+  // GetWatchlist HTML may also contain a CSRF token in the bid forms; prefer
+  // the page-level one (already fetched above) but fall through if empty.
+  if (!csrf) csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  const bidderId = parseBidderId(html)
+  console.log('[cannon-proxy] watchlist items:', items.length, '| csrf:', !!csrf)
+  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId }
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────────
@@ -554,19 +579,13 @@ async function getBids(
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
-  const { cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml, bidHistoryUrl } = loginResult
+  const { cookies } = loginResult
 
   let history: { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }
-  if (bidHistoryHtml) {
-    // Login redirect chain landed directly on BidHistory — use the captured HTML.
-    history = parseBidHistoryHtml(bidHistoryHtml)
-    console.log('[cannon-proxy] using BidHistory HTML from redirect chain, items:', history.itemIds.length)
-  } else {
-    try {
-      history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryUrl)
-    } catch (e: unknown) {
-      return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
-    }
+  try {
+    history = await fetchBidHistory(cookies)
+  } catch (e: unknown) {
+    return json({ error: `Watchlist fetch failed: ${(e as Error).message}` }, 400)
   }
 
   // Auto-populate cannon_bidder_id the first time we see it in a response.
