@@ -4,23 +4,28 @@ with sold as (
     select * from {{ ref('stg_sold_lots') }}
 ),
 
--- Top category by GMV per auction
+-- Top category by GMV per auction.
+-- DuckDB: QUALIFY replaces Postgres DISTINCT ON.
 top_category as (
-    select distinct on (auction_safe_id)
+    select
         auction_safe_id,
         category                                                    as top_category,
         sum(final_bid)                                             as top_cat_gmv
     from sold
     group by auction_safe_id, category
-    order by auction_safe_id, sum(final_bid) desc
+    qualify row_number() over (
+        partition by auction_safe_id
+        order by sum(final_bid) desc
+    ) = 1
 ),
 
--- Category diversity (number of distinct categories)
+-- Category diversity per auction.
+-- DuckDB: list(distinct ...) instead of array_agg(distinct ... order by ...).
 auction_cats as (
     select
         auction_safe_id,
         count(distinct category)                                    as distinct_categories,
-        array_agg(distinct category order by category)             as categories
+        list(distinct category)                                     as categories
     from sold
     group by auction_safe_id
 ),
@@ -34,20 +39,17 @@ base as (
         max(s.sold_month)                                          as auction_month,
         max(s.sold_at)                                             as closed_at,
 
-        -- Volume
         count(*)                                                   as lots_sold,
         sum(s.final_bid)                                           as total_gmv,
 
-        -- Price distribution
-        round(avg(s.final_bid)::numeric, 2)                        as avg_price,
+        round(avg(s.final_bid), 2)                                 as avg_price,
         percentile_cont(0.5) within group (order by s.final_bid)  as median_price,
         max(s.final_bid)                                           as max_price,
         min(s.final_bid)                                           as min_price,
 
-        -- Bidding dynamics
-        round(avg(s.unique_bidders_safe)::numeric, 2)             as avg_unique_bidders,
+        round(avg(s.unique_bidders_safe), 2)                      as avg_unique_bidders,
         max(s.unique_bidders_safe)                                 as max_unique_bidders,
-        round(avg(s.total_bids_safe)::numeric, 2)                 as avg_total_bids,
+        round(avg(s.total_bids_safe), 2)                          as avg_total_bids,
         max(s.total_bids_safe)                                     as max_total_bids,
         sum(case when s.is_competitive then 1 else 0 end)          as competitive_lots,
         round(
@@ -55,7 +57,6 @@ base as (
             1
         )                                                          as pct_competitive,
 
-        -- Lots that sold above $100
         sum(case when s.final_bid >= 100 then 1 else 0 end)       as lots_over_100,
         sum(case when s.final_bid >= 500 then 1 else 0 end)       as lots_over_500
 

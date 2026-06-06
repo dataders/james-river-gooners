@@ -12,11 +12,10 @@ favs as (
         min(created_at)                                             as first_favorite_at,
         max(created_at)                                             as last_favorite_at,
         count(distinct favorited_date)                              as active_favorite_days,
-        -- Most common hour for favoriting
-        mode() within group (order by favorited_hour)              as peak_hour_favorites,
-        -- Weekend vs weekday preference (0=Sun, 6=Sat)
+        -- DuckDB: mode(col) without ordered-set syntax
+        mode(favorited_hour)                                        as peak_hour_favorites,
         round(
-            100.0 * sum(case when favorited_dow in (0,6) then 1 else 0 end) / count(*),
+            100.0 * sum(case when favorited_dow in (0, 6) then 1 else 0 end) / count(*),
             1
         )                                                          as pct_weekend_favorites
     from {{ ref('stg_favorites') }}
@@ -61,11 +60,9 @@ select
     i.last_ignore_at,
     coalesce(i.active_ignore_days, 0)                              as active_ignore_days,
 
-    -- Combined engagement
+    -- Combined
     coalesce(f.favorites_count, 0)
         + coalesce(i.ignores_count, 0)                             as total_interactions,
-    -- Decisiveness: how often does the user decide (fav or ignore) vs skip?
-    -- Higher = more opinionated
     case
         when coalesce(f.favorites_count, 0)
            + coalesce(i.ignores_count, 0) > 0
@@ -75,18 +72,17 @@ select
             1
         )
     end                                                            as pct_favorites_of_decisions,
-    -- Days from signup to first interaction
+
+    -- DuckDB: datediff returns integer days, no epoch extraction needed
     case
         when least(f.first_favorite_at, i.first_ignore_at) is not null
         then round(
-            extract(epoch from (
-                least(f.first_favorite_at, i.first_ignore_at) - u.first_seen_at
-            )) / 86400,
+            datediff('second', u.first_seen_at,
+                     least(f.first_favorite_at, i.first_ignore_at)) / 86400.0,
             1
         )
     end                                                            as days_to_first_interaction,
 
-    -- Engagement tier
     case
         when coalesce(f.favorites_count, 0) + coalesce(i.ignores_count, 0) = 0
             then 'inactive'

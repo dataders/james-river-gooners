@@ -8,9 +8,10 @@ enrichment as (
     select * from {{ ref('stg_lot_enrichment') }}
 ),
 
--- Best single eBay comp per lot: highest-confidence, most-recent fetch
+-- Best single eBay comp per lot: highest-confidence, most-recent fetch.
+-- DuckDB: QUALIFY replaces Postgres DISTINCT ON.
 ebay_best as (
-    select distinct on (auction_safe_id, item_id)
+    select
         auction_safe_id,
         item_id,
         ebay_price,
@@ -19,11 +20,12 @@ ebay_best as (
         source_query,
         fetched_at
     from {{ ref('stg_ebay_comp_snapshots') }}
-    order by
-        auction_safe_id,
-        item_id,
-        case match_confidence when 'high' then 0 when 'medium' then 1 else 2 end,
-        fetched_at desc
+    qualify row_number() over (
+        partition by auction_safe_id, item_id
+        order by
+            case match_confidence when 'high' then 0 when 'medium' then 1 else 2 end,
+            fetched_at desc
+    ) = 1
 ),
 
 -- Top Cannon's comp (rank 0) per lot
@@ -56,10 +58,9 @@ select
     eb.ebay_sold_date,
     eb.match_confidence                     as ebay_match_confidence,
     eb.item_id is not null                  as has_ebay_comp,
-    -- Premium/discount vs eBay comp (positive = sold above eBay)
     case
         when eb.ebay_price > 0
-        then round(((s.final_bid - eb.ebay_price) / eb.ebay_price * 100)::numeric, 1)
+        then round(((s.final_bid - eb.ebay_price) / eb.ebay_price * 100), 1)
     end                                     as pct_vs_ebay_comp,
 
     -- Cannon's comp

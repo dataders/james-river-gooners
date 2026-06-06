@@ -18,13 +18,14 @@ cleaned as (
         raw_category,
         source,
         detail_url,
-        cardinality(coalesce(images, '{}'))  as image_count,
+        -- DuckDB: cardinality() works on lists; coalesce to empty list not '{}' literal
+        cardinality(coalesce(images, []))    as image_count,
 
         -- Status
         archived,
         closed,
 
-        -- Financials (current/final)
+        -- Financials
         current_bid,
         final_bid,
         total_bids,
