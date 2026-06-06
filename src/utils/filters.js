@@ -1,6 +1,6 @@
 // @ts-check
-/** @typedef {import('../types.js').Item} Item */
-/** @typedef {import('../types.js').FilterOptions} FilterOptions */
+/** @typedef {import('../types.ts').Item} Item */
+/** @typedef {import('../types.ts').FilterOptions} FilterOptions */
 
 import { parseAuctionDate } from './dates.js'
 import { itemKey } from './itemKey.js'
@@ -85,8 +85,11 @@ export function filterItems(items, { excludedCategories, excludedGroups = [], se
  * @returns {{ group: string, rawCategories: { name: string, count: number }[], totalCount: number }[]}
  */
 export function getGroupedCategories(items) {
+  /** @typedef {{ group: string, rawCategories: { name: string, count: number }[], totalCount: number }} CategoryGroup */
   // Count raw categories
+  /** @type {Record<string, number>} */
   const rawCounts = {}
+  /** @type {Record<string, string>} */
   const rawToGroup = {}
   for (const item of items) {
     const raw = item.rawCategory || 'Other'
@@ -97,6 +100,7 @@ export function getGroupedCategories(items) {
   }
 
   // Group by normalized category
+  /** @type {Record<string, CategoryGroup>} */
   const groups = {}
   for (const [raw, count] of Object.entries(rawCounts)) {
     const group = rawToGroup[raw]
