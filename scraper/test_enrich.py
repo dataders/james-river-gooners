@@ -9,6 +9,7 @@ from enrich import (
     _RateLimiter,
     build_content,
     enrich_items,
+    enrich_items_batch,
     enrichment_fingerprint,
     is_enrichment_enabled,
     item_images,
@@ -49,6 +50,62 @@ class _FakeMessages:
 class _FakeClient:
     def __init__(self, by_keyword):
         self.messages = _FakeMessages(by_keyword)
+
+
+def _prompt_text(params):
+    for block in params["messages"][0]["content"]:
+        if block.get("type") == "text":
+            return block["text"]
+    return ""
+
+
+class _FakeBatchOutcome:
+    def __init__(self, type_, message=None):
+        self.type = type_
+        self.message = message
+
+
+class _FakeBatchResult:
+    def __init__(self, custom_id, outcome):
+        self.custom_id = custom_id
+        self.result = outcome
+
+
+class _FakeBatches:
+    """Mimics client.messages.batches: create() captures the requests, retrieve()
+    reports ended immediately, results() returns a per-request outcome keyed by
+    the lot text (Exception payload → an `errored` outcome, not a raise)."""
+
+    def __init__(self, by_keyword):
+        self.by_keyword = by_keyword
+        self.created = 0
+        self._requests = []
+
+    def create(self, requests):
+        self.created += 1
+        self._requests = requests
+        return mock.Mock(id="batch_test", processing_status="in_progress")
+
+    def retrieve(self, batch_id):
+        return mock.Mock(
+            processing_status="ended",
+            request_counts=mock.Mock(processing=0, succeeded=len(self._requests), errored=0),
+        )
+
+    def results(self, batch_id):
+        for req in self._requests:
+            text = _prompt_text(req["params"])
+            payload = next((p for kw, p in self.by_keyword.items() if kw in text), {})
+            if isinstance(payload, Exception):
+                yield _FakeBatchResult(req["custom_id"], _FakeBatchOutcome("errored"))
+            else:
+                message = mock.Mock(content=[_FakeBlock(json.dumps(payload))])
+                yield _FakeBatchResult(req["custom_id"], _FakeBatchOutcome("succeeded", message))
+
+
+class _FakeBatchClient:
+    def __init__(self, by_keyword):
+        self.messages = mock.Mock(batches=_FakeBatches(by_keyword))
 
 
 class ParseEnrichmentTests(unittest.TestCase):
@@ -264,6 +321,101 @@ class RateLimiterTests(unittest.TestCase):
         for _ in range(3):  # first is free, then 2 × 0.1s
             limiter.acquire()
         self.assertGreaterEqual(time.monotonic() - start, 0.18)
+
+
+class EnrichItemsBatchTests(unittest.TestCase):
+    def setUp(self):
+        # Don't actually sleep between polls in tests.
+        self._patch = mock.patch.object(enrich.time, "sleep", lambda *_: None)
+        self._patch.start()
+        self.addCleanup(self._patch.stop)
+
+    def test_disabled_is_a_noop(self):
+        items = [{"id": "1", "title": "Drill"}]
+        self.assertEqual(enrich_items_batch(items), 0)
+        self.assertNotIn("brand", items[0])
+
+    def test_batch_applies_results_by_custom_id(self):
+        items = [
+            {"id": "good", "title": "DeWalt DCD771 drill", "images": []},
+            {"id": "junk", "title": "Lot - 207", "description": "assorted", "images": []},
+        ]
+        client = _FakeBatchClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+        })
+        # Both lots are "processed" (each gets the bookkeeping fingerprint, same
+        # as the synchronous path counts it); only `good` is actually identified.
+        enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        self.assertEqual(enriched, 2)
+        self.assertEqual(client.messages.batches.created, 1)
+
+        good = next(i for i in items if i["id"] == "good")
+        junk = next(i for i in items if i["id"] == "junk")
+        self.assertEqual(good["brand"], "DeWalt")
+        self.assertEqual(good["enrichmentConfidence"], "high")
+        # Identified lots get a model stamp; the junk lot doesn't, but both get a
+        # fingerprint so neither is re-called on the next backfill.
+        self.assertEqual(good["enrichmentModel"], enrich.MODEL)
+        self.assertEqual(junk["enrichmentModel"], "")
+        self.assertTrue(good["enrichmentInputHash"])
+        self.assertTrue(junk["enrichmentInputHash"])
+
+    def test_errored_result_is_isolated(self):
+        items = [
+            {"id": "good", "title": "DeWalt DCD771 drill", "images": []},
+            {"id": "bad", "title": "explodes", "images": []},
+        ]
+        client = _FakeBatchClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+            "explodes": RuntimeError("server error"),
+        })
+        enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        self.assertEqual(enriched, 1)
+        bad = next(i for i in items if i["id"] == "bad")
+        # The errored lot keeps seeded empty fields and no fingerprint, so a later
+        # backfill retries it.
+        for field in enrich.ENRICHMENT_FIELDS:
+            self.assertEqual(bad[field], "")
+
+    def test_unchanged_lots_skip_the_batch(self):
+        # A lot whose fingerprint matches the prior row is reused without ever
+        # being submitted — when every lot is reused, no batch is created.
+        item = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        seed_client = _FakeBatchClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+        })
+        enrich_items_batch([item], client=seed_client, poll_interval=0)
+        prior_by_id = {"good": dict(item)}
+
+        fresh = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        client2 = _FakeBatchClient({})
+        enrich_items_batch([fresh], client=client2, prior_by_id=prior_by_id, poll_interval=0)
+        self.assertEqual(client2.messages.batches.created, 0)
+        self.assertEqual(fresh["brand"], "DeWalt")
+
+    def test_chunks_when_over_batch_size(self):
+        items = [
+            {"id": str(n), "title": f"DeWalt DCD771 unit {n}", "images": []}
+            for n in range(5)
+        ]
+        client = _FakeBatchClient({"DeWalt DCD771": {
+            "brand": "DeWalt", "model_or_sku": "DCD771",
+            "condition": "used", "product_url": "", "confidence": "high",
+        }})
+        with mock.patch.object(enrich, "BATCH_MAX_REQUESTS", 2):
+            enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        self.assertEqual(enriched, 5)
+        # 5 lots / 2 per batch → 3 submissions.
+        self.assertEqual(client.messages.batches.created, 3)
 
 
 if __name__ == "__main__":

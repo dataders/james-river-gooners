@@ -28,7 +28,11 @@ before. API cost is negligible (a full ~500-lot Cannon's auction enriches for
 well under $0.10 on Haiku), but it's off by default so output quality can be
 validated before it becomes a standing cost on every scheduled scrape.
 
-    python enrich.py <safe_id> [<safe_id> ...]   # backfill the existing read model
+    python enrich.py <safe_id> [<safe_id> ...]            # backfill (synchronous)
+    python enrich.py --batch <safe_id> [<safe_id> ...]   # backfill via the Message
+        Batches API: all named auctions' lots go into one async batch at 50% cost
+        with no per-minute rate limit. Best for a large historical backfill; a
+        batch can take up to 24h, so the live scrape path stays synchronous.
 """
 
 import concurrent.futures
@@ -59,6 +63,14 @@ MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
 # tier) makes the run as fast as the limit allows and all but eliminates 429s.
 # Set to 0 to disable client-side throttling (e.g. on a higher tier).
 ENRICHMENT_RPM = float(os.environ.get("GOONERS_ENRICHMENT_RPM", "45"))
+
+# Message Batches API knobs (the backfill path — `enrich_items_batch`). Batches
+# run async at 50% cost with no per-minute rate limit, so there's no throttle
+# here. A batch holds up to 100K requests / 256 MB; we chunk well under that and
+# most batches finish within an hour (24h hard ceiling).
+BATCH_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_SIZE", "10000"))
+BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
+BATCH_MAX_WAIT = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600)))
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
@@ -217,6 +229,24 @@ def build_content(item: dict) -> list:
     return content
 
 
+def build_request_params(item: dict) -> dict:
+    """The Messages API params for one lot. Shared by the synchronous path
+    (``messages.create``) and the Batches API path so both send byte-identical
+    requests — the only difference is the transport."""
+    return {
+        "model": MODEL,
+        "max_tokens": 256,
+        "system": SYSTEM_PROMPT,
+        "messages": [{"role": "user", "content": build_content(item)}],
+        "output_config": {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
+    }
+
+
+def _response_text(content) -> str:
+    """The first text block's text from a message's content list, or ""."""
+    return next((block.text for block in content if getattr(block, "type", None) == "text"), "")
+
+
 def parse_enrichment(raw: dict) -> dict:
     """Map the model's JSON to the camelCase fields, validating the closed sets.
     An invalid condition/confidence or a non-http product_url is dropped to ""
@@ -235,19 +265,9 @@ def parse_enrichment(raw: dict) -> dict:
     return out
 
 
-def enrich_item(client, item: dict) -> dict:
-    """Call Claude for one lot and return its parsed enrichment. Raises on API
-    error — the caller isolates per-lot failures."""
-    _limiter.acquire()
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=256,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": build_content(item)}],
-        output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
-    )
-    text = next((block.text for block in response.content if getattr(block, "type", None) == "text"), "")
-    result = parse_enrichment(json.loads(text))
+def _finalize_result(item: dict, result: dict) -> dict:
+    """Stamp provenance + input fingerprint onto a parsed enrichment. Shared by
+    the synchronous and batch paths so both cache identically."""
     # Stamp provenance only on lots that were actually identified.
     if result.get("enrichmentConfidence"):
         result["enrichmentModel"] = MODEL
@@ -256,6 +276,14 @@ def enrich_item(client, item: dict) -> dict:
     # are cached — otherwise the generic-junk majority would re-call every run.
     result["enrichmentInputHash"] = enrichment_fingerprint(item)
     return result
+
+
+def enrich_item(client, item: dict) -> dict:
+    """Call Claude for one lot and return its parsed enrichment. Raises on API
+    error — the caller isolates per-lot failures."""
+    _limiter.acquire()
+    response = client.messages.create(**build_request_params(item))
+    return _finalize_result(item, parse_enrichment(json.loads(_response_text(response.content))))
 
 
 def apply_enrichment(item: dict, enrichment: dict) -> None:
@@ -295,6 +323,35 @@ def reuse_prior_enrichment(item: dict, prior_by_id: dict | None) -> dict | None:
     return None
 
 
+def _resolve_client(client):
+    """Return a usable client, or None when enrichment is a no-op. ``client``
+    passed explicitly (backfill CLI, tests) bypasses the env gate."""
+    if client is not None:
+        return client
+    if not is_enrichment_enabled():
+        return None
+    return _make_client()
+
+
+def _partition_for_enrichment(items: list[dict], prior_by_id: dict | None) -> tuple[list[dict], int]:
+    """Seed every lot with empty enrichment fields (consistent Parquet schema),
+    then split into the lots that must hit the API vs. those reused unchanged
+    from ``prior_by_id``. Returns ``(to_enrich, reused_count)``."""
+    for item in items:
+        for field in ENRICHMENT_FIELDS:
+            item.setdefault(field, "")
+
+    to_enrich, reused = [], 0
+    for item in items:
+        cached = reuse_prior_enrichment(item, prior_by_id)
+        if cached is None:
+            to_enrich.append(item)
+        else:
+            apply_enrichment(item, cached)
+            reused += 1
+    return to_enrich, reused
+
+
 def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None) -> int:
     """Enrich every lot in place; return the count that got any field populated.
 
@@ -307,29 +364,20 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
     ``prior_by_id`` maps lot id → its previous read-model row; any lot whose
     enrichment inputs are unchanged (matching ``enrichmentInputHash``) reuses
     that row instead of paying for an identical API call, so steady-state scrapes
-    only spend on new or changed lots."""
+    only spend on new or changed lots.
+
+    This is the **synchronous** path — one throttled request per lot — suited to
+    a live scrape where latency matters. For a large historical backfill, prefer
+    ``enrich_items_batch`` (Message Batches API: 50% cheaper, no rate-limit
+    thrashing, async)."""
     if not items:
         return 0
+    client = _resolve_client(client)
     if client is None:
-        if not is_enrichment_enabled():
-            return 0
-        client = _make_client()
-        if client is None:
-            return 0
-
-    for item in items:
-        for field in ENRICHMENT_FIELDS:
-            item.setdefault(field, "")
+        return 0
 
     # Reuse unchanged lots up front; only the rest hit the API.
-    to_enrich, reused = [], 0
-    for item in items:
-        cached = reuse_prior_enrichment(item, prior_by_id)
-        if cached is None:
-            to_enrich.append(item)
-        else:
-            apply_enrichment(item, cached)
-            reused += 1
+    to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
 
     enriched = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
@@ -350,9 +398,137 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
     return enriched
 
 
-def _backfill(safe_ids: list[str]) -> int:
-    """Enrich already-scraped active auctions, rewriting NDJSON + Parquet
-    (mirroring recategorize.py)."""
+def _wait_for_batch(client, batch_id: str, poll_interval: float, max_wait: float) -> str:
+    """Poll a Message Batch until it ends; return its final processing status
+    (``"ended"`` on success, or the last-seen status / ``"timed_out"`` if the
+    deadline passes first)."""
+    deadline = time.monotonic() + max_wait
+    while True:
+        batch = client.messages.batches.retrieve(batch_id)
+        status = getattr(batch, "processing_status", None)
+        if status == "ended":
+            return "ended"
+        if time.monotonic() >= deadline:
+            return status or "timed_out"
+        counts = getattr(batch, "request_counts", None)
+        if counts is not None:
+            print(
+                f"    batch {batch_id}: {status} "
+                f"(processing={getattr(counts, 'processing', '?')}, "
+                f"succeeded={getattr(counts, 'succeeded', '?')}, "
+                f"errored={getattr(counts, 'errored', '?')})"
+            )
+        time.sleep(poll_interval)
+
+
+def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: float) -> int:
+    """Submit one Message Batch for ``chunk`` and apply the results in place.
+    Returns the count of lots that got any field populated.
+
+    Each request is keyed by an index-based ``custom_id`` (``lot-N``) that maps
+    back to the lot — index-based rather than the lot's own id so the id never
+    has to satisfy the ``custom_id`` charset/length rules."""
+    by_custom_id: dict[str, dict] = {}
+    requests = []
+    for i, item in enumerate(chunk):
+        custom_id = f"lot-{i}"
+        by_custom_id[custom_id] = item
+        requests.append({"custom_id": custom_id, "params": build_request_params(item)})
+
+    batch = client.messages.batches.create(requests=requests)
+    batch_id = getattr(batch, "id", None) or batch["id"]
+    print(f"  enrich: submitted batch {batch_id} ({len(requests)} lots); polling…")
+
+    status = _wait_for_batch(client, batch_id, poll_interval, max_wait)
+    if status != "ended":
+        print(f"  enrich: batch {batch_id} did not finish (status={status}); skipping", file=sys.stderr)
+        return 0
+
+    enriched = 0
+    for result in client.messages.batches.results(batch_id):
+        item = by_custom_id.get(getattr(result, "custom_id", None))
+        if item is None:
+            continue
+        outcome = result.result
+        outcome_type = getattr(outcome, "type", None)
+        if outcome_type != "succeeded":
+            # errored / expired / canceled — leave the seeded empty fields and no
+            # fingerprint, so the lot is retried on the next backfill (like sync).
+            print(f"  enrich: batch lot {item.get('id')} {outcome_type}", file=sys.stderr)
+            continue
+        try:
+            applied = _finalize_result(item, parse_enrichment(json.loads(_response_text(outcome.message.content))))
+        except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
+            print(f"  enrich: batch parse failed for lot {item.get('id')} ({exc})", file=sys.stderr)
+            continue
+        apply_enrichment(item, applied)
+        if any(applied.get(field) for field in ENRICHMENT_FIELDS):
+            enriched += 1
+    return enriched
+
+
+def enrich_items_batch(
+    items: list[dict],
+    client=None,
+    prior_by_id: dict | None = None,
+    poll_interval: float = BATCH_POLL_INTERVAL,
+    max_wait: float = BATCH_MAX_WAIT,
+) -> int:
+    """Enrich every lot in place via the **Message Batches API**; return the count
+    that got any field populated.
+
+    Same gating, seeding, and unchanged-lot reuse as ``enrich_items`` — the only
+    difference is transport: lots that need the API are submitted as one (or a
+    few, chunked at ``BATCH_MAX_REQUESTS``) async batches at 50% of the per-token
+    cost, with no per-minute rate limit. Use this for a large historical backfill;
+    use ``enrich_items`` for a live scrape (a batch can take up to 24h to finish).
+
+    A no-op (returns 0) unless enrichment is enabled and a client can be built."""
+    if not items:
+        return 0
+    client = _resolve_client(client)
+    if client is None:
+        return 0
+
+    to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
+    if not to_enrich:
+        if reused:
+            print(f"  enriched 0/0 lots via {MODEL} (batch) (reused {reused} unchanged)")
+        return 0
+
+    enriched = 0
+    for start in range(0, len(to_enrich), BATCH_MAX_REQUESTS):
+        enriched += _run_one_batch(
+            client, to_enrich[start:start + BATCH_MAX_REQUESTS], poll_interval, max_wait
+        )
+
+    reused_note = f" (reused {reused} unchanged)" if reused else ""
+    print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL} (batch){reused_note}")
+    return enriched
+
+
+def _write_rows(items_dir, safe_id: str, rows: list[dict]) -> None:
+    """Rewrite one auction's NDJSON + Parquet sidecars (mirroring recategorize.py)."""
+    (items_dir / f"{safe_id}.ndjson").write_text(
+        "\n".join(json.dumps(row, separators=(",", ":")) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    for row in rows:
+        if isinstance(row.get("images"), list):
+            row["images"] = json.dumps(row["images"])
+    pq.write_table(pa.Table.from_pylist(rows), items_dir / f"{safe_id}.parquet", compression="snappy")
+
+
+def _backfill(safe_ids: list[str], use_batch: bool = False) -> int:
+    """Enrich already-scraped active auctions, rewriting NDJSON + Parquet.
+
+    With ``use_batch`` the lots from *all* the named auctions are enriched in one
+    combined Message Batch (one async submission, 50% cost) before any file is
+    rewritten — the efficient path for a large historical backfill. Without it,
+    each auction is enriched synchronously in turn (the original behavior)."""
     if not is_enrichment_enabled():
         print("Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.", file=sys.stderr)
         return 1
@@ -362,36 +538,42 @@ def _backfill(safe_ids: list[str]) -> int:
 
     from scrape import ITEMS_DIR
 
+    rows_by_id: dict[str, list[dict]] = {}
     for safe_id in safe_ids:
         ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
         if not ndjson_path.exists():
             print(f"skip {safe_id}: no NDJSON sidecar", file=sys.stderr)
             continue
         rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
-        if not rows:
-            continue
-        enrich_items(rows, client=client)
-        ndjson_path.write_text(
-            "\n".join(json.dumps(row, separators=(",", ":")) for row in rows) + "\n",
-            encoding="utf-8",
-        )
-        import pyarrow as pa
-        import pyarrow.parquet as pq
+        if rows:
+            rows_by_id[safe_id] = rows
 
-        for row in rows:
-            if isinstance(row.get("images"), list):
-                row["images"] = json.dumps(row["images"])
-        pq.write_table(pa.Table.from_pylist(rows), ITEMS_DIR / f"{safe_id}.parquet", compression="snappy")
+    if not rows_by_id:
+        return 0
+
+    if use_batch:
+        # One batch across every auction's lots, so a 5,000-lot backfill is a
+        # single async submission rather than one synchronous run per auction.
+        all_rows = [row for rows in rows_by_id.values() for row in rows]
+        enrich_items_batch(all_rows, client=client)
+    else:
+        for rows in rows_by_id.values():
+            enrich_items(rows, client=client)
+
+    for safe_id, rows in rows_by_id.items():
+        _write_rows(ITEMS_DIR, safe_id, rows)
         print(f"enriched + rewrote {safe_id} ({len(rows)} lots)")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    use_batch = "--batch" in argv
+    argv = [arg for arg in argv if arg != "--batch"]
     if not argv:
         print(__doc__)
         return 1
-    return _backfill(argv)
+    return _backfill(argv, use_batch=use_batch)
 
 
 if __name__ == "__main__":
