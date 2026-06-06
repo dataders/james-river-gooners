@@ -8,13 +8,14 @@
       "itemCount": 146,
       "itemsPath": "data/items/hibid_739431.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_739431.ndjson"
+      "ndjsonPath": "data/items/hibid_739431.ndjson",
+      "embeddingsPath": "data/items/hibid_739431.embeddings"
     },
     {
       "safeId": "vIgvMk-ow4F5FT9vYFpABw",
       "title": "06/07/26: Ample Seller Onsite Warehouse Auction | S West St. |  Petersburg VA 23803- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-07 6:55:00 PM",
-      "scrapedAt": "2026-06-05T19:49:21.799074+00:00",
+      "scrapedAt": "2026-06-06T06:26:52.432941+00:00",
       "itemCount": 223,
       "itemsPath": "data/items/vIgvMk-ow4F5FT9vYFpABw.parquet",
       "source": "cannons",
@@ -29,7 +30,8 @@
       "itemCount": 404,
       "itemsPath": "data/items/hibid_739442.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_739442.ndjson"
+      "ndjsonPath": "data/items/hibid_739442.ndjson",
+      "embeddingsPath": "data/items/hibid_739442.embeddings"
     },
     {
       "safeId": "hibid_739720",
@@ -39,13 +41,14 @@
       "itemCount": 198,
       "itemsPath": "data/items/hibid_739720.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_739720.ndjson"
+      "ndjsonPath": "data/items/hibid_739720.ndjson",
+      "embeddingsPath": "data/items/hibid_739720.embeddings"
     },
     {
       "safeId": "TSEnhqADosMhcgC3rM6KNw",
       "title": "06/08/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-08 8:04:00 PM",
-      "scrapedAt": "2026-06-05T23:05:58.682663+00:00",
+      "scrapedAt": "2026-06-06T06:27:51.379491+00:00",
       "itemCount": 500,
       "itemsPath": "data/items/TSEnhqADosMhcgC3rM6KNw.parquet",
       "source": "cannons",
@@ -56,7 +59,7 @@
       "safeId": "C1XI_s2IvMt5WfqzOkCflA",
       "title": "06/09/26: Acorn Estate Liquidators at Orange County | Gordonsville VA 22942- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-09 7:28:48 PM",
-      "scrapedAt": "2026-06-05T21:38:12.979329+00:00",
+      "scrapedAt": "2026-06-06T06:29:18.125279+00:00",
       "itemCount": 445,
       "itemsPath": "data/items/C1XI_s2IvMt5WfqzOkCflA.parquet",
       "source": "cannons",
@@ -67,7 +70,7 @@
       "safeId": "kv5GFVm_PLi6WqCrpWFtew",
       "title": "06/10/26: Gallery Consignments | Online Estate Auction | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-10 8:50:00 PM",
-      "scrapedAt": "2026-06-05T23:08:08.534276+00:00",
+      "scrapedAt": "2026-06-06T09:23:27.435729+00:00",
       "itemCount": 921,
       "itemsPath": "data/items/kv5GFVm_PLi6WqCrpWFtew.parquet",
       "source": "cannons",
@@ -78,7 +81,7 @@
       "safeId": "KtbqxU0Uovx985gkiiGrUQ",
       "title": "06/11/26: N Chesterfield Onsite Estate Auction | Vintage Glass, Collectibles and Ceramics | Rexmoor Dr 23236- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-11 7:07:00 PM",
-      "scrapedAt": "2026-06-05T21:57:18.223148+00:00",
+      "scrapedAt": "2026-06-06T06:33:11.825541+00:00",
       "itemCount": 270,
       "itemsPath": "data/items/KtbqxU0Uovx985gkiiGrUQ.parquet",
       "source": "cannons",
@@ -89,7 +92,7 @@
       "safeId": "VZNC3LK1yf8ymCC-Kmw8Eg",
       "title": "06/12/26: Ample Seller | Online Storage Clearance Auction | Richmond VA 23227- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-12 6:54:00 PM",
-      "scrapedAt": "2026-06-05T23:11:23.363388+00:00",
+      "scrapedAt": "2026-06-06T06:34:01.300686+00:00",
       "itemCount": 217,
       "itemsPath": "data/items/VZNC3LK1yf8ymCC-Kmw8Eg.parquet",
       "source": "cannons",
@@ -104,13 +107,14 @@
       "itemCount": 197,
       "itemsPath": "data/items/hibid_743703.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_743703.ndjson"
+      "ndjsonPath": "data/items/hibid_743703.ndjson",
+      "embeddingsPath": "data/items/hibid_743703.embeddings"
     },
     {
       "safeId": "D9H3ncfewpZd4ancQx3eGw",
       "title": "06/14/26: Yellow Gate Auctions, 10306 Boydton Plank Rd, Dinwiddie, VA, 23841- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-14 8:59:00 PM",
-      "scrapedAt": "2026-06-05T22:05:08.310743+00:00",
+      "scrapedAt": "2026-06-06T09:26:25.446416+00:00",
       "itemCount": 1199,
       "itemsPath": "data/items/D9H3ncfewpZd4ancQx3eGw.parquet",
       "source": "cannons",
@@ -121,7 +125,7 @@
       "safeId": "ZO1ARTsfo5u_cpC34qfAGQ",
       "title": "06/15/26: Henrico County Estate Auction |  Dunkerry Lane | Sandston VA 23150- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-15 5:56:00 PM",
-      "scrapedAt": "2026-06-05T20:00:51.291856+00:00",
+      "scrapedAt": "2026-06-06T06:37:56.608862+00:00",
       "itemCount": 228,
       "itemsPath": "data/items/ZO1ARTsfo5u_cpC34qfAGQ.parquet",
       "source": "cannons",
@@ -154,7 +158,7 @@
       "safeId": "zmIi5q6gqQxSJ8zjILQe5A",
       "title": "06/17/26: Estate Collectibles and Objets d'Art | Richmond VA 23294- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-17 9:24:00 PM",
-      "scrapedAt": "2026-06-05T23:14:12.120065+00:00",
+      "scrapedAt": "2026-06-06T09:29:54.454411+00:00",
       "itemCount": 1057,
       "itemsPath": "data/items/zmIi5q6gqQxSJ8zjILQe5A.parquet",
       "source": "cannons",
@@ -165,7 +169,7 @@
       "safeId": "TJVSKf6NwmA-L1t5tQiUZw",
       "title": "06/18/26: Henrico County Online Auction | Gilchrist Place, Richmond VA 23231- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-18 5:15:00 PM",
-      "scrapedAt": "2026-06-05T11:39:30.636890+00:00",
+      "scrapedAt": "2026-06-06T06:41:33.915152+00:00",
       "itemCount": 63,
       "itemsPath": "data/items/TJVSKf6NwmA-L1t5tQiUZw.parquet",
       "source": "cannons",
@@ -180,7 +184,8 @@
       "itemCount": 206,
       "itemsPath": "data/items/hibid_745666.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_745666.ndjson"
+      "ndjsonPath": "data/items/hibid_745666.ndjson",
+      "embeddingsPath": "data/items/hibid_745666.embeddings"
     },
     {
       "safeId": "hibid_745663",
@@ -190,13 +195,14 @@
       "itemCount": 189,
       "itemsPath": "data/items/hibid_745663.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_745663.ndjson"
+      "ndjsonPath": "data/items/hibid_745663.ndjson",
+      "embeddingsPath": "data/items/hibid_745663.embeddings"
     },
     {
       "safeId": "OTOEW5yRiFsFngoX55XiYA",
       "title": "06/22/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-22 6:47:00 PM",
-      "scrapedAt": "2026-06-05T20:04:31.883325+00:00",
+      "scrapedAt": "2026-06-06T06:42:02.495374+00:00",
       "itemCount": 431,
       "itemsPath": "data/items/OTOEW5yRiFsFngoX55XiYA.parquet",
       "source": "cannons",
@@ -207,7 +213,7 @@
       "safeId": "4cm_7GDofqKg2yODg6UM5A",
       "title": "06/23/26:  Acorn Estate Liquidators Multi Estate Online Auction at Orange, VA 22960- Cannon's Online Auctions, LLC",
       "endDate": "2026-06-23 8:01:36 PM",
-      "scrapedAt": "2026-06-05T23:18:00.299262+00:00",
+      "scrapedAt": "2026-06-06T06:43:16.464680+00:00",
       "itemCount": 609,
       "itemsPath": "data/items/4cm_7GDofqKg2yODg6UM5A.parquet",
       "source": "cannons",
@@ -222,7 +228,8 @@
       "itemCount": 177,
       "itemsPath": "data/items/hibid_747559.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/items/hibid_747559.ndjson"
+      "ndjsonPath": "data/items/hibid_747559.ndjson",
+      "embeddingsPath": "data/items/hibid_747559.embeddings"
     }
   ]
 }
