@@ -1,16 +1,19 @@
 """
 Shared category normalization for all auction sources.
 
-Used by both scrape.py (Maxanet/Cannon's) and scrape_hibid.py (HiBid) so that
-every source emits the same unified category vocabulary. Maxanet supplies a real
-site category (matched via raw_aliases); HiBid supplies its breadcrumb crumb and
-relies more heavily on description_keywords inference. Reads mappings from
-category_mappings.yml.
+Used by scrape.py (Cannon's/Maxanet), scrape_hibid.py (HiBid), and
+scrape_rasmus.py (Rasmus) so that every source emits the same unified category
+vocabulary.
+
+Pass `source` ("cannons", "hibid", or "rasmus") to get source-aware resolution
+via the canonical resolver (category_canonical.yml).  Calls without a source
+use the legacy alias + group-term path for backward compatibility.
 """
 
 from pathlib import Path
 
 import yaml
+from build_category_table import Resolver, load as _load_canonical
 
 _MAPPINGS_PATH = Path(__file__).resolve().parent / "category_mappings.yml"
 
@@ -19,6 +22,7 @@ def _load_mappings():
         return yaml.safe_load(f)
 
 _config = _load_mappings()
+_RESOLVER = Resolver(_load_canonical())
 
 # Build alias lookup: lowercased variant -> canonical name
 _ALIAS_LOOKUP = {}
@@ -62,27 +66,54 @@ def infer_from_description(description: str) -> tuple[str, str] | None:
     return None
 
 
-def normalize_category(raw_category: str, description: str = "") -> str:
-    """Map a raw category string to a broad group name."""
+def normalize_category(raw_category: str, description: str = "", source: str = "") -> str:
+    """Map a raw category string to a broad group name.
+
+    When *source* is supplied ("cannons", "hibid", or "rasmus"), resolution goes
+    through the canonical source-aware table first, with the legacy
+    description-keyword list as a fallback when the canonical inference also
+    returns nothing.  Without *source* the legacy alias + group-term path is
+    used unchanged for backward compatibility.
+    """
+    if source:
+        sub, _ = _RESOLVER.subcategory(source, raw_category, description)
+        if sub != "__unknown__":
+            return _RESOLVER.group(sub)
+        # Canonical inference is intentionally sparse; try the richer legacy set.
+        result = infer_from_description(description)
+        if result:
+            return result[1]
+        return "Other"
+    # Legacy path (no source supplied — recategorize.py, etc.)
     canonical = normalize_raw_category(raw_category)
     lower = canonical.lower()
     for group, terms in CATEGORY_GROUPS.items():
         for term in terms:
             if term in lower:
                 return group
-    # No group matched the raw category — it may be empty, "Other", or an
-    # unrecognized crumb (e.g. a HiBid breadcrumb with no alias). In every such
-    # case fall back to keyword inference from the description before giving up,
-    # so an unrecognized crumb no longer suppresses inference the way a literal
-    # "Other" check did.
     result = infer_from_description(description)
     if result:
         return result[1]
     return "Other"
 
 
-def normalize_raw_with_description(raw_category: str, description: str = "") -> str:
-    """Normalize raw category, falling back to description inference."""
+def normalize_raw_with_description(raw_category: str, description: str = "", source: str = "") -> str:
+    """Normalize raw category, falling back to description inference.
+
+    Returns the canonical subcategory name when *source* is supplied and the
+    canonical table has a mapping; otherwise returns the legacy canonical alias
+    or cleaned raw string.
+    """
+    if source:
+        sub, _ = _RESOLVER.subcategory(source, raw_category, description)
+        if sub != "__unknown__":
+            return sub
+        result = infer_from_description(description)
+        if result:
+            return result[0]
+        cleaned = (raw_category or "").strip().strip(",").strip()
+        return cleaned or "Other"
+    # Legacy path
     canonical = normalize_raw_category(raw_category)
     if canonical == "Other" or not canonical:
         result = infer_from_description(description)

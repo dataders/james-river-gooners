@@ -368,7 +368,7 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     # Category from hidden Types input
     cat_input = card.find("input", attrs={"name": lambda n: n and str(n).startswith("Types")})
     raw_category = cat_input["value"] if cat_input else ""
-    category = normalize_category(raw_category)
+    category = normalize_category(raw_category, source="cannons")
 
     # Detail URL
     detail_link = card.select_one('a[href*="AuctionItemDetail"]')
@@ -400,8 +400,8 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
         "finalBid": None,
         "endDate": end_date,
         "images": images[:5],  # Keep first 5 images
-        "category": normalize_category(raw_category, description),
-        "rawCategory": normalize_raw_with_description(raw_category, description),
+        "category": normalize_category(raw_category, description, source="cannons"),
+        "rawCategory": normalize_raw_with_description(raw_category, description, source="cannons"),
         "detailUrl": detail_url,
     }
 

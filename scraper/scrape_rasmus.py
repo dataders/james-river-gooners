@@ -458,8 +458,8 @@ def map_item(doc: dict, aid: str) -> dict | None:
         "uniqueBidders": unique_bidders,
         "endDate": ms_to_iso(f.get("time_end")),
         "images": images,
-        "category": normalize_category(raw_cat, combined),
-        "rawCategory": normalize_raw_with_description(raw_cat, combined),
+        "category": normalize_category(raw_cat, combined, source="rasmus"),
+        "rawCategory": normalize_raw_with_description(raw_cat, combined, source="rasmus"),
         "detailUrl": f"{RASMUS_BASE}/auctions/{aid}/lot/{lot_number}",
     }
 
