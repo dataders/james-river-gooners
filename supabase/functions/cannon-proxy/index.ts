@@ -20,9 +20,9 @@ import {
   mergeCookies,
   cookieHeader,
   parseHiddenInputs,
-  parseBidItems,
   parseBidderId,
   parseRefreshItemHtml,
+  parseWatchlistItems,
 } from './parsers.js'
 
 const CORS_HEADERS = {
@@ -106,13 +106,22 @@ interface LoginResult {
   cookies: Record<string, string>
   loginPostTo: string
   loginPostCookieKeys: string[]
+  loginPostRawSetCookie: string
+  bidHistoryHtml?: string
+  bidHistoryUrl?: string
 }
 
 async function maxanetLogin(username: string, password: string): Promise<LoginResult> {
   const base = 'https://bid.cannonsauctions.com'
+  // The login page at /Public/Account/Login has JavaScript that intercepts the
+  // form submit and POSTs credentials to /Public/Login/Login as an AJAX request
+  // (X-Requested-With: XMLHttpRequest). This AJAX endpoint is what issues .ASPXAUTH.
+  // Posting to the form's HTML action (/Public/Account/Login) does NOT set it.
+  const loginPageUrl = `${base}/Public/Account/Login`
+  const loginAjaxUrl = `${base}/Public/Login/Login`
 
-  // Step 1 — fetch login page for anti-forgery token + initial cookies
-  const pageResp = await fetch(`${base}/Public/Account/Login`, {
+  // Step 1 — fetch login page for anti-forgery token + initial session cookies
+  const pageResp = await fetch(loginPageUrl, {
     headers: { 'User-Agent': UA },
     redirect: 'follow',
   })
@@ -124,98 +133,124 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
   const tokenMatch = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)
   const verificationToken = tokenMatch?.[1] ?? ''
 
-  // TenantCode is a hidden field required by Maxanet (Cannon's value is "Can399")
   const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
   const tenantCode = tenantMatch?.[1] ?? ''
 
-  // Use the form's actual action URL — don't hardcode a route that may differ
-  // across Maxanet instances. Fall back to the page URL itself (the ASP.NET MVC
-  // default is GET and POST on the same path).
-  const formActionMatch = pageHtml.match(/<form[^>]+action="([^"]+)"/)
-  const loginPostUrl = formActionMatch?.[1]
-    ? (formActionMatch[1].startsWith('http') ? formActionMatch[1] : `${base}${formActionMatch[1]}`)
-    : `${base}/Public/Account/Login`
+  const usernameFieldMatch =
+    pageHtml.match(/name="(Email|UserName|Username)"[^>]*type="(?:text|email)"/i) ??
+    pageHtml.match(/type="(?:text|email)"[^>]*name="(Email|UserName|Username)"/i)
+  const usernameField = usernameFieldMatch?.[1] ?? 'Username'
 
-  console.log('[cannon-proxy] login form action:', loginPostUrl, '| token:', !!verificationToken, '| tenant:', tenantCode || '(empty)')
+  console.log('[cannon-proxy] login page:', loginPageUrl, '| token:', !!verificationToken, '| tenant:', tenantCode || '(empty)', '| usernameField:', usernameField)
 
-  // Step 2 — POST credentials to the login endpoint discovered from the form action
-  const loginResp = await fetch(loginPostUrl, {
+  // Step 2 — POST credentials to the AJAX login endpoint.
+  // ReturnUrl=/ matches what the browser JS sends (the page root, not a deep link).
+  const loginBody: Record<string, string> = {
+    ReturnUrl: '/',
+    TenantCode: tenantCode,
+    Password: password,
+    __RequestVerificationToken: verificationToken,
+  }
+  loginBody[usernameField] = username
+
+  const loginResp = await fetch(loginAjaxUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
-      'Referer': `${base}/Public/Account/Login`,
+      'Referer': loginPageUrl,
+      'Origin': base,
+      'X-Requested-With': 'XMLHttpRequest',
     },
-    body: new URLSearchParams({
-      ReturnUrl: '',
-      TenantCode: tenantCode,
-      Username: username,
-      Password: password,
-      __RequestVerificationToken: verificationToken,
-    }).toString(),
+    body: new URLSearchParams(loginBody).toString(),
     redirect: 'manual',
   })
-
-  // Successful login → 302 redirect away from the login page
-  // Failed login → 200 (re-renders the form) OR 302 back to the login page
-  if (loginResp.status === 200) {
-    const body = await loginResp.text()
-    const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
-    const hasForm = body.includes('__RequestVerificationToken')
-    console.log('[cannon-proxy] login 200: hasForm=', hasForm, 'hasValidationSummary=', !!errMatch)
-    const detail = errMatch ? errMatch[1].replace(/<[^>]+>/g, '').trim() : (hasForm ? 'wrong credentials or bot detection' : 'unexpected response')
-    throw new Error(`Login failed: ${detail}`)
-  }
-  if (loginResp.status !== 302) throw new Error(`Unexpected login response: ${loginResp.status}`)
 
   const loginPostTo = loginResp.headers.get('location') ?? ''
   const loginPostCookies = getSetCookies(loginResp.headers)
   const loginPostCookieKeys = Object.keys(loginPostCookies)
-
-  // If the server 302s back to the login page, credentials were rejected
-  if (/\/Account\/Login/i.test(loginPostTo)) {
-    throw new Error(`Login failed: bad credentials (server redirected back to ${loginPostTo})`)
-  }
-
-  console.log(`[cannon-proxy] login POST: status=302 location=${loginPostTo} newCookies=${loginPostCookieKeys.join(',') || 'none'}`)
+  const loginPostRawSetCookie = loginResp.headers.get('set-cookie') ?? ''
 
   let sessionCookies = mergeCookies(cookies, loginPostCookies)
 
-  // Follow ALL post-login redirects manually so we capture Set-Cookie headers at
-  // every hop. Maxanet may chain several 302s before landing on the dashboard,
-  // and the final auth cookie might only appear on the last hop.
-  let nextUrl: string | null = loginResp.headers.get('location')
-  if (nextUrl && !nextUrl.startsWith('http')) nextUrl = `${base}${nextUrl.startsWith('/') ? '' : '/'}${nextUrl}`
-  let hops = 0
-  while (nextUrl && hops < 6) {
-    hops++
-    try {
-      const hopResp = await fetch(nextUrl, {
-        headers: {
-          'Cookie': cookieHeader(sessionCookies),
-          'User-Agent': UA,
-          'Referer': `${base}/Public/Account/Login`,
-        },
-        redirect: 'manual',
-      })
-      const hopCookies = getSetCookies(hopResp.headers)
-      sessionCookies = mergeCookies(sessionCookies, hopCookies)
-      console.log(`[cannon-proxy] redirect hop ${hops}: status=${hopResp.status} url=${nextUrl} newCookies=${Object.keys(hopCookies).join(',') || '(none)'}`)
-      if (hopResp.status === 302) {
-        const loc = hopResp.headers.get('location')
-        nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
-      } else {
+  console.log(`[cannon-proxy] login AJAX POST: status=${loginResp.status} newCookies=${loginPostCookieKeys.join(',') || 'none'} hasAspxAuth=${'.ASPXAUTH' in loginPostCookies}`)
+
+  // The AJAX endpoint returns 200 JSON on success (not a redirect).
+  // Parse to detect failure (server returns a non-success status/message).
+  let loginJson: Record<string, unknown> = {}
+  if (loginResp.status === 200) {
+    try { loginJson = await loginResp.json() } catch { /* ignore non-JSON */ }
+    const succeeded = loginJson.Succeeded ?? loginJson.succeeded ?? loginJson.success ?? loginJson.Status
+    if (succeeded === false || succeeded === 'false') {
+      const msg = String(loginJson.Message ?? loginJson.message ?? loginJson.Error ?? 'Invalid credentials')
+      throw new Error(`Login failed: ${msg}`)
+    }
+  } else if (loginResp.status === 302) {
+    // Some deployments still redirect on success; check it's not back to login
+    if (/\/Login\//i.test(loginPostTo) || /\/Account\/Login/i.test(loginPostTo)) {
+      throw new Error(`Login failed: bad credentials (redirected to ${loginPostTo})`)
+    }
+    await loginResp.text()
+  } else {
+    await loginResp.text()
+    throw new Error(`Unexpected login response: ${loginResp.status}`)
+  }
+
+  // If .ASPXAUTH wasn't on the AJAX response, try the redirect URL from JSON.
+  // Some deployments include a redirectUrl in the JSON that, when fetched,
+  // triggers FormsAuthentication.SetAuthCookie() server-side.
+  let bidHistoryHtml: string | undefined
+  let bidHistoryUrl: string | undefined
+
+  if (!('.ASPXAUTH' in sessionCookies)) {
+    const redirectUrl = String(loginJson.url ?? loginJson.Url ?? loginJson.redirectUrl ?? loginJson.RedirectUrl ?? '')
+    const nextHop = redirectUrl
+      ? (redirectUrl.startsWith('http') ? redirectUrl : `${base}${redirectUrl.startsWith('/') ? '' : '/'}${redirectUrl}`)
+      : `${base}/Public`
+    let nextUrl: string | null = nextHop
+    let hops = 0
+    while (nextUrl && hops < 6) {
+      hops++
+      const hopUrl = nextUrl
+      try {
+        const hopResp = await fetch(hopUrl, {
+          headers: {
+            'Cookie': cookieHeader(sessionCookies),
+            'User-Agent': UA,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Referer': loginPageUrl,
+          },
+          redirect: 'manual',
+        })
+        const hopCookies = getSetCookies(hopResp.headers)
+        sessionCookies = mergeCookies(sessionCookies, hopCookies)
+        console.log(`[cannon-proxy] post-login hop ${hops}: status=${hopResp.status} url=${hopUrl} newCookies=${Object.keys(hopCookies).join(',') || '(none)'}`)
+        if (hopResp.status === 302) {
+          const loc = hopResp.headers.get('location')
+          nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
+        } else {
+          nextUrl = null
+          if (!('.ASPXAUTH' in sessionCookies)) {
+            const hopHtml = await hopResp.text()
+            const linkMatch = hopHtml.match(/href="([^"]*(?:BidHistory|MyBids|bid-history)[^"]*)"/)
+            if (linkMatch) {
+              const href = linkMatch[1]
+              bidHistoryUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`
+            }
+          } else {
+            await hopResp.body?.cancel()
+          }
+        }
+      } catch (e) {
+        console.log(`[cannon-proxy] post-login hop ${hops} failed:`, (e as Error).message)
         nextUrl = null
       }
-    } catch (e) {
-      console.log(`[cannon-proxy] redirect hop ${hops} failed:`, (e as Error).message)
-      nextUrl = null
     }
   }
 
   console.log('[cannon-proxy] session cookie keys after login:', Object.keys(sessionCookies).join(', '))
-  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys }
+  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml, bidHistoryUrl }
 }
 
 interface BidItem {
@@ -277,32 +312,39 @@ async function refreshItemStatus(
   }
 }
 
-async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[]): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
+async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
-  // BidHistory is a regular page load — don't send X-Requested-With (that's
-  // for AJAX calls) and include standard browser headers to avoid bot detection.
-  const resp = await fetch(`${base}/Public/Account/BidHistory`, {
+  // GetWatchlist AJAX — returns one item card per active watched bid.
+  // Auth for this area was already activated in maxanetLogin via /Authentication/Login.
+  const url = `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=Current`
+  console.log('[cannon-proxy] fetching watchlist items')
+
+  const resp = await fetch(url, {
     headers: {
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Referer': `${base}/`,
+      'Accept': '*/*',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Referer': `${base}/Public/Auction/Watchlist`,
     },
     redirect: 'manual',
   })
 
   const cookieKeys = Object.keys(cookies).join(',')
-  const loginDiag = `loginTo:${loginPostTo || '?'} loginPostCookies:${loginPostCookieKeys.join(',') || 'none'}`
-  console.log('[cannon-proxy] BidHistory response status:', resp.status, '| cookies:', cookieKeys)
-  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→login, ${loginDiag}, cookies: ${cookieKeys})`)
-  if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
+  console.log('[cannon-proxy] GetWatchlist status:', resp.status, '| cookies:', cookieKeys)
+  if (resp.status === 302) {
+    const redirectTo = resp.headers.get('location') ?? '?'
+    throw new Error(`GetWatchlist→${redirectTo.slice(0, 100)}, cookies: ${cookieKeys}`)
+  }
+  if (!resp.ok) throw new Error(`GetWatchlist returned ${resp.status}`)
 
   const html = await resp.text()
-  const items = parseBidItems(html)
+  const items = parseWatchlistItems(html)
   const csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
-  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId: parseBidderId(html) }
+  const bidderId = parseBidderId(html)
+  console.log('[cannon-proxy] watchlist items:', items.length, '| csrf:', !!csrf)
+  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId }
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────────
@@ -341,6 +383,237 @@ async function getStatus(
     .maybeSingle()
   if (error) return json({ error: error.message }, 500)
   return json({ linked: !!data, username: data?.cannon_username ?? null })
+}
+
+// Full HTTP trace of the login flow: follows every redirect manually and
+// records status, Location, and Set-Cookie at each hop so we can see exactly
+// where (or whether) .ASPXAUTH is issued.
+async function debugAuthV2(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<Response> {
+  const { data } = await supabase
+    .from('cannon_credentials')
+    .select('cannon_username, cannon_password_enc')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!data) return json({ error: 'No credentials stored' }, 400)
+
+  const base = 'https://bid.cannonsauctions.com'
+  const password = await decryptText(data.cannon_password_enc)
+
+  const trace: Array<{
+    step: string
+    url: string
+    method: string
+    status: number
+    location: string | null
+    setCookieRaw: string[]
+    newCookieKeys: string[]
+    sessionCookieKeys: string[]
+  }> = []
+
+  let sessionCookies: Record<string, string> = {}
+
+  async function hop(step: string, url: string, method: 'GET' | 'POST', body?: string): Promise<{ status: number; location: string | null; html: string }> {
+    const headers: Record<string, string> = {
+      'User-Agent': UA,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Cookie': cookieHeader(sessionCookies),
+    }
+    if (method === 'POST') {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded'
+      headers['Referer'] = url
+    }
+    const resp = await fetch(url, { method, headers, body, redirect: 'manual' })
+    const rawSetCookies: string[] = (resp as Response & { headers: Headers & { getSetCookie?(): string[] } }).headers.getSetCookie?.() ?? []
+    const newCookies = getSetCookies(resp.headers)
+    sessionCookies = mergeCookies(sessionCookies, newCookies)
+    const html = resp.status !== 302 ? await resp.text() : ''
+    trace.push({
+      step,
+      url,
+      method,
+      status: resp.status,
+      location: resp.headers.get('location'),
+      setCookieRaw: rawSetCookies,
+      newCookieKeys: Object.keys(newCookies),
+      sessionCookieKeys: Object.keys(sessionCookies),
+    })
+    return { status: resp.status, location: resp.headers.get('location'), html }
+  }
+
+  // Chain: follow redirects manually from a starting URL
+  async function followChain(startUrl: string, startMethod: 'GET' | 'POST', startBody?: string) {
+    let url: string | null = startUrl
+    let method: 'GET' | 'POST' = startMethod
+    let body: string | undefined = startBody
+    let hopCount = 0
+    while (url && hopCount < 8) {
+      hopCount++
+      const { status, location, html } = await hop(`hop${hopCount}`, url, method, body)
+      if (status === 302 && location) {
+        url = location.startsWith('http') ? location : `${base}${location.startsWith('/') ? '' : '/'}${location}`
+        method = 'GET'
+        body = undefined
+      } else {
+        // 200 — extract form fields for diagnostic
+        const formInputs: Record<string, string> = {}
+        for (const m of html.matchAll(/<input[^>]+>/gi)) {
+          const tag = m[0]
+          const name = tag.match(/name="([^"]+)"/)?.[1]
+          const value = tag.match(/value="([^"]*)"/)?.[1] ?? ''
+          const type = tag.match(/type="([^"]+)"/i)?.[1] ?? 'text'
+          if (name) formInputs[name] = `[${type}] ${value.slice(0, 30)}`
+        }
+        trace.push({ step: 'formInputs', url, method, status: 0, location: null, setCookieRaw: [], newCookieKeys: [], sessionCookieKeys: Object.keys(sessionCookies) } as typeof trace[0])
+        ;(trace[trace.length - 1] as Record<string, unknown>).formInputs = formInputs
+        ;(trace[trace.length - 1] as Record<string, unknown>).finalUrl = url
+        break
+      }
+    }
+  }
+
+  // Step A: GET /Public/Account/Login directly.
+  // /Authentication/Login on this instance just redirects to /Public (the
+  // homepage), so we skip it and go straight to the user-facing login form.
+  const landingUrl = `${base}/Public/Account/Login`
+  await followChain(landingUrl, 'GET')
+
+  // Step B: re-fetch the login page to extract form fields
+  // (followChain captured cookies; now read the HTML to parse the form)
+  const loginPage = await fetch(landingUrl, {
+    headers: { 'User-Agent': UA, 'Cookie': cookieHeader(sessionCookies) },
+    redirect: 'follow',
+  })
+  const newPageCookies = getSetCookies(loginPage.headers)
+  sessionCookies = mergeCookies(sessionCookies, newPageCookies)
+  const loginHtml = await loginPage.text()
+  const verificationToken = loginHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  const tenantCode = loginHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  const discoveredFormAction = loginHtml.match(/<form[^>]+action="([^"]+)"/)?.[1]
+  const loginPostUrl = discoveredFormAction
+    ? (discoveredFormAction.startsWith('http') ? discoveredFormAction : `${base}${discoveredFormAction}`)
+    : landingUrl
+  const usernameField =
+    (loginHtml.match(/name="(Email|UserName|Username)"[^>]*type="(?:text|email)"/i) ??
+     loginHtml.match(/type="(?:text|email)"[^>]*name="(Email|UserName|Username)"/i))?.[1] ?? 'Username'
+
+  const allInputs: Record<string, string> = {}
+  for (const m of loginHtml.matchAll(/<input[^>]+>/gi)) {
+    const tag = m[0]
+    const name = tag.match(/name="([^"]+)"/)?.[1]
+    const type = tag.match(/type="([^"]+)"/i)?.[1] ?? 'text'
+    if (name) allInputs[name] = type
+  }
+
+  // Step C: POST credentials to /Public/Login/Login — the AJAX endpoint the browser
+  // JS uses (not the HTML form action). ReturnUrl=/ matches what the browser sends.
+  const ajaxLoginUrl = `${base}/Public/Login/Login`
+  const loginBody: Record<string, string> = {
+    ReturnUrl: '/',
+    TenantCode: tenantCode,
+    Password: '***',
+    __RequestVerificationToken: verificationToken,
+  }
+  loginBody[usernameField] = data.cannon_username
+
+  const realLoginBody: Record<string, string> = { ...loginBody, Password: password }
+
+  // hop() sends via followChain infrastructure but we need X-Requested-With here
+  const ajaxResp = await fetch(ajaxLoginUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookieHeader(sessionCookies),
+      'User-Agent': UA,
+      'Referer': landingUrl,
+      'Origin': base,
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: new URLSearchParams(realLoginBody).toString(),
+    redirect: 'manual',
+  })
+  const ajaxCookies = getSetCookies(ajaxResp.headers)
+  const ajaxRaw: string[] = (ajaxResp as Response & { headers: Headers & { getSetCookie?(): string[] } }).headers.getSetCookie?.() ?? []
+  sessionCookies = mergeCookies(sessionCookies, ajaxCookies)
+  let ajaxBody = ''
+  try { ajaxBody = await ajaxResp.text() } catch { /* ignore */ }
+  trace.push({
+    step: 'step_C_ajax_login',
+    url: ajaxLoginUrl,
+    method: 'POST',
+    status: ajaxResp.status,
+    location: ajaxResp.headers.get('location'),
+    setCookieRaw: ajaxRaw,
+    newCookieKeys: Object.keys(ajaxCookies),
+    sessionCookieKeys: Object.keys(sessionCookies),
+  } as typeof trace[0])
+  ;(trace[trace.length - 1] as Record<string, unknown>).responseBody = ajaxBody.slice(0, 200)
+
+  // Step D: after a successful /Public/Account/Login, try GET /Authentication/Login
+  // with the authenticated session. In some Maxanet deployments this endpoint acts
+  // as an SSO bridge — when the Maxanet session is already authenticated it fires
+  // FormsAuthentication.SetAuthCookie() and issues .ASPXAUTH.
+  // Also try with a ReturnUrl in case the route handler checks it.
+  for (const suffix of ['', '?ReturnUrl=%2fPublic%2fAuction%2fWatchlist']) {
+    const authUrl = `${base}/Authentication/Login${suffix}`
+    const authResp = await fetch(authUrl, {
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Cookie': cookieHeader(sessionCookies),
+        'Referer': `${base}/Public`,
+      },
+      redirect: 'manual',
+    })
+    const authCookies = getSetCookies(authResp.headers)
+    const authRaw: string[] = (authResp as Response & { headers: Headers & { getSetCookie?(): string[] } }).headers.getSetCookie?.() ?? []
+    sessionCookies = mergeCookies(sessionCookies, authCookies)
+    trace.push({
+      step: `step_D_auth_login${suffix ? '_with_returnurl' : ''}`,
+      url: authUrl,
+      method: 'GET',
+      status: authResp.status,
+      location: authResp.headers.get('location'),
+      setCookieRaw: authRaw,
+      newCookieKeys: Object.keys(authCookies),
+      sessionCookieKeys: Object.keys(sessionCookies),
+    } as typeof trace[0])
+    if ('.ASPXAUTH' in authCookies) break
+  }
+
+  // Step E: try GetWatchlist with the final session (may now have .ASPXAUTH)
+  const wlResp = await fetch(
+    `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=Current`,
+    {
+      headers: {
+        'Cookie': cookieHeader(sessionCookies),
+        'User-Agent': UA,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': `${base}/Public/Auction/Watchlist`,
+      },
+      redirect: 'manual',
+    }
+  )
+  const wlStatus = wlResp.status
+  const wlLocation = wlResp.headers.get('location')
+
+  return json({
+    username: data.cannon_username,
+    landingUrl,
+    loginPostUrl,
+    usernameField,
+    formInputsOnLoginPage: allInputs,
+    hasToken: !!verificationToken,
+    tenantCode,
+    loginBodySent: loginBody,
+    finalSessionCookies: Object.keys(sessionCookies),
+    hasAspxAuth: '.ASPXAUTH' in sessionCookies,
+    watchlistStatus: wlStatus,
+    watchlistLocation: wlLocation,
+    trace,
+  })
 }
 
 async function debugLogin(
@@ -417,6 +690,81 @@ async function debugLogin(
       const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
       diag.loginError = errMatch ? errMatch[1].replace(/<[^>]+>/g, '').trim() : '(no validation-summary found)'
       diag.hasLoginForm = body.includes('__RequestVerificationToken')
+    } else if (loginResp.status === 302) {
+      // Follow redirect chain to landing page and dump its nav hrefs
+      let nextUrl: string | null = loginResp.headers.get('location')
+      if (nextUrl && !nextUrl.startsWith('http')) nextUrl = `${base}${nextUrl.startsWith('/') ? '' : '/'}${nextUrl}`
+      const loginCookies2 = mergeCookies(pageCookies, getSetCookies(loginResp.headers))
+      let hops = 0
+      while (nextUrl && hops < 6) {
+        hops++
+        const hopUrl = nextUrl
+        const hopResp = await fetch(hopUrl, {
+          headers: {
+            'Cookie': cookieHeader(loginCookies2),
+            'User-Agent': UA,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          redirect: 'manual',
+        })
+        const hopNewCookies = getSetCookies(hopResp.headers)
+        Object.assign(loginCookies2, hopNewCookies)
+        if (hopResp.status === 302) {
+          const loc = hopResp.headers.get('location')
+          nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
+        } else {
+          nextUrl = null
+          const hopHtml = await hopResp.text()
+          diag.landingUrl = hopUrl
+          diag.landingStatus = hopResp.status
+          diag.landingIsLoggedIn = hopHtml.includes('logout') || hopHtml.includes('Logout') || hopHtml.includes('log-out') || hopHtml.includes('sign-out')
+          // Dump ALL hrefs that look account/bid related
+          const hrefs: string[] = []
+          for (const m of hopHtml.matchAll(/href="([^"]+)"/gi)) {
+            const h = m[1]
+            if (/account|bid|history|profile|my[- ]|dashboard/i.test(h)) hrefs.push(h)
+          }
+          diag.accountHrefs = hrefs
+          // Also dump nav link text+href pairs for full picture
+          const navLinks: string[] = []
+          for (const m of hopHtml.matchAll(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]{0,60}?)<\/a>/gi)) {
+            const href = m[1], text = m[2].replace(/<[^>]+>/g, '').trim()
+            if (text && !/^\s*$/.test(text)) navLinks.push(`${text} → ${href}`)
+          }
+          diag.navLinks = navLinks.slice(0, 40)
+
+          // Probe candidate bid history URLs with the authenticated session
+          const candidates = [
+            '/Public/Account/BidHistory',
+            '/Public/Bidder/BidHistory',
+            '/Public/Account/MyBids',
+            '/Public/Bidder/MyBids',
+            '/Public/Account/History',
+            '/Public/Account/BidItems',
+            '/Public/Bidder/History',
+            '/Public/Auction/BidHistory',
+          ]
+          const probeResults: Record<string, string> = {}
+          for (const path of candidates) {
+            try {
+              const pr = await fetch(`${base}${path}`, {
+                headers: {
+                  'Cookie': cookieHeader(loginCookies2),
+                  'User-Agent': UA,
+                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                },
+                redirect: 'manual',
+              })
+              probeResults[path] = pr.status === 302
+                ? `302→${pr.headers.get('location') ?? '?'}`
+                : String(pr.status)
+            } catch (e) {
+              probeResults[path] = `error: ${(e as Error).message}`
+            }
+          }
+          diag.urlProbe = probeResults
+        }
+      }
     }
   } catch (e) {
     diag.loginException = (e as Error).message
@@ -451,13 +799,13 @@ async function getBids(
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
-  const { cookies, loginPostTo, loginPostCookieKeys } = loginResult
+  const { cookies } = loginResult
 
   let history: { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }
   try {
-    history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys)
+    history = await fetchBidHistory(cookies)
   } catch (e: unknown) {
-    return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
+    return json({ error: `Watchlist fetch failed: ${(e as Error).message}` }, 400)
   }
 
   // Auto-populate cannon_bidder_id the first time we see it in a response.
@@ -736,6 +1084,8 @@ Deno.serve(async (req: Request) => {
       return getBids(supabase, user.id)
     case 'debug_login':
       return debugLogin(supabase, user.id)
+    case 'debug_auth_v2':
+      return debugAuthV2(supabase, user.id)
     case 'place_bid': {
       const { auctionItemId, auctionId, newBidAmount, maxBidAmount, currentBid, minimumNextBid,
               itemName, endDate, totalBids, category, skuNumber } = body
