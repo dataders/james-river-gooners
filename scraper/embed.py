@@ -1,16 +1,16 @@
-"""CLIP embedding generation for auction items.
+"""Nomic Embed (text + vision) generation for auction items.
 
 Activated by setting GOONERS_EMBEDDINGS=1 before running scrape.py or
 rescrape_all.py.  Requires extra deps (not in the base scraper):
 
     uv run --with sentence-transformers --with pillow ...
 
-The first run downloads ~350 MB of CLIP model weights which are then cached
-by huggingface in ~/.cache/huggingface.
+The first run downloads ~550 MB each for the text and vision model weights,
+cached by huggingface in ~/.cache/huggingface.
 
 Output binary format (.embeddings file):
   [4 bytes uint32 LE]  n_items
-  [4 bytes uint32 LE]  n_dims  (derived from model at runtime)
+  [4 bytes uint32 LE]  n_dims  (768 for Nomic Embed v1.5)
   [n_items × n_dims × 4 bytes float32]  L2-normalised embeddings, row-major
   [remaining bytes]  UTF-8 JSON array of item ID strings (same order as rows)
 
@@ -23,10 +23,19 @@ auction's items; the frontend loader (src/hooks/useEmbeddings.js) namespaces
 them with the auction's safeId — `${safeId}:${id}` — when it merges multiple
 auctions in-browser, producing the globally-unique composite keys that search
 and filtering compare against. So there is no need to store composite ids here.
+
+Embedding strategy per item:
+  text_vec  = normalize(text_model.encode("search_document: " + title + " " + description))
+  img_vecs  = [normalize(vision_model.encode(img)) for img in images[:GOONERS_MAX_IMAGES]]
+  item_vec  = normalize(text_vec + mean(img_vecs))   # text-only if no images
+
+Both models share the same 768-dim space, so combining them is pure averaging
+math — no projection layer, no learned fusion weights.
 """
 
 import io
 import json
+import os
 import struct
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -35,17 +44,30 @@ import numpy as np
 import requests as _req
 
 
-_model = None
+_text_model = None
+_vision_model = None
+
+_MAX_IMAGES = int(os.environ.get("GOONERS_MAX_IMAGES", "3"))
 
 
-def _get_model():
-    global _model
-    if _model is None:
+def _get_text_model():
+    global _text_model
+    if _text_model is None:
         from sentence_transformers import SentenceTransformer
-        print("Loading CLIP model (first run: ~350 MB download)...")
-        _model = SentenceTransformer("clip-ViT-B-32")
-        print("CLIP model ready.")
-    return _model
+        print("Loading Nomic text model (first run: ~550 MB download)...")
+        _text_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
+        print("Nomic text model ready.")
+    return _text_model
+
+
+def _get_vision_model():
+    global _vision_model
+    if _vision_model is None:
+        from sentence_transformers import SentenceTransformer
+        print("Loading Nomic vision model (first run: ~550 MB download)...")
+        _vision_model = SentenceTransformer("nomic-ai/nomic-embed-vision-v1.5")
+        print("Nomic vision model ready.")
+    return _vision_model
 
 
 def _fetch_image(url: str):
@@ -64,22 +86,24 @@ def _fetch_image(url: str):
 
 
 def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str]]:
-    """Return (embeddings, ids) — float32 (n, n_dims) L2-normalised, plus item IDs.
+    """Return (embeddings, ids) — float32 (n, 768) L2-normalised, plus item IDs.
 
     Strategy:
       1. Batch-encode all texts in one model call (much faster than per-item).
-      2. Fetch all first images concurrently via a thread pool (I/O bound).
-      3. Batch-encode fetched images in one model call.
-      4. Combine text + image per item, re-normalise.
+      2. Fetch up to GOONERS_MAX_IMAGES images per item concurrently (I/O bound).
+      3. Batch-encode all fetched images in one model call.
+      4. Per item: mean-pool its image vectors, add to text vector, re-normalise.
 
-    n_dims is derived from the model at runtime — not hardcoded.
+    Text-only lots (0 images) use the text vector as-is. Both models project
+    into the same 768-dim space so combining them requires no learned fusion.
     """
-    model = _get_model()
+    text_model = _get_text_model()
+    vision_model = _get_vision_model()
     n = len(items)
     ids = [item["id"] for item in items]
 
-    # Parse the first image URL from each item (images may be a list or JSON string)
-    image_urls = []
+    # Parse up to _MAX_IMAGES http image URLs from each item
+    item_image_urls: list[list[str]] = []
     for item in items:
         images = item.get("images") or []
         if isinstance(images, str):
@@ -87,15 +111,16 @@ def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str]]
                 images = json.loads(images)
             except Exception:
                 images = []
-        image_urls.append(images[0] if images else None)
+        valid = [u for u in images if isinstance(u, str) and u.startswith("http")]
+        item_image_urls.append(valid[:_MAX_IMAGES])
 
-    # 1. Batch-encode all texts at once
+    # 1. Batch-encode all texts with the search_document task prefix
     texts = [
-        (f"{item.get('title', '')} {item.get('description', '')}".strip() or ".")
+        "search_document: " + (f"{item.get('title', '')} {item.get('description', '')}".strip() or ".")
         for item in items
     ]
     print(f"  Encoding {n} texts...")
-    text_embs = model.encode(
+    text_embs = text_model.encode(
         texts,
         convert_to_numpy=True,
         normalize_embeddings=True,
@@ -103,41 +128,50 @@ def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str]]
         show_progress_bar=False,
     )
 
-    # 2. Fetch all first images concurrently (thread-pool, bare requests)
-    urls_to_fetch = [(i, u) for i, u in enumerate(image_urls) if u]
-    pil_images: list = [None] * n
-    if urls_to_fetch:
-        fetch_indices, fetch_urls = zip(*urls_to_fetch)
-        print(f"  Fetching {len(fetch_urls)} images concurrently...")
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            fetched = pool.map(_fetch_image, fetch_urls)
-        for idx, img in zip(fetch_indices, fetched):
-            pil_images[idx] = img
+    # 2. Flatten (item_idx, img_idx, url) → fetch all images concurrently
+    url_tasks = [
+        (i, j, url)
+        for i, urls in enumerate(item_image_urls)
+        for j, url in enumerate(urls)
+    ]
+    pil_by_key: dict[tuple[int, int], object] = {}
+    if url_tasks:
+        print(f"  Fetching {len(url_tasks)} images concurrently...")
 
-    # 3. Batch-encode images that were successfully fetched
-    img_embs: list = [None] * n
-    to_encode = [(i, img) for i, img in enumerate(pil_images) if img is not None]
-    if to_encode:
-        enc_indices, enc_imgs = zip(*to_encode)
-        print(f"  Encoding {len(enc_imgs)} images...")
-        encoded = model.encode(
-            list(enc_imgs),
+        def _fetch_task(task):
+            i, j, url = task
+            return i, j, _fetch_image(url)
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            for i, j, img in pool.map(_fetch_task, url_tasks):
+                if img is not None:
+                    pil_by_key[(i, j)] = img
+
+    # 3. Batch-encode all successfully fetched images
+    item_img_embs: list[list[np.ndarray]] = [[] for _ in range(n)]
+    img_encode_tasks = sorted(pil_by_key.items())   # sorted by (i, j) for determinism
+    if img_encode_tasks:
+        keys, imgs = zip(*img_encode_tasks)
+        print(f"  Encoding {len(imgs)} images...")
+        encoded = vision_model.encode(
+            list(imgs),
             convert_to_numpy=True,
             normalize_embeddings=True,
             batch_size=32,
             show_progress_bar=False,
         )
-        for idx, emb in zip(enc_indices, encoded):
-            img_embs[idx] = emb
+        for (item_idx, _), emb in zip(keys, encoded):
+            item_img_embs[item_idx].append(emb)
 
-    # 4. Combine and re-normalise; n_dims derived from model output, not hardcoded
+    # 4. Fuse text + mean(images) and re-normalise; n_dims from model output
     n_dims = text_embs.shape[1]
     embeddings = np.empty((n, n_dims), dtype=np.float32)
     for i in range(n):
         t = text_embs[i]           # already L2-normalised
-        img = img_embs[i]
-        if img is not None:
-            combined = (t + img) * 0.5
+        img_list = item_img_embs[i]
+        if img_list:
+            img_mean = np.mean(img_list, axis=0)
+            combined = t + img_mean
             norm = np.linalg.norm(combined)
             # If combined is degenerate (extremely rare), keep the text embedding
             embeddings[i] = combined / norm if norm > 0 else t
@@ -177,7 +211,7 @@ def read_embeddings(path: Path) -> tuple[np.ndarray, list[str]]:
 
 def generate_and_write(items: list[dict], base_path: Path, session=None) -> Path:
     """Embed items and write to {base_path.stem}.embeddings. Returns the path written."""
-    print(f"\nGenerating CLIP embeddings for {len(items)} items...")
+    print(f"\nGenerating Nomic embeddings for {len(items)} items...")
     embeddings, ids = embed_items(items, session)
     emb_path = base_path.with_suffix(".embeddings")
     write_embeddings(embeddings, ids, emb_path)
