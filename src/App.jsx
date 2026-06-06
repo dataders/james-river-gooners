@@ -628,6 +628,7 @@ export default function App() {
                       >
                         Update credentials
                       </button>
+                      <br /><small style={{opacity:0.5}}>{cannonBids.error}</small>
                     </p>
                   ) : (
                     <>
