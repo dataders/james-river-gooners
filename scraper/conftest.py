@@ -28,6 +28,8 @@ _ISOLATED_ENV_VARS = (
     "GOONERS_ENRICHMENT",
     "GOONERS_ENRICHMENT_MODEL",
     "GOONERS_ENRICHMENT_WORKERS",
+    "GOONERS_ENRICHMENT_RPM",
+    "GOONERS_ENRICHMENT_MAX_RETRIES",
     "ANTHROPIC_API_KEY",
 )
 
@@ -37,3 +39,15 @@ def _isolate_env(monkeypatch):
     """Remove behavior-changing env vars so tests run against the defaults."""
     for name in _ISOLATED_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _disable_enrichment_throttle(monkeypatch):
+    """Turn off enrich.py's client-side rate limiter in unit tests — its real
+    spacing (≈1.3s/call at the default 45 RPM) would make fake-client tests
+    crawl. Production keeps the limiter; only tests bypass the sleep."""
+    try:
+        import enrich
+    except ImportError:
+        return
+    monkeypatch.setattr(enrich, "_limiter", enrich._RateLimiter(0))

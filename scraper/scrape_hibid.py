@@ -623,8 +623,8 @@ def scrape_hibid_auction(
 
     # LLM metadata enrichment (#99/#104): no-op unless GOONERS_ENRICHMENT=1 + a
     # key is set. Runs while images are still arrays.
-    from enrich import enrich_items
-    enrich_items(all_items)
+    from enrich import enrich_items, load_prior_enrichment
+    enrich_items(all_items, prior_by_id=load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson"))
     from supabase_enrichment import maybe_export_enrichment
     maybe_export_enrichment(all_items)
 

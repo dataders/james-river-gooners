@@ -2,13 +2,18 @@ import json
 import unittest
 from unittest import mock
 
+import time
+
 import enrich
 from enrich import (
+    _RateLimiter,
     build_content,
     enrich_items,
+    enrichment_fingerprint,
     is_enrichment_enabled,
     item_images,
     item_prompt_text,
+    load_prior_enrichment,
     parse_enrichment,
 )
 
@@ -148,6 +153,117 @@ class EnrichItemsTests(unittest.TestCase):
         # The failed lot still carries the seeded empty fields (consistent schema).
         for field in enrich.ENRICHMENT_FIELDS:
             self.assertEqual(bad[field], "")
+
+
+class FingerprintTests(unittest.TestCase):
+    def test_stable_for_identical_inputs(self):
+        a = {"title": "DeWalt DCD771", "description": "drill", "images": ["https://i/1.jpg"]}
+        b = {"title": "DeWalt DCD771", "description": "drill", "images": ["https://i/1.jpg"]}
+        self.assertEqual(enrichment_fingerprint(a), enrichment_fingerprint(b))
+
+    def test_changes_when_text_or_image_changes(self):
+        base = {"title": "DeWalt DCD771", "images": ["https://i/1.jpg"]}
+        self.assertNotEqual(
+            enrichment_fingerprint(base),
+            enrichment_fingerprint({**base, "title": "DeWalt DCD999"}),
+        )
+        self.assertNotEqual(
+            enrichment_fingerprint(base),
+            enrichment_fingerprint({**base, "images": ["https://i/2.jpg"]}),
+        )
+
+    def test_changes_with_model(self):
+        item = {"title": "Drill", "images": []}
+        before = enrichment_fingerprint(item)
+        with mock.patch.object(enrich, "MODEL", "some-other-model"):
+            self.assertNotEqual(before, enrichment_fingerprint(item))
+
+
+class IncrementalReuseTests(unittest.TestCase):
+    def _client(self):
+        return _FakeClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+        })
+
+    def test_unchanged_lot_is_reused_without_api_call(self):
+        item = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        client = self._client()
+        # First pass enriches and stamps the fingerprint.
+        enrich_items([item], client=client)
+        self.assertEqual(client.messages.calls, 1)
+        prior_by_id = {"good": dict(item)}
+
+        # Second pass with an identical lot reuses the prior row — no new call.
+        fresh = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        client2 = self._client()
+        enrich_items([fresh], client=client2, prior_by_id=prior_by_id)
+        self.assertEqual(client2.messages.calls, 0)
+        self.assertEqual(fresh["brand"], "DeWalt")
+        self.assertEqual(fresh["enrichmentConfidence"], "high")
+
+    def test_changed_lot_is_re_enriched(self):
+        prior_by_id = {"good": {
+            "id": "good", "brand": "DeWalt",
+            "enrichmentInputHash": "stale-hash-that-wont-match",
+        }}
+        fresh = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        client = self._client()
+        enrich_items([fresh], client=client, prior_by_id=prior_by_id)
+        self.assertEqual(client.messages.calls, 1)
+
+    def test_empty_result_is_still_cached(self):
+        # A generic lot the model can't identify still gets a fingerprint, so it
+        # isn't re-called every scrape (the junk majority is the whole point).
+        item = {"id": "junk", "title": "Lot - 207", "description": "assorted", "images": []}
+        client = _FakeClient({})  # falls through to {} → all-empty enrichment
+        enrich_items([item], client=client)
+        self.assertTrue(item["enrichmentInputHash"])
+
+        prior_by_id = {"junk": dict(item)}
+        fresh = {"id": "junk", "title": "Lot - 207", "description": "assorted", "images": []}
+        client2 = _FakeClient({})
+        enrich_items([fresh], client=client2, prior_by_id=prior_by_id)
+        self.assertEqual(client2.messages.calls, 0)
+
+
+class LoadPriorEnrichmentTests(unittest.TestCase):
+    def test_missing_sidecar_is_empty(self):
+        from pathlib import Path
+        self.assertEqual(load_prior_enrichment(Path("/no/such/file.ndjson")), {})
+
+    def test_indexes_rows_by_id(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "a.ndjson"
+            path.write_text(
+                json.dumps({"id": "1", "brand": "X"}) + "\n"
+                + "\n"  # blank line tolerated
+                + json.dumps({"id": "2", "brand": "Y"}) + "\n",
+                encoding="utf-8",
+            )
+            prior = load_prior_enrichment(path)
+            self.assertEqual(set(prior), {"1", "2"})
+            self.assertEqual(prior["2"]["brand"], "Y")
+
+
+class RateLimiterTests(unittest.TestCase):
+    def test_zero_rpm_does_not_sleep(self):
+        limiter = _RateLimiter(0)
+        start = time.monotonic()
+        for _ in range(5):
+            limiter.acquire()
+        self.assertLess(time.monotonic() - start, 0.05)
+
+    def test_spaces_calls_by_min_interval(self):
+        limiter = _RateLimiter(600)  # 0.1s spacing
+        start = time.monotonic()
+        for _ in range(3):  # first is free, then 2 × 0.1s
+            limiter.acquire()
+        self.assertGreaterEqual(time.monotonic() - start, 0.18)
 
 
 if __name__ == "__main__":
