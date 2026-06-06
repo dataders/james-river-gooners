@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: fct_daily_scrape_activity
+    description: >
+      Per-day, per-source scrape quality dashboard. Tracks throughput across the
+      three intelligence pipelines (enrichment, eBay comps, Cannon's priors)
+      relative to lots scraped. Use rolling_7d_* columns for SLA baselines —
+      individual days may be low when a sub-job ran on a different schedule.
+      days_since_* columns fire alerts when a pipeline goes quiet.
+    columns:
+      - name: scrape_date
+        tests: [not_null]
+      - name: source
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['cannons', 'hibid', 'rasmus']
+      - name: enrichment_rate_pct
+        description: >
+          Lots newly enriched today / active lots scraped today × 100.
+          Will be >100% on backfill days. Null when no lots were scraped.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              where: "enrichment_rate_pct is not null"
+      - name: ebay_match_rate_pct
+        description: eBay queries that returned at least one match.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "ebay_match_rate_pct is not null"
+      - name: rolling_7d_enrichment_rate
+        description: >
+          7-day rolling average of enrichment_rate_pct. The primary SLA metric —
+          set an alert if this drops below your target threshold.
+      - name: days_since_enrichment
+        description: >
+          Days since the enrichment sub-job last produced output for this source.
+          Null means it has never run. Alert at >3 days.
+      - name: days_since_ebay_comps
+        description: Days since eBay comp queries were last run for this source.
+      - name: days_since_cannons_priors
+        description: Days since Cannon's CLIP comps were last generated for this source.
+
+  - name: fct_api_spend
+    description: >
+      Daily API usage and estimated spend across eBay and Anthropic.
+      Cost figures are estimates based on average token counts set in dbt vars
+      (est_enrichment_input_tokens, est_enrichment_output_tokens,
+      anthropic_haiku_input_cost_per_1m, anthropic_haiku_output_cost_per_1m).
+      Update vars in dbt_project.yml when you change prompts or upgrade models.
+      Cumulative columns give lifetime spend; rolling_30d_* gives the burn rate.
+    columns:
+      - name: activity_date
+        tests: [not_null, unique]
+      - name: ebay_queries
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: enrichment_calls
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: anthropic_total_cost_usd
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: ebay_cost_usd
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: rolling_30d_total_cost_usd
+        description: >
+          30-day trailing API spend in USD. Use as a monthly budget indicator —
+          if this approaches your budget cap, reduce enrichment batch sizes or
+          eBay comp frequency.
