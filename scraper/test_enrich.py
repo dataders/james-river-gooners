@@ -414,11 +414,46 @@ class EnrichItemsBatchTests(unittest.TestCase):
             "brand": "DeWalt", "model_or_sku": "DCD771",
             "condition": "used", "product_url": "", "confidence": "high",
         }})
-        with mock.patch.object(enrich, "BATCH_MAX_REQUESTS", 2):
+        # Inline path (default) chunks at BATCH_INLINE_MAX_REQUESTS.
+        with mock.patch.object(enrich, "BATCH_INLINE_MAX_REQUESTS", 2):
             enriched = enrich_items_batch(items, client=client, poll_interval=0)
         self.assertEqual(enriched, 5)
         # 5 lots / 2 per batch → 3 submissions.
         self.assertEqual(client.messages.batches.created, 3)
+
+    def test_inline_images_are_fetched_and_base64_encoded(self):
+        # With inline_images (the default), the photo is downloaded + downscaled
+        # and sent as a base64 block — no image URL reaches the request, so
+        # Anthropic never does a server-side fetch (the 100 RPM URL-fetch limit).
+        items = [{"id": "good", "title": "DeWalt DCD771 drill",
+                  "images": ["https://img/1.jpg"]}]
+        client = _FakeBatchClient({"DeWalt DCD771 drill": {
+            "brand": "DeWalt", "model_or_sku": "DCD771",
+            "condition": "used", "product_url": "", "confidence": "high",
+        }})
+        with mock.patch.object(enrich, "fetch_image_base64", lambda url: ("image/jpeg", "ZmFrZQ==")):
+            enrich_items_batch(items, client=client, poll_interval=0)
+        req = client.messages.batches._requests[0]
+        blocks = req["params"]["messages"][0]["content"]
+        image_blocks = [b for b in blocks if b.get("type") == "image"]
+        self.assertEqual(len(image_blocks), 1)
+        self.assertEqual(image_blocks[0]["source"]["type"], "base64")
+        self.assertEqual(image_blocks[0]["source"]["data"], "ZmFrZQ==")
+        self.assertEqual(items[0]["brand"], "DeWalt")
+
+    def test_inline_image_fetch_failure_falls_back_to_text_only(self):
+        items = [{"id": "good", "title": "DeWalt DCD771 drill",
+                  "images": ["https://img/gone.jpg"]}]
+        client = _FakeBatchClient({"DeWalt DCD771 drill": {
+            "brand": "DeWalt", "model_or_sku": "DCD771",
+            "condition": "used", "product_url": "", "confidence": "high",
+        }})
+        with mock.patch.object(enrich, "fetch_image_base64", lambda url: None):
+            enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        req = client.messages.batches._requests[0]
+        blocks = req["params"]["messages"][0]["content"]
+        self.assertFalse([b for b in blocks if b.get("type") == "image"])  # text-only
+        self.assertEqual(enriched, 1)  # still enriched from the text
 
 
 class BackfillTargetTests(unittest.TestCase):

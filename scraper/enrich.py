@@ -30,15 +30,18 @@ validated before it becomes a standing cost on every scheduled scrape.
 
     python enrich.py <safe_id> [<safe_id> ...]            # backfill (synchronous)
     python enrich.py --batch <safe_id> [<safe_id> ...]   # backfill via the Message
-        Batches API: all named auctions' lots go into one async batch at 50% cost
-        with no per-minute rate limit. Best for a large historical backfill; a
-        batch can take up to 24h, so the live scrape path stays synchronous.
+        Batches API at 50% cost. Photos are inlined as base64 (needs ``requests``
+        + ``pillow``) rather than sent by URL — Anthropic fetching image URLs is
+        capped by an org-wide ~100 RPM URL Content Fetching limit that batches do
+        NOT lift, so a batch of URL images would mostly return rate_limit_error.
+        A batch can take up to 24h, so the live scrape path stays synchronous.
     python enrich.py --batch --all                        # every auction across the
         active AND archive read models. Named ids also resolve in either dir.
 
 Backfill spans active + archive, rewrites the NDJSON/Parquet read model, then
 mirrors the identified lots into the Supabase ``lot_enrichment`` table (a no-op
-without ``SUPABASE_SECRET_KEY``).
+without ``SUPABASE_SECRET_KEY``). For the batch path add ``--with anthropic
+--with requests --with pillow``.
 """
 
 import concurrent.futures
@@ -71,12 +74,24 @@ MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
 ENRICHMENT_RPM = float(os.environ.get("GOONERS_ENRICHMENT_RPM", "45"))
 
 # Message Batches API knobs (the backfill path — `enrich_items_batch`). Batches
-# run async at 50% cost with no per-minute rate limit, so there's no throttle
-# here. A batch holds up to 100K requests / 256 MB; we chunk well under that and
-# most batches finish within an hour (24h hard ceiling).
+# run async at 50% cost with no per-minute *message* rate limit. But an image
+# sent by URL is fetched server-side, and URL Content Fetching has its own
+# org-wide limit (~100 RPM) that batches do NOT lift — a large batch of URL
+# images blows through it and nearly every request returns rate_limit_error. So
+# the batch path **inlines images as base64** (we download + downscale them
+# ourselves): no server-side fetch, no URL-fetch limit. The tradeoff is request
+# size, so inline batches are chunked by both count and a byte budget.
 BATCH_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_SIZE", "10000"))
+# Inlined images make each request far larger, so inline batches cap at a lower
+# count and a payload budget well under the 256 MB hard limit.
+BATCH_INLINE_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_SIZE", "2000"))
+BATCH_MAX_BYTES = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024)))
 BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
 BATCH_MAX_WAIT = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600)))
+# Downscale inlined images to keep the batch payload small — a brand/model is
+# identifiable well below full resolution. Fetched concurrently.
+MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "512"))
+IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16"))
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
@@ -235,15 +250,54 @@ def build_content(item: dict) -> list:
     return content
 
 
-def build_request_params(item: dict) -> dict:
-    """The Messages API params for one lot. Shared by the synchronous path
-    (``messages.create``) and the Batches API path so both send byte-identical
-    requests — the only difference is the transport."""
+def fetch_image_base64(url: str) -> tuple[str, str] | None:
+    """Download an image and return ``(media_type, base64_data)`` as a downscaled
+    JPEG, or ``None`` on any failure (caller falls back to text-only). Used by the
+    batch path to inline images so Anthropic doesn't fetch the URL itself (which
+    would hit the org's URL Content Fetching rate limit)."""
+    if not url.startswith(("http://", "https://")):
+        return None
+    try:
+        import base64
+        import io
+
+        import requests
+        from PIL import Image
+
+        resp = requests.get(url, timeout=20)
+        resp.raise_for_status()
+        img = Image.open(io.BytesIO(resp.content)).convert("RGB")
+        img.thumbnail((MAX_IMAGE_PX, MAX_IMAGE_PX))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        return "image/jpeg", base64.b64encode(buf.getvalue()).decode("ascii")
+    except Exception:  # noqa: BLE001 — any fetch/decode failure → text-only
+        return None
+
+
+def build_content_inline(item: dict, image: tuple[str, str] | None) -> list:
+    """User content with the photo inlined as base64 (or text-only when there's
+    no usable image). The batch counterpart to ``build_content``."""
+    content = []
+    if image is not None:
+        media_type, data = image
+        content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": data},
+        })
+    content.append({"type": "text", "text": item_prompt_text(item)})
+    return content
+
+
+def build_request_params(item: dict, content: list | None = None) -> dict:
+    """The Messages API params for one lot. ``content`` defaults to the
+    image-by-URL content (synchronous path); the batch path passes inlined-image
+    content. Everything else is identical so both transports score the same."""
     return {
         "model": MODEL,
         "max_tokens": 256,
         "system": SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": build_content(item)}],
+        "messages": [{"role": "user", "content": content if content is not None else build_content(item)}],
         "output_config": {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
     }
 
@@ -427,20 +481,39 @@ def _wait_for_batch(client, batch_id: str, poll_interval: float, max_wait: float
         time.sleep(poll_interval)
 
 
-def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: float) -> int:
-    """Submit one Message Batch for ``chunk`` and apply the results in place.
-    Returns the count of lots that got any field populated.
+def _fetch_chunk_images(chunk: list[dict]) -> dict[int, tuple[str, str] | None]:
+    """Concurrently download + downscale each lot's first image, keyed by
+    ``id(item)``. A failed/absent image maps to ``None`` (→ text-only)."""
+    targets = {id(item): first_image_url(item) for item in chunk}
+    images: dict[int, tuple[str, str] | None] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=IMAGE_FETCH_WORKERS) as pool:
+        futures = {pool.submit(fetch_image_base64, url): key for key, url in targets.items() if url}
+        for future in concurrent.futures.as_completed(futures):
+            images[futures[future]] = future.result()
+    return images
 
-    Each request is keyed by an index-based ``custom_id`` (``lot-N``) that maps
-    back to the lot — index-based rather than the lot's own id so the id never
-    has to satisfy the ``custom_id`` charset/length rules."""
+
+def _build_batch_requests(chunk: list[dict], inline_images: bool) -> tuple[list[dict], dict[str, dict]]:
+    """Build the batch requests for ``chunk`` and the ``custom_id`` → item map.
+
+    Index-based ``custom_id`` (``lot-N``) so the lot's own id never has to satisfy
+    the custom_id charset/length rules. When ``inline_images`` the photos are
+    downloaded + downscaled and inlined as base64 (no server-side URL fetch)."""
+    images = _fetch_chunk_images(chunk) if inline_images else {}
     by_custom_id: dict[str, dict] = {}
     requests = []
     for i, item in enumerate(chunk):
         custom_id = f"lot-{i}"
         by_custom_id[custom_id] = item
-        requests.append({"custom_id": custom_id, "params": build_request_params(item)})
+        content = build_content_inline(item, images.get(id(item))) if inline_images else None
+        requests.append({"custom_id": custom_id, "params": build_request_params(item, content=content)})
+    return requests, by_custom_id
 
+
+def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: float, inline_images: bool) -> int:
+    """Submit one Message Batch for ``chunk`` and apply the results in place.
+    Returns the count of lots that got any field populated."""
+    requests, by_custom_id = _build_batch_requests(chunk, inline_images)
     batch = client.messages.batches.create(requests=requests)
     batch_id = getattr(batch, "id", None) or batch["id"]
     print(f"  enrich: submitted batch {batch_id} ({len(requests)} lots); polling…")
@@ -479,17 +552,25 @@ def enrich_items_batch(
     prior_by_id: dict | None = None,
     poll_interval: float = BATCH_POLL_INTERVAL,
     max_wait: float = BATCH_MAX_WAIT,
+    inline_images: bool = True,
 ) -> int:
     """Enrich every lot in place via the **Message Batches API**; return the count
     that got any field populated.
 
-    Same gating, seeding, and unchanged-lot reuse as ``enrich_items`` — the only
-    difference is transport: lots that need the API are submitted as one (or a
-    few, chunked at ``BATCH_MAX_REQUESTS``) async batches at 50% of the per-token
-    cost, with no per-minute rate limit. Use this for a large historical backfill;
-    use ``enrich_items`` for a live scrape (a batch can take up to 24h to finish).
+    Same gating, seeding, and unchanged-lot reuse as ``enrich_items`` — the
+    difference is transport: lots that need the API are submitted as async
+    batches at 50% of the per-token cost. With ``inline_images`` (the default)
+    each photo is downloaded + downscaled and inlined as base64, so Anthropic
+    never fetches the URL itself — that avoids the org's URL Content Fetching
+    rate limit (~100 RPM), which a batch of URL images would otherwise blow
+    through. Inline batches are chunked by both ``BATCH_INLINE_MAX_REQUESTS`` and
+    ``BATCH_MAX_BYTES`` (payload budget under the 256 MB hard limit); URL batches
+    chunk by ``BATCH_MAX_REQUESTS`` only.
 
-    A no-op (returns 0) unless enrichment is enabled and a client can be built."""
+    Use this for a large historical backfill (needs ``requests`` + ``pillow`` for
+    image inlining); use ``enrich_items`` for a live scrape (a batch can take up
+    to 24h to finish). A no-op (returns 0) unless enrichment is enabled and a
+    client can be built."""
     if not items:
         return 0
     client = _resolve_client(client)
@@ -502,15 +583,43 @@ def enrich_items_batch(
             print(f"  enriched 0/0 lots via {MODEL} (batch) (reused {reused} unchanged)")
         return 0
 
+    max_count = BATCH_INLINE_MAX_REQUESTS if inline_images else BATCH_MAX_REQUESTS
     enriched = 0
-    for start in range(0, len(to_enrich), BATCH_MAX_REQUESTS):
-        enriched += _run_one_batch(
-            client, to_enrich[start:start + BATCH_MAX_REQUESTS], poll_interval, max_wait
-        )
+    for chunk in _chunk_for_batch(to_enrich, max_count, inline_images):
+        enriched += _run_one_batch(client, chunk, poll_interval, max_wait, inline_images)
 
     reused_note = f" (reused {reused} unchanged)" if reused else ""
     print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL} (batch){reused_note}")
     return enriched
+
+
+def _chunk_for_batch(to_enrich: list[dict], max_count: int, inline_images: bool):
+    """Yield chunks bounded by request count and, for inline batches, a payload
+    byte budget (a rough estimate from the lot's text + image bytes, so a chunk
+    of large photos still lands under the 256 MB hard limit)."""
+    chunk: list[dict] = []
+    chunk_bytes = 0
+    for item in to_enrich:
+        # Rough per-request size: prompt text + (for inline) the on-disk image.
+        est = len(item_prompt_text(item).encode("utf-8")) + 2048
+        if inline_images:
+            # base64 of a downscaled JPEG; cap the estimate so one big source
+            # image doesn't over-inflate the budget (we downscale before send).
+            est += min(_estimated_image_bytes(item), 400 * 1024)
+        if chunk and (len(chunk) >= max_count or (inline_images and chunk_bytes + est > BATCH_MAX_BYTES)):
+            yield chunk
+            chunk, chunk_bytes = [], 0
+        chunk.append(item)
+        chunk_bytes += est
+    if chunk:
+        yield chunk
+
+
+def _estimated_image_bytes(item: dict) -> int:
+    """A cheap upper-bound estimate of an inlined image's base64 size for chunk
+    budgeting — we can't know the real size without fetching, so assume a
+    downscaled JPEG near the per-image cap."""
+    return 300 * 1024 if first_image_url(item) else 0
 
 
 def _write_rows(items_dir, safe_id: str, rows: list[dict]) -> None:
