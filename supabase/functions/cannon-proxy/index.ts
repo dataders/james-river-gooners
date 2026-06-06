@@ -378,6 +378,172 @@ async function getStatus(
   return json({ linked: !!data, username: data?.cannon_username ?? null })
 }
 
+// Full HTTP trace of the login flow: follows every redirect manually and
+// records status, Location, and Set-Cookie at each hop so we can see exactly
+// where (or whether) .ASPXAUTH is issued.
+async function debugAuthV2(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<Response> {
+  const { data } = await supabase
+    .from('cannon_credentials')
+    .select('cannon_username, cannon_password_enc')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!data) return json({ error: 'No credentials stored' }, 400)
+
+  const base = 'https://bid.cannonsauctions.com'
+  const password = await decryptText(data.cannon_password_enc)
+
+  const trace: Array<{
+    step: string
+    url: string
+    method: string
+    status: number
+    location: string | null
+    setCookieRaw: string[]
+    newCookieKeys: string[]
+    sessionCookieKeys: string[]
+  }> = []
+
+  let sessionCookies: Record<string, string> = {}
+
+  async function hop(step: string, url: string, method: 'GET' | 'POST', body?: string): Promise<{ status: number; location: string | null; html: string }> {
+    const headers: Record<string, string> = {
+      'User-Agent': UA,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Cookie': cookieHeader(sessionCookies),
+    }
+    if (method === 'POST') {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded'
+      headers['Referer'] = url
+    }
+    const resp = await fetch(url, { method, headers, body, redirect: 'manual' })
+    const rawSetCookies: string[] = (resp as Response & { headers: Headers & { getSetCookie?(): string[] } }).headers.getSetCookie?.() ?? []
+    const newCookies = getSetCookies(resp.headers)
+    sessionCookies = mergeCookies(sessionCookies, newCookies)
+    const html = resp.status !== 302 ? await resp.text() : ''
+    trace.push({
+      step,
+      url,
+      method,
+      status: resp.status,
+      location: resp.headers.get('location'),
+      setCookieRaw: rawSetCookies,
+      newCookieKeys: Object.keys(newCookies),
+      sessionCookieKeys: Object.keys(sessionCookies),
+    })
+    return { status: resp.status, location: resp.headers.get('location'), html }
+  }
+
+  // Chain: follow redirects manually from a starting URL
+  async function followChain(startUrl: string, startMethod: 'GET' | 'POST', startBody?: string) {
+    let url: string | null = startUrl
+    let method: 'GET' | 'POST' = startMethod
+    let body: string | undefined = startBody
+    let hopCount = 0
+    while (url && hopCount < 8) {
+      hopCount++
+      const { status, location, html } = await hop(`hop${hopCount}`, url, method, body)
+      if (status === 302 && location) {
+        url = location.startsWith('http') ? location : `${base}${location.startsWith('/') ? '' : '/'}${location}`
+        method = 'GET'
+        body = undefined
+      } else {
+        // 200 — extract form fields for diagnostic
+        const formInputs: Record<string, string> = {}
+        for (const m of html.matchAll(/<input[^>]+>/gi)) {
+          const tag = m[0]
+          const name = tag.match(/name="([^"]+)"/)?.[1]
+          const value = tag.match(/value="([^"]*)"/)?.[1] ?? ''
+          const type = tag.match(/type="([^"]+)"/i)?.[1] ?? 'text'
+          if (name) formInputs[name] = `[${type}] ${value.slice(0, 30)}`
+        }
+        trace.push({ step: 'formInputs', url, method, status: 0, location: null, setCookieRaw: [], newCookieKeys: [], sessionCookieKeys: Object.keys(sessionCookies) } as typeof trace[0])
+        ;(trace[trace.length - 1] as Record<string, unknown>).formInputs = formInputs
+        ;(trace[trace.length - 1] as Record<string, unknown>).finalUrl = url
+        break
+      }
+    }
+  }
+
+  // Step A: trace GET /Authentication/Login hop-by-hop
+  await followChain(`${base}/Authentication/Login`, 'GET')
+
+  // Step B: find the last 200 landing page and extract the login form fields
+  const lastLanding = trace.slice().reverse().find(t => t.status === 200)
+  const formAction = (lastLanding as Record<string, unknown> | undefined)?.formAction as string | undefined
+  const landingUrl = (lastLanding as Record<string, unknown> | undefined)?.finalUrl as string | undefined ?? `${base}/Public/Account/Login`
+
+  // Re-fetch that page to extract the form
+  const loginPage = await fetch(landingUrl, {
+    headers: { 'User-Agent': UA, 'Cookie': cookieHeader(sessionCookies) },
+    redirect: 'manual',
+  })
+  const loginHtml = await loginPage.text()
+  const verificationToken = loginHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  const tenantCode = loginHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  const discoveredFormAction = loginHtml.match(/<form[^>]+action="([^"]+)"/)?.[1]
+  const loginPostUrl = discoveredFormAction
+    ? (discoveredFormAction.startsWith('http') ? discoveredFormAction : `${base}${discoveredFormAction}`)
+    : landingUrl
+  const usernameField =
+    (loginHtml.match(/name="(Email|UserName|Username)"[^>]*type="(?:text|email)"/i) ??
+     loginHtml.match(/type="(?:text|email)"[^>]*name="(Email|UserName|Username)"/i))?.[1] ?? 'Username'
+
+  const allInputs: Record<string, string> = {}
+  for (const m of loginHtml.matchAll(/<input[^>]+>/gi)) {
+    const tag = m[0]
+    const name = tag.match(/name="([^"]+)"/)?.[1]
+    const type = tag.match(/type="([^"]+)"/i)?.[1] ?? 'text'
+    if (name) allInputs[name] = type
+  }
+
+  // Step C: POST credentials to the discovered login action
+  const loginBody: Record<string, string> = {
+    ReturnUrl: '/Public/Auction/Watchlist',
+    TenantCode: tenantCode,
+    Password: '***',
+    __RequestVerificationToken: verificationToken,
+  }
+  loginBody[usernameField] = data.cannon_username
+
+  const realLoginBody: Record<string, string> = { ...loginBody, Password: password }
+  await followChain(loginPostUrl, 'POST', new URLSearchParams(realLoginBody).toString())
+
+  // Step D: try GetWatchlist with the current session and report the result
+  const wlResp = await fetch(
+    `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=Current`,
+    {
+      headers: {
+        'Cookie': cookieHeader(sessionCookies),
+        'User-Agent': UA,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': `${base}/Public/Auction/Watchlist`,
+      },
+      redirect: 'manual',
+    }
+  )
+  const wlStatus = wlResp.status
+  const wlLocation = wlResp.headers.get('location')
+
+  return json({
+    username: data.cannon_username,
+    landingUrl,
+    loginPostUrl,
+    usernameField,
+    formInputsOnLoginPage: allInputs,
+    hasToken: !!verificationToken,
+    tenantCode,
+    loginBodySent: loginBody,
+    finalSessionCookies: Object.keys(sessionCookies),
+    hasAspxAuth: '.ASPXAUTH' in sessionCookies,
+    watchlistStatus: wlStatus,
+    watchlistLocation: wlLocation,
+    trace,
+  })
+}
+
 async function debugLogin(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -846,6 +1012,8 @@ Deno.serve(async (req: Request) => {
       return getBids(supabase, user.id)
     case 'debug_login':
       return debugLogin(supabase, user.id)
+    case 'debug_auth_v2':
+      return debugAuthV2(supabase, user.id)
     case 'place_bid': {
       const { auctionItemId, auctionId, newBidAmount, maxBidAmount, currentBid, minimumNextBid,
               itemName, endDate, totalBids, category, skuNumber } = body
