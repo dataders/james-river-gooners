@@ -487,8 +487,8 @@ def fetch_lot_details(
         "totalBids": total_bids,
         "endDate": end_date,
         "images": images,
-        "category": normalize_category(raw_cat, combined),
-        "rawCategory": normalize_raw_with_description(raw_cat, combined),
+        "category": normalize_category(raw_cat, combined, source="hibid"),
+        "rawCategory": normalize_raw_with_description(raw_cat, combined, source="hibid"),
         "detailUrl": lot_url,
     }
 
