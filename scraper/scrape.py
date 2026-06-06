@@ -428,8 +428,11 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     # LLM metadata enrichment (#99/#104): brand/model/condition for sharper eBay
     # comp queries + UI display. No-op unless GOONERS_ENRICHMENT=1 + a key is set,
     # so default behavior is unchanged. Runs while images are still arrays.
-    from enrich import enrich_items
-    enrich_items(all_items)
+    # Hand it the prior sidecar so unchanged lots reuse their enrichment instead
+    # of re-paying for an identical API call (incremental enrichment).
+    from enrich import enrich_items, load_prior_enrichment
+    prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
+    enrich_items(all_items, prior_by_id=prior_by_id)
     # Mirror enriched lots into Supabase so they're queryable via the API (#104).
     # No-op without SUPABASE_SECRET_KEY or enriched lots.
     from supabase_enrichment import maybe_export_enrichment

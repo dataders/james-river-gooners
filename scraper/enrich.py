@@ -32,10 +32,13 @@ validated before it becomes a standing cost on every scheduled scrape.
 """
 
 import concurrent.futures
+import hashlib
 import json
 import os
 import re
 import sys
+import threading
+import time
 from pathlib import Path
 
 # Haiku is plenty for structured extraction and the cheapest option; overridable
@@ -48,11 +51,25 @@ MAX_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_WORKERS", "8"))
 # `retry-after` header and backs off. A generous retry count lets a lot ride out
 # the rate-limit window instead of being dropped. Overridable for higher tiers.
 MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
+# Proactively cap the request rate so the worker pool doesn't thrash the org's
+# per-minute limit. Relying on the SDK's reactive 429 backoff alone meant every
+# worker fired immediately, drew a 429, then slept on `retry-after` — thousands
+# of wasted round-trips that dragged a full enrichment past its CI step budget.
+# Spacing calls just under the limit (default 45 RPM, below the 50 RPM entry
+# tier) makes the run as fast as the limit allows and all but eliminates 429s.
+# Set to 0 to disable client-side throttling (e.g. on a higher tier).
+ENRICHMENT_RPM = float(os.environ.get("GOONERS_ENRICHMENT_RPM", "45"))
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
 # produced the row (provenance for the Supabase API / future re-runs).
-ENRICHMENT_FIELDS = ("brand", "modelOrSku", "condition", "productUrl", "enrichmentConfidence", "enrichmentModel")
+# `enrichmentInputHash` fingerprints the inputs that produced the row (model +
+# text + first photo) so a later scrape can reuse an unchanged lot's enrichment
+# instead of paying for an identical API call (see `enrich_items`).
+ENRICHMENT_FIELDS = (
+    "brand", "modelOrSku", "condition", "productUrl",
+    "enrichmentConfidence", "enrichmentModel", "enrichmentInputHash",
+)
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
 
@@ -114,6 +131,33 @@ def _make_client():
     return anthropic.Anthropic(max_retries=MAX_RETRIES)
 
 
+class _RateLimiter:
+    """Spaces calls across threads to stay under a requests-per-minute ceiling.
+
+    Each ``acquire`` reserves the next time slot (advancing a shared cursor under
+    a lock) and sleeps until it, so N worker threads issue at most ``rpm``
+    requests per minute combined. ``rpm <= 0`` disables throttling entirely."""
+
+    def __init__(self, rpm: float):
+        self._min_interval = 60.0 / rpm if rpm > 0 else 0.0
+        self._lock = threading.Lock()
+        self._next = 0.0
+
+    def acquire(self) -> None:
+        if self._min_interval <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            scheduled = max(now, self._next)
+            self._next = scheduled + self._min_interval
+            wait = scheduled - now
+        if wait > 0:
+            time.sleep(wait)
+
+
+_limiter = _RateLimiter(ENRICHMENT_RPM)
+
+
 def item_images(item: dict) -> list:
     """Normalize the lot's images to a list of URLs. Items carry images as a
     real array pre-Parquet (during a scrape) and as a JSON string in Parquet /
@@ -143,15 +187,32 @@ def item_prompt_text(item: dict) -> str:
     return "\n".join(lines) if lines else "(no text provided)"
 
 
-def build_content(item: dict) -> list:
-    """The user-turn content: the first photo (when it's an http(s) URL) plus the
-    lot's identifying text."""
-    content = []
+def first_image_url(item: dict) -> str:
+    """The first http(s) photo URL, or "" — the only image enrichment reads."""
     images = item_images(item)
     if images:
         first = str(images[0])
         if first.startswith(("http://", "https://")):
-            content.append({"type": "image", "source": {"type": "url", "url": first}})
+            return first
+    return ""
+
+
+def enrichment_fingerprint(item: dict) -> str:
+    """Stable hash of everything that feeds an enrichment call: the model, the
+    lot's identifying text, and its first photo. Two lots (across scrapes) with
+    the same fingerprint would get an identical API result, so the prior one can
+    be reused. Binding in the model means a model change re-enriches everything."""
+    payload = "\x1f".join((MODEL, item_prompt_text(item), first_image_url(item)))
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+
+
+def build_content(item: dict) -> list:
+    """The user-turn content: the first photo (when it's an http(s) URL) plus the
+    lot's identifying text."""
+    content = []
+    first = first_image_url(item)
+    if first:
+        content.append({"type": "image", "source": {"type": "url", "url": first}})
     content.append({"type": "text", "text": item_prompt_text(item)})
     return content
 
@@ -177,6 +238,7 @@ def parse_enrichment(raw: dict) -> dict:
 def enrich_item(client, item: dict) -> dict:
     """Call Claude for one lot and return its parsed enrichment. Raises on API
     error — the caller isolates per-lot failures."""
+    _limiter.acquire()
     response = client.messages.create(
         model=MODEL,
         max_tokens=256,
@@ -189,6 +251,10 @@ def enrich_item(client, item: dict) -> dict:
     # Stamp provenance only on lots that were actually identified.
     if result.get("enrichmentConfidence"):
         result["enrichmentModel"] = MODEL
+    # Fingerprint the inputs so a later scrape can reuse this result unchanged.
+    # Stamped on every processed lot (identified or not) so even empty results
+    # are cached — otherwise the generic-junk majority would re-call every run.
+    result["enrichmentInputHash"] = enrichment_fingerprint(item)
     return result
 
 
@@ -197,14 +263,51 @@ def apply_enrichment(item: dict, enrichment: dict) -> None:
         item[field] = enrichment.get(field, "")
 
 
-def enrich_items(items: list[dict], client=None) -> int:
+def load_prior_enrichment(ndjson_path: Path) -> dict:
+    """Map lot id → its previous read-model row from a sidecar, for incremental
+    reuse. Empty dict when the sidecar is absent (first scrape of an auction)."""
+    prior_by_id: dict = {}
+    if not ndjson_path.exists():
+        return prior_by_id
+    for line in ndjson_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("id") is not None:
+            prior_by_id[row["id"]] = row
+    return prior_by_id
+
+
+def reuse_prior_enrichment(item: dict, prior_by_id: dict | None) -> dict | None:
+    """Return a prior lot's enrichment if it was produced from identical inputs.
+
+    A lot whose fingerprint matches the prior read model's row gets the same API
+    answer, so we copy it forward and skip the call. ``None`` means no reusable
+    prior — the lot must be (re-)enriched."""
+    if not prior_by_id:
+        return None
+    prior = prior_by_id.get(item.get("id"))
+    if not prior:
+        return None
+    prior_hash = str(prior.get("enrichmentInputHash") or "")
+    if prior_hash and prior_hash == enrichment_fingerprint(item):
+        return {field: prior.get(field, "") for field in ENRICHMENT_FIELDS}
+    return None
+
+
+def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None) -> int:
     """Enrich every lot in place; return the count that got any field populated.
 
     A no-op (returns 0) unless enrichment is enabled and a client can be built —
     so callers can invoke it unconditionally after a scrape. Pass ``client``
     explicitly (backfill CLI, tests) to bypass the env gate. Per-lot failures are
     logged and skipped so one bad lot never aborts the run; every item is seeded
-    with empty fields first so the Parquet schema stays consistent across rows."""
+    with empty fields first so the Parquet schema stays consistent across rows.
+
+    ``prior_by_id`` maps lot id → its previous read-model row; any lot whose
+    enrichment inputs are unchanged (matching ``enrichmentInputHash``) reuses
+    that row instead of paying for an identical API call, so steady-state scrapes
+    only spend on new or changed lots."""
     if not items:
         return 0
     if client is None:
@@ -218,9 +321,19 @@ def enrich_items(items: list[dict], client=None) -> int:
         for field in ENRICHMENT_FIELDS:
             item.setdefault(field, "")
 
+    # Reuse unchanged lots up front; only the rest hit the API.
+    to_enrich, reused = [], 0
+    for item in items:
+        cached = reuse_prior_enrichment(item, prior_by_id)
+        if cached is None:
+            to_enrich.append(item)
+        else:
+            apply_enrichment(item, cached)
+            reused += 1
+
     enriched = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(enrich_item, client, item): item for item in items}
+        futures = {pool.submit(enrich_item, client, item): item for item in to_enrich}
         for future in concurrent.futures.as_completed(futures):
             item = futures[future]
             try:
@@ -232,7 +345,8 @@ def enrich_items(items: list[dict], client=None) -> int:
             if any(result.get(field) for field in ENRICHMENT_FIELDS):
                 enriched += 1
 
-    print(f"  enriched {enriched}/{len(items)} lots via {MODEL}")
+    reused_note = f" (reused {reused} unchanged)" if reused else ""
+    print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL}{reused_note}")
     return enriched
 
 
