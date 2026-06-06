@@ -65,13 +65,29 @@ async function decryptText(ciphertext: string): Promise<string> {
 // headers.get('set-cookie') joins multiple Set-Cookie headers with ', ' (comma-space),
 // but parseCookies splits on ',(?=[^ ])' (comma NOT followed by space), so the join
 // boundary is never matched and only the first cookie survives.
-// getSetCookie() returns the full array — one entry per Set-Cookie header.
+// Strategy (most to least reliable):
+//   1. getSetCookie() — returns full array; Deno 1.40+
+//   2. iterate headers directly — avoids the join entirely; works in all versions
+//   3. fallback split on comma-nonspace from the joined string
 function getSetCookies(headers: Headers): Record<string, string> {
-  const list: string[] = (headers as Headers & { getSetCookie?(): string[] }).getSetCookie?.()
-    ?? (headers.get('set-cookie') ? [headers.get('set-cookie')!] : [])
+  let list: string[]
+  const h = headers as Headers & { getSetCookie?(): string[] }
+  if (typeof h.getSetCookie === 'function') {
+    list = h.getSetCookie()
+  } else {
+    // forEach is universally available; note callback order is (value, name)
+    list = []
+    headers.forEach((value, name) => {
+      if (name.toLowerCase() === 'set-cookie') list.push(value)
+    })
+    // If forEach also joined them into one string, split on comma-nonspace
+    if (list.length === 1) {
+      list = list[0].split(/,(?=[^ ])/).map(s => s.trim())
+    }
+  }
   const out: Record<string, string> = {}
-  for (const h of list) {
-    const pair = h.split(';')[0].trim()
+  for (const entry of list) {
+    const pair = entry.split(';')[0].trim()
     const eq = pair.indexOf('=')
     if (eq > 0) out[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim()
   }
@@ -252,8 +268,9 @@ async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemI
     redirect: 'manual',
   })
 
-  console.log('[cannon-proxy] BidHistory response status:', resp.status)
-  if (resp.status === 302) throw new Error('Session expired or not logged in (got redirect on BidHistory)')
+  const cookieKeys = Object.keys(cookies).join(',')
+  console.log('[cannon-proxy] BidHistory response status:', resp.status, '| cookies:', cookieKeys)
+  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→login, cookies: ${cookieKeys})`)
   if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
 
   const html = await resp.text()
