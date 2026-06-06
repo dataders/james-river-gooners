@@ -121,14 +121,25 @@ export function usePreferences() {
     })
   }, [])
 
-  // Isolate a single raw category: exclude every other category, and clear group
-  // exclusions so the kept category shows even if its group was hidden.
-  const showOnly = useCallback((keep, allCategories) => {
-    const excluded = allCategories.filter(c => c !== keep)
-    syncUrlParam('cat', excluded)
-    syncUrlParam('grp', [])
+  // Isolate a single raw category: exclude everything else.
+  // Uses coarse group exclusions for groups that don't contain `keep`, and fine
+  // raw-category exclusions only for sibling cats in `keep`'s own group — so a
+  // coin auction with 100 raw coin names produces a handful of grp= params
+  // instead of 100 cat= params.
+  // `groupedCategories` is the { group, rawCategories: [{ name }] }[] structure
+  // from getGroupedCategories — already available at the FilterBar call site.
+  const showOnly = useCallback((keep, groupedCategories) => {
+    const keepGroup = groupedCategories.find(g => g.rawCategories.some(c => c.name === keep))
+    const excludedGroups = groupedCategories
+      .filter(g => g !== keepGroup)
+      .map(g => g.group)
+    const excludedCategories = keepGroup
+      ? keepGroup.rawCategories.map(c => c.name).filter(n => n !== keep)
+      : []
+    syncUrlParam('cat', excludedCategories)
+    syncUrlParam('grp', excludedGroups)
     setPrefs(prev => {
-      const next = { ...prev, excludedCategories: excluded, excludedGroups: [] }
+      const next = { ...prev, excludedCategories, excludedGroups }
       savePrefs(next)
       return next
     })
