@@ -1,33 +1,43 @@
-import { pipeline, env } from '@huggingface/transformers'
+import { AutoTokenizer, CLIPTextModelWithProjection, env } from '@huggingface/transformers'
 
 // Never attempt to load local models — always fetch from Hugging Face Hub
 env.allowLocalModels = false
 
-let extractor = null
+let tokenizer = null
+let textModel = null
 
 async function loadModel() {
-  // Encode a text query into the Nomic Embed shared text/image projection space
-  // so it can be compared (dot product = cosine) against precomputed item
-  // embeddings produced by the Python scraper with nomic-embed-text-v1.5 +
-  // nomic-embed-vision-v1.5 — both project into the same 768-dim space.
+  // Encode the text query into CLIP's shared text/image projection space so it
+  // can be compared (dot product = cosine) against the precomputed image
+  // embeddings, which the Python scraper produces with sentence-transformers
+  // clip-ViT-B-32 — also projected and L2-normalized.
   //
-  // The feature-extraction pipeline with pooling:'mean' + normalize:true
-  // returns a flat 768-element Float32Array matching the scraper's output.
-  // dtype:'q8' keeps model size manageable for a browser worker.
-  extractor = await pipeline('feature-extraction', 'nomic-ai/nomic-embed-text-v1.5', { dtype: 'q8' })
+  // transformers.js v4 note: the old `feature-extraction` pipeline loads the
+  // *full* CLIP model, which demands `pixel_values` and throws on text input.
+  // CLIPTextModelWithProjection runs only the text tower and returns the
+  // projected `text_embeds` — the correct CLIP text embedding. `dtype: 'q8'`
+  // keeps the quantized 8-bit weights (the wasm default).
+  tokenizer = await AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32')
+  textModel = await CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', { dtype: 'q8' })
   self.postMessage({ type: 'ready' })
 }
 
 self.onmessage = async (e) => {
   const { type, query, id } = e.data
   if (type !== 'encode') return
-  if (!extractor) return  // still loading; caller waits for 'ready' before sending
+  if (!tokenizer || !textModel) return  // still loading; caller waits for 'ready' before sending
 
   try {
-    // search_query: prefix matches Nomic's recommended task type for retrieval queries;
-    // items were indexed with search_document: prefix.
-    const output = await extractor('search_query: ' + query, { pooling: 'mean', normalize: true })
-    const embedding = new Float32Array(output.data)
+    const inputs = tokenizer([query], { padding: true, truncation: true })
+    const { text_embeds } = await textModel(inputs)
+    // L2-normalize so the consumer's dot product equals cosine similarity
+    // (stored image embeddings are L2-normalized too).
+    const raw = text_embeds.data
+    let norm = 0
+    for (let i = 0; i < raw.length; i++) norm += raw[i] * raw[i]
+    norm = Math.sqrt(norm) || 1
+    const embedding = new Float32Array(raw.length)
+    for (let i = 0; i < raw.length; i++) embedding[i] = raw[i] / norm
     self.postMessage({ type: 'embedding', id, embedding }, [embedding.buffer])
   } catch (err) {
     self.postMessage({ type: 'error', id, message: err.message })

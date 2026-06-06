@@ -522,6 +522,10 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         from embed import generate_and_write as _gen_embeddings
         _gen_embeddings(all_items, items_path, session)
 
+    # Generate Nomic Embed (text+vision, 768-dim) → Supabase pgvector table (#165)
+    from embed_nomic import maybe_generate_and_upsert as _gen_nomic
+    _gen_nomic(all_items, safe_id, session)
+
     # Write Parquet (images stringified — Arrow doesn't support list-of-strings natively here)
     for item in all_items:
         item["images"] = json.dumps(item["images"])
