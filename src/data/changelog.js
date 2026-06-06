@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-06',
+    title: 'Image search',
+    changes: [
+      { id: 'image-search-modal', icon: '📷', text: 'New image search: snap or upload a photo and Claude identifies the item, then surfaces matching active lots, eBay sold comps, FB Marketplace links, and historical Cannon\'s sold prices — all from the 📷 button in the search bar.' },
+    ],
+  },
+  {
+    date: '2026-06-06',
     title: 'Layout & filter tidy-up',
     changes: [
       { id: 'compact-list-view', icon: '📋', text: 'New Compact view: a list of rows with a thumbnail and description, alongside the classic grid — pick whichever scans faster for you.' },
