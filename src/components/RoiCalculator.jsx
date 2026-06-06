@@ -3,8 +3,8 @@ import { normalizeEbaySoldMatches } from '../utils/ebayComps'
 
 const fmt = v => `$${Math.round(v).toLocaleString()}`
 
-// Margin comes from global preferences (set in the sidebar) rather than a
-// per-item slider, so this panel stays focused on the all-in cost (#88/#89).
+// Margin is a fixed default (the per-item slider and the sidebar preference were
+// removed), so this panel stays focused on the all-in cost (#88/#89).
 export function RoiCalculator({ soldComps, margin = DEFAULT_MARGIN * 100 }) {
   const normalized = normalizeEbaySoldMatches(soldComps)
   const prices = extractCompPrices(normalized)
@@ -45,7 +45,7 @@ export function RoiCalculator({ soldComps, margin = DEFAULT_MARGIN * 100 }) {
         </div>
       </div>
 
-      <div className="roi-footnote">20% buyer's premium + 6% VA sales tax · margin set in preferences</div>
+      <div className="roi-footnote">20% buyer's premium + 6% VA sales tax · {margin}% resale margin</div>
     </section>
   )
 }
