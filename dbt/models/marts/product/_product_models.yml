@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: fct_user_engagement
+    description: >
+      One row per registered user. Combines signup metadata with favorites and
+      ignores activity. Useful for understanding user cohorts, engagement tiers,
+      and time-to-first-interaction.
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+      - name: favorites_count
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: ignores_count
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: total_interactions
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: engagement_tier
+        tests:
+          - accepted_values:
+              values: ['inactive', 'light', 'moderate', 'heavy']
+      - name: pct_favorites_of_decisions
+        description: >
+          Of all decisive actions (favorite or ignore), what % were favorites?
+          50% = equal mix; 100% = only favorites; 0% = only ignores.
+
+  - name: fct_item_engagement
+    description: >
+      One row per item that has been favorited or ignored by at least one user.
+      Includes sold data and crowd-wisdom accuracy (did high approval correlate
+      with above-median final prices?).
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: favorited_by
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: ignored_by
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: pct_approval
+        description: >
+          favorited_by / (favorited_by + ignored_by) * 100. Null when no decisions
+          recorded (shouldn't happen given model filter, but defensive).
+      - name: pct_above_category_median
+        description: >
+          How far above (or below) the category median the lot sold. Null when
+          the lot has not yet sold. Use to test whether crowd approval predicts
+          above-median outcomes.
