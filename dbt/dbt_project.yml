@@ -16,22 +16,15 @@ clean-targets:
   - "dbt_packages"
 
 vars:
-  # Only sold lots at or above this threshold count toward price stats.
   min_sold_price: 1
 
 models:
   gooners_analytics:
     staging:
       +materialized: view
-      +schema: staging
+      +schema: staging         # → my_db.gooners_staging
     intermediate:
       +materialized: view
-      +schema: intermediate
+      +schema: intermediate    # → my_db.gooners_intermediate
     marts:
-      +materialized: table
-      listings:
-        +schema: analytics
-      product:
-        +schema: analytics
-      resale:
-        +schema: analytics
+      +materialized: table     # → my_db.gooners (target.schema, no suffix)

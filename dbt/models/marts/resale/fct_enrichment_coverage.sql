@@ -1,5 +1,5 @@
--- LLM enrichment coverage: what % of lots were identified, at what confidence,
--- using which model. Grain: (auction_safe_id, source).
+-- LLM enrichment coverage per auction.
+-- Grain: auction_safe_id.
 with lots as (
     select
         auction_safe_id,
@@ -26,7 +26,6 @@ auction_totals as (
 enrichment_stats as (
     select
         auction_safe_id,
-        max(source)                                                 as source,
         count(*)                                                    as enriched_lots,
         sum(case when confidence = 'high'   then 1 else 0 end)     as high_conf_lots,
         sum(case when confidence = 'medium' then 1 else 0 end)     as medium_conf_lots,
@@ -34,8 +33,8 @@ enrichment_stats as (
         sum(case when has_model   then 1 else 0 end)               as lots_with_model,
         sum(case when has_product_url then 1 else 0 end)           as lots_with_product_url,
         count(distinct enrichment_model)                           as distinct_models_used,
-        -- Most common enrichment model (for tracking model version migrations)
-        mode() within group (order by enrichment_model)            as primary_model,
+        -- DuckDB: mode(col) without ordered-set syntax
+        mode(enrichment_model)                                      as primary_model,
         min(updated_at)                                             as first_enriched_at,
         max(updated_at)                                             as last_enriched_at
 
@@ -67,13 +66,11 @@ select
     coalesce(es.lots_with_model, 0)                               as lots_with_model,
     coalesce(es.lots_with_product_url, 0)                         as lots_with_product_url,
     round(
-        100.0 * coalesce(es.lots_with_brand, 0)
-        / nullif(es.enriched_lots, 0),
+        100.0 * coalesce(es.lots_with_brand, 0) / nullif(es.enriched_lots, 0),
         1
     )                                                              as pct_brand_extracted,
     round(
-        100.0 * coalesce(es.lots_with_model, 0)
-        / nullif(es.enriched_lots, 0),
+        100.0 * coalesce(es.lots_with_model, 0) / nullif(es.enriched_lots, 0),
         1
     )                                                              as pct_model_extracted,
 

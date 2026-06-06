@@ -1,8 +1,6 @@
 -- eBay comp coverage and freshness per auction.
--- Tells you: what % of lots have comps, how old are they, which query strategy wins.
 -- Grain: (auction_safe_id, source_query).
 with lots as (
-    -- All lots (active + archived) as the denominator
     select
         auction_safe_id,
         item_id,
@@ -11,9 +9,10 @@ with lots as (
     from {{ ref('stg_lots') }}
 ),
 
--- Latest comp per (auction, item, source_query)
+-- Latest comp per (auction, item, source_query).
+-- DuckDB: QUALIFY replaces Postgres DISTINCT ON.
 latest_comps as (
-    select distinct on (auction_safe_id, item_id, source_query)
+    select
         auction_safe_id,
         item_id,
         source_query,
@@ -22,18 +21,20 @@ latest_comps as (
         fetched_at,
         comp_age_days
     from {{ ref('stg_ebay_comp_snapshots') }}
-    order by auction_safe_id, item_id, source_query, fetched_at desc
+    qualify row_number() over (
+        partition by auction_safe_id, item_id, source_query
+        order by fetched_at desc
+    ) = 1
 ),
 
--- Aggregate coverage stats per auction × source_query
 comp_stats as (
     select
         lc.auction_safe_id,
         lc.source_query,
         count(distinct lc.item_id)                                  as items_with_comp,
-        round(avg(lc.ebay_price)::numeric, 2)                      as avg_comp_price,
+        round(avg(lc.ebay_price), 2)                               as avg_comp_price,
         percentile_cont(0.5) within group (order by lc.ebay_price) as median_comp_price,
-        round(avg(lc.comp_age_days)::numeric, 1)                   as avg_comp_age_days,
+        round(avg(lc.comp_age_days), 1)                            as avg_comp_age_days,
         max(lc.fetched_at)                                         as last_fetched_at,
         sum(case when lc.match_confidence = 'high'   then 1 else 0 end) as high_conf_comps,
         sum(case when lc.match_confidence = 'medium' then 1 else 0 end) as medium_conf_comps,
@@ -42,7 +43,6 @@ comp_stats as (
     group by lc.auction_safe_id, lc.source_query
 ),
 
--- Total lots per auction for the denominator
 auction_totals as (
     select
         auction_safe_id,
