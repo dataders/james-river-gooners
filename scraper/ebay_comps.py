@@ -21,6 +21,7 @@ Implementation is split across focused sub-modules:
   ebay_snapshot — comp row building, MotherDuck DDL
   ebay_export   — file read-model, manifest loading, warehouse mirror
   ebay_ledger   — CompLedger ABC + FileCompLedger + budget resolution
+  ebay_apify    — Apify actor batch backend
 
 See docs/data-architecture.md.
 """
@@ -96,6 +97,21 @@ from ebay_util import (
 
 # Keep these available for the rare callers that import the SQL templates.
 from ebay_snapshot import CREATE_COMP_TABLE_SQL, INSERT_COMP_SQL, PUBLIC_VIEW_SQL
+
+# Apify backend — re-export for external callers and expose via the CLI.
+from ebay_apify import (
+    APIFY_API_URL,
+    APIFY_ACTOR_ID,
+    APIFY_CONCURRENCY,
+    APIFY_POLL_INTERVAL,
+    APIFY_MAX_WAIT,
+    apify_item_match,
+    apify_start_run,
+    apify_wait_for_run,
+    apify_fetch_dataset,
+    _apify_fetch_one_query,
+    fetch_comps_apify,
+)
 
 DEFAULT_LIMIT = 50
 DEFAULT_STALE_HOURS = 7 * 24
@@ -340,6 +356,50 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
 
+    apify_parser = subparsers.add_parser(
+        "fetch-apify",
+        help="Batch eBay comp fetch via Apify (automation-lab/ebay-sold-scraper).",
+    )
+    apify_parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    apify_parser.add_argument("--output-dir", type=Path, default=EBAY_COMPS_DIR)
+    apify_parser.add_argument("--queries-per-item", type=int, default=3)
+    apify_parser.add_argument("--max-matches", type=int, default=3)
+    apify_parser.add_argument(
+        "--max-listings-per-search",
+        type=int,
+        default=int(os.environ.get("GOONERS_APIFY_MAX_LISTINGS", "10")),
+        help="Results to request from Apify per search query (more = higher cost).",
+    )
+    apify_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
+    apify_parser.add_argument(
+        "--skip-attempted",
+        action="store_true",
+        help="Skip any item ever attempted (backfill mode, same as fetch-direct).",
+    )
+    apify_parser.add_argument(
+        "--skip-categories",
+        default=os.environ.get("GOONERS_EBAY_COMPS_SKIP_CATEGORIES", ""),
+    )
+    apify_parser.add_argument("--include-archived", action="store_true")
+    apify_parser.add_argument("--auction-safe-id", default=None)
+    apify_parser.add_argument("--dry-run", action="store_true")
+    apify_parser.add_argument(
+        "--no-mirror",
+        action="store_true",
+        help="Do not mirror snapshots to the warehouse even when configured.",
+    )
+    apify_parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=int(os.environ.get("GOONERS_APIFY_CONCURRENCY", str(APIFY_CONCURRENCY))),
+        help="Max parallel Apify actor runs.",
+    )
+    apify_parser.add_argument(
+        "--api-key",
+        default=os.environ.get("APIFY_API_KEY"),
+        help="Apify API token (defaults to APIFY_API_KEY env var).",
+    )
+
     smoke_parser = subparsers.add_parser(
         "smoke",
         help="CI canary: fetch comps for a few items and fail if none match.",
@@ -417,6 +477,28 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             sleep_seconds=args.sleep_seconds,
             mirror_to_warehouse=False if args.no_mirror else None,
+        )
+    elif args.command == "fetch-apify":
+        skip_categories = (
+            frozenset(c.strip() for c in args.skip_categories.split(",") if c.strip())
+            if args.skip_categories
+            else None
+        )
+        fetch_comps_apify(
+            data_dir=args.data_dir,
+            output_dir=args.output_dir,
+            queries_per_item=args.queries_per_item,
+            max_matches=args.max_matches,
+            max_listings_per_search=args.max_listings_per_search,
+            stale_hours=args.stale_hours,
+            skip_attempted=args.skip_attempted,
+            skip_categories=skip_categories,
+            include_archived=args.include_archived,
+            auction_safe_id=args.auction_safe_id,
+            dry_run=args.dry_run,
+            mirror_to_warehouse=False if args.no_mirror else None,
+            api_key=args.api_key,
+            concurrency=args.concurrency,
         )
     elif args.command == "smoke":
         return smoke(
