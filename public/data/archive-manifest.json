@@ -8,7 +8,8 @@
       "itemCount": 545,
       "itemsPath": "data/archive/items/rasmus_SI2pKyb2Hk8uguZoetlU.parquet",
       "source": "rasmus",
-      "ndjsonPath": "data/archive/items/rasmus_SI2pKyb2Hk8uguZoetlU.ndjson"
+      "ndjsonPath": "data/archive/items/rasmus_SI2pKyb2Hk8uguZoetlU.ndjson",
+      "embeddingsPath": "data/archive/items/rasmus_SI2pKyb2Hk8uguZoetlU.embeddings"
     },
     {
       "safeId": "JdlCLZbjkVFqE_MDY2imKQ",
@@ -18,7 +19,8 @@
       "itemCount": 274,
       "itemsPath": "data/archive/items/JdlCLZbjkVFqE_MDY2imKQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/JdlCLZbjkVFqE_MDY2imKQ.ndjson"
+      "ndjsonPath": "data/archive/items/JdlCLZbjkVFqE_MDY2imKQ.ndjson",
+      "embeddingsPath": "data/archive/items/JdlCLZbjkVFqE_MDY2imKQ.embeddings"
     },
     {
       "safeId": "53tdNDIj5jn0uUH53zaSQQ",
@@ -28,7 +30,8 @@
       "itemCount": 869,
       "itemsPath": "data/archive/items/53tdNDIj5jn0uUH53zaSQQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/53tdNDIj5jn0uUH53zaSQQ.ndjson"
+      "ndjsonPath": "data/archive/items/53tdNDIj5jn0uUH53zaSQQ.ndjson",
+      "embeddingsPath": "data/archive/items/53tdNDIj5jn0uUH53zaSQQ.embeddings"
     },
     {
       "safeId": "vmFbKo00yUjl3lxCvZyAlQ",
@@ -38,7 +41,8 @@
       "itemCount": 770,
       "itemsPath": "data/archive/items/vmFbKo00yUjl3lxCvZyAlQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/vmFbKo00yUjl3lxCvZyAlQ.ndjson"
+      "ndjsonPath": "data/archive/items/vmFbKo00yUjl3lxCvZyAlQ.ndjson",
+      "embeddingsPath": "data/archive/items/vmFbKo00yUjl3lxCvZyAlQ.embeddings"
     },
     {
       "safeId": "sxaO7PgFDRLkmW3qascokw",
@@ -48,7 +52,8 @@
       "itemCount": 741,
       "itemsPath": "data/archive/items/sxaO7PgFDRLkmW3qascokw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/sxaO7PgFDRLkmW3qascokw.ndjson"
+      "ndjsonPath": "data/archive/items/sxaO7PgFDRLkmW3qascokw.ndjson",
+      "embeddingsPath": "data/archive/items/sxaO7PgFDRLkmW3qascokw.embeddings"
     },
     {
       "safeId": "7_jQ0rs7OQ4ujXMJa0q-Iw",
@@ -58,7 +63,8 @@
       "itemCount": 271,
       "itemsPath": "data/archive/items/7_jQ0rs7OQ4ujXMJa0q-Iw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/7_jQ0rs7OQ4ujXMJa0q-Iw.ndjson"
+      "ndjsonPath": "data/archive/items/7_jQ0rs7OQ4ujXMJa0q-Iw.ndjson",
+      "embeddingsPath": "data/archive/items/7_jQ0rs7OQ4ujXMJa0q-Iw.embeddings"
     },
     {
       "safeId": "RdL-JTyt9DqGVkb2y2OF0w",
@@ -68,7 +74,8 @@
       "itemCount": 493,
       "itemsPath": "data/archive/items/RdL-JTyt9DqGVkb2y2OF0w.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/RdL-JTyt9DqGVkb2y2OF0w.ndjson"
+      "ndjsonPath": "data/archive/items/RdL-JTyt9DqGVkb2y2OF0w.ndjson",
+      "embeddingsPath": "data/archive/items/RdL-JTyt9DqGVkb2y2OF0w.embeddings"
     },
     {
       "safeId": "ymj8G83rwEPz15K-9GcBSQ",
@@ -78,7 +85,8 @@
       "itemCount": 552,
       "itemsPath": "data/archive/items/ymj8G83rwEPz15K-9GcBSQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/ymj8G83rwEPz15K-9GcBSQ.ndjson"
+      "ndjsonPath": "data/archive/items/ymj8G83rwEPz15K-9GcBSQ.ndjson",
+      "embeddingsPath": "data/archive/items/ymj8G83rwEPz15K-9GcBSQ.embeddings"
     },
     {
       "safeId": "aEishQMt5bzRYJgbdQEwdw",
@@ -99,7 +107,8 @@
       "itemCount": 826,
       "itemsPath": "data/archive/items/AsuPfDpHW89m4S-SJ1K6Xw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/AsuPfDpHW89m4S-SJ1K6Xw.ndjson"
+      "ndjsonPath": "data/archive/items/AsuPfDpHW89m4S-SJ1K6Xw.ndjson",
+      "embeddingsPath": "data/archive/items/AsuPfDpHW89m4S-SJ1K6Xw.embeddings"
     },
     {
       "safeId": "1zYruY7b7Vvps-QAoHwAUQ",
@@ -109,7 +118,8 @@
       "itemCount": 206,
       "itemsPath": "data/archive/items/1zYruY7b7Vvps-QAoHwAUQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/1zYruY7b7Vvps-QAoHwAUQ.ndjson"
+      "ndjsonPath": "data/archive/items/1zYruY7b7Vvps-QAoHwAUQ.ndjson",
+      "embeddingsPath": "data/archive/items/1zYruY7b7Vvps-QAoHwAUQ.embeddings"
     },
     {
       "safeId": "7IMSJA_Zy61uR2gaGFbdcA",
@@ -119,7 +129,8 @@
       "itemCount": 1367,
       "itemsPath": "data/archive/items/7IMSJA_Zy61uR2gaGFbdcA.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/7IMSJA_Zy61uR2gaGFbdcA.ndjson"
+      "ndjsonPath": "data/archive/items/7IMSJA_Zy61uR2gaGFbdcA.ndjson",
+      "embeddingsPath": "data/archive/items/7IMSJA_Zy61uR2gaGFbdcA.embeddings"
     },
     {
       "safeId": "QCh2BE-Evlvk01UW1xf6Ow",
@@ -140,7 +151,8 @@
       "itemCount": 737,
       "itemsPath": "data/archive/items/T-xEfNn2QOTKtc6i7Gy3Ng.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/T-xEfNn2QOTKtc6i7Gy3Ng.ndjson"
+      "ndjsonPath": "data/archive/items/T-xEfNn2QOTKtc6i7Gy3Ng.ndjson",
+      "embeddingsPath": "data/archive/items/T-xEfNn2QOTKtc6i7Gy3Ng.embeddings"
     },
     {
       "safeId": "vPrxP345pzWxFT0dRBNSzw",
@@ -150,7 +162,8 @@
       "itemCount": 183,
       "itemsPath": "data/archive/items/vPrxP345pzWxFT0dRBNSzw.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/vPrxP345pzWxFT0dRBNSzw.ndjson"
+      "ndjsonPath": "data/archive/items/vPrxP345pzWxFT0dRBNSzw.ndjson",
+      "embeddingsPath": "data/archive/items/vPrxP345pzWxFT0dRBNSzw.embeddings"
     },
     {
       "safeId": "TlQ-ix0FOsR5KtsWEzweFA",
@@ -160,7 +173,8 @@
       "itemCount": 415,
       "itemsPath": "data/archive/items/TlQ-ix0FOsR5KtsWEzweFA.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/TlQ-ix0FOsR5KtsWEzweFA.ndjson"
+      "ndjsonPath": "data/archive/items/TlQ-ix0FOsR5KtsWEzweFA.ndjson",
+      "embeddingsPath": "data/archive/items/TlQ-ix0FOsR5KtsWEzweFA.embeddings"
     },
     {
       "safeId": "E3Bx3Lfy03k3AuHcK6EwBQ",
@@ -170,7 +184,8 @@
       "itemCount": 306,
       "itemsPath": "data/archive/items/E3Bx3Lfy03k3AuHcK6EwBQ.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/E3Bx3Lfy03k3AuHcK6EwBQ.ndjson"
+      "ndjsonPath": "data/archive/items/E3Bx3Lfy03k3AuHcK6EwBQ.ndjson",
+      "embeddingsPath": "data/archive/items/E3Bx3Lfy03k3AuHcK6EwBQ.embeddings"
     },
     {
       "safeId": "AyxzVT4-3BPBUCgNdIRH-g",
@@ -180,7 +195,8 @@
       "itemCount": 558,
       "itemsPath": "data/archive/items/AyxzVT4-3BPBUCgNdIRH-g.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/AyxzVT4-3BPBUCgNdIRH-g.ndjson"
+      "ndjsonPath": "data/archive/items/AyxzVT4-3BPBUCgNdIRH-g.ndjson",
+      "embeddingsPath": "data/archive/items/AyxzVT4-3BPBUCgNdIRH-g.embeddings"
     },
     {
       "safeId": "23vw6deuvMys7YJQBs5DEA",
@@ -190,7 +206,8 @@
       "itemCount": 301,
       "itemsPath": "data/archive/items/23vw6deuvMys7YJQBs5DEA.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/23vw6deuvMys7YJQBs5DEA.ndjson"
+      "ndjsonPath": "data/archive/items/23vw6deuvMys7YJQBs5DEA.ndjson",
+      "embeddingsPath": "data/archive/items/23vw6deuvMys7YJQBs5DEA.embeddings"
     },
     {
       "safeId": "mPu1wixOLdplvdaKV6qG-w",
@@ -200,7 +217,8 @@
       "itemCount": 854,
       "itemsPath": "data/archive/items/mPu1wixOLdplvdaKV6qG-w.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/mPu1wixOLdplvdaKV6qG-w.ndjson"
+      "ndjsonPath": "data/archive/items/mPu1wixOLdplvdaKV6qG-w.ndjson",
+      "embeddingsPath": "data/archive/items/mPu1wixOLdplvdaKV6qG-w.embeddings"
     },
     {
       "safeId": "Sec_dYsywMiQQGVw7F_2Kg",
@@ -210,7 +228,8 @@
       "itemCount": 445,
       "itemsPath": "data/archive/items/Sec_dYsywMiQQGVw7F_2Kg.parquet",
       "source": "cannons",
-      "ndjsonPath": "data/archive/items/Sec_dYsywMiQQGVw7F_2Kg.ndjson"
+      "ndjsonPath": "data/archive/items/Sec_dYsywMiQQGVw7F_2Kg.ndjson",
+      "embeddingsPath": "data/archive/items/Sec_dYsywMiQQGVw7F_2Kg.embeddings"
     },
     {
       "safeId": "uQCxvWTgTM4VQJomOizg2w",
@@ -253,7 +272,8 @@
       "itemCount": 834,
       "itemsPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.ndjson"
+      "ndjsonPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.ndjson",
+      "embeddingsPath": "data/archive/items/XgTddU43tCQrk0_gjgUuBA.embeddings"
     },
     {
       "safeId": "hibid_739418",
@@ -263,7 +283,8 @@
       "itemCount": 100,
       "itemsPath": "data/archive/items/hibid_739418.parquet",
       "source": "emerald_ventures",
-      "ndjsonPath": "data/archive/items/hibid_739418.ndjson"
+      "ndjsonPath": "data/archive/items/hibid_739418.ndjson",
+      "embeddingsPath": "data/archive/items/hibid_739418.embeddings"
     },
     {
       "safeId": "hibid_744897",
@@ -273,7 +294,8 @@
       "itemCount": 227,
       "itemsPath": "data/archive/items/hibid_744897.parquet",
       "source": "past_chapters",
-      "ndjsonPath": "data/archive/items/hibid_744897.ndjson"
+      "ndjsonPath": "data/archive/items/hibid_744897.ndjson",
+      "embeddingsPath": "data/archive/items/hibid_744897.embeddings"
     },
     {
       "safeId": "50gRY3ttr9OMTLukeSTZjA",
@@ -327,7 +349,8 @@
       "itemCount": 363,
       "itemsPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.ndjson"
+      "ndjsonPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.ndjson",
+      "embeddingsPath": "data/archive/items/bLkOiYnlcePwcQwm8L25cw.embeddings"
     },
     {
       "safeId": "MmwrCfPOyubVzrgFK3d1gQ",
@@ -337,7 +360,8 @@
       "itemCount": 827,
       "itemsPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.ndjson"
+      "ndjsonPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.ndjson",
+      "embeddingsPath": "data/archive/items/MmwrCfPOyubVzrgFK3d1gQ.embeddings"
     },
     {
       "safeId": "UJdlFuhSHbhiiKDGyQklpQ",
@@ -347,7 +371,8 @@
       "itemCount": 351,
       "itemsPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.ndjson"
+      "ndjsonPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.ndjson",
+      "embeddingsPath": "data/archive/items/UJdlFuhSHbhiiKDGyQklpQ.embeddings"
     },
     {
       "safeId": "26925bY6MOivsz3zKue93A",
@@ -357,7 +382,8 @@
       "itemCount": 159,
       "itemsPath": "data/archive/items/26925bY6MOivsz3zKue93A.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/26925bY6MOivsz3zKue93A.ndjson"
+      "ndjsonPath": "data/archive/items/26925bY6MOivsz3zKue93A.ndjson",
+      "embeddingsPath": "data/archive/items/26925bY6MOivsz3zKue93A.embeddings"
     },
     {
       "safeId": "1R-xpYyFq2BouWpPwzWQcw",
@@ -367,7 +393,8 @@
       "itemCount": 1187,
       "itemsPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.ndjson"
+      "ndjsonPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.ndjson",
+      "embeddingsPath": "data/archive/items/1R-xpYyFq2BouWpPwzWQcw.embeddings"
     },
     {
       "safeId": "w0NiWkUBBgZyQ5zYw2NHBA",
@@ -377,7 +404,8 @@
       "itemCount": 1004,
       "itemsPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.ndjson"
+      "ndjsonPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.ndjson",
+      "embeddingsPath": "data/archive/items/w0NiWkUBBgZyQ5zYw2NHBA.embeddings"
     },
     {
       "safeId": "d7DYU8ApwA_e4vae0MYlgw",
@@ -387,7 +415,8 @@
       "itemCount": 304,
       "itemsPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.ndjson"
+      "ndjsonPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.ndjson",
+      "embeddingsPath": "data/archive/items/d7DYU8ApwA_e4vae0MYlgw.embeddings"
     },
     {
       "safeId": "UHLOX1ptnkWnJ4itLwtDJQ",
@@ -397,7 +426,8 @@
       "itemCount": 829,
       "itemsPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.parquet",
       "source": "",
-      "ndjsonPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.ndjson"
+      "ndjsonPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.ndjson",
+      "embeddingsPath": "data/archive/items/UHLOX1ptnkWnJ4itLwtDJQ.embeddings"
     },
     {
       "safeId": "NxlGR1rzSa43pZm8BUveUQ",
