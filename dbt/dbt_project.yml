@@ -1,0 +1,44 @@
+name: 'gooners_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'gooners'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  min_sold_price: 1
+
+  # Anthropic cost estimation vars — override in profiles.yml or CLI.
+  # Pricing as of claude-haiku-4-5 (2025). Update when model changes.
+  anthropic_haiku_input_cost_per_1m: 0.80     # $ per 1M input tokens
+  anthropic_haiku_output_cost_per_1m: 4.00    # $ per 1M output tokens
+  # Estimated token usage per enrichment call (title + description + image URL + system prompt)
+  est_enrichment_input_tokens: 600
+  est_enrichment_output_tokens: 80
+
+  # eBay Browse API — currently $0 for eligible developer accounts.
+  # Set > 0 if your account is billed per-call.
+  ebay_api_cost_per_query: 0.00
+
+models:
+  gooners_analytics:
+    staging:
+      +materialized: view
+      +schema: staging         # → my_db.gooners_staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate    # → my_db.gooners_intermediate
+    marts:
+      +materialized: table     # → my_db.gooners (target.schema, no suffix)
+      operations:
+        +schema: operations    # → my_db.gooners_operations (ops/SLA tables stay separate)
