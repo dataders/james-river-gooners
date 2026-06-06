@@ -129,6 +129,7 @@ raw_aliases:
     - watches
     - rolex
     - timepieces
+    - pocket watches
   Gemstones:
     - gemstones
 
@@ -228,11 +229,13 @@ raw_aliases:
     - personal accessories
   Purses & Bags:
     - purses
+    - purses & handbags
     - luggage
     - travel
   Health & Beauty:
     - health and beauty
     - health & beauty
+    - health-beauty
     - personal care products
     - eyewear
     - perfumes
@@ -244,6 +247,7 @@ raw_aliases:
   Toys & Games:
     - toys and games
     - toys & games
+    - games & toys
     - gaming
     - plush
     - action figures
@@ -295,6 +299,7 @@ raw_aliases:
     - sporting goods
   Fishing:
     - fishing
+    - fishing/boating
   Equestrian:
     - equestrian
 
@@ -353,6 +358,12 @@ raw_aliases:
     - child care
   Ambulatory:
     - ambulatory
+  Tools:
+    - tools
+    - tools and hardware
+    - hand & power tools
+    - power tools
+    - saws
   Hardware:
     - hardware
     - tools & hardware
