@@ -3,8 +3,13 @@
 // Calls the cannon-proxy Edge Function to:
 //   - check whether the user has linked a Cannon's account (get_status)
 //   - save or remove credentials (save_credentials / delete_credentials)
-//   - fetch the set of Maxanet item IDs the user has bid on (get_bids)
+//   - seed bid history from Maxanet watchlist on first login (get_bids)
+//   - refresh live bid statuses from Maxanet (refresh_bid_statuses)
 //   - place a bid on a lot (place_bid)
+//
+// On init, bids are read directly from the user_bids Supabase table (fast,
+// no Maxanet round-trip). refreshBids() re-authenticates with Maxanet to
+// update winning/currentBid status for open items, then re-reads the table.
 //
 // Falls back gracefully when Supabase is not configured or the user is
 // not signed in — returns unlinked state so the rest of the app is unaffected.
@@ -22,6 +27,7 @@ export function useCannonBids(user) {
   const [username, setUsername] = useState(null)
   const [bidItemIds, setBidItemIds] = useState(() => new Set())
   const [bidStatuses, setBidStatuses] = useState(() => new Map())
+  const [bidRows, setBidRows] = useState([])
   const [statusLoading, setStatusLoading] = useState(false)
   const [bidsLoading, setBidsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -52,30 +58,62 @@ export function useCannonBids(user) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
+  // Read user_bids directly from Supabase (publishable key + RLS select policy).
+  // Returns the rows array so callers can branch on empty for the backfill path.
+  const loadBidsFromDb = useCallback(async () => {
+    if (!user || !isSupabaseConfigured) return []
+    const { data, error: dbErr } = await supabase
+      .from('user_bids')
+      .select('*')
+      .order('last_bid_at', { ascending: false })
+    if (dbErr) { setError(dbErr.message); return [] }
+    const rows = data ?? []
+    const ids = new Set(rows.map(r => String(r.auction_item_id)))
+    const statusMap = new Map()
+    for (const r of rows) {
+      statusMap.set(String(r.auction_item_id), {
+        winning: r.is_winning,
+        currentBid: r.current_bid,
+        minimumNextBid: r.min_next_bid,
+        itemClosed: r.item_closed,
+        statusRefreshedAt: r.status_refreshed_at,
+      })
+    }
+    setBidItemIds(ids)
+    setBidStatuses(statusMap)
+    setBidRows(rows)
+    return rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // Load bids once the account is linked. If user_bids is empty (first login
+  // for this user), seed it from the Maxanet watchlist via get_bids.
+  useEffect(() => {
+    if (!linked || !user) return
+    let cancelled = false
+    ;(async () => {
+      setBidsLoading(true)
+      const rows = await loadBidsFromDb()
+      if (cancelled) return
+      if (rows.length === 0) {
+        await callProxy('get_bids')
+        if (!cancelled) await loadBidsFromDb()
+      }
+      if (!cancelled) setBidsLoading(false)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linked, user?.id, loadBidsFromDb])
+
+  // Re-authenticate with Maxanet, refresh status for all open items, re-read DB.
   const refreshBids = useCallback(async () => {
     setBidsLoading(true)
     setError(null)
-    const result = await callProxy('get_bids')
+    const result = await callProxy('refresh_bid_statuses')
+    if (result.error) { setBidsLoading(false); setError(result.error); return }
+    await loadBidsFromDb()
     setBidsLoading(false)
-    if (result.error) { setError(result.error); return }
-    setBidItemIds(new Set((result.itemIds ?? []).map(String)))
-    const statusMap = new Map()
-    for (const s of (result.statuses ?? [])) {
-      statusMap.set(String(s.auctionItemId), {
-        winning: s.winning,
-        currentBid: s.currentBid,
-        minimumNextBid: s.minimumNextBid,
-      })
-    }
-    setBidStatuses(statusMap)
-  }, [])
-
-  // Fetch bids once we know the account is linked.
-  useEffect(() => {
-    if (!linked || !user) return
-    ;(async () => { await refreshBids() })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linked, user?.id, refreshBids])
+  }, [loadBidsFromDb])
 
   const saveCredentials = useCallback(async (cannonUsername, cannonPassword) => {
     setError(null)
@@ -84,9 +122,9 @@ export function useCannonBids(user) {
     setLinked(true)
     setUsername(cannonUsername)
     loadedUserId.current = user?.id ?? null
-    refreshBids()
+    // setLinked(true) triggers the "on linked" effect which handles the DB load + seed
     return {}
-  }, [user?.id, refreshBids])
+  }, [user?.id])
 
   // Place a bid (max/proxy) on a single lot. `amount` is the most the user is
   // willing to pay; it's sent as both the bid and the proxy ceiling. The real
@@ -114,9 +152,7 @@ export function useCannonBids(user) {
     if (result.error) return { error: result.error }
     if (!result.ok) return { error: result.description || 'Bid failed' }
 
-    // Reflect the new state locally so the card badge + detail update without a
-    // full refresh: the lot joins "My Bids" and its live status comes from the
-    // function's post-bid RefreshItem read.
+    // Optimistically update the card badge + detail without waiting for DB re-read.
     const id = String(item.id)
     setBidItemIds(prev => new Set(prev).add(id))
     setBidStatuses(prev => {
@@ -128,13 +164,15 @@ export function useCannonBids(user) {
       })
       return next
     })
+    // Sync bidRows with the DB record the EF just wrote (non-blocking)
+    loadBidsFromDb()
     return {
       ok: true,
       winning: result.winning,
       currentBid: result.currentBid,
       description: result.description,
     }
-  }, [bidStatuses])
+  }, [bidStatuses, loadBidsFromDb])
 
   const deleteCredentials = useCallback(async () => {
     setError(null)
@@ -144,6 +182,7 @@ export function useCannonBids(user) {
     setUsername(null)
     setBidItemIds(new Set())
     setBidStatuses(new Map())
+    setBidRows([])
     loadedUserId.current = null
     return {}
   }, [])
@@ -153,6 +192,7 @@ export function useCannonBids(user) {
     username,
     bidItemIds,
     bidStatuses,
+    bidRows,
     statusLoading,
     bidsLoading,
     error,
