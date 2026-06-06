@@ -33,6 +33,12 @@ validated before it becomes a standing cost on every scheduled scrape.
         Batches API: all named auctions' lots go into one async batch at 50% cost
         with no per-minute rate limit. Best for a large historical backfill; a
         batch can take up to 24h, so the live scrape path stays synchronous.
+    python enrich.py --batch --all                        # every auction across the
+        active AND archive read models. Named ids also resolve in either dir.
+
+Backfill spans active + archive, rewrites the NDJSON/Parquet read model, then
+mirrors the identified lots into the Supabase ``lot_enrichment`` table (a no-op
+without ``SUPABASE_SECRET_KEY``).
 """
 
 import concurrent.futures
@@ -522,13 +528,60 @@ def _write_rows(items_dir, safe_id: str, rows: list[dict]) -> None:
     pq.write_table(pa.Table.from_pylist(rows), items_dir / f"{safe_id}.parquet", compression="snappy")
 
 
-def _backfill(safe_ids: list[str], use_batch: bool = False) -> int:
-    """Enrich already-scraped active auctions, rewriting NDJSON + Parquet.
+def _backfill_dirs():
+    """The read-model item dirs, active first then archive. The archive (the
+    sold-price corpus) is the bulk of a historical backfill, so it must be
+    reachable — but importing lazily keeps the module import light."""
+    from scrape import ITEMS_DIR
+    dirs = [ITEMS_DIR]
+    try:
+        from rescrape_all import ARCHIVE_ITEMS_DIR
+        dirs.append(ARCHIVE_ITEMS_DIR)
+    except ImportError:
+        pass
+    return dirs
 
-    With ``use_batch`` the lots from *all* the named auctions are enriched in one
-    combined Message Batch (one async submission, 50% cost) before any file is
-    rewritten — the efficient path for a large historical backfill. Without it,
-    each auction is enriched synchronously in turn (the original behavior)."""
+
+def _resolve_backfill_targets(safe_ids: list[str], include_all: bool) -> list[tuple]:
+    """Return an ordered list of ``(items_dir, safe_id)`` to backfill.
+
+    ``--all`` globs every auction across active + archive (deduped, active
+    winning). Named ids are each resolved in the active dir first, then the
+    archive — so a historical (archived) auction can be backfilled by id too."""
+    dirs = [d for d in _backfill_dirs() if d.exists()]
+    if include_all:
+        targets, seen = [], set()
+        for items_dir in dirs:
+            for path in sorted(items_dir.glob("*.ndjson")):
+                if path.stem not in seen:
+                    seen.add(path.stem)
+                    targets.append((items_dir, path.stem))
+        return targets
+
+    targets = []
+    for safe_id in safe_ids:
+        for items_dir in dirs:
+            if (items_dir / f"{safe_id}.ndjson").exists():
+                targets.append((items_dir, safe_id))
+                break
+        else:
+            print(f"skip {safe_id}: no NDJSON sidecar (active or archive)", file=sys.stderr)
+    return targets
+
+
+def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = False) -> int:
+    """Enrich already-scraped auctions, rewriting NDJSON + Parquet, then mirror
+    the identified lots into Supabase.
+
+    Spans the **active and archive** read models — ``--all`` covers every auction
+    in both; named ids resolve in either. With ``use_batch`` every selected
+    auction's lots are enriched in one combined Message Batch (one async
+    submission, 50% cost) before any file is rewritten — the efficient path for a
+    large historical backfill. Without it, each auction is enriched synchronously
+    in turn (the original behavior). After rewriting the local read model (the
+    primary deliverable), the enriched lots are mirrored to the Supabase
+    ``lot_enrichment`` table via the resilient ``maybe_export_enrichment`` hook
+    (a no-op without ``SUPABASE_SECRET_KEY``; warns rather than raising)."""
     if not is_enrichment_enabled():
         print("Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.", file=sys.stderr)
         return 1
@@ -536,44 +589,49 @@ def _backfill(safe_ids: list[str], use_batch: bool = False) -> int:
     if client is None:
         return 1
 
-    from scrape import ITEMS_DIR
-
-    rows_by_id: dict[str, list[dict]] = {}
-    for safe_id in safe_ids:
-        ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
-        if not ndjson_path.exists():
-            print(f"skip {safe_id}: no NDJSON sidecar", file=sys.stderr)
-            continue
-        rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+    targets = _resolve_backfill_targets(safe_ids, include_all)
+    loaded = []  # (items_dir, safe_id, rows)
+    for items_dir, safe_id in targets:
+        rows = [
+            json.loads(line)
+            for line in (items_dir / f"{safe_id}.ndjson").read_text().splitlines()
+            if line.strip()
+        ]
         if rows:
-            rows_by_id[safe_id] = rows
+            loaded.append((items_dir, safe_id, rows))
 
-    if not rows_by_id:
+    if not loaded:
         return 0
 
     if use_batch:
-        # One batch across every auction's lots, so a 5,000-lot backfill is a
-        # single async submission rather than one synchronous run per auction.
-        all_rows = [row for rows in rows_by_id.values() for row in rows]
+        # One batch across every selected auction's lots, so a 5,000-lot backfill
+        # is a single async submission rather than one synchronous run per auction.
+        all_rows = [row for _, _, rows in loaded for row in rows]
         enrich_items_batch(all_rows, client=client)
     else:
-        for rows in rows_by_id.values():
+        for _, _, rows in loaded:
             enrich_items(rows, client=client)
 
-    for safe_id, rows in rows_by_id.items():
-        _write_rows(ITEMS_DIR, safe_id, rows)
+    for items_dir, safe_id, rows in loaded:
+        _write_rows(items_dir, safe_id, rows)
         print(f"enriched + rewrote {safe_id} ({len(rows)} lots)")
+
+    # Mirror the freshly-enriched lots into Supabase (identified lots only).
+    # Resilient: a no-op without credentials, warns rather than crashing.
+    from supabase_enrichment import maybe_export_enrichment
+    maybe_export_enrichment([row for _, _, rows in loaded for row in rows])
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     use_batch = "--batch" in argv
-    argv = [arg for arg in argv if arg != "--batch"]
-    if not argv:
+    include_all = "--all" in argv
+    argv = [arg for arg in argv if arg not in ("--batch", "--all")]
+    if not argv and not include_all:
         print(__doc__)
         return 1
-    return _backfill(argv, use_batch=use_batch)
+    return _backfill(argv, use_batch=use_batch, include_all=include_all)
 
 
 if __name__ == "__main__":

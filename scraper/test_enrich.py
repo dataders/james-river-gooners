@@ -1,8 +1,11 @@
 import json
-import unittest
-from unittest import mock
-
+import sys
+import tempfile
 import time
+import types
+import unittest
+from pathlib import Path
+from unittest import mock
 
 import enrich
 from enrich import (
@@ -416,6 +419,90 @@ class EnrichItemsBatchTests(unittest.TestCase):
         self.assertEqual(enriched, 5)
         # 5 lots / 2 per batch → 3 submissions.
         self.assertEqual(client.messages.batches.created, 3)
+
+
+class BackfillTargetTests(unittest.TestCase):
+    def _dirs(self, tmp):
+        active = Path(tmp) / "items"
+        archive = Path(tmp) / "archive" / "items"
+        active.mkdir(parents=True)
+        archive.mkdir(parents=True)
+        (active / "a1.ndjson").write_text("{}\n", encoding="utf-8")
+        (archive / "old1.ndjson").write_text("{}\n", encoding="utf-8")
+        # Same id present in both — active should win, listed once.
+        (active / "dup.ndjson").write_text("{}\n", encoding="utf-8")
+        (archive / "dup.ndjson").write_text("{}\n", encoding="utf-8")
+        return active, archive
+
+    def test_all_spans_active_and_archive_deduped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            active, archive = self._dirs(tmp)
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]):
+                targets = enrich._resolve_backfill_targets([], include_all=True)
+        ids = [safe_id for _, safe_id in targets]
+        self.assertEqual(sorted(ids), ["a1", "dup", "old1"])
+        # `dup` resolves to the active dir (active wins).
+        self.assertEqual(dict((s, d) for d, s in targets)["dup"], active)
+
+    def test_named_id_resolves_in_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            active, archive = self._dirs(tmp)
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]):
+                targets = enrich._resolve_backfill_targets(["old1"], include_all=False)
+        self.assertEqual(targets, [(archive, "old1")])
+
+    def test_unknown_id_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            active, archive = self._dirs(tmp)
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]):
+                targets = enrich._resolve_backfill_targets(["nope"], include_all=False)
+        self.assertEqual(targets, [])
+
+
+class BackfillRunTests(unittest.TestCase):
+    def test_all_enriches_writes_and_mirrors(self):
+        # Two auctions (one active, one archive); --batch --all should enrich the
+        # combined lots once, rewrite each file, and mirror to Supabase.
+        with tempfile.TemporaryDirectory() as tmp:
+            active = Path(tmp) / "items"
+            archive = Path(tmp) / "archive" / "items"
+            active.mkdir(parents=True)
+            archive.mkdir(parents=True)
+            (active / "a1.ndjson").write_text(
+                json.dumps({"id": "x", "title": "DeWalt DCD771 drill", "images": []}) + "\n",
+                encoding="utf-8",
+            )
+            (archive / "old1.ndjson").write_text(
+                json.dumps({"id": "y", "title": "DeWalt DCD771 saw", "images": []}) + "\n",
+                encoding="utf-8",
+            )
+
+            client = _FakeBatchClient({"DeWalt DCD771": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            }})
+            writes = []
+            mirrored = []
+            fake_supabase = types.ModuleType("supabase_enrichment")
+            fake_supabase.maybe_export_enrichment = lambda rows: mirrored.append(list(rows))
+
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]), \
+                 mock.patch.object(enrich, "is_enrichment_enabled", lambda: True), \
+                 mock.patch.object(enrich, "_make_client", lambda: client), \
+                 mock.patch.object(enrich, "_write_rows", lambda d, s, rows: writes.append((d, s, len(rows)))), \
+                 mock.patch.object(enrich.time, "sleep", lambda *_: None), \
+                 mock.patch.dict(sys.modules, {"supabase_enrichment": fake_supabase}):
+                rc = enrich._backfill([], use_batch=True, include_all=True)
+
+        self.assertEqual(rc, 0)
+        # One combined batch for both lots.
+        self.assertEqual(client.messages.batches.created, 1)
+        # Both files rewritten.
+        self.assertEqual(sorted(s for _, s, _ in writes), ["a1", "old1"])
+        # Mirror called once with both enriched lots.
+        self.assertEqual(len(mirrored), 1)
+        self.assertEqual(len(mirrored[0]), 2)
+        self.assertTrue(all(row["brand"] == "DeWalt" for row in mirrored[0]))
 
 
 if __name__ == "__main__":
