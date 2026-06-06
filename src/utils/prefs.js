@@ -28,6 +28,8 @@ export const DEFAULT_PREFS = {
   hasComp: false,
   hasCannonsComp: false,
   sort: '',
+  // Grid layout: 'grid' (masonry thumbnails) or 'compact' (thumbnail + details list).
+  viewMode: 'grid',
   // Resale margin used by the max-bid calculator, as a percentage (matches DEFAULT_MARGIN in roiCalc.js)
   margin: 30,
 }
@@ -49,6 +51,7 @@ const PERSISTED_KEYS = [
   'hasComp',
   'hasCannonsComp',
   'sort',
+  'viewMode',
   'margin',
 ]
 

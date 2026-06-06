@@ -8,6 +8,18 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-06',
+    title: 'Layout & filter tidy-up',
+    changes: [
+      { id: 'compact-list-view', icon: '📋', text: 'New Compact view: a list of rows with a thumbnail and description, alongside the classic grid — pick whichever scans faster for you.' },
+      { id: 'sort-by-max-bid', icon: '↕️', text: 'Sort lots by their recommended max bid to put the highest-value flips on top.' },
+      { id: 'has-filters-sidebar', icon: '🔎', text: 'The "Has eBay comp / auction comp / AI product info" toggles moved into a tidy checkbox group in the sidebar.' },
+      { id: 'show-segmented', icon: '🗂️', text: 'Favorites and Ignored are now a single Show switch (All / Favorites / Ignored), matching the Auctions control.' },
+      { id: 'swipe-in-header', icon: '🃏', text: 'The Swipe button moved up to the top banner so it’s always within reach.' },
+      { id: 'trivia-header-button', icon: '⚽', text: 'Daily Arsenal trivia is now a ⚽ button in the header instead of a full-width card, freeing up space for lots.' },
+    ],
+  },
+  {
     date: '2026-06-05',
     title: 'My Bids & bid panel',
     changes: [

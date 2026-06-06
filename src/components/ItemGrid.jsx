@@ -28,13 +28,15 @@ function colsForWidth(width) {
 // typically 300-450 px tall; 380 px splits the difference. We divide by column
 // count because masonry stacks items vertically within each column.
 const ITEM_HEIGHT_ESTIMATE = 380
+// Compact rows are a single fixed-height list, so they estimate much shorter.
+const COMPACT_ITEM_HEIGHT = 132
 
-function estimateColumnHeight(itemCount, numCols) {
+function estimateColumnHeight(itemCount, numCols, itemHeight = ITEM_HEIGHT_ESTIMATE) {
   const itemsPerCol = Math.ceil(itemCount / numCols)
-  return itemsPerCol > 0 ? itemsPerCol * (ITEM_HEIGHT_ESTIMATE + ITEM_GAP) - ITEM_GAP : 0
+  return itemsPerCol > 0 ? itemsPerCol * (itemHeight + ITEM_GAP) - ITEM_GAP : 0
 }
 
-export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses }) {
+export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses }) {
   // Pair `items` with its loaded count so we can reset loaded when items changes.
   const [loadState, setLoadState] = useState({ items, loaded: BATCH_SIZE })
   const sentinelRef = useRef(null)
@@ -79,10 +81,29 @@ export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, i
   const windowStart = Math.max(0, clampedLoaded - MAX_DOM_ITEMS)
   const visibleItems = items.slice(windowStart, clampedLoaded)
 
+  // Compact mode is a single-column list; the masonry grid uses its derived
+  // column count. The top spacer estimate follows the active layout.
+  const effectiveCols = compact ? 1 : numCols
+
   // Compensate for items dropped from the top of the DOM window.
   const topSpacerHeight = windowStart > 0
-    ? estimateColumnHeight(windowStart, numCols)
+    ? estimateColumnHeight(windowStart, effectiveCols, compact ? COMPACT_ITEM_HEIGHT : ITEM_HEIGHT_ESTIMATE)
     : 0
+
+  const cards = visibleItems.map(item => (
+    <ItemCard
+      key={`${item.auctionSafeId}:${item.id}`}
+      item={item}
+      compact={compact}
+      itemComps={allComps[item.auctionSafeId]?.[item.id]}
+      isFavorite={isFavorite(item)}
+      onToggleFavorite={onToggleFavorite}
+      isIgnored={isIgnored(item)}
+      onToggleIgnored={onToggleIgnored}
+      onItemClick={onItemClick}
+      bidStatus={bidStatuses?.get(String(item.id))}
+    />
+  ))
 
   return (
     <div className="item-grid-wrapper" ref={wrapperRef}>
@@ -92,25 +113,17 @@ export function ItemGrid({ items, allComps = {}, isFavorite, onToggleFavorite, i
       {topSpacerHeight > 0 && (
         <div className="scroll-top-spacer" style={{ height: topSpacerHeight }} />
       )}
-      <Masonry
-        breakpointCols={numCols}
-        className="masonry-grid"
-        columnClassName="masonry-column"
-      >
-        {visibleItems.map(item => (
-          <ItemCard
-            key={`${item.auctionSafeId}:${item.id}`}
-            item={item}
-            itemComps={allComps[item.auctionSafeId]?.[item.id]}
-            isFavorite={isFavorite(item)}
-            onToggleFavorite={onToggleFavorite}
-            isIgnored={isIgnored(item)}
-            onToggleIgnored={onToggleIgnored}
-            onItemClick={onItemClick}
-            bidStatus={bidStatuses?.get(String(item.id))}
-          />
-        ))}
-      </Masonry>
+      {compact ? (
+        <div className="compact-list">{cards}</div>
+      ) : (
+        <Masonry
+          breakpointCols={numCols}
+          className="masonry-grid"
+          columnClassName="masonry-column"
+        >
+          {cards}
+        </Masonry>
+      )}
       {clampedLoaded < items.length && (
         <div ref={sentinelRef} className="scroll-sentinel" />
       )}

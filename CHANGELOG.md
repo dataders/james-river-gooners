@@ -4,6 +4,15 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-06 — Layout & filter tidy-up
+
+- 📋 **Compact view** — a list of rows with a thumbnail and description, alongside the classic grid; pick whichever scans faster for you.
+- ↕️ **Sort by max bid** — order lots by their recommended max bid to put the highest-value flips on top.
+- 🔎 **"Has" filters in the sidebar** — the eBay comp / auction comp / AI product info toggles moved into a tidy checkbox group.
+- 🗂️ **Show switch** — Favorites and Ignored are now a single segmented control (All / Favorites / Ignored), matching the Auctions control.
+- 🃏 **Swipe in the header** — the Swipe button moved up to the top banner so it's always within reach.
+- ⚽ **Trivia button** — daily Arsenal trivia is now a ⚽ button in the header instead of a full-width card, freeing up space for lots.
+
 ## 2026-06-05 — My Bids & bid panel
 
 - 🔑 **Cleaner login error in My Bids** — when Cannon's login fails, you now get a clear prompt to update your credentials instead of a raw error message.

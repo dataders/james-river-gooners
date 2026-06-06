@@ -3,7 +3,7 @@ import { itemTimeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { getDisplayEnrichment } from '../utils/enrichment'
 
-export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
+export const ItemCard = memo(function ItemCard({ item, compact = false, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
   const imgSrc = item.images?.[0] || null
   const remaining = itemTimeRemaining(item)
   const enrichment = getDisplayEnrichment(item)
@@ -31,7 +31,7 @@ export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, on
     <div
       role="button"
       tabIndex={0}
-      className={`item-card${isIgnored ? ' ignored' : ''}`}
+      className={`item-card${compact ? ' compact' : ''}${isIgnored ? ' ignored' : ''}`}
       onClick={() => onItemClick(item)}
       onKeyDown={(e) => { if (e.key === 'Enter') onItemClick(item) }}
     >
@@ -71,6 +71,9 @@ export const ItemCard = memo(function ItemCard({ item, itemComps, isFavorite, on
           {usedLabelAsTitle && item.lotNumber ? `Lot ${item.lotNumber} · ` : ''}
           {item.rawCategory || item.category}
         </div>
+        {compact && item.description && (
+          <div className="item-description">{item.description}</div>
+        )}
         {bidStatus?.winning != null && (
           <div className={`bid-status-badge${bidStatus.winning ? ' bid-status-winning' : ' bid-status-outbid'}`}>
             {bidStatus.winning

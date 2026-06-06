@@ -53,23 +53,31 @@ test.describe('Arsenal Trivia card', () => {
     await page.goto('/')
   })
 
-  test('trivia card is visible', async ({ page }) => {
+  // Trivia now lives behind a ⚽ button in the header banner; open it first.
+  const openTrivia = (page) => page.locator('.trivia-button').click()
+
+  test('trivia card opens from the header button', async ({ page }) => {
+    await expect(page.locator('.trivia-card')).toBeHidden()
+    await openTrivia(page)
     await expect(page.locator('.trivia-card')).toBeVisible()
   })
 
   test('shows question and tap hint before reveal', async ({ page }) => {
+    await openTrivia(page)
     await expect(page.locator('.trivia-question')).toBeVisible()
     await expect(page.locator('.trivia-tap-hint')).toBeVisible()
     await expect(page.locator('.trivia-answer')).toBeHidden()
   })
 
   test('clicking trivia body reveals answer and hides hint', async ({ page }) => {
+    await openTrivia(page)
     await page.locator('.trivia-body').click()
     await expect(page.locator('.trivia-answer')).toBeVisible()
     await expect(page.locator('.trivia-tap-hint')).toBeHidden()
   })
 
   test('clicking trivia body again hides the answer', async ({ page }) => {
+    await openTrivia(page)
     await page.locator('.trivia-body').click()
     await page.locator('.trivia-body').click()
     await expect(page.locator('.trivia-answer')).toBeHidden()
@@ -77,6 +85,7 @@ test.describe('Arsenal Trivia card', () => {
   })
 
   test('trivia body has aria-expanded that reflects reveal state', async ({ page }) => {
+    await openTrivia(page)
     await expect(page.locator('.trivia-body')).toHaveAttribute('aria-expanded', 'false')
     await page.locator('.trivia-body').click()
     await expect(page.locator('.trivia-body')).toHaveAttribute('aria-expanded', 'true')
