@@ -77,6 +77,38 @@ export function parseBidderId(html) {
   return null
 }
 
+// Extracts {itemId, auctionId} pairs from Maxanet GetWatchlist HTML.
+// The GetWatchlist AJAX endpoint returns one item card per bid; each card has
+// 4 social-share buttons whose onclick encodes both IDs unambiguously:
+//   GetSocialNetworkUrl('/...', 'Facebook', auctionId, auctionItemId)
+// Falls back to hidden input fields (item.AuctionId / item.AuctionItemId) if
+// the social buttons are absent.
+export function parseWatchlistItems(html) {
+  const seen = new Set()
+  const out = []
+
+  for (const m of html.matchAll(/GetSocialNetworkUrl\s*\([^)]+,\s*(\d+)\s*,\s*(\d+)\s*\)/g)) {
+    const auctionId = m[1], itemId = m[2]
+    if (!seen.has(itemId)) { seen.add(itemId); out.push({ itemId, auctionId }) }
+  }
+
+  if (out.length === 0) {
+    let pendingAuctionId = ''
+    for (const m of html.matchAll(/<input[^>]+>/gi)) {
+      const tag = m[0]
+      const nameMatch = tag.match(/name="item\.(AuctionItemId|AuctionId)"/)
+      const valueMatch = tag.match(/value="(\d+)"/)
+      if (!nameMatch || !valueMatch) continue
+      if (nameMatch[1] === 'AuctionId') pendingAuctionId = valueMatch[1]
+      else if (nameMatch[1] === 'AuctionItemId' && !seen.has(valueMatch[1])) {
+        seen.add(valueMatch[1]); out.push({ itemId: valueMatch[1], auctionId: pendingAuctionId })
+      }
+    }
+  }
+
+  return out
+}
+
 // Parses a Maxanet RefreshItem HTML response for live bid state.
 // Returns winning (true/false/null), currentBid, and minimumNextBid.
 export function parseRefreshItemHtml(html) {

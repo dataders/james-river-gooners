@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-05 — My Bids & bid panel
+
+- 🔑 **Cleaner login error in My Bids** — when Cannon's login fails, you now get a clear prompt to update your credentials instead of a raw error message.
+
 ## 2026-06-05 — Resale insights & live bidding
 
 - 🔨 **Bid in-app** — bid on Cannon's lots without leaving the site: link your account, enter your max bid, and place it right from the lot's detail panel.

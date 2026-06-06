@@ -6,6 +6,20 @@ on:
     branches: [main]
 
 jobs:
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -19,6 +33,20 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+
+  type-check:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run type-check
 
   unit:
     name: Unit tests

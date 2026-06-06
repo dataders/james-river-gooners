@@ -19,6 +19,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from categories import normalize_category, normalize_raw_with_description
+from scraper_common import has_bid_changes, load_existing_bids, load_existing_unique_bidders
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
@@ -31,64 +32,6 @@ BID_HISTORY_DELAY = 0.25
 def sanitize_auction_id(auction_id: str) -> str:
     """Convert base64 auction ID to filesystem-safe string."""
     return auction_id.replace("+", "-").replace("/", "_").replace("=", "")
-
-
-def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
-    """Return {item_id: (currentBid, totalBids)} from an existing Parquet or NDJSON file."""
-    ndjson_path = path.with_suffix(".ndjson")
-    if ndjson_path.exists():
-        try:
-            rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
-            return {
-                row["id"]: (float(row.get("currentBid") or 0), int(row.get("totalBids") or 0))
-                for row in rows
-            }
-        except Exception:
-            pass
-    if not path.exists():
-        return {}
-    import pyarrow.parquet as pq
-    try:
-        table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
-        return {
-            row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
-            for row in table.to_pylist()
-        }
-    except Exception:
-        return {}
-
-
-def load_existing_unique_bidders(path: Path) -> dict[str, int]:
-    """Return {item_id: uniqueBidders} from an existing NDJSON or Parquet file.
-
-    Used to carry forward the distinct-bidder count for lots whose bid count
-    hasn't changed, so a re-scrape only re-fetches bid history for active lots.
-    """
-    ndjson_path = path.with_suffix(".ndjson")
-    if ndjson_path.exists():
-        try:
-            out: dict[str, int] = {}
-            for line in ndjson_path.read_text().splitlines():
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                if row.get("uniqueBidders") is not None:
-                    out[row["id"]] = int(row["uniqueBidders"])
-            return out
-        except Exception:
-            pass
-    if not path.exists():
-        return {}
-    import pyarrow.parquet as pq
-    try:
-        table = pq.read_table(path, columns=["id", "uniqueBidders"])
-        return {
-            row["id"]: int(row["uniqueBidders"])
-            for row in table.to_pylist()
-            if row.get("uniqueBidders") is not None
-        }
-    except Exception:
-        return {}
 
 
 def count_unique_bidders(html: str) -> int:
@@ -175,20 +118,6 @@ def enrich_unique_bidders(
 
     if fetched:
         print(f"Fetched bid history for {fetched} lot(s)")
-
-
-def has_bid_changes(new_items: list[dict], existing_bids: dict[str, tuple[float, int]]) -> bool:
-    """Return True if any bid amount, bid count, or item set differs from the stored snapshot."""
-    if not existing_bids:
-        return True
-    new_ids = {item["id"] for item in new_items}
-    if new_ids != set(existing_bids):
-        return True
-    return any(
-        (float(item.get("currentBid") or 0), int(item.get("totalBids") or 0))
-        != existing_bids.get(item["id"])
-        for item in new_items
-    )
 
 
 def auction_date_from_title(title: str) -> str:
@@ -368,7 +297,7 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     # Category from hidden Types input
     cat_input = card.find("input", attrs={"name": lambda n: n and str(n).startswith("Types")})
     raw_category = cat_input["value"] if cat_input else ""
-    category = normalize_category(raw_category)
+    category = normalize_category(raw_category, source="cannons")
 
     # Detail URL
     detail_link = card.select_one('a[href*="AuctionItemDetail"]')
@@ -400,8 +329,8 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
         "finalBid": None,
         "endDate": end_date,
         "images": images[:5],  # Keep first 5 images
-        "category": normalize_category(raw_category, description),
-        "rawCategory": normalize_raw_with_description(raw_category, description),
+        "category": normalize_category(raw_category, description, source="cannons"),
+        "rawCategory": normalize_raw_with_description(raw_category, description, source="cannons"),
         "detailUrl": detail_url,
     }
 
@@ -499,8 +428,11 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     # LLM metadata enrichment (#99/#104): brand/model/condition for sharper eBay
     # comp queries + UI display. No-op unless GOONERS_ENRICHMENT=1 + a key is set,
     # so default behavior is unchanged. Runs while images are still arrays.
-    from enrich import enrich_items
-    enrich_items(all_items)
+    # Hand it the prior sidecar so unchanged lots reuse their enrichment instead
+    # of re-paying for an identical API call (incremental enrichment).
+    from enrich import enrich_items, load_prior_enrichment
+    prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
+    enrich_items(all_items, prior_by_id=prior_by_id)
     # Mirror enriched lots into Supabase so they're queryable via the API (#104).
     # No-op without SUPABASE_SECRET_KEY or enriched lots.
     from supabase_enrichment import maybe_export_enrichment
@@ -521,6 +453,10 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     if os.environ.get("GOONERS_EMBEDDINGS") == "1":
         from embed import generate_and_write as _gen_embeddings
         _gen_embeddings(all_items, items_path, session)
+
+    # Generate Nomic Embed (text+vision, 768-dim) → Supabase pgvector table (#165)
+    from embed_nomic import maybe_generate_and_upsert as _gen_nomic
+    _gen_nomic(all_items, safe_id, session)
 
     # Write Parquet (images stringified — Arrow doesn't support list-of-strings natively here)
     for item in all_items:

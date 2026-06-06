@@ -11,27 +11,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { callProxy as _callProxy } from '../utils/cannonProxy'
 
-async function callProxy(action, params = {}) {
-  if (!supabase) return { error: 'Not configured' }
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'Not signed in' }
-  const { data, error } = await supabase.functions.invoke('cannon-proxy', {
-    body: { action, ...params },
-  })
-  if (error) {
-    // A non-2xx response (e.g. a rejected bid or a Cannon's login failure)
-    // surfaces here as a FunctionsHttpError whose generic message hides the
-    // real reason. The actual { error } / { description } the function returned
-    // lives in the response body on error.context — read it when we can.
-    let message = error.message
-    try {
-      const body = await error.context?.json?.()
-      message = body?.error || body?.description || message
-    } catch { /* keep the generic message */ }
-    return { error: message }
-  }
-  return data ?? {}
+function callProxy(action, params = {}) {
+  return _callProxy(action, params, supabase)
 }
 
 export function useCannonBids(user) {

@@ -52,15 +52,18 @@ export function useEnrichment(auctionSafeIds) {
       ? auctionSafeIds.filter(Boolean)
       : auctionSafeIds ? [auctionSafeIds] : []
 
-    const toFetch = ids.filter(id => !fetchedIds.current.has(id))
+    const fetched = fetchedIds.current
+    const toFetch = ids.filter(id => !fetched.has(id))
     if (toFetch.length === 0) return
 
-    for (const id of toFetch) fetchedIds.current.add(id)
+    for (const id of toFetch) fetched.add(id)
 
     let cancelled = false
+    let completed = false
 
     Promise.all(toFetch.map(fetchAuctionEnrichment)).then(results => {
       if (cancelled) return
+      completed = true
       setByAuction(prev => {
         const next = { ...prev }
         for (const { id, items } of results) next[id] = items
@@ -68,7 +71,15 @@ export function useEnrichment(auctionSafeIds) {
       })
     })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      // If the fetch was cancelled before it finished (e.g. React StrictMode's
+      // double-invoke in dev, or a dep change mid-flight), remove the IDs so the
+      // next effect run can retry rather than silently no-oping.
+      if (!completed) {
+        for (const id of toFetch) fetched.delete(id)
+      }
+    }
   }, [auctionSafeIds])
 
   return isSupabaseConfigured ? byAuction : EMPTY
