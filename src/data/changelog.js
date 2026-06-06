@@ -18,6 +18,7 @@ export const CHANGELOG = [
     date: '2026-06-05',
     title: 'Resale insights & live bidding',
     changes: [
+      { id: 'place-bid-in-app', icon: '🔨', text: "Bid on Cannon's lots without leaving the site — link your account, enter your max bid, and place it right from the lot's detail panel." },
       { id: 'cannons-sold-history', icon: '📈', text: "Cannon's sold-price history: every lot now shows what similar past lots actually hammered for, and deals are ranked by estimated margin." },
       { id: 'sold-previously-comps', icon: '🔁', text: "“Sold previously” comps surface similar past Cannon's lots and their final prices, right in the detail panel." },
       { id: 'bid-status-cards', icon: '🔨', text: 'Bid status shows up on cards — see at a glance whether you’re winning or have been outbid.' },

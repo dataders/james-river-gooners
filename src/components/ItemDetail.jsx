@@ -6,8 +6,9 @@ import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
 import { getDisplayEnrichment } from '../utils/enrichment'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
+import { BidPanel } from './BidPanel'
 
-export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
+export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, cannonBids, bidStatus, user, onCannonLinkClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
 
@@ -172,6 +173,17 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
               {shareLabel ?? 'Share'}
             </button>
           </div>
+
+          {cannonBids && (
+            <BidPanel
+              item={item}
+              cannonBids={cannonBids}
+              bidStatus={bidStatus}
+              user={user}
+              onSignInClick={onSignInClick}
+              onCannonLinkClick={onCannonLinkClick}
+            />
+          )}
 
           {/* Comps lead — they're the primary signal; the calculator is secondary (#88).
               The whole resale cluster is members-only: logged out, the data is
