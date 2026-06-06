@@ -94,7 +94,13 @@ function getSetCookies(headers: Headers): Record<string, string> {
   return out
 }
 
-async function maxanetLogin(username: string, password: string): Promise<Record<string, string>> {
+interface LoginResult {
+  cookies: Record<string, string>
+  loginPostTo: string
+  loginPostCookieKeys: string[]
+}
+
+async function maxanetLogin(username: string, password: string): Promise<LoginResult> {
   const base = 'https://bid.cannonsauctions.com'
 
   // Step 1 — fetch login page for anti-forgery token + initial cookies
@@ -144,7 +150,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   })
 
   // Successful login → 302 redirect away from the login page
-  // Failed login → 200 (re-renders the form with an error message)
+  // Failed login → 200 (re-renders the form) OR 302 back to the login page
   if (loginResp.status === 200) {
     const body = await loginResp.text()
     const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
@@ -155,7 +161,18 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   }
   if (loginResp.status !== 302) throw new Error(`Unexpected login response: ${loginResp.status}`)
 
-  let sessionCookies = mergeCookies(cookies, getSetCookies(loginResp.headers))
+  const loginPostTo = loginResp.headers.get('location') ?? ''
+  const loginPostCookies = getSetCookies(loginResp.headers)
+  const loginPostCookieKeys = Object.keys(loginPostCookies)
+
+  // If the server 302s back to the login page, credentials were rejected
+  if (/\/Account\/Login/i.test(loginPostTo)) {
+    throw new Error(`Login failed: bad credentials (server redirected back to ${loginPostTo})`)
+  }
+
+  console.log(`[cannon-proxy] login POST: status=302 location=${loginPostTo} newCookies=${loginPostCookieKeys.join(',') || 'none'}`)
+
+  let sessionCookies = mergeCookies(cookies, loginPostCookies)
 
   // Follow ALL post-login redirects manually so we capture Set-Cookie headers at
   // every hop. Maxanet may chain several 302s before landing on the dashboard,
@@ -190,7 +207,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   }
 
   console.log('[cannon-proxy] session cookie keys after login:', Object.keys(sessionCookies).join(', '))
-  return sessionCookies
+  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys }
 }
 
 interface BidItem {
@@ -252,7 +269,7 @@ async function refreshItemStatus(
   }
 }
 
-async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
+async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[]): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
   // BidHistory is a regular page load — don't send X-Requested-With (that's
@@ -269,8 +286,9 @@ async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemI
   })
 
   const cookieKeys = Object.keys(cookies).join(',')
+  const loginDiag = `loginTo:${loginPostTo || '?'} loginPostCookies:${loginPostCookieKeys.join(',') || 'none'}`
   console.log('[cannon-proxy] BidHistory response status:', resp.status, '| cookies:', cookieKeys)
-  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→login, cookies: ${cookieKeys})`)
+  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→login, ${loginDiag}, cookies: ${cookieKeys})`)
   if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
 
   const html = await resp.text()
@@ -419,16 +437,17 @@ async function getBids(
     return json({ error: 'Failed to decrypt stored credentials' }, 500)
   }
 
-  let cookies: Record<string, string>
+  let loginResult: LoginResult
   try {
-    cookies = await maxanetLogin(data.cannon_username, password)
+    loginResult = await maxanetLogin(data.cannon_username, password)
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
+  const { cookies, loginPostTo, loginPostCookieKeys } = loginResult
 
   let history: { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }
   try {
-    history = await fetchBidHistory(cookies)
+    history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys)
   } catch (e: unknown) {
     return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
   }
@@ -489,7 +508,7 @@ async function placeBid(
 
   let cookies: Record<string, string>
   try {
-    cookies = await maxanetLogin(data.cannon_username, password)
+    ({ cookies } = await maxanetLogin(data.cannon_username, password))
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
