@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: stg_sold_lots
+    description: >
+      Closed lots with a realized price > $1. One row per (auction_safe_id, item_id).
+      Adds derived time dimensions and price buckets.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: final_bid
+        description: Hammer price in USD. Always > min_sold_price (var).
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: source
+        tests:
+          - accepted_values:
+              values: ['cannons', 'hibid', 'rasmus']
+      - name: price_bucket
+        tests: [not_null]
+
+  - name: stg_lots
+    description: Active and archived lots. One row per (auction_safe_id, item_id).
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+
+  - name: stg_lot_enrichment
+    description: >
+      LLM-identified lots (medium/high confidence only). One row per
+      (auction_safe_id, item_id). Adds confidence_rank ordinal.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: confidence
+        tests:
+          - accepted_values:
+              values: ['medium', 'high']
+
+  - name: stg_ebay_comp_snapshots
+    description: >
+      eBay sold-comp rows where item_web_url is not null (i.e. a listing was
+      matched). Multiple rows per lot possible — dedup in mart layer.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+
+  - name: stg_cannons_comp_snapshots
+    description: >
+      Latest-generation Cannon's CLIP comps only. Up to top-K rows per lot
+      (rank 0 = most similar archived lot).
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: comp_rank
+        description: 0-based position within the item's comp set (0 = best match).
+
+  - name: stg_favorites
+    description: >
+      User favorites with item_key parsed into auction_safe_id + item_id
+      and time-of-day dimensions added.
+    columns:
+      - name: user_id
+        tests: [not_null]
+      - name: item_key
+        tests: [not_null]
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+
+  - name: stg_ignored
+    description: User ignored items. Same structure as stg_favorites.
+    columns:
+      - name: user_id
+        tests: [not_null]
+      - name: item_key
+        tests: [not_null]
+
+  - name: stg_users
+    description: Registered app users with tenure and activity flags.
+    columns:
+      - name: user_id
+        tests: [not_null, unique]

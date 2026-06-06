@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: int_lots_with_enrichment
+    description: >
+      All lots (active + archived) joined to LLM enrichment. is_enriched=true
+      when the lot appears in lot_enrichment (medium/high confidence).
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: is_enriched
+        tests: [not_null]
+
+  - name: int_sold_lots_enriched
+    description: >
+      Sold lots joined to enrichment, best eBay comp, and best Cannon's comp.
+      pct_vs_ebay_comp is null when no eBay comp exists.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: final_bid
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false

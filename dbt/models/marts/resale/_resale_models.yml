@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: fct_ebay_comp_coverage
+    description: >
+      eBay comp coverage and freshness per auction × source_query strategy.
+      Use to monitor scraper health — is coverage_pct rising or stale?
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: coverage_pct
+        description: Percentage of lots in the auction that have at least one eBay comp.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: pct_high_confidence
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+
+  - name: fct_enrichment_coverage
+    description: >
+      LLM enrichment coverage per auction. Tracks what fraction of lots were
+      identified by Claude Haiku, at what confidence, and which model version
+      was used (for model migration tracking).
+    columns:
+      - name: auction_safe_id
+        tests: [not_null, unique]
+      - name: enrichment_coverage_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: pct_high_confidence
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+
+  - name: fct_price_accuracy
+    description: >
+      For every sold lot with at least one comp (eBay or Cannon's), compares
+      the actual hammer price to the comp prediction. pct_vs_*_comp is positive
+      when the lot sold above the comp (good: undervalued), negative when below
+      (overvalued relative to eBay resale). Use to audit comp quality and tune
+      the matching algorithm.
+    columns:
+      - name: auction_safe_id
+        tests: [not_null]
+      - name: item_id
+        tests: [not_null]
+      - name: final_bid
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: ebay_comp_direction
+        tests:
+          - accepted_values:
+              values: ['above_ebay', 'below_ebay', 'near_ebay']
+              where: "has_ebay_comp = true"
+      - name: better_comp_source
+        tests:
+          - accepted_values:
+              values: ['ebay_closer', 'cannons_closer', 'ebay_only', 'cannons_only']
