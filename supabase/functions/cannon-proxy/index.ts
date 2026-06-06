@@ -34,13 +34,21 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
 
 // ── Crypto helpers ────────────────────────────────────────────────────────────
 
+function requireEncryptionKey(): string {
+  const key = Deno.env.get('CANNON_ENCRYPTION_KEY') ?? ''
+  if (key.length < 16) {
+    throw new Error('CANNON_ENCRYPTION_KEY is not set or too weak (minimum 16 characters)')
+  }
+  return key
+}
+
 async function getKey(rawKey: string): Promise<CryptoKey> {
   const keyBytes = new TextEncoder().encode(rawKey.padEnd(32, '0').slice(0, 32))
   return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
 }
 
 async function encryptText(plaintext: string): Promise<string> {
-  const key = await getKey(Deno.env.get('CANNON_ENCRYPTION_KEY') ?? '')
+  const key = await getKey(requireEncryptionKey())
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext))
   const combined = new Uint8Array(12 + encrypted.byteLength)
@@ -51,7 +59,7 @@ async function encryptText(plaintext: string): Promise<string> {
 
 async function decryptText(ciphertext: string): Promise<string> {
   const combined = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0))
-  const key = await getKey(Deno.env.get('CANNON_ENCRYPTION_KEY') ?? '')
+  const key = await getKey(requireEncryptionKey())
   const decrypted = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: combined.slice(0, 12) },
     key,
