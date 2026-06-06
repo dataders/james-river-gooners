@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-06 — Image search
+
+- 📷 **Image search** — snap or upload a photo and Claude identifies the item, then surfaces matching active lots, eBay sold comps, FB Marketplace links, and historical Cannon's sold prices — all from the 📷 button in the search bar.
+
 ## 2026-06-06 — Layout & filter tidy-up
 
 - 📋 **Compact view** — a list of rows with a thumbnail and description, alongside the classic grid; pick whichever scans faster for you.

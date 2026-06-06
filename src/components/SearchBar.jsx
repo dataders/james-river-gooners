@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 
-export function SearchBar({ value, onChange, semanticStatus }) {
+export function SearchBar({ value, onChange, semanticStatus, onCameraClick }) {
   const [localValue, setLocalValue] = useState(value)
   const timeoutRef = useRef(null)
 
@@ -19,9 +19,20 @@ export function SearchBar({ value, onChange, semanticStatus }) {
 
   return (
     <div className="search-bar-wrap">
+      {onCameraClick && (
+        <button
+          type="button"
+          className="search-camera-btn"
+          aria-label="Search by photo"
+          title="Find similar lots by photo"
+          onClick={onCameraClick}
+        >
+          📷
+        </button>
+      )}
       <input
         type="text"
-        className="search-bar"
+        className={`search-bar${onCameraClick ? ' search-bar--with-camera' : ''}`}
         placeholder="Search items..."
         value={localValue}
         onChange={handleChange}
