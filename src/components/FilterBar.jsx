@@ -88,7 +88,6 @@ export function FilterBar({
   onShowOnly,
 }) {
   const totalItems = groupedCategories.reduce((s, g) => s + g.totalCount, 0)
-  const allRawNames = groupedCategories.flatMap(g => g.rawCategories.map(c => c.name))
   const isGroupHidden = (g) => excludedGroups.includes(g.group)
   // A group counts as fully hidden when its name is excluded OR every raw chip is.
   const allHidden = groupedCategories.length > 0 && groupedCategories.every(g =>
@@ -103,7 +102,7 @@ export function FilterBar({
   , 0)
 
   // Isolate one category — exclude every other category across all groups.
-  const handleShowOnly = (name) => onShowOnly(name, allRawNames)
+  const handleShowOnly = (name) => onShowOnly(name, groupedCategories)
 
   const [open, setOpen] = useState(false)
 
