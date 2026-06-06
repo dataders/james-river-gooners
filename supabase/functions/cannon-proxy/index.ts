@@ -105,9 +105,14 @@ interface LoginResult {
 
 async function maxanetLogin(username: string, password: string): Promise<LoginResult> {
   const base = 'https://bid.cannonsauctions.com'
+  // /Authentication/Login is the ASP.NET Forms Authentication endpoint that issues
+  // .ASPXAUTH. /Public/Account/Login is a profile-area login that does NOT set it,
+  // which is why /Public/Auction/* endpoints (GetWatchlist etc.) used to redirect
+  // back to /Authentication/Login after that older flow.
+  const loginPageUrl = `${base}/Authentication/Login`
 
   // Step 1 — fetch login page for anti-forgery token + initial cookies
-  const pageResp = await fetch(`${base}/Public/Account/Login`, {
+  const pageResp = await fetch(loginPageUrl, {
     headers: { 'User-Agent': UA },
     redirect: 'follow',
   })
@@ -123,35 +128,39 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
   const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
   const tenantCode = tenantMatch?.[1] ?? ''
 
+  // Detect the username input field name — may be Email, UserName, or Username
+  const usernameFieldMatch =
+    pageHtml.match(/name="(Email|UserName|Username)"[^>]*type="(?:text|email)"/i) ??
+    pageHtml.match(/type="(?:text|email)"[^>]*name="(Email|UserName|Username)"/i)
+  const usernameField = usernameFieldMatch?.[1] ?? 'Username'
+
   // Use the form's actual action URL — don't hardcode a route that may differ
-  // across Maxanet instances. Fall back to the page URL itself (the ASP.NET MVC
-  // default is GET and POST on the same path).
+  // across Maxanet instances. Fall back to the page URL itself.
   const formActionMatch = pageHtml.match(/<form[^>]+action="([^"]+)"/)
   const loginPostUrl = formActionMatch?.[1]
     ? (formActionMatch[1].startsWith('http') ? formActionMatch[1] : `${base}${formActionMatch[1]}`)
-    : `${base}/Public/Account/Login`
+    : loginPageUrl
 
-  console.log('[cannon-proxy] login form action:', loginPostUrl, '| token:', !!verificationToken, '| tenant:', tenantCode || '(empty)')
+  console.log('[cannon-proxy] login form action:', loginPostUrl, '| token:', !!verificationToken, '| tenant:', tenantCode || '(empty)', '| usernameField:', usernameField)
 
-  // Step 2 — POST credentials to the login endpoint discovered from the form action
+  // Step 2 — POST credentials to /Authentication/Login (issues .ASPXAUTH)
+  const loginBody: Record<string, string> = {
+    ReturnUrl: '/Public/Auction/Watchlist',
+    TenantCode: tenantCode,
+    Password: password,
+    __RequestVerificationToken: verificationToken,
+  }
+  loginBody[usernameField] = username
+
   const loginResp = await fetch(loginPostUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Cookie': cookieHeader(cookies),
       'User-Agent': UA,
-      'Referer': `${base}/Public/Account/Login`,
+      'Referer': loginPageUrl,
     },
-    body: new URLSearchParams({
-      // Ask the server to redirect to BidHistory after successful login so we can
-      // capture the page HTML directly from within the authenticated redirect chain,
-      // sidestepping any session-routing issues that affect a separate later request.
-      ReturnUrl: '/Public/Account/BidHistory',
-      TenantCode: tenantCode,
-      Username: username,
-      Password: password,
-      __RequestVerificationToken: verificationToken,
-    }).toString(),
+    body: new URLSearchParams(loginBody).toString(),
     redirect: 'manual',
   })
 
@@ -173,7 +182,7 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
   const loginPostRawSetCookie = loginResp.headers.get('set-cookie') ?? ''
 
   // If the server 302s back to the login page, credentials were rejected
-  if (/\/Account\/Login/i.test(loginPostTo)) {
+  if (/\/Authentication\/Login/i.test(loginPostTo) || /\/Account\/Login/i.test(loginPostTo)) {
     throw new Error(`Login failed: bad credentials (server redirected back to ${loginPostTo})`)
   }
 
@@ -200,7 +209,7 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
           'User-Agent': UA,
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
-          'Referer': `${base}/Public/Account/Login`,
+          'Referer': loginPageUrl,
         },
         redirect: 'manual',
       })
@@ -214,12 +223,9 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
         nextUrl = null
         const hopHtml = await hopResp.text()
         if (/BidHistory/i.test(hopUrl)) {
-          // Redirect chain landed directly on BidHistory — use HTML in-flight
           bidHistoryHtml = hopHtml
           console.log('[cannon-proxy] captured BidHistory HTML in redirect chain, length:', bidHistoryHtml.length)
         } else {
-          // Landed on a different page (e.g. home). Scan its nav for the real
-          // BidHistory URL — Maxanet instances vary in their routing.
           const linkMatch = hopHtml.match(/href="([^"]*(?:BidHistory|MyBids|bid-history)[^"]*)"/)
           if (linkMatch) {
             const href = linkMatch[1]
@@ -233,82 +239,6 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
     } catch (e) {
       console.log(`[cannon-proxy] redirect hop ${hops} failed:`, (e as Error).message)
       nextUrl = null
-    }
-  }
-
-  // Step 3: Activate Auction-area authentication.
-  // /Public/Auction/* uses a separate auth middleware that redirects to
-  // /Authentication/Login (not /Public/Account/Login). Visiting that URL with
-  // our session cookies triggers SSO — the server recognises the account-area
-  // session and marks it as authenticated for the auction area too, so
-  // subsequent GetWatchlist calls succeed without extra cookies.
-  // If /Authentication/Login shows a login form instead (no SSO), we POST
-  // the same credentials there as well.
-  let authUrl: string | null = `${base}/Authentication/Login`
-  let authHops = 0
-  while (authUrl && authHops < 5) {
-    authHops++
-    const curAuthUrl = authUrl
-    authUrl = null
-    try {
-      const authR = await fetch(curAuthUrl, {
-        headers: {
-          'Cookie': cookieHeader(sessionCookies),
-          'User-Agent': UA,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Referer': `${base}/Public`,
-        },
-        redirect: 'manual',
-      })
-      const authC = getSetCookies(authR.headers)
-      sessionCookies = mergeCookies(sessionCookies, authC)
-      const authLoc = authR.headers.get('location') ?? '(none)'
-      console.log(`[cannon-proxy] auth-activate ${authHops}: status=${authR.status} → ${authLoc.slice(0, 80)} newCookies=${Object.keys(authC).join(',') || 'none'}`)
-      if (authR.status === 302) {
-        const loc = authR.headers.get('location') ?? ''
-        // Stop if it loops back to /Authentication/Login to avoid infinite redirect
-        if (loc && !loc.includes('/Authentication/Login')) {
-          authUrl = loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`
-        }
-      } else if (authR.status === 200) {
-        const authHtml = await authR.text()
-        if (authHtml.includes('__RequestVerificationToken')) {
-          // /Authentication/Login returned a login form — post credentials there too
-          const authToken = authHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
-          const authAction = authHtml.match(/<form[^>]+action="([^"]+)"/)?.[1]
-          const authPostUrl = authAction
-            ? (authAction.startsWith('http') ? authAction : `${base}${authAction}`)
-            : curAuthUrl
-          const authPostR = await fetch(authPostUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Cookie': cookieHeader(sessionCookies),
-              'User-Agent': UA,
-              'Referer': curAuthUrl,
-            },
-            body: new URLSearchParams({
-              Username: username,
-              Password: password,
-              __RequestVerificationToken: authToken,
-            }).toString(),
-            redirect: 'manual',
-          })
-          const authPostC = getSetCookies(authPostR.headers)
-          sessionCookies = mergeCookies(sessionCookies, authPostC)
-          console.log(`[cannon-proxy] auth-activate POST: status=${authPostR.status} newCookies=${Object.keys(authPostC).join(',') || 'none'}`)
-          if (authPostR.status === 302) {
-            const loc = authPostR.headers.get('location') ?? ''
-            if (loc && !loc.includes('/Authentication/Login')) {
-              authUrl = loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`
-            }
-          }
-        } else {
-          console.log('[cannon-proxy] auth-activate: 200 but no login form (already auth?)')
-        }
-      }
-    } catch (e) {
-      console.log('[cannon-proxy] auth-activate step failed:', (e as Error).message)
     }
   }
 
