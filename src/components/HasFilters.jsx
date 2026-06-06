@@ -1,4 +1,4 @@
-// Sidebar "Has" checkbox group. Replaces the standalone top-bar pill toggles
+// Sidebar "Comps" checkbox group. Replaces the standalone top-bar pill toggles
 // (Has eBay comp / Has auction comp / ✨ Identified) with a single labeled
 // section of checkboxes so the resale-data presence filters live together.
 export function HasFilters({
@@ -12,7 +12,7 @@ export function HasFilters({
   return (
     <div className="filter-section has-filters">
       <div className="filter-label">
-        <span className="filter-label-text">Has</span>
+        <span className="filter-label-text">Comps</span>
       </div>
       <label className="has-filter-row">
         <input
@@ -20,7 +20,7 @@ export function HasFilters({
           checked={hasEbayComp}
           onChange={e => onHasEbayCompChange(e.target.checked)}
         />
-        <span>eBay comp</span>
+        <span>eBay</span>
       </label>
       <label className="has-filter-row">
         <input
@@ -28,7 +28,7 @@ export function HasFilters({
           checked={hasCannonsComp}
           onChange={e => onHasCannonsCompChange(e.target.checked)}
         />
-        <span>Auction comp</span>
+        <span>Auctions</span>
       </label>
       <label className="has-filter-row">
         <input
@@ -36,7 +36,7 @@ export function HasFilters({
           checked={hasEnrichment}
           onChange={e => onHasEnrichmentChange(e.target.checked)}
         />
-        <span>✨ AI product enrichment</span>
+        <span>✨ Claude</span>
       </label>
     </div>
   )
