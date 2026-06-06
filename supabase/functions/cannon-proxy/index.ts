@@ -98,6 +98,8 @@ interface LoginResult {
   cookies: Record<string, string>
   loginPostTo: string
   loginPostCookieKeys: string[]
+  loginPostRawSetCookie: string
+  bidHistoryHtml?: string
 }
 
 async function maxanetLogin(username: string, password: string): Promise<LoginResult> {
@@ -140,7 +142,10 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
       'Referer': `${base}/Public/Account/Login`,
     },
     body: new URLSearchParams({
-      ReturnUrl: '',
+      // Ask the server to redirect to BidHistory after successful login so we can
+      // capture the page HTML directly from within the authenticated redirect chain,
+      // sidestepping any session-routing issues that affect a separate later request.
+      ReturnUrl: '/Public/Account/BidHistory',
       TenantCode: tenantCode,
       Username: username,
       Password: password,
@@ -164,41 +169,51 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
   const loginPostTo = loginResp.headers.get('location') ?? ''
   const loginPostCookies = getSetCookies(loginResp.headers)
   const loginPostCookieKeys = Object.keys(loginPostCookies)
+  const loginPostRawSetCookie = loginResp.headers.get('set-cookie') ?? ''
 
   // If the server 302s back to the login page, credentials were rejected
   if (/\/Account\/Login/i.test(loginPostTo)) {
     throw new Error(`Login failed: bad credentials (server redirected back to ${loginPostTo})`)
   }
 
-  console.log(`[cannon-proxy] login POST: status=302 location=${loginPostTo} newCookies=${loginPostCookieKeys.join(',') || 'none'}`)
+  console.log(`[cannon-proxy] login POST: status=302 location=${loginPostTo} newCookies=${loginPostCookieKeys.join(',') || 'none'} rawSetCookie=${loginPostRawSetCookie || 'none'}`)
 
   let sessionCookies = mergeCookies(cookies, loginPostCookies)
+  let bidHistoryHtml: string | undefined
 
   // Follow ALL post-login redirects manually so we capture Set-Cookie headers at
-  // every hop. Maxanet may chain several 302s before landing on the dashboard,
-  // and the final auth cookie might only appear on the last hop.
+  // every hop. With ReturnUrl set to BidHistory, the redirect chain should land
+  // there — we capture the HTML in-flight so getBids can skip a second request.
   let nextUrl: string | null = loginResp.headers.get('location')
   if (nextUrl && !nextUrl.startsWith('http')) nextUrl = `${base}${nextUrl.startsWith('/') ? '' : '/'}${nextUrl}`
   let hops = 0
   while (nextUrl && hops < 6) {
     hops++
+    const hopUrl = nextUrl
     try {
-      const hopResp = await fetch(nextUrl, {
+      const hopResp = await fetch(hopUrl, {
         headers: {
           'Cookie': cookieHeader(sessionCookies),
           'User-Agent': UA,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
           'Referer': `${base}/Public/Account/Login`,
         },
         redirect: 'manual',
       })
       const hopCookies = getSetCookies(hopResp.headers)
       sessionCookies = mergeCookies(sessionCookies, hopCookies)
-      console.log(`[cannon-proxy] redirect hop ${hops}: status=${hopResp.status} url=${nextUrl} newCookies=${Object.keys(hopCookies).join(',') || '(none)'}`)
+      console.log(`[cannon-proxy] redirect hop ${hops}: status=${hopResp.status} url=${hopUrl} newCookies=${Object.keys(hopCookies).join(',') || '(none)'}`)
       if (hopResp.status === 302) {
         const loc = hopResp.headers.get('location')
         nextUrl = loc ? (loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`) : null
       } else {
         nextUrl = null
+        // If this 200 response is the BidHistory page, capture it to avoid a second round-trip
+        if (/\/Account\/BidHistory/i.test(hopUrl)) {
+          bidHistoryHtml = await hopResp.text()
+          console.log('[cannon-proxy] captured BidHistory HTML in redirect chain, length:', bidHistoryHtml.length)
+        }
       }
     } catch (e) {
       console.log(`[cannon-proxy] redirect hop ${hops} failed:`, (e as Error).message)
@@ -207,7 +222,7 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
   }
 
   console.log('[cannon-proxy] session cookie keys after login:', Object.keys(sessionCookies).join(', '))
-  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys }
+  return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml }
 }
 
 interface BidItem {
@@ -269,7 +284,13 @@ async function refreshItemStatus(
   }
 }
 
-async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[]): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
+function parseBidHistoryHtml(html: string): { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null } {
+  const items = parseBidItems(html)
+  const csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId: parseBidderId(html) }
+}
+
+async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: string, loginPostCookieKeys: string[], loginPostRawSetCookie: string): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
   // BidHistory is a regular page load — don't send X-Requested-With (that's
@@ -286,15 +307,13 @@ async function fetchBidHistory(cookies: Record<string, string>, loginPostTo: str
   })
 
   const cookieKeys = Object.keys(cookies).join(',')
-  const loginDiag = `loginTo:${loginPostTo || '?'} loginPostCookies:${loginPostCookieKeys.join(',') || 'none'}`
+  const loginDiag = `loginTo:${loginPostTo || '?'} loginPostCookies:${loginPostCookieKeys.join(',') || 'none'} rawSetCookie:${loginPostRawSetCookie || 'null'}`
+  const bidHistoryRedirectTo = resp.headers.get('location') ?? '?'
   console.log('[cannon-proxy] BidHistory response status:', resp.status, '| cookies:', cookieKeys)
-  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→login, ${loginDiag}, cookies: ${cookieKeys})`)
+  if (resp.status === 302) throw new Error(`Session expired or not logged in (BidHistory→${bidHistoryRedirectTo}, ${loginDiag}, cookies: ${cookieKeys})`)
   if (!resp.ok) throw new Error(`BidHistory returned ${resp.status} — endpoint may need updating`)
 
-  const html = await resp.text()
-  const items = parseBidItems(html)
-  const csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
-  return { itemIds: items.map(b => b.itemId), items, csrf, bidderId: parseBidderId(html) }
+  return parseBidHistoryHtml(await resp.text())
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────────
@@ -443,13 +462,19 @@ async function getBids(
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
-  const { cookies, loginPostTo, loginPostCookieKeys } = loginResult
+  const { cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml } = loginResult
 
   let history: { itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }
-  try {
-    history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys)
-  } catch (e: unknown) {
-    return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
+  if (bidHistoryHtml) {
+    // Login redirect chain landed directly on BidHistory — use the captured HTML.
+    history = parseBidHistoryHtml(bidHistoryHtml)
+    console.log('[cannon-proxy] using BidHistory HTML from redirect chain, items:', history.itemIds.length)
+  } else {
+    try {
+      history = await fetchBidHistory(cookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie)
+    } catch (e: unknown) {
+      return json({ error: `Bid history fetch failed: ${(e as Error).message}` }, 400)
+    }
   }
 
   // Auto-populate cannon_bidder_id the first time we see it in a response.
