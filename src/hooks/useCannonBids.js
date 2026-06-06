@@ -4,6 +4,7 @@
 //   - check whether the user has linked a Cannon's account (get_status)
 //   - save or remove credentials (save_credentials / delete_credentials)
 //   - fetch the set of Maxanet item IDs the user has bid on (get_bids)
+//   - place a bid on a lot (place_bid)
 //
 // Falls back gracefully when Supabase is not configured or the user is
 // not signed in — returns unlinked state so the rest of the app is unaffected.
@@ -87,6 +88,54 @@ export function useCannonBids(user) {
     return {}
   }, [user?.id, refreshBids])
 
+  // Place a bid (max/proxy) on a single lot. `amount` is the most the user is
+  // willing to pay; it's sent as both the bid and the proxy ceiling. The real
+  // minimum increment is enforced by Maxanet — we pass the best floor we know
+  // (the live minimum from a prior bid, else current bid + $1) so the function's
+  // own guard passes and Maxanet's own error (if any) flows back as the message.
+  const placeBid = useCallback(async (item, amount) => {
+    setError(null)
+    const known = bidStatuses.get(String(item.id))
+    const minimumNextBid = known?.minimumNextBid ?? (item.currentBid + 1)
+    const currentBid = known?.currentBid ?? item.currentBid
+    const result = await callProxy('place_bid', {
+      auctionItemId: String(item.id),
+      auctionId: String(item.auctionId),
+      newBidAmount: amount,
+      maxBidAmount: amount,
+      currentBid,
+      minimumNextBid,
+      itemName: item.title,
+      endDate: item.endDate,
+      totalBids: item.totalBids,
+      category: item.rawCategory || item.category,
+      skuNumber: item.lotNumber,
+    })
+    if (result.error) return { error: result.error }
+    if (!result.ok) return { error: result.description || 'Bid failed' }
+
+    // Reflect the new state locally so the card badge + detail update without a
+    // full refresh: the lot joins "My Bids" and its live status comes from the
+    // function's post-bid RefreshItem read.
+    const id = String(item.id)
+    setBidItemIds(prev => new Set(prev).add(id))
+    setBidStatuses(prev => {
+      const next = new Map(prev)
+      next.set(id, {
+        winning: result.winning,
+        currentBid: result.currentBid,
+        minimumNextBid: result.minimumNextBid,
+      })
+      return next
+    })
+    return {
+      ok: true,
+      winning: result.winning,
+      currentBid: result.currentBid,
+      description: result.description,
+    }
+  }, [bidStatuses])
+
   const deleteCredentials = useCallback(async () => {
     setError(null)
     const result = await callProxy('delete_credentials')
@@ -110,5 +159,6 @@ export function useCannonBids(user) {
     saveCredentials,
     deleteCredentials,
     refreshBids,
+    placeBid,
   }
 }
