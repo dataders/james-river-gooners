@@ -1,5 +1,5 @@
 // @ts-check
-/** @typedef {import('../types.js').Item} Item */
+/** @typedef {import('../types.ts').Item} Item */
 
 // Item `id` is unique only within a single auction — the same id recurs across
 // auctions (notably active vs. archived, and across source sites like Maxanet
