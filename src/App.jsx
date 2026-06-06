@@ -630,19 +630,21 @@ export default function App() {
                       </button>
                     </p>
                   ) : (
-                    <p className="no-deals-hint bids-error">{cannonBids.error}</p>
+                    <>
+                      <p className="no-deals-hint bids-error">{cannonBids.error}</p>
+                      <p className="no-deals-hint">
+                        This is a problem reaching Cannon&apos;s — not a missing match.{' '}
+                        <button
+                          type="button"
+                          className="bids-retry-button"
+                          onClick={cannonBids.refreshBids}
+                          disabled={cannonBids.bidsLoading}
+                        >
+                          {cannonBids.bidsLoading ? 'Retrying…' : 'Retry'}
+                        </button>
+                      </p>
+                    </>
                   )}
-                  <p className="no-deals-hint">
-                    This is a problem reaching Cannon&apos;s — not a missing match.{' '}
-                    <button
-                      type="button"
-                      className="bids-retry-button"
-                      onClick={cannonBids.refreshBids}
-                      disabled={cannonBids.bidsLoading}
-                    >
-                      {cannonBids.bidsLoading ? 'Retrying…' : 'Retry'}
-                    </button>
-                  </p>
                 </>
               ) : (
                 <>

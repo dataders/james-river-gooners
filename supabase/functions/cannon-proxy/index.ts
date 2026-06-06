@@ -83,8 +83,18 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
   const tenantCode = tenantMatch?.[1] ?? ''
 
-  // Step 2 — POST credentials to the actual login handler (different from the page URL)
-  const loginResp = await fetch(`${base}/Public/Login/Login`, {
+  // Use the form's actual action URL — don't hardcode a route that may differ
+  // across Maxanet instances. Fall back to the page URL itself (the ASP.NET MVC
+  // default is GET and POST on the same path).
+  const formActionMatch = pageHtml.match(/<form[^>]+action="([^"]+)"/)
+  const loginPostUrl = formActionMatch?.[1]
+    ? (formActionMatch[1].startsWith('http') ? formActionMatch[1] : `${base}${formActionMatch[1]}`)
+    : `${base}/Public/Account/Login`
+
+  console.log('[cannon-proxy] login form action:', loginPostUrl, '| token:', !!verificationToken, '| tenant:', tenantCode || '(empty)')
+
+  // Step 2 — POST credentials to the login endpoint discovered from the form action
+  const loginResp = await fetch(loginPostUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -102,12 +112,15 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
     redirect: 'manual',
   })
 
-  // Successful login → 302 redirect away from /Account/Login
+  // Successful login → 302 redirect away from the login page
   // Failed login → 200 (re-renders the form with an error message)
   if (loginResp.status === 200) {
     const body = await loginResp.text()
     const errMatch = body.match(/class="[^"]*validation-summary[^"]*"[^>]*>([\s\S]{0,300}?)<\//)
-    throw new Error(errMatch ? `Login failed: ${errMatch[1].replace(/<[^>]+>/g, '').trim()}` : 'Login failed')
+    const hasForm = body.includes('__RequestVerificationToken')
+    console.log('[cannon-proxy] login 200: hasForm=', hasForm, 'hasValidationSummary=', !!errMatch)
+    const detail = errMatch ? errMatch[1].replace(/<[^>]+>/g, '').trim() : (hasForm ? 'wrong credentials or bot detection' : 'unexpected response')
+    throw new Error(`Login failed: ${detail}`)
   }
   if (loginResp.status !== 302) throw new Error(`Unexpected login response: ${loginResp.status}`)
 
