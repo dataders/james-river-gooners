@@ -214,6 +214,15 @@ export function usePreferences() {
     })
   }, [])
 
+  // Grid layout preference (grid vs compact) — personal, persisted, no URL sync.
+  const setViewMode = useCallback((value) => {
+    setPrefs(prev => {
+      const next = { ...prev, viewMode: value }
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
   return {
     ...prefs,
     toggleIncluded,
@@ -239,5 +248,6 @@ export function usePreferences() {
     setHasCannonsComp,
     setSort,
     setMargin,
+    setViewMode,
   }
 }

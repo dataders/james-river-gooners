@@ -8,6 +8,7 @@ import { itemKey } from './itemKey.js'
 export const SORT_OPTIONS = [
   { key: '', label: 'Featured' },
   { key: 'margin', label: 'Best margin' },
+  { key: 'maxbid', label: 'Max bid' },
   { key: 'ending', label: 'Ending soonest' },
   { key: 'endingLast', label: 'Ending latest' },
   { key: 'priceAsc', label: 'Price: low to high' },
@@ -66,20 +67,42 @@ export function sortItems(items: Item[], sortKey: string): Item[] {
   }
 }
 
+// Order items by a precomputed per-item score (highest first); items with a
+// null/missing score sink to the bottom. Pure so it stays testable — App.jsx
+// computes the scores from eBay comps + the Cannon's category sold baseline,
+// which this module has no access to.
+function sortByScoreMap(
+  items: Item[],
+  scoreByKey: Map<string, number | null>,
+): Item[] {
+  const score = (item: Item): number => {
+    const m = scoreByKey.get(itemKey(item))
+    return m == null ? -Infinity : m
+  }
+  return [...items].sort((a, b) => score(b) - score(a))
+}
+
 /**
  * Order items by a precomputed margin score, highest first (#97). `marginByKey`
  * maps an item's composite key to its estimated profit in dollars, or null when
- * there's no resale signal; unscored lots sort last in their original order.
- * Pure so it stays testable — App.jsx computes the scores from eBay comps + the
- * Cannon's category sold baseline, which this module has no access to.
+ * there's no resale signal; unscored lots sort last.
  */
 export function sortByMargin(
   items: Item[],
   marginByKey: Map<string, number | null>,
 ): Item[] {
-  const score = (item: Item): number => {
-    const m = marginByKey.get(itemKey(item))
-    return m == null ? -Infinity : m
-  }
-  return [...items].sort((a, b) => score(b) - score(a))
+  return sortByScoreMap(items, marginByKey)
+}
+
+/**
+ * Order items by their recommended max bid, highest first. `maxBidByKey` maps an
+ * item's composite key to the max-bid recommendation in dollars (resale estimate
+ * adjusted for margin + fees), or null when there's no resale signal; unscored
+ * lots sort last.
+ */
+export function sortByMaxBid(
+  items: Item[],
+  maxBidByKey: Map<string, number | null>,
+): Item[] {
+  return sortByScoreMap(items, maxBidByKey)
 }

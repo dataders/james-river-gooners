@@ -14,13 +14,13 @@ import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
 import { useSemanticSearch } from './hooks/useSemanticSearch'
-import { isDeal, meetsMinProfit } from './utils/roiCalc'
-import { marginForItem } from './utils/soldHistory'
+import { isDeal } from './utils/roiCalc'
+import { marginForItem, maxBidForItem } from './utils/soldHistory'
 import { itemKey } from './utils/itemKey'
 import { hasEbayComps } from './utils/ebayComps'
 import { hasCannonsComps } from './utils/cannonsComps'
 import { hasEnrichment, overlayEnrichment } from './utils/enrichment'
-import { sortItems, sortByMargin } from './utils/sort'
+import { sortItems, sortByMargin, sortByMaxBid } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
@@ -28,8 +28,7 @@ import { SortBar } from './components/SortBar'
 import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
 import { RangeFilters } from './components/RangeFilters'
-import { MarginPreference } from './components/MarginPreference'
-import { MinProfitFilter } from './components/MinProfitFilter'
+import { HasFilters } from './components/HasFilters'
 import { FilterBar } from './components/FilterBar'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -97,11 +96,11 @@ export default function App() {
     maxBidders,
     minHours,
     maxHours,
-    minProfit,
     localOnly,
     hasComp,
     hasCannonsComp,
     sort,
+    viewMode,
     margin,
     toggleExcluded,
     hideGroup,
@@ -118,12 +117,11 @@ export default function App() {
     setMaxBidders,
     setMinHours,
     setMaxHours,
-    setMinProfit,
     setLocalOnly,
     setHasComp,
     setHasCannonsComp,
     setSort,
-    setMargin,
+    setViewMode,
   } = usePreferences()
 
   const { theme, toggle: toggleTheme } = useTheme()
@@ -170,19 +168,18 @@ export default function App() {
   const [swipeOpen, setSwipeOpen] = useState(false)
   const [swipeItems, setSwipeItems] = useState([])
 
-  // Favorites and the ignore bin are opposite views — turning one on closes the
-  // other so the grid never tries to be both at once.
-  const toggleFavoritesView = useCallback(() => {
-    setShowFavoritesOnly(v => {
-      if (!v) setShowIgnoredOnly(false)
-      return !v
-    })
+  // Favorites and the ignore bin are opposite views of the same "Show" segmented
+  // control — only one can be active at a time, and 'all' clears both.
+  const decisionView = showIgnoredOnly ? 'ignored' : showFavoritesOnly ? 'favorites' : 'all'
+  const setDecisionView = useCallback((view) => {
+    setShowFavoritesOnly(view === 'favorites')
+    setShowIgnoredOnly(view === 'ignored')
   }, [])
-  const toggleIgnoredView = useCallback(() => {
-    setShowIgnoredOnly(v => {
-      if (!v) setShowFavoritesOnly(false)
-      return !v
-    })
+
+  // ✨ AI enrichment presence filter — toggled from the sidebar "Has" section.
+  const handleEnrichmentFilterChange = useCallback((checked) => {
+    captureEvent('enriched_filter_toggled', { active: checked })
+    setShowEnrichedOnly(checked)
   }, [])
 
   // Deep-link: open item modal once data loads
@@ -314,13 +311,8 @@ export default function App() {
         isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
       )
     }
-    if (minProfit != null) {
-      result = result.filter(item =>
-        meetsMinProfit(item.currentBid, allComps[item.auctionSafeId]?.[item.id], minProfit)
-      )
-    }
     return result
-  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, minProfit, allComps, allCannonsComps])
+  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, allComps, allCannonsComps])
 
   const finalItems = useMemo(() => {
     // Ignored bin is its own exclusive view; otherwise ignored items are hidden
@@ -359,10 +351,27 @@ export default function App() {
     return map
   }, [sort, finalItems, allComps, categorySoldStats])
 
-  const sortedItems = useMemo(
-    () => sort === 'margin' ? sortByMargin(finalItems, marginByKey) : sortItems(finalItems, sort),
-    [finalItems, sort, marginByKey]
-  )
+  // Recommended max bid per item ($) for the "Max bid" sort: resale estimate
+  // (eBay comp median, else Cannon's category median) backed out through the
+  // default resale margin + fees. Only computed when that sort is active.
+  const maxBidByKey = useMemo(() => {
+    const map = new Map()
+    if (sort !== 'maxbid') return map
+    for (const item of finalItems) {
+      map.set(itemKey(item), maxBidForItem(
+        allComps[item.auctionSafeId]?.[item.id],
+        categorySoldStats[item.category],
+        margin / 100
+      ))
+    }
+    return map
+  }, [sort, finalItems, allComps, categorySoldStats, margin])
+
+  const sortedItems = useMemo(() => {
+    if (sort === 'margin') return sortByMargin(finalItems, marginByKey)
+    if (sort === 'maxbid') return sortByMaxBid(finalItems, maxBidByKey)
+    return sortItems(finalItems, sort)
+  }, [finalItems, sort, marginByKey, maxBidByKey])
 
   if (error) {
     return <div className="error">Error: {error}</div>
@@ -401,6 +410,15 @@ export default function App() {
           >
             <span aria-hidden="true">✨</span>
           </button>
+          <ArsenalTrivia />
+          <button
+            type="button"
+            className="swipe-banner-button"
+            onClick={openSwipe}
+            title="Review items one at a time"
+          >
+            ⇄ Swipe
+          </button>
           <AccountButton
             auth={auth}
             cannonBids={auth.user ? cannonBids : null}
@@ -409,7 +427,6 @@ export default function App() {
           />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
-        <ArsenalTrivia />
         <div className="view-toggles">
           <label className="local-toggle">
             <input
@@ -443,41 +460,30 @@ export default function App() {
               ))}
             </div>
           </div>
-          <button
-            type="button"
-            className={`deals-toggle${showFavoritesOnly ? ' active' : ''}`}
-            onClick={toggleFavoritesView}
-          >
-            {favoriteIds.length > 0 ? `Favorites (${favoriteIds.length})` : 'Favorites'}
-          </button>
-          <button
-            type="button"
-            className={`deals-toggle${showIgnoredOnly ? ' active' : ''}`}
-            onClick={toggleIgnoredView}
-          >
-            {ignoredIds.length > 0 ? `Ignored (${ignoredIds.length})` : 'Ignored'}
-          </button>
-          <button
-            type="button"
-            className={`deals-toggle${showEnrichedOnly ? ' active' : ''}`}
-            onClick={() => {
-              setShowEnrichedOnly(v => {
-                captureEvent('enriched_filter_toggled', { active: !v })
-                return !v
-              })
-            }}
-            title="Show only lots with an identified brand/model"
-          >
-            ✨ Identified
-          </button>
-          <button
-            type="button"
-            className="deals-toggle swipe-launch"
-            onClick={openSwipe}
-            title="Review items one at a time"
-          >
-            ⇄ Swipe
-          </button>
+          <div className="archive-control">
+            <span className="archive-label">Show</span>
+            <div
+              className="archive-segmented"
+              role="group"
+              aria-label="Which items to show"
+            >
+              {[
+                { value: 'all', label: 'All' },
+                { value: 'favorites', label: favoriteIds.length > 0 ? `Favorites (${favoriteIds.length})` : 'Favorites' },
+                { value: 'ignored', label: ignoredIds.length > 0 ? `Ignored (${ignoredIds.length})` : 'Ignored' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`segmented-option${decisionView === opt.value ? ' active' : ''}`}
+                  aria-pressed={decisionView === opt.value}
+                  onClick={() => setDecisionView(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {cannonBids.linked && (
             <button
               type="button"
@@ -502,21 +508,32 @@ export default function App() {
           >
             Best deals
           </button>
-          <button
-            type="button"
-            className={`deals-toggle${hasComp ? ' active' : ''}`}
-            onClick={() => setHasComp(!hasComp)}
-          >
-            Has eBay comp
-          </button>
-          <button
-            type="button"
-            className={`deals-toggle${hasCannonsComp ? ' active' : ''}`}
-            onClick={() => setHasCannonsComp(!hasCannonsComp)}
-          >
-            Has auction comp
-          </button>
-          <SortBar value={sort} onChange={setSort} />
+          <div className="view-controls-end">
+            <div className="archive-control">
+              <span className="archive-label">View</span>
+              <div
+                className="archive-segmented"
+                role="group"
+                aria-label="Grid layout"
+              >
+                {[
+                  { value: 'grid', label: 'Grid' },
+                  { value: 'compact', label: 'Compact' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`segmented-option${viewMode === opt.value ? ' active' : ''}`}
+                    aria-pressed={viewMode === opt.value}
+                    onClick={() => setViewMode(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <SortBar value={sort} onChange={setSort} />
+          </div>
         </div>
       </header>
 
@@ -542,8 +559,14 @@ export default function App() {
             onMinHoursChange={v => setMinHours(v)}
             onMaxHoursChange={v => setMaxHours(v)}
           />
-          <MinProfitFilter value={minProfit} onChange={setMinProfit} />
-          <MarginPreference value={margin} onChange={setMargin} />
+          <HasFilters
+            hasEbayComp={hasComp}
+            onHasEbayCompChange={setHasComp}
+            hasCannonsComp={hasCannonsComp}
+            onHasCannonsCompChange={setHasCannonsComp}
+            hasEnrichment={showEnrichedOnly}
+            onHasEnrichmentChange={handleEnrichmentFilterChange}
+          />
           <AuctionFilter
             auctions={visibleAuctions}
             excludedAuctions={excludedAuctions}
@@ -661,6 +684,7 @@ export default function App() {
           ) : (
             <ItemGrid
               items={sortedItems}
+              compact={viewMode === 'compact'}
               allComps={allComps}
               isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
