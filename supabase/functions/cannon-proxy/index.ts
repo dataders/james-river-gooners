@@ -17,7 +17,6 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-  parseCookies,
   mergeCookies,
   cookieHeader,
   parseHiddenInputs,
@@ -63,6 +62,22 @@ async function decryptText(ciphertext: string): Promise<string> {
 
 // ── Maxanet helpers ───────────────────────────────────────────────────────────
 
+// headers.get('set-cookie') joins multiple Set-Cookie headers with ', ' (comma-space),
+// but parseCookies splits on ',(?=[^ ])' (comma NOT followed by space), so the join
+// boundary is never matched and only the first cookie survives.
+// getSetCookie() returns the full array — one entry per Set-Cookie header.
+function getSetCookies(headers: Headers): Record<string, string> {
+  const list: string[] = (headers as Headers & { getSetCookie?(): string[] }).getSetCookie?.()
+    ?? (headers.get('set-cookie') ? [headers.get('set-cookie')!] : [])
+  const out: Record<string, string> = {}
+  for (const h of list) {
+    const pair = h.split(';')[0].trim()
+    const eq = pair.indexOf('=')
+    if (eq > 0) out[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim()
+  }
+  return out
+}
+
 async function maxanetLogin(username: string, password: string): Promise<Record<string, string>> {
   const base = 'https://bid.cannonsauctions.com'
 
@@ -74,7 +89,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   if (!pageResp.ok) throw new Error(`Login page returned ${pageResp.status}`)
 
   const pageHtml = await pageResp.text()
-  const cookies = parseCookies(pageResp.headers.get('set-cookie') ?? '')
+  const cookies = getSetCookies(pageResp.headers)
 
   const tokenMatch = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)
   const verificationToken = tokenMatch?.[1] ?? ''
@@ -124,7 +139,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
   }
   if (loginResp.status !== 302) throw new Error(`Unexpected login response: ${loginResp.status}`)
 
-  let sessionCookies = mergeCookies(cookies, parseCookies(loginResp.headers.get('set-cookie') ?? ''))
+  let sessionCookies = mergeCookies(cookies, getSetCookies(loginResp.headers))
 
   // Follow ALL post-login redirects manually so we capture Set-Cookie headers at
   // every hop. Maxanet may chain several 302s before landing on the dashboard,
@@ -143,7 +158,7 @@ async function maxanetLogin(username: string, password: string): Promise<Record<
         },
         redirect: 'manual',
       })
-      const hopCookies = parseCookies(hopResp.headers.get('set-cookie') ?? '')
+      const hopCookies = getSetCookies(hopResp.headers)
       sessionCookies = mergeCookies(sessionCookies, hopCookies)
       console.log(`[cannon-proxy] redirect hop ${hops}: status=${hopResp.status} url=${nextUrl} newCookies=${Object.keys(hopCookies).join(',') || '(none)'}`)
       if (hopResp.status === 302) {
@@ -304,7 +319,7 @@ async function debugLogin(
     redirect: 'follow',
   })
   const pageHtml = await pageResp.text()
-  const pageCookies = parseCookies(pageResp.headers.get('set-cookie') ?? '')
+  const pageCookies = getSetCookies(pageResp.headers)
   const tokenMatch = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)
   const tenantMatch = pageHtml.match(/name="TenantCode"[^>]*value="([^"]+)"/)
   const formActionMatch = pageHtml.match(/<form[^>]+action="([^"]+)"/)
@@ -348,7 +363,7 @@ async function debugLogin(
       redirect: 'manual',
     })
 
-    const loginCookies = parseCookies(loginResp.headers.get('set-cookie') ?? '')
+    const loginCookies = getSetCookies(loginResp.headers)
     diag.loginStatus = loginResp.status
     diag.loginLocation = loginResp.headers.get('location')
     diag.loginCookieKeys = Object.keys(loginCookies)
@@ -471,7 +486,7 @@ async function placeBid(
   )
   if (itemPageResp.status === 302) return json({ error: 'Session expired fetching item page' }, 400)
   const itemHtml = await itemPageResp.text()
-  cookies = mergeCookies(cookies, parseCookies(itemPageResp.headers.get('set-cookie') ?? ''))
+  cookies = mergeCookies(cookies, getSetCookies(itemPageResp.headers))
   const itemCsrf = itemHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
 
   // POST SubmitBid — Maxanet uses this to render the bid confirmation modal.
@@ -522,7 +537,7 @@ async function placeBid(
       ActivityModuleId: 'PBAUCITM',
     }).toString(),
   })
-  cookies = mergeCookies(cookies, parseCookies(submitResp.headers.get('set-cookie') ?? ''))
+  cookies = mergeCookies(cookies, getSetCookies(submitResp.headers))
   const submitHtml = await submitResp.text()
 
   // The confirmation form has a fresh CSRF token plus UserId, TenantId, etc.
