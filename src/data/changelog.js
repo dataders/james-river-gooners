@@ -16,6 +16,13 @@ export const CHANGELOG = [
   },
   {
     date: '2026-06-06',
+    title: 'Facebook Marketplace listing generator',
+    changes: [
+      { id: 'fb-listing-generator', icon: '📋', text: 'New "List on FB" button in item details: paste your won lot\'s title, description, suggested price, category, and condition straight into a Facebook Marketplace listing — Claude writes a buyer-friendly description and tells you which auction photos to use.' },
+    ],
+  },
+  {
+    date: '2026-06-06',
     title: 'Layout & filter tidy-up',
     changes: [
       { id: 'compact-list-view', icon: '📋', text: 'New Compact view: a list of rows with a thumbnail and description, alongside the classic grid — pick whichever scans faster for you.' },
