@@ -14,11 +14,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { identifyUser, resetAnalytics } from '../lib/telemetry'
 
+/** @typedef {import('@supabase/supabase-js').Session} Session */
+
 const NOT_CONFIGURED = { error: 'Sign-in is not available right now.' }
 
 export function useAuth() {
   // `loading` is the initial session lookup; null user once resolved = signed out.
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState(/** @type {Session | null} */ (null))
   const [loading, setLoading] = useState(isSupabaseConfigured)
 
   // Tie anonymous telemetry to the Supabase user on login, and drop the
@@ -58,7 +60,7 @@ export function useAuth() {
     }
   }, [])
 
-  const signUp = useCallback(async (email, password) => {
+  const signUp = useCallback(/** @param {string} email @param {string} password */ async (email, password) => {
     if (!supabase) return NOT_CONFIGURED
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -71,7 +73,7 @@ export function useAuth() {
     return { needsConfirmation: !data.session }
   }, [])
 
-  const signIn = useCallback(async (email, password) => {
+  const signIn = useCallback(/** @param {string} email @param {string} password */ async (email, password) => {
     if (!supabase) return NOT_CONFIGURED
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
@@ -85,7 +87,7 @@ export function useAuth() {
     return {}
   }, [])
 
-  const resetPassword = useCallback(async (email) => {
+  const resetPassword = useCallback(/** @param {string} email */ async (email) => {
     if (!supabase) return NOT_CONFIGURED
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
@@ -94,7 +96,7 @@ export function useAuth() {
     return {}
   }, [])
 
-  const changePassword = useCallback(async (password) => {
+  const changePassword = useCallback(/** @param {string} password */ async (password) => {
     if (!supabase) return NOT_CONFIGURED
     const { error } = await supabase.auth.updateUser({ password })
     if (error) return { error: error.message }
