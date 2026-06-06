@@ -487,6 +487,37 @@ async function debugLogin(
             if (text && !/^\s*$/.test(text)) navLinks.push(`${text} → ${href}`)
           }
           diag.navLinks = navLinks.slice(0, 40)
+
+          // Probe candidate bid history URLs with the authenticated session
+          const candidates = [
+            '/Public/Account/BidHistory',
+            '/Public/Bidder/BidHistory',
+            '/Public/Account/MyBids',
+            '/Public/Bidder/MyBids',
+            '/Public/Account/History',
+            '/Public/Account/BidItems',
+            '/Public/Bidder/History',
+            '/Public/Auction/BidHistory',
+          ]
+          const probeResults: Record<string, string> = {}
+          for (const path of candidates) {
+            try {
+              const pr = await fetch(`${base}${path}`, {
+                headers: {
+                  'Cookie': cookieHeader(loginCookies2),
+                  'User-Agent': UA,
+                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                },
+                redirect: 'manual',
+              })
+              probeResults[path] = pr.status === 302
+                ? `302→${pr.headers.get('location') ?? '?'}`
+                : String(pr.status)
+            } catch (e) {
+              probeResults[path] = `error: ${(e as Error).message}`
+            }
+          }
+          diag.urlProbe = probeResults
         }
       }
     }
