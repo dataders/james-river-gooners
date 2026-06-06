@@ -236,6 +236,82 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
     }
   }
 
+  // Step 3: Activate Auction-area authentication.
+  // /Public/Auction/* uses a separate auth middleware that redirects to
+  // /Authentication/Login (not /Public/Account/Login). Visiting that URL with
+  // our session cookies triggers SSO — the server recognises the account-area
+  // session and marks it as authenticated for the auction area too, so
+  // subsequent GetWatchlist calls succeed without extra cookies.
+  // If /Authentication/Login shows a login form instead (no SSO), we POST
+  // the same credentials there as well.
+  let authUrl: string | null = `${base}/Authentication/Login`
+  let authHops = 0
+  while (authUrl && authHops < 5) {
+    authHops++
+    const curAuthUrl = authUrl
+    authUrl = null
+    try {
+      const authR = await fetch(curAuthUrl, {
+        headers: {
+          'Cookie': cookieHeader(sessionCookies),
+          'User-Agent': UA,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Referer': `${base}/Public`,
+        },
+        redirect: 'manual',
+      })
+      const authC = getSetCookies(authR.headers)
+      sessionCookies = mergeCookies(sessionCookies, authC)
+      const authLoc = authR.headers.get('location') ?? '(none)'
+      console.log(`[cannon-proxy] auth-activate ${authHops}: status=${authR.status} → ${authLoc.slice(0, 80)} newCookies=${Object.keys(authC).join(',') || 'none'}`)
+      if (authR.status === 302) {
+        const loc = authR.headers.get('location') ?? ''
+        // Stop if it loops back to /Authentication/Login to avoid infinite redirect
+        if (loc && !loc.includes('/Authentication/Login')) {
+          authUrl = loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`
+        }
+      } else if (authR.status === 200) {
+        const authHtml = await authR.text()
+        if (authHtml.includes('__RequestVerificationToken')) {
+          // /Authentication/Login returned a login form — post credentials there too
+          const authToken = authHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+          const authAction = authHtml.match(/<form[^>]+action="([^"]+)"/)?.[1]
+          const authPostUrl = authAction
+            ? (authAction.startsWith('http') ? authAction : `${base}${authAction}`)
+            : curAuthUrl
+          const authPostR = await fetch(authPostUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Cookie': cookieHeader(sessionCookies),
+              'User-Agent': UA,
+              'Referer': curAuthUrl,
+            },
+            body: new URLSearchParams({
+              Username: username,
+              Password: password,
+              __RequestVerificationToken: authToken,
+            }).toString(),
+            redirect: 'manual',
+          })
+          const authPostC = getSetCookies(authPostR.headers)
+          sessionCookies = mergeCookies(sessionCookies, authPostC)
+          console.log(`[cannon-proxy] auth-activate POST: status=${authPostR.status} newCookies=${Object.keys(authPostC).join(',') || 'none'}`)
+          if (authPostR.status === 302) {
+            const loc = authPostR.headers.get('location') ?? ''
+            if (loc && !loc.includes('/Authentication/Login')) {
+              authUrl = loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`
+            }
+          }
+        } else {
+          console.log('[cannon-proxy] auth-activate: 200 but no login form (already auth?)')
+        }
+      }
+    } catch (e) {
+      console.log('[cannon-proxy] auth-activate step failed:', (e as Error).message)
+    }
+  }
+
   console.log('[cannon-proxy] session cookie keys after login:', Object.keys(sessionCookies).join(', '))
   return { cookies: sessionCookies, loginPostTo, loginPostCookieKeys, loginPostRawSetCookie, bidHistoryHtml, bidHistoryUrl }
 }
@@ -302,32 +378,10 @@ async function refreshItemStatus(
 async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
-  // Fetch the Watchlist page first to get a live CSRF token (the page shell
-  // always has one even before the AJAX call populates the item list).
-  let csrf = ''
-  try {
-    const pageResp = await fetch(`${base}/Public/Auction/Watchlist`, {
-      headers: {
-        'Cookie': cookieHeader(cookies),
-        'User-Agent': UA,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Referer': `${base}/Public`,
-      },
-      redirect: 'manual',
-    })
-    if (pageResp.ok) {
-      const pageHtml = await pageResp.text()
-      csrf = pageHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
-      Object.assign(cookies, getSetCookies(pageResp.headers))
-      console.log('[cannon-proxy] Watchlist page csrf:', !!csrf)
-    }
-  } catch (e) {
-    console.log('[cannon-proxy] Watchlist page fetch failed (non-fatal):', (e as Error).message)
-  }
-
   // GetWatchlist AJAX — returns one item card per active watched bid.
+  // Auth for this area was already activated in maxanetLogin via /Authentication/Login.
   const url = `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=Current`
-  console.log('[cannon-proxy] fetching watchlist items from:', url)
+  console.log('[cannon-proxy] fetching watchlist items')
 
   const resp = await fetch(url, {
     headers: {
@@ -344,15 +398,13 @@ async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemI
   console.log('[cannon-proxy] GetWatchlist status:', resp.status, '| cookies:', cookieKeys)
   if (resp.status === 302) {
     const redirectTo = resp.headers.get('location') ?? '?'
-    throw new Error(`Session expired (GetWatchlist→${redirectTo}, cookies: ${cookieKeys})`)
+    throw new Error(`GetWatchlist→${redirectTo.slice(0, 100)}, cookies: ${cookieKeys}`)
   }
   if (!resp.ok) throw new Error(`GetWatchlist returned ${resp.status}`)
 
   const html = await resp.text()
   const items = parseWatchlistItems(html)
-  // GetWatchlist HTML may also contain a CSRF token in the bid forms; prefer
-  // the page-level one (already fetched above) but fall through if empty.
-  if (!csrf) csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  const csrf = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
   const bidderId = parseBidderId(html)
   console.log('[cannon-proxy] watchlist items:', items.length, '| csrf:', !!csrf)
   return { itemIds: items.map(b => b.itemId), items, csrf, bidderId }
