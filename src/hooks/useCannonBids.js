@@ -10,26 +10,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { callProxy as _callProxy } from '../utils/cannonProxy'
 
-async function callProxy(action, params = {}) {
-  if (!supabase) return { error: 'Not configured' }
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'Not signed in' }
-  const { data, error } = await supabase.functions.invoke('cannon-proxy', {
-    body: { action, ...params },
-  })
-  if (error) {
-    // FunctionsHttpError carries the raw Response in .context — extract our
-    // structured { error } body from it so the user sees the real reason.
-    if (error.context?.json) {
-      try {
-        const body = await error.context.json()
-        if (body?.error) return { error: body.error }
-      } catch { /* fall through */ }
-    }
-    return { error: error.message }
-  }
-  return data ?? {}
+function callProxy(action, params = {}) {
+  return _callProxy(action, params, supabase)
 }
 
 export function useCannonBids(user) {
