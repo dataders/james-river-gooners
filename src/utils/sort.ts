@@ -1,6 +1,7 @@
 // Sorting for the item grid. `key` values are stable identifiers persisted in
 // URL/localStorage state, so don't rename them without a migration.
 
+import type { Item } from '../types.ts'
 import { parseAuctionDate } from './dates.js'
 import { itemKey } from './itemKey.js'
 
@@ -21,19 +22,20 @@ export const SORT_OPTIONS = [
 // "YYYY-MM-DD h:mm:ss AM/PM" and HiBid ISO 8601 ("...T...+00:00"). A naive
 // dash→slash swap would corrupt the ISO form and send every HiBid lot to the
 // bottom of time-based orderings. Items with no/unparseable date sort last.
-function hoursUntil(endDate) {
+function hoursUntil(endDate: string): number {
   const end = parseAuctionDate(endDate)
   if (!end) return Infinity
   return (end.getTime() - Date.now()) / 3_600_000
 }
 
-const num = (v) => (typeof v === 'number' && !Number.isNaN(v) ? v : 0)
+const num = (v: number | null | undefined): number =>
+  typeof v === 'number' && !Number.isNaN(v) ? v : 0
 
 /**
  * Return a new array of `items` ordered by `sortKey`. An empty/unknown key
  * leaves the original order untouched (and returns the original reference).
  */
-export function sortItems(items, sortKey) {
+export function sortItems(items: Item[], sortKey: string): Item[] {
   if (!sortKey) return items
   const arr = [...items]
   switch (sortKey) {
@@ -70,13 +72,12 @@ export function sortItems(items, sortKey) {
  * there's no resale signal; unscored lots sort last in their original order.
  * Pure so it stays testable — App.jsx computes the scores from eBay comps + the
  * Cannon's category sold baseline, which this module has no access to.
- *
- * @param {Item[]} items
- * @param {Map<string, ?number>} marginByKey
- * @returns {Item[]}
  */
-export function sortByMargin(items, marginByKey) {
-  const score = (item) => {
+export function sortByMargin(
+  items: Item[],
+  marginByKey: Map<string, number | null>,
+): Item[] {
+  const score = (item: Item): number => {
     const m = marginByKey.get(itemKey(item))
     return m == null ? -Infinity : m
   }
