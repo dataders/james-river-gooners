@@ -223,7 +223,8 @@ export const objectives = [
       await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
 
       tracker.step('Open the Favorites view')
-      const favBtn = page.locator('.deals-toggle', { hasText: 'Favorites' })
+      // Favorites is now an option in the "Show" segmented control (All / Favorites / Ignored).
+      const favBtn = page.locator('.segmented-option', { hasText: 'Favorites' })
       await favBtn.click()
       const count = await getItemCount(page)
       if (count < 1) {
@@ -283,24 +284,16 @@ export const objectives = [
   {
     id: 'flipper-roi',
     persona: 'Flipper',
-    goal: 'Use the max-bid calculator to price a flip with a target margin',
-    optimalSteps: 3,
+    goal: 'Use the max-bid calculator to price a flip',
+    optimalSteps: 2,
     async run({ page, tracker }) {
       await gotoApp(page)
 
-      // Margin is now a global preference set in the sidebar, not a per-item slider.
-      tracker.step('Set the target margin in preferences')
-      await page.waitForSelector('.margin-pref .roi-margin-slider')
-      await page.evaluate(() => {
-        const slider = document.querySelector('.margin-pref .roi-margin-slider')
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-        setter.call(slider, '40')
-        slider.dispatchEvent(new Event('input', { bubbles: true }))
-      })
-
-      // Need a lot that has eBay comps for the calculator to appear.
+      // Need a lot that has eBay comps for the calculator to appear. The comp
+      // presence filter now lives in the sidebar "Has" checkbox group.
       tracker.step('Filter to lots with comps')
-      await page.locator('.deals-toggle', { hasText: 'Has eBay comp' }).click()
+      await page.locator('.has-filters .has-filter-row', { hasText: 'eBay comp' })
+        .locator('input[type="checkbox"]').check()
       await page.waitForTimeout(400)
       const withComp = await getItemCount(page)
       if (withComp === 0) {
@@ -321,10 +314,11 @@ export const objectives = [
         tracker.note('Max-bid value missing from the calculator')
         return 'fail'
       }
-      // The calculator should reflect the 40% margin preference we set.
+      // The calculator uses the default 30% resale margin (the margin control
+      // was removed; the calc falls back to the default).
       const panelText = await page.locator('.detail-panel').textContent()
-      if (!panelText.includes('40%')) {
-        tracker.note('Calculator did not reflect the margin preference')
+      if (!panelText.includes('30%')) {
+        tracker.note('Calculator did not show the default resale margin')
         return 'fail'
       }
       return 'pass'
