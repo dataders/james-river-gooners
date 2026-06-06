@@ -19,6 +19,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from categories import normalize_category, normalize_raw_with_description
+from scraper_common import has_bid_changes, load_existing_bids, load_existing_unique_bidders
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
@@ -31,64 +32,6 @@ BID_HISTORY_DELAY = 0.25
 def sanitize_auction_id(auction_id: str) -> str:
     """Convert base64 auction ID to filesystem-safe string."""
     return auction_id.replace("+", "-").replace("/", "_").replace("=", "")
-
-
-def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
-    """Return {item_id: (currentBid, totalBids)} from an existing Parquet or NDJSON file."""
-    ndjson_path = path.with_suffix(".ndjson")
-    if ndjson_path.exists():
-        try:
-            rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
-            return {
-                row["id"]: (float(row.get("currentBid") or 0), int(row.get("totalBids") or 0))
-                for row in rows
-            }
-        except Exception:
-            pass
-    if not path.exists():
-        return {}
-    import pyarrow.parquet as pq
-    try:
-        table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
-        return {
-            row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
-            for row in table.to_pylist()
-        }
-    except Exception:
-        return {}
-
-
-def load_existing_unique_bidders(path: Path) -> dict[str, int]:
-    """Return {item_id: uniqueBidders} from an existing NDJSON or Parquet file.
-
-    Used to carry forward the distinct-bidder count for lots whose bid count
-    hasn't changed, so a re-scrape only re-fetches bid history for active lots.
-    """
-    ndjson_path = path.with_suffix(".ndjson")
-    if ndjson_path.exists():
-        try:
-            out: dict[str, int] = {}
-            for line in ndjson_path.read_text().splitlines():
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                if row.get("uniqueBidders") is not None:
-                    out[row["id"]] = int(row["uniqueBidders"])
-            return out
-        except Exception:
-            pass
-    if not path.exists():
-        return {}
-    import pyarrow.parquet as pq
-    try:
-        table = pq.read_table(path, columns=["id", "uniqueBidders"])
-        return {
-            row["id"]: int(row["uniqueBidders"])
-            for row in table.to_pylist()
-            if row.get("uniqueBidders") is not None
-        }
-    except Exception:
-        return {}
 
 
 def count_unique_bidders(html: str) -> int:
@@ -175,20 +118,6 @@ def enrich_unique_bidders(
 
     if fetched:
         print(f"Fetched bid history for {fetched} lot(s)")
-
-
-def has_bid_changes(new_items: list[dict], existing_bids: dict[str, tuple[float, int]]) -> bool:
-    """Return True if any bid amount, bid count, or item set differs from the stored snapshot."""
-    if not existing_bids:
-        return True
-    new_ids = {item["id"] for item in new_items}
-    if new_ids != set(existing_bids):
-        return True
-    return any(
-        (float(item.get("currentBid") or 0), int(item.get("totalBids") or 0))
-        != existing_bids.get(item["id"])
-        for item in new_items
-    )
 
 
 def auction_date_from_title(title: str) -> str:

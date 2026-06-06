@@ -26,6 +26,7 @@ import yaml
 from bs4 import BeautifulSoup
 
 from categories import normalize_category, normalize_raw_with_description
+from scraper_common import has_bid_changes, load_existing_bids
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 ITEMS_DIR = DATA_DIR / "items"
@@ -491,36 +492,6 @@ def fetch_lot_details(
         "rawCategory": normalize_raw_with_description(raw_cat, combined, source="hibid"),
         "detailUrl": lot_url,
     }
-
-
-# ---------------------------------------------------------------------------
-# Bid-change detection (mirrors scrape.py)
-# ---------------------------------------------------------------------------
-
-def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
-    if not path.exists():
-        return {}
-    try:
-        table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
-        return {
-            row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
-            for row in table.to_pylist()
-        }
-    except Exception:
-        return {}
-
-
-def has_bid_changes(new_items: list[dict], existing_bids: dict) -> bool:
-    if not existing_bids:
-        return True
-    new_ids = {item["id"] for item in new_items}
-    if new_ids != set(existing_bids):
-        return True
-    return any(
-        (float(item.get("currentBid") or 0), int(item.get("totalBids") or 0))
-        != existing_bids.get(item["id"])
-        for item in new_items
-    )
 
 
 # ---------------------------------------------------------------------------
