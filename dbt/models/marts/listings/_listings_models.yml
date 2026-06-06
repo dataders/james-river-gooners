@@ -1,6 +1,38 @@
 version: 2
 
 models:
+  - name: fct_category_trends
+    description: >
+      Category performance trends with rolling averages and multi-period comparisons.
+      Builds on fct_category_monthly_stats — adds 3-month and 12-month lookbacks,
+      rolling 7-day smoothed price/volume, category volume rankings, and momentum
+      signals (rising/falling/stable/new). Grain: (category, sold_month, source).
+    columns:
+      - name: category
+        tests: [not_null]
+      - name: sold_month
+        tests: [not_null]
+      - name: rolling_3m_median_price
+        description: >
+          3-month rolling average of the monthly median price. Smooths one-off
+          auction spikes — use this instead of raw median_price for trend charts.
+      - name: volume_momentum
+        description: >
+          Category rank movement over 3 months: rising (rank improved), falling
+          (rank dropped), stable (same rank), new (no data 3 months ago).
+        tests:
+          - accepted_values:
+              values: ['rising', 'falling', 'stable', 'new']
+              where: "volume_momentum is not null"
+      - name: price_trend_signal
+        description: >
+          Whether this month's median price is above trend (>5% above rolling 3m avg),
+          below trend (>5% below), or on trend. Null when insufficient history.
+        tests:
+          - accepted_values:
+              values: ['above_trend', 'below_trend', 'on_trend']
+              where: "price_trend_signal is not null"
+
   - name: dim_auctions
     description: >
       One row per auction with aggregate sold-lot stats. Only auctions with
