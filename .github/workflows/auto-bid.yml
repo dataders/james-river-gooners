@@ -1,0 +1,71 @@
+name: Auto-bid on new Cannon's lots
+
+on:
+  schedule:
+    - cron: '30 * * * *'  # 30 min after each scrape (scrape runs at :00)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — call auto_bid but discard results'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  auto-bid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Place minimum bids on new Cannon's lots
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          AUTO_BID_EMAIL: ${{ secrets.AUTO_BID_EMAIL }}
+          AUTO_BID_PASSWORD: ${{ secrets.AUTO_BID_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          # Sign in with email/password to get a short-lived JWT
+          LOGIN=$(curl -sS -X POST \
+            "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${AUTO_BID_EMAIL}\",\"password\":\"${AUTO_BID_PASSWORD}\"}")
+
+          ACCESS_TOKEN=$(echo "$LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token',''))")
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "Login failed:"
+            echo "$LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error_description', d.get('msg', 'unknown')))"
+            exit 1
+          fi
+          echo "Signed in. Calling auto_bid..."
+
+          curl -sS -X POST \
+            "${SUPABASE_URL}/functions/v1/cannon-proxy" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"auto_bid"}' \
+            -o /tmp/auto_bid_result.json
+
+          echo "Result:"
+          cat /tmp/auto_bid_result.json
+
+          # Surface bid summary in the step summary
+          python3 -c "
+import json, sys
+with open('/tmp/auto_bid_result.json') as f:
+    d = json.load(f)
+msg = d.get('message', d.get('error', 'unknown'))
+bids = d.get('bids', [])
+lines = ['## Auto-bid result', f'**{msg}**']
+if bids:
+    lines += ['', '| Lot | Bid | OK | Winning | Note |', '|-----|-----|----|----|------|']
+    for b in bids:
+        title = b.get('title','')[:60]
+        bid = b.get('bid','')
+        ok = chr(10003) if b.get('ok') else chr(10007)
+        winning = b.get('winning')
+        win_str = 'Winning' if winning else ('Outbid' if winning is False else '-')
+        desc = b.get('description','')[:80]
+        lines.append(f'| {title} | \${bid} | {ok} | {win_str} | {desc} |')
+print('\n'.join(lines))
+" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
