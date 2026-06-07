@@ -67,7 +67,7 @@ def fetch_comps(session, url: str, key: str, safe_id: str, top_k: int, min_sim: 
         endpoint,
         headers=_headers(key, {"Content-Type": "application/json"}),
         data=json.dumps(body),
-        timeout=120,
+        timeout=200,
     )
     if resp.status_code >= 400:
         raise RuntimeError(f"{RPC_NAME} failed ({resp.status_code}): {resp.text[:300]}")
