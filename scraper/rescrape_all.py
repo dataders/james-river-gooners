@@ -187,6 +187,8 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
     }
     if path.with_suffix(".ndjson").exists():
         entry["ndjsonPath"] = f"data/{item_dir}/{path.stem}.ndjson"
+    if path.with_suffix(".embeddings").exists():
+        entry["embeddingsPath"] = f"data/{item_dir}/{path.stem}.embeddings"
     return entry
 
 

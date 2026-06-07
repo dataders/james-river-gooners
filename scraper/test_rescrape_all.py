@@ -80,9 +80,7 @@ class ManifestEntryTest(unittest.TestCase):
         self.assertEqual(entry["ndjsonPath"], "data/items/safe-id.ndjson")
         self.assertNotIn("embeddingsPath", entry)
 
-    def test_manifest_entry_ignores_embeddings_sidecar(self):
-        # CLIP .embeddings sidecars are no longer part of the read model; even if
-        # a stale one exists, the manifest never references it.
+    def test_manifest_entry_includes_embeddings_path_when_sidecar_exists(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "safe-id.parquet"
             pq.write_table(pa.Table.from_pylist([
@@ -92,7 +90,8 @@ class ManifestEntryTest(unittest.TestCase):
 
             entry = manifest_entry_for_file(path, archived=False)
 
-        self.assertNotIn("embeddingsPath", entry)
+        self.assertEqual(entry["embeddingsPath"], "data/items/safe-id.embeddings")
+        self.assertNotIn("ndjsonPath", entry)
 
     def test_manifest_entry_omits_sidecar_paths_when_no_sidecars(self):
         with tempfile.TemporaryDirectory() as tmpdir:
