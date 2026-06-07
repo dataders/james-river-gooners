@@ -155,20 +155,22 @@ export function FilterPanel({
           </div>
         </Accordion>
 
-        {/* Price & bidding range sliders */}
-        <Accordion title="Price & Bidding" defaultOpen={true}>
-          <RangeFilters
-            items={items}
-            minPrice={minPrice} maxPrice={maxPrice}
-            onMinPriceChange={onMinPriceChange} onMaxPriceChange={onMaxPriceChange}
-            minBids={minBids} maxBids={maxBids}
-            onMinBidsChange={onMinBidsChange} onMaxBidsChange={onMaxBidsChange}
-            minBidders={minBidders} maxBidders={maxBidders}
-            onMinBiddersChange={onMinBiddersChange} onMaxBiddersChange={onMaxBiddersChange}
-            minHours={minHours} maxHours={maxHours}
-            onMinHoursChange={onMinHoursChange} onMaxHoursChange={onMaxHoursChange}
-          />
-        </Accordion>
+        {/* Price & bidding range sliders — hidden until data loads */}
+        {items.length > 0 && (
+          <Accordion title="Price & Bidding" defaultOpen={true}>
+            <RangeFilters
+              items={items}
+              minPrice={minPrice} maxPrice={maxPrice}
+              onMinPriceChange={onMinPriceChange} onMaxPriceChange={onMaxPriceChange}
+              minBids={minBids} maxBids={maxBids}
+              onMinBidsChange={onMinBidsChange} onMaxBidsChange={onMaxBidsChange}
+              minBidders={minBidders} maxBidders={maxBidders}
+              onMinBiddersChange={onMinBiddersChange} onMaxBiddersChange={onMaxBiddersChange}
+              minHours={minHours} maxHours={maxHours}
+              onMinHoursChange={onMinHoursChange} onMaxHoursChange={onMaxHoursChange}
+            />
+          </Accordion>
+        )}
 
         {/* Data availability toggles */}
         <Accordion title="Only show items with…">
