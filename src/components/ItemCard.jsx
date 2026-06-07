@@ -3,7 +3,7 @@ import { itemTimeRemaining } from '../utils/time'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { getDisplayEnrichment } from '../utils/enrichment'
 
-export const ItemCard = memo(function ItemCard({ item, compact = false, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
+export const ItemCard = memo(function ItemCard({ item, compact = false, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus, exportMode = false, isExportSelected = false, onToggleExportSelect }) {
   const imgSrc = item.images?.[0] || null
   const remaining = itemTimeRemaining(item)
   const enrichment = getDisplayEnrichment(item)
@@ -27,14 +27,26 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
     onToggleIgnored(item)
   }
 
+  const handleCardClick = exportMode
+    ? (e) => { e.stopPropagation(); onToggleExportSelect?.(item) }
+    : () => onItemClick(item)
+
   return (
     <div
       role="button"
       tabIndex={0}
-      className={`item-card${compact ? ' compact' : ''}${isIgnored ? ' ignored' : ''}`}
-      onClick={() => onItemClick(item)}
-      onKeyDown={(e) => { if (e.key === 'Enter') onItemClick(item) }}
+      className={`item-card${compact ? ' compact' : ''}${isIgnored ? ' ignored' : ''}${exportMode ? ' export-mode' : ''}${isExportSelected ? ' export-selected' : ''}`}
+      onClick={handleCardClick}
+      onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(e) }}
     >
+      {exportMode && (
+        <span
+          className={`export-checkbox${isExportSelected ? ' checked' : ''}`}
+          aria-hidden="true"
+        >
+          {isExportSelected ? '☑' : '☐'}
+        </span>
+      )}
       <button
         type="button"
         className={`ignore-button${isIgnored ? ' active' : ''}`}

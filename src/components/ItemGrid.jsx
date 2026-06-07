@@ -36,7 +36,7 @@ function estimateColumnHeight(itemCount, numCols, itemHeight = ITEM_HEIGHT_ESTIM
   return itemsPerCol > 0 ? itemsPerCol * (itemHeight + ITEM_GAP) - ITEM_GAP : 0
 }
 
-export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses }) {
+export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses, exportMode = false, isExportSelected, onToggleExportSelect }) {
   // Pair `items` with its loaded count so we can reset loaded when items changes.
   const [loadState, setLoadState] = useState({ items, loaded: BATCH_SIZE })
   const sentinelRef = useRef(null)
@@ -102,6 +102,9 @@ export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, on
       onToggleIgnored={onToggleIgnored}
       onItemClick={onItemClick}
       bidStatus={bidStatuses?.get(String(item.id))}
+      exportMode={exportMode}
+      isExportSelected={isExportSelected?.(item) ?? false}
+      onToggleExportSelect={onToggleExportSelect}
     />
   ))
 

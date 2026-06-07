@@ -23,6 +23,7 @@ import { hasEnrichment, overlayEnrichment } from './utils/enrichment'
 import { sortItems, sortByMargin, sortByMaxBid } from './utils/sort'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
+import { generateMarketplaceCsv, downloadCsv } from './utils/marketplaceExport'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { SortBar } from './components/SortBar'
 import { SearchBar } from './components/SearchBar'
@@ -131,6 +132,33 @@ export default function App() {
   const { favoriteIds, isFavorite, toggleFavorite, removeFavorite } = useFavorites(auth.user)
   const { ignoredIds, isIgnored, toggleIgnored, removeIgnored } = useIgnored(auth.user)
   const cannonBids = useCannonBids(auth.user)
+
+  // Marketplace export mode
+  const [exportMode, setExportMode] = useState(false)
+  const [exportSelectedKeys, setExportSelectedKeys] = useState(/** @type {Set<string>} */(new Set()))
+
+  const toggleExportMode = useCallback(() => {
+    setExportMode(prev => {
+      if (prev) setExportSelectedKeys(new Set())
+      return !prev
+    })
+  }, [])
+
+  const isExportSelected = useCallback((item) => exportSelectedKeys.has(itemKey(item)), [exportSelectedKeys])
+
+  const toggleExportSelect = useCallback((item) => {
+    const key = itemKey(item)
+    setExportSelectedKeys(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  const selectFavoritesForExport = useCallback(() => {
+    setExportSelectedKeys(new Set(favoriteIds))
+  }, [favoriteIds])
 
   // Favorites and ignores are mutually exclusive: deciding one clears the other.
   const handleToggleFavorite = useCallback((item) => {
@@ -392,6 +420,14 @@ export default function App() {
     return sortItems(finalItems, sort)
   }, [finalItems, sort, marginByKey, maxBidByKey])
 
+  const handleExportCsv = useCallback(() => {
+    const selectedItems = sortedItems.filter(item => exportSelectedKeys.has(itemKey(item)))
+    const csv = generateMarketplaceCsv(selectedItems)
+    const date = new Date().toISOString().slice(0, 10)
+    downloadCsv(csv, `marketplace-listings-${date}.csv`)
+    captureEvent('marketplace_export', { count: selectedItems.length })
+  }, [sortedItems, exportSelectedKeys])
+
   const activeFilterCount = useMemo(() => {
     let n = 0
     if (localOnly) n++
@@ -498,6 +534,13 @@ export default function App() {
           </div>
 
           <div className="header-actions">
+            <button
+              type="button"
+              className={`swipe-banner-button${exportMode ? ' active' : ''}`}
+              onClick={toggleExportMode}
+              title={exportMode ? 'Exit export mode' : 'Export items to Marketplace CSV'}
+              aria-label={exportMode ? 'Exit export mode' : 'Export to Marketplace'}
+            >🛒</button>
             <button
               type="button"
               className="swipe-banner-button"
@@ -724,10 +767,46 @@ export default function App() {
               onToggleIgnored={handleToggleIgnored}
               onItemClick={handleItemClick}
               bidStatuses={cannonBids.bidStatuses}
+              exportMode={exportMode}
+              isExportSelected={isExportSelected}
+              onToggleExportSelect={toggleExportSelect}
             />
           )}
         </main>
       </div>
+
+      {exportMode && (
+        <div className="export-toolbar">
+          <span className="export-toolbar-count">
+            {exportSelectedKeys.size} item{exportSelectedKeys.size !== 1 ? 's' : ''} selected
+          </span>
+          <button
+            type="button"
+            className="export-toolbar-btn"
+            onClick={selectFavoritesForExport}
+            disabled={favoriteIds.length === 0}
+            title="Select all your favorited items"
+          >
+            ★ Select favorites ({favoriteIds.length})
+          </button>
+          <button
+            type="button"
+            className="export-toolbar-btn export-toolbar-btn--primary"
+            onClick={handleExportCsv}
+            disabled={exportSelectedKeys.size === 0}
+            title="Download CSV for Facebook Marketplace"
+          >
+            ↓ Download CSV
+          </button>
+          <button
+            type="button"
+            className="export-toolbar-btn export-toolbar-btn--cancel"
+            onClick={toggleExportMode}
+          >
+            ✕ Cancel
+          </button>
+        </div>
+      )}
 
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
 

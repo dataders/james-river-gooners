@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-07',
+    title: 'Export to Marketplace',
+    changes: [
+      { id: 'marketplace-csv-export', icon: '🛒', text: 'New Marketplace Export mode: tap 🛒 in the header, check off items you want to resell, and download a ready-to-reference CSV for Facebook Marketplace — title, description, price, category, photos, and more. Hit "★ Select favorites" to bulk-select everything you\'ve already starred.' },
+    ],
+  },
+  {
+    date: '2026-06-07',
     title: 'Smarter semantic search',
     changes: [
       { id: 'nomic-semantic-search', icon: '🔍', text: 'Search is smarter: it now understands what you mean and also matches lots by their photos, so even lots with vague titles like "Lot - 27" turn up for searches like "power tools" — and it loads instantly with nothing to download first.' },
