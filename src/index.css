@@ -2466,6 +2466,8 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  position: relative;
+  z-index: 2; /* above the abs-positioned .detail-close (z-index: 1) */
 }
 .detail-title-row .detail-title {
   flex: 1;
