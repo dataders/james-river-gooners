@@ -1,6 +1,34 @@
 version: 2
 
 sources:
+  - name: posthog_raw
+    description: >
+      PostHog behavioral event aggregates exported to MotherDuck by
+      scraper/posthog_export.py. Requires POSTHOG_PERSONAL_KEY + MOTHERDUCK_TOKEN.
+      Refresh manually or via a scheduled workflow.
+    schema: posthog_raw
+    tables:
+      - name: events_daily
+        description: Daily event counts per event type. Grain: (day, event).
+        columns:
+          - name: day
+            tests: [not_null]
+          - name: event
+            tests: [not_null]
+          - name: cnt
+            tests: [not_null]
+      - name: search_stats
+        description: Daily search stats split by semantic vs keyword mode.
+        columns:
+          - name: day
+            tests: [not_null]
+      - name: toggle_stats
+        description: Daily favorite/ignore toggle counts split by direction and auth state.
+        columns:
+          - name: day
+            tests: [not_null]
+
+
   - name: gooners
     description: Supabase Postgres tables, attached to DuckDB read-only as the "supabase" database.
     database: supabase   # alias set in profiles.yml attach config
