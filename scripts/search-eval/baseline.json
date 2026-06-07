@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-06-07T11:44:14.506Z",
+  "config": "nomic-embed-text-v1.5 q8 + match_lots_eval",
+  "agg": {
+    "ndcg10": 0.708692678865172,
+    "recall20": 0.7248663101604278,
+    "mrr10": 0.725,
+    "queries": 20
+  }
+}

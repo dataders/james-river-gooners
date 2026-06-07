@@ -1,0 +1,28 @@
+{
+  "_comment": "Hand-seeded known-relevant lots (composite key auction_safe_id:item_id) that exist in the corpus but the search may fail to surface in the top-K. Including them lets the benchmark measure recall misses (avoids pooling bias). Add more as you discover gaps.",
+  "oriental-rug": [
+    "C1XI_s2IvMt5WfqzOkCflA:49024363",
+    "4cm_7GDofqKg2yODg6UM5A:49042203",
+    "OTOEW5yRiFsFngoX55XiYA:49032543",
+    "C1XI_s2IvMt5WfqzOkCflA:49024198"
+  ],
+  "pyrex-bowls": [
+    "TSEnhqADosMhcgC3rM6KNw:48995063",
+    "OTOEW5yRiFsFngoX55XiYA:49032549",
+    "OTOEW5yRiFsFngoX55XiYA:49032555",
+    "OTOEW5yRiFsFngoX55XiYA:49032556"
+  ],
+  "cast-iron-skillet": [
+    "TSEnhqADosMhcgC3rM6KNw:48995047",
+    "TSEnhqADosMhcgC3rM6KNw:48995076",
+    "TSEnhqADosMhcgC3rM6KNw:48995111",
+    "TSEnhqADosMhcgC3rM6KNw:48995114",
+    "TSEnhqADosMhcgC3rM6KNw:48995119"
+  ],
+  "oil-paintings": [
+    "zmIi5q6gqQxSJ8zjILQe5A:48944553",
+    "OTOEW5yRiFsFngoX55XiYA:49032761",
+    "D9H3ncfewpZd4ancQx3eGw:49037861",
+    "zmIi5q6gqQxSJ8zjILQe5A:48944340"
+  ]
+}
