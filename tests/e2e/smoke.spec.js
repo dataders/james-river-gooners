@@ -8,7 +8,7 @@ test.describe('Smoke — basic app structure', () => {
 
   test('logo and tagline are visible', async ({ page }) => {
     await expect(page.locator('h1.logo')).toContainText('Gooners')
-    await expect(page.locator('.tagline')).toContainText("Cannon's Auctions")
+    await expect(page.locator('.tagline')).toContainText("RVA auctions")
   })
 
   test('search bar is present with correct placeholder', async ({ page }) => {
