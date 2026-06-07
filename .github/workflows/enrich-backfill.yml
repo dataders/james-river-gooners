@@ -1,0 +1,85 @@
+name: Enrich Backfill (LLM)
+
+# Manual, re-runnable LLM enrichment backfill of the committed read model
+# (issue #104 / PR #195). Runs `enrich.py --batch` over every auction (active +
+# archive) — or a named subset — via the Message Batches API (50% cost, async),
+# rewrites the NDJSON/Parquet sidecars with brand/model/searchQuery + per-field
+# confidence, mirrors the identified lots into Supabase `lot_enrichment`, and
+# commits the enriched read model back to the dispatched branch.
+#
+# Durable + resumable: enrichment is keyed on `enrichmentInputHash`, so a
+# re-dispatch reuses already-enriched lots and only spends on new/changed ones.
+# A single run is bounded by the 6h Actions limit; for a very large corpus that
+# can't finish in one run, just re-dispatch (it resumes) or pass `safe_ids` to
+# do it in chunks.
+#
+# Requires repo secrets ANTHROPIC_API_KEY (+ VITE_SUPABASE_URL /
+# SUPABASE_SECRET_KEY to mirror to Supabase — the same ones scrape.yml uses).
+
+on:
+  workflow_dispatch:
+    inputs:
+      safe_ids:
+        description: 'Space-separated auction safeIds to enrich (blank = all active + archive)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  enrich-backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      GOONERS_ENRICHMENT: '1'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Run enrichment backfill
+        run: |
+          cd scraper
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "ANTHROPIC_API_KEY not set — cannot enrich"
+            exit 1
+          fi
+          if [ -n "${{ inputs.safe_ids }}" ]; then
+            TARGET="${{ inputs.safe_ids }}"
+          else
+            TARGET="--all"
+          fi
+          uv run --with pyarrow --with anthropic --with requests \
+            --with beautifulsoup4 --with pyyaml --with pillow \
+            python enrich.py --batch $TARGET
+
+      - name: Commit and push enriched read model
+        # always() so whatever auctions finished still land if a later auction
+        # errors out — the backfill writes per-auction as it goes.
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/
+          if git diff --staged --quiet; then
+            echo "No enrichment changes to commit"
+            exit 0
+          fi
+          git commit -m "data: LLM enrichment backfill [$(date -u +%Y-%m-%dT%H:%M)]"
+          branch="${GITHUB_REF_NAME}"
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${branch}"; then
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}); rebasing on origin/${branch}"
+            git fetch origin "${branch}"
+            if ! git rebase -X theirs "origin/${branch}"; then
+              git rebase --abort
+              exit 1
+            fi
+          done
+          git push origin "HEAD:${branch}"
