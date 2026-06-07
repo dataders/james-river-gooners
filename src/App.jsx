@@ -465,37 +465,39 @@ export default function App() {
             />
           </div>
 
-          <button
-            type="button"
-            className={`filter-toggle-btn${filterOpen ? ' filter-toggle-btn--open' : ''}`}
-            onClick={toggleFilter}
-            aria-expanded={filterOpen}
-            aria-label="Toggle filters"
-          >
-            <span className="filter-toggle-icon" aria-hidden="true">⚙</span>
-            <span className="filter-toggle-label">Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="filter-count-badge">{activeFilterCount}</span>
-            )}
-          </button>
+          <div className="header-controls">
+            <button
+              type="button"
+              className={`filter-toggle-btn${filterOpen ? ' filter-toggle-btn--open' : ''}`}
+              onClick={toggleFilter}
+              aria-expanded={filterOpen}
+              aria-label="Toggle filters"
+            >
+              <span className="filter-toggle-icon" aria-hidden="true">⚙</span>
+              <span className="filter-toggle-label">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="filter-count-badge">{activeFilterCount}</span>
+              )}
+            </button>
 
-          <div className="layout-toggle" role="group" aria-label="Grid layout">
-            {[
-              { value: 'grid', label: '⊞', title: 'Grid view' },
-              { value: 'compact', label: '≡', title: 'Compact view' },
-            ].map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`layout-toggle-btn${viewMode === opt.value ? ' active' : ''}`}
-                aria-pressed={viewMode === opt.value}
-                title={opt.title}
-                onClick={() => setViewMode(opt.value)}
-              >{opt.label}</button>
-            ))}
+            <div className="layout-toggle" role="group" aria-label="Grid layout">
+              {[
+                { value: 'grid', label: '⊞', title: 'Grid view' },
+                { value: 'compact', label: '≡', title: 'Compact view' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`layout-toggle-btn${viewMode === opt.value ? ' active' : ''}`}
+                  aria-pressed={viewMode === opt.value}
+                  title={opt.title}
+                  onClick={() => setViewMode(opt.value)}
+                >{opt.label}</button>
+              ))}
+            </div>
+
+            <SortBar value={sort} onChange={setSort} />
           </div>
-
-          <SortBar value={sort} onChange={setSort} />
 
           <div className="header-actions">
             <button

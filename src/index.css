@@ -180,6 +180,23 @@ body {
   }
 }
 
+/* Controls row: Filters + layout toggle + Sort grouped together */
+.header-controls {
+  display: contents; /* inline on desktop — children join the header-row flow */
+}
+@media (max-width: 700px) {
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    order: 5;
+    flex-basis: 100%;
+  }
+  .header-controls .sort-bar {
+    flex: 1; /* sort dropdown fills remaining space */
+  }
+}
+
 /* Filter toggle button */
 .filter-toggle-btn {
   display: inline-flex;
