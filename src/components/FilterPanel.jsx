@@ -170,15 +170,17 @@ export function FilterPanel({
           />
         </Accordion>
 
-        {/* Data availability checkboxes (Has) */}
-        <HasFilters
-          hasEbayComp={hasEbayComp}
-          onHasEbayCompChange={onHasEbayCompChange}
-          hasCannonsComp={hasCannonsComp}
-          onHasCannonsCompChange={onHasCannonsCompChange}
-          hasEnrichment={hasEnrichment}
-          onHasEnrichmentChange={onHasEnrichmentChange}
-        />
+        {/* Data availability toggles */}
+        <Accordion title="Only show items with…">
+          <HasFilters
+            hasEbayComp={hasEbayComp}
+            onHasEbayCompChange={onHasEbayCompChange}
+            hasCannonsComp={hasCannonsComp}
+            onHasCannonsCompChange={onHasCannonsCompChange}
+            hasEnrichment={hasEnrichment}
+            onHasEnrichmentChange={onHasEnrichmentChange}
+          />
+        </Accordion>
 
         {/* Per-auction visibility */}
         <AuctionFilter
