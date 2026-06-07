@@ -4,6 +4,12 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-07 — Filter panel overhaul
+
+- ⚙ **Filter panel** — all filter and view controls are now in a dedicated collapsible sidebar panel; open or close it with the Filters button in the header, with a cleaner header showing search always up top.
+- 🏷 **Active filter chips** — active filters now show as dismissible chips above the grid so you always see what's filtering at a glance; click any chip to clear that filter.
+- 📱 **Mobile filter drawer** — on mobile the filter panel slides up as a full-screen drawer instead of taking space above the items.
+
 ## 2026-06-06 — Comps filter
 
 - 🔎 **Comps filter** — the sidebar comp filters are now grouped under "Comps" with clearer labels: eBay, Auctions, and Claude.
