@@ -75,12 +75,12 @@ jobs:
           if [ -n "${{ inputs.auction_url }}" ]; then
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              --with sentence-transformers --with pillow --with einops --with anthropic \
+              --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
               python scrape.py "${{ inputs.auction_url }}"
           else
             echo "Re-scraping all Cannon's auctions..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              --with sentence-transformers --with pillow --with einops --with anthropic \
+              --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
               python rescrape_all.py --source maxanet
           fi
 
@@ -98,7 +98,7 @@ jobs:
           fi
           echo "Re-scraping HiBid auctions..."
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-            --with sentence-transformers --with pillow --with einops --with anthropic \
+            --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
             python rescrape_all.py --source hibid
 
       - name: Archive closed auctions and rebuild manifests
