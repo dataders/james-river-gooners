@@ -454,7 +454,7 @@ export default function App() {
 
           <div className="header-title">
             <h1 className="logo">James River Gooners</h1>
-            <span className="tagline">Cannon's Auctions · Richmond VA</span>
+            <span className="tagline">the best way to browse RVA auctions</span>
           </div>
 
           <div className="header-search-wrap">
@@ -479,8 +479,6 @@ export default function App() {
             )}
           </button>
 
-          <SortBar value={sort} onChange={setSort} />
-
           <div className="layout-toggle" role="group" aria-label="Grid layout">
             {[
               { value: 'grid', label: '⊞', title: 'Grid view' },
@@ -496,6 +494,8 @@ export default function App() {
               >{opt.label}</button>
             ))}
           </div>
+
+          <SortBar value={sort} onChange={setSort} />
 
           <div className="header-actions">
             <button
