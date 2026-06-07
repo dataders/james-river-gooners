@@ -8,6 +8,15 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-07',
+    title: 'Filter panel overhaul',
+    changes: [
+      { id: 'filter-panel-overhaul', icon: '⚙', text: 'All filter and view controls are now in a dedicated collapsible sidebar panel — open or close it with the Filters button in the header. Cleaner header with search always visible up top.' },
+      { id: 'active-filter-chips', icon: '🏷', text: 'Active filters now show as dismissible chips above the grid so you always see what\'s filtering at a glance — click any chip to clear that filter.' },
+      { id: 'mobile-filter-drawer', icon: '📱', text: 'On mobile the filter panel slides up as a full-screen drawer instead of taking space above the items.' },
+    ],
+  },
+  {
     date: '2026-06-06',
     title: 'Comps filter',
     changes: [
