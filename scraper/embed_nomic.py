@@ -256,12 +256,18 @@ def upsert_embeddings(
     url: str | None = None,
     key: str | None = None,
     session=None,
-    batch_size: int = 200,
+    batch_size: int | None = None,
 ) -> int:
     """Upsert (auction_safe_id, item_id) embeddings to the nomic_embeddings table.
 
     Returns the number of rows written. Uses the service-role key (secret),
     which bypasses RLS. On conflict on the primary key, the embedding is replaced.
+
+    Each insert updates the HNSW vector index, which gets slower as the table
+    grows, so a large batch can exceed the Postgres statement timeout (57014).
+    We keep batches modest (``GOONERS_NOMIC_UPSERT_BATCH``, default 100) and, on a
+    timeout, split the batch and retry down to a single row so a big auction
+    always completes.
     """
     from supabase_comps import resolve_credentials
 
@@ -274,6 +280,9 @@ def upsert_embeddings(
     if session is None:
         import requests
         session = requests.Session()
+
+    if batch_size is None:
+        batch_size = int(os.environ.get("GOONERS_NOMIC_UPSERT_BATCH", "100"))
 
     rows = [
         {
@@ -294,15 +303,24 @@ def upsert_embeddings(
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
 
+    def _post(batch: list[dict]) -> int:
+        resp = session.post(endpoint, headers=headers, data=json.dumps(batch), timeout=120)
+        if resp.status_code < 400:
+            return len(batch)
+        # Statement timeout (57014) from HNSW index pressure → split and retry.
+        is_timeout = resp.status_code in (500, 503, 504) and (
+            "57014" in resp.text or "timeout" in resp.text.lower()
+        )
+        if is_timeout and len(batch) > 1:
+            mid = len(batch) // 2
+            return _post(batch[:mid]) + _post(batch[mid:])
+        raise RuntimeError(
+            f"Nomic embeddings upsert failed ({resp.status_code}): {resp.text[:300]}"
+        )
+
     written = 0
     for start in range(0, len(rows), batch_size):
-        batch = rows[start : start + batch_size]
-        resp = session.post(endpoint, headers=headers, data=json.dumps(batch), timeout=60)
-        if resp.status_code >= 400:
-            raise RuntimeError(
-                f"Nomic embeddings upsert failed ({resp.status_code}): {resp.text[:300]}"
-            )
-        written += len(batch)
+        written += _post(rows[start : start + batch_size])
 
     return written
 
