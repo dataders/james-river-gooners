@@ -1,14 +1,18 @@
 import json
-import unittest
-from unittest import mock
-
+import sys
+import tempfile
 import time
+import types
+import unittest
+from pathlib import Path
+from unittest import mock
 
 import enrich
 from enrich import (
     _RateLimiter,
     build_content,
     enrich_items,
+    enrich_items_batch,
     enrichment_fingerprint,
     is_enrichment_enabled,
     item_images,
@@ -51,6 +55,62 @@ class _FakeClient:
         self.messages = _FakeMessages(by_keyword)
 
 
+def _prompt_text(params):
+    for block in params["messages"][0]["content"]:
+        if block.get("type") == "text":
+            return block["text"]
+    return ""
+
+
+class _FakeBatchOutcome:
+    def __init__(self, type_, message=None):
+        self.type = type_
+        self.message = message
+
+
+class _FakeBatchResult:
+    def __init__(self, custom_id, outcome):
+        self.custom_id = custom_id
+        self.result = outcome
+
+
+class _FakeBatches:
+    """Mimics client.messages.batches: create() captures the requests, retrieve()
+    reports ended immediately, results() returns a per-request outcome keyed by
+    the lot text (Exception payload → an `errored` outcome, not a raise)."""
+
+    def __init__(self, by_keyword):
+        self.by_keyword = by_keyword
+        self.created = 0
+        self._requests = []
+
+    def create(self, requests):
+        self.created += 1
+        self._requests = requests
+        return mock.Mock(id="batch_test", processing_status="in_progress")
+
+    def retrieve(self, batch_id):
+        return mock.Mock(
+            processing_status="ended",
+            request_counts=mock.Mock(processing=0, succeeded=len(self._requests), errored=0),
+        )
+
+    def results(self, batch_id):
+        for req in self._requests:
+            text = _prompt_text(req["params"])
+            payload = next((p for kw, p in self.by_keyword.items() if kw in text), {})
+            if isinstance(payload, Exception):
+                yield _FakeBatchResult(req["custom_id"], _FakeBatchOutcome("errored"))
+            else:
+                message = mock.Mock(content=[_FakeBlock(json.dumps(payload))])
+                yield _FakeBatchResult(req["custom_id"], _FakeBatchOutcome("succeeded", message))
+
+
+class _FakeBatchClient:
+    def __init__(self, by_keyword):
+        self.messages = mock.Mock(batches=_FakeBatches(by_keyword))
+
+
 class ParseEnrichmentTests(unittest.TestCase):
     def test_valid_payload_maps_to_camelcase(self):
         out = parse_enrichment({
@@ -75,6 +135,39 @@ class ParseEnrichmentTests(unittest.TestCase):
         # Guards against hallucinated / relative URLs reaching the UI.
         out = parse_enrichment({"product_url": "dewalt.com/dcd771"})
         self.assertEqual(out["productUrl"], "")
+
+    def test_per_field_confidence_maps_and_takes_max(self):
+        # A confident brand with an unreadable SKU: keep both, overall = max, so
+        # the lot still clears the medium/high bar (more data gets surfaced).
+        out = parse_enrichment({
+            "brand": "DeWalt", "model_or_sku": "",
+            "condition": "used", "product_url": "",
+            "brand_confidence": "high", "model_confidence": "low",
+        })
+        self.assertEqual(out["brandConfidence"], "high")
+        self.assertEqual(out["modelConfidence"], "low")
+        self.assertEqual(out["enrichmentConfidence"], "high")
+
+    def test_v3_search_fields_map(self):
+        out = parse_enrichment({
+            "brand": "KitchenAid", "model_name": "Artisan",
+            "product_type": "stand mixer",
+            "search_query": "KitchenAid Artisan 5 qt stand mixer",
+            "condition": "used", "product_url": "",
+            "brand_confidence": "high", "model_confidence": "medium",
+        })
+        self.assertEqual(out["brand"], "KitchenAid")
+        self.assertEqual(out["modelOrSku"], "Artisan")  # model_name → modelOrSku
+        self.assertEqual(out["productType"], "stand mixer")
+        self.assertEqual(out["searchQuery"], "KitchenAid Artisan 5 qt stand mixer")
+        self.assertEqual(out["enrichmentConfidence"], "high")
+
+    def test_legacy_single_confidence_still_parsed(self):
+        # Older cached rows carried one `confidence`; it backfills both fields.
+        out = parse_enrichment({"brand": "X", "model_or_sku": "Y", "confidence": "medium"})
+        self.assertEqual(out["brandConfidence"], "medium")
+        self.assertEqual(out["modelConfidence"], "medium")
+        self.assertEqual(out["enrichmentConfidence"], "medium")
 
     def test_non_dict_returns_all_empty(self):
         out = parse_enrichment("nope")
@@ -107,6 +200,19 @@ class PromptShapeTests(unittest.TestCase):
         content = build_content({"title": "Drill", "images": []})
         self.assertEqual(len(content), 1)
         self.assertEqual(content[0]["type"], "text")
+
+    def test_build_content_includes_up_to_max_images(self):
+        # #152: feed the first few photos, not just one (capped at MAX_IMAGES).
+        item = {"title": "Drill", "images": [f"https://img/{n}.jpg" for n in range(5)]}
+        content = build_content(item)
+        image_blocks = [b for b in content if b["type"] == "image"]
+        self.assertEqual(len(image_blocks), enrich.MAX_IMAGES)
+        self.assertEqual(content[-1]["type"], "text")
+
+    def test_item_image_urls_filters_non_http_and_respects_limit(self):
+        item = {"images": ["ftp://x/1.jpg", "https://img/1.jpg", "https://img/2.jpg"]}
+        self.assertEqual(enrich.item_image_urls(item, limit=5), ["https://img/1.jpg", "https://img/2.jpg"])
+        self.assertEqual(enrich.item_image_urls(item, limit=1), ["https://img/1.jpg"])
 
 
 class EnablementTests(unittest.TestCase):
@@ -264,6 +370,289 @@ class RateLimiterTests(unittest.TestCase):
         for _ in range(3):  # first is free, then 2 × 0.1s
             limiter.acquire()
         self.assertGreaterEqual(time.monotonic() - start, 0.18)
+
+
+class EnrichItemsBatchTests(unittest.TestCase):
+    def setUp(self):
+        # Don't actually sleep between polls in tests.
+        self._patch = mock.patch.object(enrich.time, "sleep", lambda *_: None)
+        self._patch.start()
+        self.addCleanup(self._patch.stop)
+
+    def test_disabled_is_a_noop(self):
+        items = [{"id": "1", "title": "Drill"}]
+        self.assertEqual(enrich_items_batch(items), 0)
+        self.assertNotIn("brand", items[0])
+
+    def test_batch_applies_results_by_custom_id(self):
+        items = [
+            {"id": "good", "title": "DeWalt DCD771 drill", "images": []},
+            {"id": "junk", "title": "Lot - 207", "description": "assorted", "images": []},
+        ]
+        client = _FakeBatchClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+        })
+        # Both lots are "processed" (each gets the bookkeeping fingerprint, same
+        # as the synchronous path counts it); only `good` is actually identified.
+        enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        self.assertEqual(enriched, 2)
+        self.assertEqual(client.messages.batches.created, 1)
+
+        good = next(i for i in items if i["id"] == "good")
+        junk = next(i for i in items if i["id"] == "junk")
+        self.assertEqual(good["brand"], "DeWalt")
+        self.assertEqual(good["enrichmentConfidence"], "high")
+        # Identified lots get a model stamp; the junk lot doesn't, but both get a
+        # fingerprint so neither is re-called on the next backfill.
+        self.assertEqual(good["enrichmentModel"], enrich.MODEL)
+        self.assertEqual(junk["enrichmentModel"], "")
+        self.assertTrue(good["enrichmentInputHash"])
+        self.assertTrue(junk["enrichmentInputHash"])
+
+    def test_errored_result_is_isolated(self):
+        items = [
+            {"id": "good", "title": "DeWalt DCD771 drill", "images": []},
+            {"id": "bad", "title": "explodes", "images": []},
+        ]
+        client = _FakeBatchClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+            "explodes": RuntimeError("server error"),
+        })
+        enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        self.assertEqual(enriched, 1)
+        bad = next(i for i in items if i["id"] == "bad")
+        # The errored lot keeps seeded empty fields and no fingerprint, so a later
+        # backfill retries it.
+        for field in enrich.ENRICHMENT_FIELDS:
+            self.assertEqual(bad[field], "")
+
+    def test_unchanged_lots_skip_the_batch(self):
+        # A lot whose fingerprint matches the prior row is reused without ever
+        # being submitted — when every lot is reused, no batch is created.
+        item = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        seed_client = _FakeBatchClient({
+            "DeWalt DCD771 drill": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            },
+        })
+        enrich_items_batch([item], client=seed_client, poll_interval=0)
+        prior_by_id = {"good": dict(item)}
+
+        fresh = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
+        client2 = _FakeBatchClient({})
+        enrich_items_batch([fresh], client=client2, prior_by_id=prior_by_id, poll_interval=0)
+        self.assertEqual(client2.messages.batches.created, 0)
+        self.assertEqual(fresh["brand"], "DeWalt")
+
+    def test_chunks_when_over_batch_size(self):
+        items = [
+            {"id": str(n), "title": f"DeWalt DCD771 unit {n}", "images": []}
+            for n in range(5)
+        ]
+        client = _FakeBatchClient({"DeWalt DCD771": {
+            "brand": "DeWalt", "model_or_sku": "DCD771",
+            "condition": "used", "product_url": "", "confidence": "high",
+        }})
+        # Inline path (default) chunks at BATCH_INLINE_MAX_REQUESTS.
+        with mock.patch.object(enrich, "BATCH_INLINE_MAX_REQUESTS", 2):
+            enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        self.assertEqual(enriched, 5)
+        # 5 lots / 2 per batch → 3 submissions.
+        self.assertEqual(client.messages.batches.created, 3)
+
+    def test_inline_images_are_fetched_and_base64_encoded(self):
+        # With inline_images (the default), the photo is downloaded + downscaled
+        # and sent as a base64 block — no image URL reaches the request, so
+        # Anthropic never does a server-side fetch (the 100 RPM URL-fetch limit).
+        items = [{"id": "good", "title": "DeWalt DCD771 drill",
+                  "images": ["https://img/1.jpg"]}]
+        client = _FakeBatchClient({"DeWalt DCD771 drill": {
+            "brand": "DeWalt", "model_or_sku": "DCD771",
+            "condition": "used", "product_url": "", "confidence": "high",
+        }})
+        with mock.patch.object(enrich, "fetch_image_base64", lambda url: ("image/jpeg", "ZmFrZQ==")):
+            enrich_items_batch(items, client=client, poll_interval=0)
+        req = client.messages.batches._requests[0]
+        blocks = req["params"]["messages"][0]["content"]
+        image_blocks = [b for b in blocks if b.get("type") == "image"]
+        self.assertEqual(len(image_blocks), 1)
+        self.assertEqual(image_blocks[0]["source"]["type"], "base64")
+        self.assertEqual(image_blocks[0]["source"]["data"], "ZmFrZQ==")
+        self.assertEqual(items[0]["brand"], "DeWalt")
+
+    def test_inline_image_fetch_failure_falls_back_to_text_only(self):
+        items = [{"id": "good", "title": "DeWalt DCD771 drill",
+                  "images": ["https://img/gone.jpg"]}]
+        client = _FakeBatchClient({"DeWalt DCD771 drill": {
+            "brand": "DeWalt", "model_or_sku": "DCD771",
+            "condition": "used", "product_url": "", "confidence": "high",
+        }})
+        with mock.patch.object(enrich, "fetch_image_base64", lambda url: None):
+            enriched = enrich_items_batch(items, client=client, poll_interval=0)
+        req = client.messages.batches._requests[0]
+        blocks = req["params"]["messages"][0]["content"]
+        self.assertFalse([b for b in blocks if b.get("type") == "image"])  # text-only
+        self.assertEqual(enriched, 1)  # still enriched from the text
+
+
+class EbayQueryFromEnrichmentTests(unittest.TestCase):
+    def test_search_query_used_unquoted_when_confident(self):
+        from ebay_query import enriched_exact_phrase
+        item = {"enrichmentConfidence": "high", "brand": "KitchenAid",
+                "modelOrSku": "Artisan", "searchQuery": "KitchenAid Artisan 5 qt stand mixer"}
+        self.assertEqual(enriched_exact_phrase(item), "KitchenAid Artisan 5 qt stand mixer")
+
+    def test_low_confidence_yields_no_enriched_query(self):
+        from ebay_query import enriched_exact_phrase
+        item = {"enrichmentConfidence": "low", "searchQuery": "whatever it is"}
+        self.assertEqual(enriched_exact_phrase(item), "")
+
+    def test_falls_back_to_quoted_brand_model_without_search_query(self):
+        from ebay_query import enriched_exact_phrase
+        item = {"enrichmentConfidence": "high", "brand": "DeWalt", "modelOrSku": "DCD771"}
+        self.assertEqual(enriched_exact_phrase(item), '"DeWalt DCD771"')
+
+
+class EnrichmentSummaryTests(unittest.TestCase):
+    def test_counts_identified_vs_processed(self):
+        rows = [
+            {"enrichmentConfidence": "high", "brand": "DeWalt", "modelOrSku": "DCD771"},
+            {"enrichmentConfidence": "medium", "brand": "Delta", "modelOrSku": ""},
+            {"enrichmentConfidence": "low", "brand": "", "modelOrSku": ""},
+            {"enrichmentConfidence": "", "brand": "", "modelOrSku": ""},  # processed, unidentified
+        ]
+        s = enrich.enrichment_summary(rows)
+        self.assertEqual(s["total"], 4)
+        self.assertEqual(s["identified"], 2)  # high + medium only
+        self.assertEqual((s["high"], s["medium"], s["low"], s["none"]), (1, 1, 1, 1))
+        self.assertEqual(s["brand"], 2)
+        self.assertEqual(s["model"], 1)
+
+    def test_format_includes_percentage(self):
+        line = enrich.format_enrichment_summary("a1", enrich.enrichment_summary([
+            {"enrichmentConfidence": "high", "brand": "X", "modelOrSku": "Y"},
+            {"enrichmentConfidence": "low"},
+        ]))
+        self.assertIn("a1: 1/2 identified (50%)", line)
+
+
+class BackfillTargetTests(unittest.TestCase):
+    def _dirs(self, tmp):
+        active = Path(tmp) / "items"
+        archive = Path(tmp) / "archive" / "items"
+        active.mkdir(parents=True)
+        archive.mkdir(parents=True)
+        (active / "a1.ndjson").write_text("{}\n", encoding="utf-8")
+        (archive / "old1.ndjson").write_text("{}\n", encoding="utf-8")
+        # Same id present in both — active should win, listed once.
+        (active / "dup.ndjson").write_text("{}\n", encoding="utf-8")
+        (archive / "dup.ndjson").write_text("{}\n", encoding="utf-8")
+        return active, archive
+
+    def test_all_spans_active_and_archive_deduped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            active, archive = self._dirs(tmp)
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]):
+                targets = enrich._resolve_backfill_targets([], include_all=True)
+        ids = [safe_id for _, safe_id in targets]
+        self.assertEqual(sorted(ids), ["a1", "dup", "old1"])
+        # `dup` resolves to the active dir (active wins).
+        self.assertEqual(dict((s, d) for d, s in targets)["dup"], active)
+
+    def test_named_id_resolves_in_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            active, archive = self._dirs(tmp)
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]):
+                targets = enrich._resolve_backfill_targets(["old1"], include_all=False)
+        self.assertEqual(targets, [(archive, "old1")])
+
+    def test_unknown_id_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            active, archive = self._dirs(tmp)
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]):
+                targets = enrich._resolve_backfill_targets(["nope"], include_all=False)
+        self.assertEqual(targets, [])
+
+
+class BackfillRunTests(unittest.TestCase):
+    def test_all_enriches_writes_and_mirrors(self):
+        # Two auctions (one active, one archive); --batch --all should enrich the
+        # combined lots once, rewrite each file, and mirror to Supabase.
+        with tempfile.TemporaryDirectory() as tmp:
+            active = Path(tmp) / "items"
+            archive = Path(tmp) / "archive" / "items"
+            active.mkdir(parents=True)
+            archive.mkdir(parents=True)
+            (active / "a1.ndjson").write_text(
+                json.dumps({"id": "x", "title": "DeWalt DCD771 drill", "images": []}) + "\n",
+                encoding="utf-8",
+            )
+            (archive / "old1.ndjson").write_text(
+                json.dumps({"id": "y", "title": "DeWalt DCD771 saw", "images": []}) + "\n",
+                encoding="utf-8",
+            )
+
+            client = _FakeBatchClient({"DeWalt DCD771": {
+                "brand": "DeWalt", "model_or_sku": "DCD771",
+                "condition": "used", "product_url": "", "confidence": "high",
+            }})
+            writes = []
+            mirrored = []
+            fake_supabase = types.ModuleType("supabase_enrichment")
+            fake_supabase.maybe_export_enrichment = lambda rows: mirrored.append(list(rows))
+
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]), \
+                 mock.patch.object(enrich, "is_enrichment_enabled", lambda: True), \
+                 mock.patch.object(enrich, "_make_client", lambda: client), \
+                 mock.patch.object(enrich, "_write_rows", lambda d, s, rows: writes.append((d, s, len(rows)))), \
+                 mock.patch.object(enrich.time, "sleep", lambda *_: None), \
+                 mock.patch.dict(sys.modules, {"supabase_enrichment": fake_supabase}):
+                rc = enrich._backfill([], use_batch=True, include_all=True)
+
+        self.assertEqual(rc, 0)
+        # Per-auction (durable/resumable): one batch + one write + one mirror each.
+        self.assertEqual(client.messages.batches.created, 2)
+        self.assertEqual(sorted(s for _, s, _ in writes), ["a1", "old1"])
+        self.assertEqual(len(mirrored), 2)
+        self.assertEqual(sum(len(m) for m in mirrored), 2)
+        self.assertTrue(all(row["brand"] == "DeWalt" for m in mirrored for row in m))
+
+
+    def test_rerun_resumes_skipping_already_enriched(self):
+        # An on-disk auction whose lots already carry a matching input hash is
+        # reused on rerun — no batch is created, so a resumed backfill doesn't
+        # re-bill finished auctions.
+        with tempfile.TemporaryDirectory() as tmp:
+            active = Path(tmp) / "items"
+            active.mkdir(parents=True)
+            row = {"id": "x", "title": "DeWalt DCD771 drill", "images": [],
+                   "brand": "DeWalt", "modelOrSku": "DCD771", "condition": "used",
+                   "productUrl": "", "enrichmentConfidence": "high",
+                   "enrichmentModel": enrich.MODEL}
+            row["enrichmentInputHash"] = enrich.enrichment_fingerprint(row)
+            (active / "done1.ndjson").write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+            client = _FakeBatchClient({})  # would error if any lot were submitted
+            fake_supabase = types.ModuleType("supabase_enrichment")
+            fake_supabase.maybe_export_enrichment = lambda rows: None
+
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active]), \
+                 mock.patch.object(enrich, "is_enrichment_enabled", lambda: True), \
+                 mock.patch.object(enrich, "_make_client", lambda: client), \
+                 mock.patch.object(enrich, "_write_rows", lambda *a: None), \
+                 mock.patch.object(enrich.time, "sleep", lambda *_: None), \
+                 mock.patch.dict(sys.modules, {"supabase_enrichment": fake_supabase}):
+                rc = enrich._backfill([], use_batch=True, include_all=True)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(client.messages.batches.created, 0)  # nothing re-submitted
 
 
 if __name__ == "__main__":
