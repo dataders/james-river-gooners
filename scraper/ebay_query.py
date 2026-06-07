@@ -90,14 +90,23 @@ def item_exact_phrase(item: dict, max_words: int = 6) -> str:
     return '"' + " ".join(words) + '"'
 
 
-def enriched_exact_phrase(item: dict, max_words: int = 6) -> str:
-    """Quoted ``brand model`` exact-phrase from LLM enrichment (medium/high confidence only).
+def enriched_exact_phrase(item: dict, max_words: int = 8) -> str:
+    """Primary eBay query from LLM enrichment (medium/high confidence only).
 
-    Returns "" when enrichment is absent, low-confidence, or produces fewer
-    than two words — so junk enrichment never worsens comps.
+    Prefers the model-composed ``searchQuery`` (v3) — a short brand + model +
+    type + attribute phrase tuned for eBay sold search — used unquoted so eBay
+    AND-matches the terms. Falls back to a quoted ``brand model`` phrase for older
+    rows without a search query. Returns "" when enrichment is absent,
+    low-confidence, or too thin, so junk enrichment never worsens comps.
     """
     if str(item.get("enrichmentConfidence") or "").lower() not in ("medium", "high"):
         return ""
+    search_query = clean_comp_text(str(item.get("searchQuery") or ""))
+    if search_query:
+        words = [word for word in search_query.split(" ") if word][:max_words]
+        if len(words) >= 2:
+            return " ".join(words)
+    # Legacy fallback: quoted brand + model exact phrase.
     brand = clean_comp_text(str(item.get("brand") or ""))
     model = clean_comp_text(str(item.get("modelOrSku") or ""))
     words = [word for word in normalize_spaces(f"{brand} {model}").split(" ") if word][:max_words]

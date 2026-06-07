@@ -148,6 +148,20 @@ class ParseEnrichmentTests(unittest.TestCase):
         self.assertEqual(out["modelConfidence"], "low")
         self.assertEqual(out["enrichmentConfidence"], "high")
 
+    def test_v3_search_fields_map(self):
+        out = parse_enrichment({
+            "brand": "KitchenAid", "model_name": "Artisan",
+            "product_type": "stand mixer",
+            "search_query": "KitchenAid Artisan 5 qt stand mixer",
+            "condition": "used", "product_url": "",
+            "brand_confidence": "high", "model_confidence": "medium",
+        })
+        self.assertEqual(out["brand"], "KitchenAid")
+        self.assertEqual(out["modelOrSku"], "Artisan")  # model_name → modelOrSku
+        self.assertEqual(out["productType"], "stand mixer")
+        self.assertEqual(out["searchQuery"], "KitchenAid Artisan 5 qt stand mixer")
+        self.assertEqual(out["enrichmentConfidence"], "high")
+
     def test_legacy_single_confidence_still_parsed(self):
         # Older cached rows carried one `confidence`; it backfills both fields.
         out = parse_enrichment({"brand": "X", "model_or_sku": "Y", "confidence": "medium"})
@@ -486,6 +500,24 @@ class EnrichItemsBatchTests(unittest.TestCase):
         blocks = req["params"]["messages"][0]["content"]
         self.assertFalse([b for b in blocks if b.get("type") == "image"])  # text-only
         self.assertEqual(enriched, 1)  # still enriched from the text
+
+
+class EbayQueryFromEnrichmentTests(unittest.TestCase):
+    def test_search_query_used_unquoted_when_confident(self):
+        from ebay_query import enriched_exact_phrase
+        item = {"enrichmentConfidence": "high", "brand": "KitchenAid",
+                "modelOrSku": "Artisan", "searchQuery": "KitchenAid Artisan 5 qt stand mixer"}
+        self.assertEqual(enriched_exact_phrase(item), "KitchenAid Artisan 5 qt stand mixer")
+
+    def test_low_confidence_yields_no_enriched_query(self):
+        from ebay_query import enriched_exact_phrase
+        item = {"enrichmentConfidence": "low", "searchQuery": "whatever it is"}
+        self.assertEqual(enriched_exact_phrase(item), "")
+
+    def test_falls_back_to_quoted_brand_model_without_search_query(self):
+        from ebay_query import enriched_exact_phrase
+        item = {"enrichmentConfidence": "high", "brand": "DeWalt", "modelOrSku": "DCD771"}
+        self.assertEqual(enriched_exact_phrase(item), '"DeWalt DCD771"')
 
 
 class EnrichmentSummaryTests(unittest.TestCase):

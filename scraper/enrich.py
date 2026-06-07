@@ -88,11 +88,11 @@ BATCH_INLINE_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_
 BATCH_MAX_BYTES = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024)))
 BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
 BATCH_MAX_WAIT = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600)))
-# Downscale inlined images for the batch payload. 512px made model/SKU plate
-# text illegible (multi-image gave no model lift at 512), so default to 768 —
-# small printed text stays readable while the payload stays modest (Anthropic
-# resizes anything over ~1568px anyway). Fetched concurrently.
-MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "768"))
+# Downscale inlined images for the batch payload. We extract product identity +
+# attributes (mostly from the lot's text), not tiny model/SKU plate text, so a
+# modest 512px is plenty and keeps the payload + token cost down. Fetched
+# concurrently. (768px gave no measurable lift in testing.)
+MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "512"))
 IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16"))
 # How many photos to feed the model (#152). The identifying detail — a brand
 # label, a model/SKU plate, the back of a tag — is often on photo 2 or 3, not
@@ -101,21 +101,23 @@ IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16
 MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
 
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
-# reusing a now-stale cached row (the fingerprint folds this in). v2: 2-3 images
-# + per-field brand/model confidence.
-ENRICHMENT_SCHEMA_VERSION = "2"
+# reusing a now-stale cached row (the fingerprint folds this in). v3: search-
+# oriented — product identity + a model-composed eBay query, not strict SKU.
+ENRICHMENT_SCHEMA_VERSION = "3"
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
 # produced the row (provenance for the Supabase API / future re-runs).
-# `enrichmentInputHash` fingerprints the inputs that produced the row (model +
-# text + photos + schema version) so a later scrape can reuse an unchanged lot's
-# enrichment instead of paying for an identical API call (see `enrich_items`).
-# `brandConfidence`/`modelConfidence` are scored separately (a confident brand is
-# useful even when the SKU is unreadable); `enrichmentConfidence` is their max,
-# the overall bar the Supabase mirror + UI still use.
+# `enrichmentInputHash` fingerprints the inputs that produced the row (schema +
+# model + image size + text + photos) so a later scrape can reuse an unchanged
+# lot's enrichment instead of paying for an identical API call (see `enrich_items`).
+# Search-oriented (v3): `modelOrSku` holds the model *name* (product line, looser
+# than a SKU), `productType` the noun, and `searchQuery` the model's best eBay
+# sold-comp phrase. `brandConfidence`/`modelConfidence` are scored separately (a
+# confident brand is useful even without a model); `enrichmentConfidence` is their
+# max, the overall bar the Supabase mirror + UI use.
 ENRICHMENT_FIELDS = (
-    "brand", "modelOrSku", "condition", "productUrl",
+    "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
     "brandConfidence", "modelConfidence", "enrichmentConfidence",
     "enrichmentModel", "enrichmentInputHash",
 )
@@ -131,41 +133,47 @@ OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
         "brand": {"type": "string"},
-        "model_or_sku": {"type": "string"},
+        "model_name": {"type": "string"},
+        "product_type": {"type": "string"},
+        "search_query": {"type": "string"},
         "condition": {"type": "string", "enum": list(CONDITION_VALUES)},
         "product_url": {"type": "string"},
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
-    "required": ["brand", "model_or_sku", "condition", "product_url",
-                 "brand_confidence", "model_confidence"],
+    "required": ["brand", "model_name", "product_type", "search_query", "condition",
+                 "product_url", "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
 
 SYSTEM_PROMPT = (
-    "You identify consumer products from auction-lot listings so they can be "
-    "matched against eBay sold listings and shown to resale buyers. For each "
-    "lot you are given its text and up to a few photos (often the brand label is "
-    "on the first photo and the model/SKU plate or tag is on a later one — use "
-    "them all). Extract:\n"
-    "- brand: the manufacturer or brand name (e.g. \"DeWalt\", \"KitchenAid\"). "
-    "Empty string if there is no identifiable brand.\n"
-    "- model_or_sku: the specific model name or number / SKU (e.g. \"DCD771\", "
-    "\"Artisan KSM150\"). Empty string if not identifiable. A brand+model pair "
-    "becomes the exact search query, so look hard across the photos for it.\n"
+    "You identify consumer products from auction-lot listings and write the best "
+    "eBay *sold-listing* search for each, so resale buyers can see comps. You are "
+    "given the lot's text and up to a few photos. Extract:\n"
+    "- brand: the manufacturer or brand (e.g. \"DeWalt\", \"KitchenAid\"). Empty "
+    "string if none is identifiable.\n"
+    "- model_name: the product line or model name — e.g. \"Artisan\", \"SawStop "
+    "PCS\", \"Speedmaster\". Prefer a recognizable name over a raw SKU; a precise "
+    "model number is great when clearly present, but don't strain for one. Empty "
+    "string if not identifiable.\n"
+    "- product_type: the general product noun (e.g. \"stand mixer\", \"table "
+    "saw\", \"dive watch\", \"humidor\"). Almost always fillable from the text.\n"
+    "- search_query: the search phrase you would type into eBay sold listings to "
+    "find this exact item's comps. Compose it from brand + model_name + "
+    "product_type plus the one or two most identifying attributes (size, "
+    "capacity, material, wattage, era) — e.g. \"KitchenAid Artisan 5 qt stand "
+    "mixer\", \"Craftsman 20V cordless drill\". Keep it short (3-7 words), no lot "
+    "numbers or filler. If the lot is generic/mixed (e.g. \"box of assorted "
+    "hardware\"), return an empty string.\n"
     "- condition: one of new, open box, used, for parts, unknown.\n"
-    "- product_url: a canonical manufacturer or major-retailer product page URL "
-    "ONLY if you are certain it is real. A hallucinated URL is worse than none, "
-    "so when in any doubt return an empty string.\n"
+    "- product_url: a canonical manufacturer/major-retailer product page URL ONLY "
+    "if you are certain it is real; otherwise an empty string (a hallucinated URL "
+    "is worse than none).\n"
     "- brand_confidence: high when the brand is clearly identifiable, medium when "
-    "reasonably sure, low for generic/mixed/ambiguous lots (e.g. \"box of "
-    "assorted hardware\", \"Lot - 207\").\n"
-    "- model_confidence: the same scale, but for the model/SKU specifically. "
-    "Score it independently of the brand — you may be highly confident of the "
-    "brand yet unable to read the model (then brand_confidence high, "
-    "model_confidence low).\n"
-    "Never guess. If a field is not supported by the text or photos, return an "
-    "empty string and lower the matching confidence accordingly."
+    "reasonably sure, low for generic/mixed/ambiguous lots.\n"
+    "- model_confidence: the same scale for the model_name/search specificity, "
+    "scored independently (you may know the brand confidently yet not the model).\n"
+    "Never invent details. Base everything on the text and photos."
 )
 
 
@@ -364,7 +372,11 @@ def parse_enrichment(raw: dict) -> dict:
     brand_conf = _valid_confidence(raw.get("brand_confidence")) or legacy
     model_conf = _valid_confidence(raw.get("model_confidence")) or legacy
     out["brand"] = str(raw.get("brand") or "").strip()
-    out["modelOrSku"] = str(raw.get("model_or_sku") or "").strip()
+    # `model_name` (v3) supersedes the old `model_or_sku`; accept either so older
+    # cached payloads still parse. Stored under modelOrSku for read-model continuity.
+    out["modelOrSku"] = str(raw.get("model_name") or raw.get("model_or_sku") or "").strip()
+    out["productType"] = str(raw.get("product_type") or "").strip()
+    out["searchQuery"] = str(raw.get("search_query") or "").strip()
     out["condition"] = condition if condition in CONDITION_VALUES else ""
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
     out["brandConfidence"] = brand_conf
