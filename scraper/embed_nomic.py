@@ -1,11 +1,16 @@
 """Nomic Embed (text + vision) generation → Supabase pgvector table.
 
 Activated by setting GOONERS_NOMIC_EMBEDDINGS=1 before running scrape.py or
-rescrape_all.py.  Requires extra deps (not in the base scraper); note `einops`,
-which nomic_bert's trust_remote_code modeling file imports — without it the
-model fails to load and every upsert is skipped:
+rescrape_all.py.  Requires extra deps (not in the base scraper). Note:
+  - `einops` — nomic_bert's trust_remote_code modeling file imports it; without
+    it the model fails to load and every upsert is skipped.
+  - `transformers==4.49.0` — transformers 5.x's strict config validation rejects
+    nomic_bert's remote config (`n_inner=2048.0` float), so the vision model
+    won't load on the latest release; pin to 4.49.
+  - `torchvision` — required by the vision model's AutoImageProcessor.
 
-    uv run --with sentence-transformers --with pillow --with einops ...
+    uv run --with sentence-transformers --with 'transformers==4.49.0' \
+      --with torchvision --with pillow --with einops ...
 
 The first run downloads ~550 MB each for the text and vision model weights,
 cached by huggingface in ~/.cache/huggingface.
@@ -55,6 +60,7 @@ _ARCHIVE_ITEMS_DIR = (
 
 _text_model = None
 _vision_model = None
+_vision_processor = None
 
 NOMIC_TABLE = "nomic_embeddings"
 NOMIC_TEXT_MODEL = "nomic-embed-text-v1.5"
@@ -74,13 +80,43 @@ def _get_text_model():
 
 
 def _get_vision_model():
-    global _vision_model
+    """Load nomic-embed-vision via transformers (AutoModel + image processor).
+
+    The vision model is NOT a sentence-transformers text model — loading it with
+    SentenceTransformer builds a text tower (word_embeddings, vocab_size 0) and
+    crashes. It must be loaded as an image encoder; we take the CLS token of the
+    last hidden state and L2-normalise, which lands in the same 768-dim space as
+    nomic-embed-text by design. (`AutoImageProcessor` needs torchvision.)
+    """
+    global _vision_model, _vision_processor
     if _vision_model is None:
-        from sentence_transformers import SentenceTransformer
+        from transformers import AutoImageProcessor, AutoModel
         print("Loading Nomic vision model (first run: ~550 MB download)...")
-        _vision_model = SentenceTransformer(f"nomic-ai/{NOMIC_VISION_MODEL}")
+        _vision_processor = AutoImageProcessor.from_pretrained(
+            f"nomic-ai/{NOMIC_VISION_MODEL}"
+        )
+        _vision_model = AutoModel.from_pretrained(
+            f"nomic-ai/{NOMIC_VISION_MODEL}", trust_remote_code=True
+        ).eval()
         print("Nomic vision model ready.")
-    return _vision_model
+    return _vision_model, _vision_processor
+
+
+def _encode_images(images: list, batch_size: int = 32) -> np.ndarray:
+    """Return an (n, 768) L2-normalised array of Nomic vision embeddings."""
+    import torch
+    import torch.nn.functional as F
+
+    model, processor = _get_vision_model()
+    chunks = []
+    with torch.no_grad():
+        for start in range(0, len(images), batch_size):
+            batch = images[start : start + batch_size]
+            inputs = processor(images=batch, return_tensors="pt")
+            hidden = model(**inputs).last_hidden_state
+            emb = F.normalize(hidden[:, 0], p=2, dim=1)  # CLS token
+            chunks.append(emb.cpu().numpy())
+    return np.concatenate(chunks, axis=0)
 
 
 def _fetch_image(url: str):
@@ -104,7 +140,6 @@ def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str]]
       4. Per item: mean-pool its image vectors, add to text vector, re-normalise.
     """
     text_model = _get_text_model()
-    vision_model = _get_vision_model()
     n = len(items)
     ids = [item["id"] for item in items]
 
@@ -159,13 +194,7 @@ def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str]]
     if img_encode_tasks:
         keys, imgs = zip(*img_encode_tasks)
         print(f"  [nomic] Encoding {len(imgs)} images...")
-        encoded = vision_model.encode(
-            list(imgs),
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-            batch_size=32,
-            show_progress_bar=False,
-        )
+        encoded = _encode_images(list(imgs))
         for (item_idx, _), emb in zip(keys, encoded):
             item_img_embs[item_idx].append(emb)
 
@@ -409,8 +438,9 @@ def backfill_from_read_model(
 
 if __name__ == "__main__":
     # Backfill the table from already-scraped NDJSON sidecars:
-    #   uv run --with sentence-transformers --with pillow --with einops \
-    #     --with numpy --with requests python embed_nomic.py [--archive] [<safeId> ...]
+    #   uv run --with sentence-transformers --with 'transformers==4.49.0' \
+    #     --with torchvision --with pillow --with einops --with numpy \
+    #     --with requests python embed_nomic.py [--archive] [<safeId> ...]
     args = sys.argv[1:]
     include_archive = "--archive" in args
     ids = [a for a in args if not a.startswith("--")]
