@@ -67,6 +67,11 @@ NOMIC_TABLE = "nomic_embeddings"
 NOMIC_TEXT_MODEL = "nomic-embed-text-v1.5"
 NOMIC_VISION_MODEL = "nomic-embed-vision-v1.5"
 
+# Non-browser UA for Supabase REST calls. The scrapers pass their own session
+# (which carries a Chrome User-Agent for the auction sites); Supabase rejects the
+# secret key from anything that looks browser-originated, so we override it here.
+_SUPABASE_UA = "gooners-embed/1.0 (+scraper)"
+
 
 def _get_device() -> str:
     """Best available torch device: CUDA (NVIDIA) → MPS (Apple Silicon) → CPU.
@@ -301,6 +306,10 @@ def upsert_embeddings(
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
+        # Override the scraper session's browser User-Agent: Supabase rejects the
+        # secret API key when the request looks browser-originated ("Forbidden use
+        # of secret API key in browser"), which the scrapers' Chrome UA triggers.
+        "User-Agent": _SUPABASE_UA,
     }
 
     def _post(batch: list[dict]) -> int:
@@ -365,6 +374,7 @@ def existing_item_ids(
             "Authorization": f"Bearer {key}",
             "Range-Unit": "items",
             "Range": f"{start}-{start + page - 1}",
+            "User-Agent": _SUPABASE_UA,  # see upsert_embeddings note
         }
         resp = session.get(endpoint, headers=headers, params=params, timeout=60)
         resp.raise_for_status()
