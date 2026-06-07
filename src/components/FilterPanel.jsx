@@ -173,7 +173,7 @@ export function FilterPanel({
         )}
 
         {/* Data availability toggles */}
-        <Accordion title="Only show items with…">
+        <Accordion title="Only show items with…" defaultOpen={true}>
           <HasFilters
             hasEbayComp={hasEbayComp}
             onHasEbayCompChange={onHasEbayCompChange}
