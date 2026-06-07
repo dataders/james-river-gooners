@@ -482,6 +482,22 @@ export default function App() {
 
           <SortBar value={sort} onChange={setSort} />
 
+          <div className="layout-toggle" role="group" aria-label="Grid layout">
+            {[
+              { value: 'grid', label: '⊞', title: 'Grid view' },
+              { value: 'compact', label: '≡', title: 'Compact view' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`layout-toggle-btn${viewMode === opt.value ? ' active' : ''}`}
+                aria-pressed={viewMode === opt.value}
+                title={opt.title}
+                onClick={() => setViewMode(opt.value)}
+              >{opt.label}</button>
+            ))}
+          </div>
+
           <div className="header-actions">
             <button
               type="button"
@@ -532,8 +548,6 @@ export default function App() {
           onShowMyBidsOnlyChange={setShowMyBidsOnly}
           bestDeals={bestDeals}
           onBestDealsToggle={handleBestDealsToggle}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           favoriteCount={favoriteIds.length}
           ignoredCount={ignoredIds.length}
           cannonBidsLinked={cannonBids.linked}
