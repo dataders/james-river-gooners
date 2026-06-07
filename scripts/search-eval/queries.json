@@ -1,0 +1,25 @@
+{
+  "_comment": "Search-quality benchmark queries. regime: 'category' (broad), 'specific' (a particular item), 'visual' (vague-title lots that should match on their photo, not text). Keep these stable; add new ones with fresh ids. Re-judge + re-baseline when you change the set.",
+  "queries": [
+    { "id": "silver-coins", "query": "silver coins", "regime": "category" },
+    { "id": "antique-furniture", "query": "antique wooden furniture", "regime": "category" },
+    { "id": "oil-paintings", "query": "framed oil paintings", "regime": "category" },
+    { "id": "fine-china", "query": "fine china dinnerware", "regime": "category" },
+    { "id": "gold-jewelry", "query": "gold jewelry", "regime": "category" },
+    { "id": "oriental-rug", "query": "oriental area rug", "regime": "category" },
+    { "id": "sterling-flatware", "query": "sterling silver flatware", "regime": "category" },
+    { "id": "vintage-books", "query": "vintage hardcover books", "regime": "category" },
+    { "id": "morgan-dollar", "query": "1921 Morgan silver dollar", "regime": "specific" },
+    { "id": "pyrex-bowls", "query": "vintage Pyrex mixing bowls", "regime": "specific" },
+    { "id": "cast-iron-skillet", "query": "cast iron skillet", "regime": "specific" },
+    { "id": "pocket-watch", "query": "antique pocket watch", "regime": "specific" },
+    { "id": "sewing-machine", "query": "Singer sewing machine", "regime": "specific" },
+    { "id": "diamond-ring", "query": "diamond engagement ring", "regime": "specific" },
+    { "id": "pokemon-cards", "query": "Pokemon trading cards", "regime": "specific" },
+    { "id": "power-drill", "query": "cordless power drill", "regime": "visual" },
+    { "id": "table-lamp", "query": "table lamp", "regime": "visual" },
+    { "id": "dining-chairs", "query": "set of dining chairs", "regime": "visual" },
+    { "id": "wristwatch", "query": "men's wristwatch", "regime": "visual" },
+    { "id": "glass-vase", "query": "decorative glass vase", "regime": "visual" }
+  ]
+}
