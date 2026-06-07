@@ -1,5 +1,16 @@
 {
   "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--headless",
+        "--executablePath", "/opt/pw-browsers/chromium",
+        "--chromeArg", "--no-sandbox",
+        "--chromeArg", "--disable-dev-shm-usage",
+        "--no-usage-statistics"
+      ]
+    },
     "motherduck": {
       "command": "uvx",
       "args": ["mcp-server-motherduck"],
