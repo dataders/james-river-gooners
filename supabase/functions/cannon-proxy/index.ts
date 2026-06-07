@@ -948,7 +948,7 @@ async function placeBid(
   // parseHiddenInputs finds no TenantId/UserId and SaveBid fails. Awaited
   // so Maxanet processes the acceptance before we call SubmitBid.
   try {
-    await fetch(`${base}/Public/Auction/SaveBidderTermsAndCondition`, {
+    const tcResp = await fetch(`${base}/Public/Auction/SaveBidderTermsAndCondition`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -961,7 +961,10 @@ async function placeBid(
         __RequestVerificationToken: sessionCsrf,
       }).toString(),
     })
-  } catch { /* non-fatal — proceed regardless */ }
+    console.log('[cannon-proxy] SaveBidderTermsAndCondition status:', tcResp.status)
+  } catch (e) {
+    console.log('[cannon-proxy] SaveBidderTermsAndCondition error:', (e as Error).message)
+  }
 
   // POST SubmitBid — renders the bid confirmation modal. With T&C already
   // accepted above, this returns the confirmation form (not the T&C page),
@@ -1195,6 +1198,305 @@ async function refreshBidStatuses(
   })
 }
 
+// ── Auto-bid ──────────────────────────────────────────────────────────────────
+
+// Periodically called by the auto-bid GitHub Action (hourly) to place minimum
+// bids on Cannon's lots the user hasn't bid on yet. Only bids on lots where
+// the current bid is low enough that being outbid is highly probable, keeping
+// financial exposure minimal.
+const AUTO_BID_SITE = 'https://gooners.anders.omg.lol'
+const AUTO_BID_MAX_CURRENT = 10  // skip lots already above $10 — risk of winning
+const AUTO_BID_MAX_AMOUNT = 10   // skip lots where minimum bid would exceed $10
+const AUTO_BID_MIN_HOURS = 2     // skip lots ending in < 2h (too close)
+const AUTO_BID_LIMIT = 20        // cap per run so we don't flood Maxanet
+
+interface AutoBidResult {
+  itemId: string
+  title: string
+  bid: number
+  ok: boolean
+  winning: boolean | null
+  description: string
+}
+
+async function autoBid(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<Response> {
+  // 1. Fetch public manifest
+  let manifest: { auctions?: Array<{ safeId: string; ndjsonPath: string; source: string; endDate?: string }> }
+  try {
+    const r = await fetch(`${AUTO_BID_SITE}/data/manifest.json`)
+    if (!r.ok) return json({ error: `Manifest HTTP ${r.status}` }, 500)
+    manifest = await r.json()
+  } catch (e) {
+    return json({ error: `Manifest fetch: ${(e as Error).message}` }, 500)
+  }
+
+  const auctions = manifest.auctions ?? []
+  if (auctions.length === 0) return json({ ok: true, message: 'Manifest empty', bids: [] })
+
+  // 2. Load the user's already-bid item IDs
+  const { data: existingBids } = await supabase
+    .from('user_bids')
+    .select('auction_item_id')
+    .eq('user_id', userId)
+  const biddedIds = new Set((existingBids ?? []).map(r => String(r.auction_item_id)))
+
+  // 3. Collect candidate lots from all Cannon's auctions
+  const candidates: PlaceBidParams[] = []
+  for (const auction of auctions) {
+    if (auction.source !== 'cannons') continue
+    if (!auction.ndjsonPath) continue
+
+    if (auction.endDate) {
+      const hoursLeft = (new Date(auction.endDate).getTime() - Date.now()) / 3600000
+      if (hoursLeft < AUTO_BID_MIN_HOURS) continue
+    }
+
+    let text: string
+    try {
+      const r = await fetch(`${AUTO_BID_SITE}/${auction.ndjsonPath}`)
+      if (!r.ok) continue
+      text = await r.text()
+    } catch { continue }
+
+    for (const line of text.trim().split('\n').filter(Boolean)) {
+      let item: Record<string, unknown>
+      try { item = JSON.parse(line) } catch { continue }
+      if (item.source !== 'cannons') continue
+      if (item.closed) continue
+      if (biddedIds.has(String(item.id))) continue
+      const currentBid = Number(item.currentBid ?? 0)
+      if (currentBid > AUTO_BID_MAX_CURRENT) continue
+
+      // Estimate minimum next bid; the real value comes from RefreshItem below
+      const estimatedMin = currentBid === 0 ? 1 : currentBid + 1
+      if (estimatedMin > AUTO_BID_MAX_AMOUNT) continue
+
+      candidates.push({
+        auctionItemId: String(item.id),
+        auctionId: String(item.auctionId ?? ''),
+        newBidAmount: estimatedMin,
+        maxBidAmount: estimatedMin,
+        currentBid,
+        minimumNextBid: estimatedMin,
+        itemName: String(item.title ?? ''),
+        endDate: String(item.endDate ?? ''),
+        totalBids: Number(item.totalBids ?? 0),
+        category: String(item.category ?? ''),
+        skuNumber: item.lotNumber != null ? String(item.lotNumber) : undefined,
+      })
+      if (candidates.length >= AUTO_BID_LIMIT) break
+    }
+    if (candidates.length >= AUTO_BID_LIMIT) break
+  }
+
+  if (candidates.length === 0) return json({ ok: true, message: 'No eligible lots found', bids: [] })
+  console.log(`[cannon-proxy] auto_bid: ${candidates.length} candidates for user ${userId}`)
+
+  // 4. Login to Maxanet
+  const { data: creds } = await supabase
+    .from('cannon_credentials')
+    .select('cannon_username, cannon_password_enc')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!creds) return json({ error: "No Cannon's account linked" }, 400)
+
+  let password: string
+  try { password = await decryptText(creds.cannon_password_enc) }
+  catch { return json({ error: 'Failed to decrypt credentials' }, 500) }
+
+  let cookies: Record<string, string>
+  try { ({ cookies } = await maxanetLogin(creds.cannon_username, password)) }
+  catch (e) { return json({ error: `Login failed: ${(e as Error).message}` }, 400) }
+
+  const base = 'https://bid.cannonsauctions.com'
+  let sessionCsrf = await fetchCsrf(cookies, base)
+  console.log(`[cannon-proxy] auto_bid: logged in, csrf=${!!sessionCsrf}`)
+
+  // 5. Refresh each candidate to get the true minimumNextBid, then re-filter
+  const refreshed = await Promise.all(
+    candidates.map(lot => refreshItemStatus(base, cookies, sessionCsrf, { itemId: lot.auctionItemId, auctionId: lot.auctionId }))
+  )
+  const eligible = candidates
+    .map((lot, i) => {
+      const live = refreshed[i]
+      const min = live.minimumNextBid ?? lot.minimumNextBid
+      if (min > AUTO_BID_MAX_AMOUNT) return null
+      // item already has bids at a higher level — skip
+      if ((live.currentBid ?? lot.currentBid) > AUTO_BID_MAX_CURRENT) return null
+      return { ...lot, newBidAmount: min, maxBidAmount: min, minimumNextBid: min, currentBid: live.currentBid ?? lot.currentBid }
+    })
+    .filter(Boolean) as PlaceBidParams[]
+
+  console.log(`[cannon-proxy] auto_bid: ${eligible.length} eligible after refresh`)
+  if (eligible.length === 0) return json({ ok: true, message: 'No eligible lots after refresh', bids: [] })
+
+  // 6. Place bids — accept T&C once per auction, reuse session
+  const tcAccepted = new Set<string>()
+  const results: AutoBidResult[] = []
+
+  for (const lot of eligible) {
+    try {
+      // Accept T&C for this auction (idempotent on the server)
+      if (!tcAccepted.has(lot.auctionId)) {
+        try {
+          await fetch(`${base}/Public/Auction/SaveBidderTermsAndCondition`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Cookie': cookieHeader(cookies),
+              'User-Agent': UA,
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new URLSearchParams({
+              AuctionId: lot.auctionId,
+              __RequestVerificationToken: sessionCsrf,
+            }).toString(),
+          })
+          tcAccepted.add(lot.auctionId)
+        } catch { /* non-fatal */ }
+      }
+
+      // SubmitBid — gets TenantId/UserId/fresh CSRF for SaveBid
+      const nowStr = new Date().toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false,
+      })
+      const submitResp = await fetch(`${base}/Public/Auction/SubmitBid`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookieHeader(cookies),
+          'User-Agent': UA,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new URLSearchParams({
+          AuctionItemId: lot.auctionItemId,
+          OldBidAmount: String(lot.currentBid),
+          NewBidAmount: '0', MaxBidAmount: '0', Quantity: '1',
+          ItemName: lot.itemName ?? '',
+          __RequestVerificationToken: sessionCsrf,
+          TotalTerms: '0',
+          MinimumNextBidAmount: String(lot.minimumNextBid),
+          TotalBids: String(lot.totalBids ?? 0),
+          IsWatchList: 'False', DisplayFormatCode: 'OB',
+          Types: lot.category ?? '',
+          SKUNumber: String(lot.skuNumber ?? ''),
+          Description: '', EndDate: lot.endDate ?? '',
+          StatusCode: 'NW', CurrentDate: nowStr,
+          IsAutoExtended: 'False', IsBiddingEnabled: 'True',
+          ReservePrice: '0', BidAmount: String(lot.currentBid),
+          BidNowLabel: 'Bid Now', index: '1',
+          ImageURL: '', OriginalName: '',
+          ButtonId: 'bidpopup_1', ActivityModuleId: 'PBAUCITM',
+        }).toString(),
+      })
+      cookies = mergeCookies(cookies, getSetCookies(submitResp.headers))
+      const submitHtml = await submitResp.text()
+      const formFields = parseHiddenInputs(submitHtml)
+      const bidCsrf = formFields.__RequestVerificationToken ?? sessionCsrf
+      // Refresh sessionCsrf for next lot
+      if (formFields.__RequestVerificationToken) sessionCsrf = formFields.__RequestVerificationToken
+
+      // SaveBid — places the actual bid
+      const saveBidResp = await fetch(`${base}/Public/Auction/SaveBid`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookieHeader(cookies),
+          'User-Agent': UA,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new URLSearchParams({
+          __RequestVerificationToken: bidCsrf,
+          AuctionId: lot.auctionId,
+          ActivityModuleId: 'PBAUCITM',
+          NewBidAmount: String(lot.newBidAmount),
+          MaxBidAmount: String(lot.maxBidAmount),
+          minumumNextBixAmount: String(lot.minimumNextBid),
+          AuctionItemId: lot.auctionItemId,
+          OldBidAmount: String(lot.currentBid),
+          ReservePriceAmount: formFields.ReservePriceAmount ?? '0',
+          TenantId: formFields.TenantId ?? '399',
+          UserId: formFields.UserId ?? '',
+          TotalTerms: '0', RequestUrl: '',
+        }).toString(),
+      })
+
+      let saveBidResult: { ApiStatusCode?: number; Description?: string } = {}
+      try { saveBidResult = await saveBidResp.json() } catch { /* non-JSON */ }
+      const ok = saveBidResult.ApiStatusCode === 200
+
+      // RefreshItem for winning status
+      let winning: boolean | null = null
+      let currentBidAfter: number | null = null
+      try {
+        const { winning: w, currentBid: cb } = parseRefreshItemHtml(
+          await (await fetch(`${base}/Public/Auction/RefreshItem`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Cookie': cookieHeader(cookies),
+              'User-Agent': UA,
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new URLSearchParams({
+              __RequestVerificationToken: bidCsrf,
+              model: JSON.stringify({
+                AuctionId: Number(lot.auctionId),
+                AuctionItemId: Number(lot.auctionItemId),
+                TenantId: Number(formFields.TenantId ?? '399'),
+                IsBiddingEnabled: true,
+                DisplayFormatCode: 'OB', StatusCode: 'NW',
+              }),
+              index: '1', viewType: '2',
+              auctionItemFilterVM: JSON.stringify({
+                AuctionId: lot.auctionId,
+                AuctionItemId: Number(lot.auctionItemId),
+                pageNumber: '1', itemsPerPage: 100,
+                viewType: '2', Filter: 'Current', activeTab: 1,
+                __RequestVerificationToken: bidCsrf,
+              }),
+            }).toString(),
+          })).text()
+        )
+        winning = w; currentBidAfter = cb
+      } catch { /* non-fatal */ }
+
+      if (ok) {
+        const now = new Date().toISOString()
+        await supabase.from('user_bids').upsert({
+          user_id: userId,
+          auction_item_id: lot.auctionItemId,
+          auction_id: lot.auctionId,
+          item_title: lot.itemName ?? null,
+          item_category: lot.category ?? null,
+          bid_amount: lot.newBidAmount,
+          last_bid_at: now,
+          is_winning: winning,
+          current_bid: currentBidAfter,
+          min_next_bid: null,
+          status_refreshed_at: winning !== null ? now : null,
+        }, { onConflict: 'user_id,auction_item_id' })
+      }
+
+      const description = saveBidResult.Description ?? (ok ? 'Bid placed' : 'Bid failed')
+      console.log(`[cannon-proxy] auto_bid: ${lot.auctionItemId} ok=${ok} winning=${winning} "${description}"`)
+      results.push({ itemId: lot.auctionItemId, title: lot.itemName ?? '', bid: lot.newBidAmount, ok, winning, description })
+    } catch (e) {
+      const msg = (e as Error).message
+      console.log(`[cannon-proxy] auto_bid: ${lot.auctionItemId} error: ${msg}`)
+      results.push({ itemId: lot.auctionItemId, title: lot.itemName ?? '', bid: lot.newBidAmount, ok: false, winning: null, description: msg })
+    }
+  }
+
+  const placed = results.filter(r => r.ok).length
+  return json({ ok: true, message: `Placed ${placed}/${eligible.length} bids`, bids: results })
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 function json(body: unknown, status = 200): Response {
@@ -1268,6 +1570,8 @@ Deno.serve(async (req: Request) => {
         skuNumber: skuNumber != null ? String(skuNumber) : undefined,
       })
     }
+    case 'auto_bid':
+      return autoBid(supabase, user.id)
     default:
       return json({ error: `Unknown action: ${action}` }, 400)
   }
