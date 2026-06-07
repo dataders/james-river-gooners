@@ -133,10 +133,50 @@ body {
 }
 @media (max-width: 700px) {
   .header-actions {
+    order: 20;
+    flex-basis: 100%;
     margin-left: 0;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+    gap: 0;
   }
-  .header-title + .header-actions {
-    margin-left: auto;
+  /* Strip individual borders — the row container provides the frame */
+  .header-actions .swipe-banner-button,
+  .header-actions .help-button,
+  .header-actions .whatsnew-button,
+  .header-actions .trivia-button,
+  .header-actions .account-icon-btn,
+  .header-actions .theme-toggle {
+    flex: 1;
+    border: none;
+    background: transparent;
+    border-radius: calc(var(--radius) - 2px);
+    justify-content: center;
+    padding: 6px 4px;
+    min-height: 36px;
+    font-size: 1rem;
+  }
+  .header-actions .swipe-banner-button:hover,
+  .header-actions .help-button:hover,
+  .header-actions .whatsnew-button:hover,
+  .header-actions .trivia-button:hover,
+  .header-actions .account-icon-btn:hover,
+  .header-actions .theme-toggle:hover {
+    background: var(--chip-bg);
+    border-color: transparent;
+  }
+  /* Account and trivia wrappers should also stretch */
+  .header-actions .account-menu,
+  .header-actions .trivia-menu {
+    flex: 1;
+    display: flex;
+  }
+  .header-actions .account-menu .account-icon-btn,
+  .header-actions .trivia-menu .trivia-button {
+    width: 100%;
   }
 }
 
