@@ -27,20 +27,29 @@ const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
  *
  * When Supabase is unconfigured or running on iOS the hook reports 'error' and
  * stays inert, so the static site and iOS browsers work (keyword search alone).
+ * On other browsers the worker is lazy-loaded: it only starts when the user
+ * submits a search, so casual visitors never pay the model download cost.
  */
 export function useSemanticSearch(query) {
-  // Start in 'loading' — the worker downloads the model immediately on mount.
-  // On iOS, skip the worker entirely to avoid OOM crashes (see isIOS above).
   const [semanticStatus, setSemanticStatus] = useState(
     isSupabaseConfigured && !isIOS ? 'loading' : 'error'
   )
   const [lastSemanticIds, setLastSemanticIds] = useState(null)
   const workerRef = useRef(null)
   const queryIdRef = useRef(0)
+  // Latches true once a search is submitted; never resets so the worker stays
+  // alive for the rest of the session.
+  const [workerEnabled, setWorkerEnabled] = useState(false)
 
-  // Spin up the worker once on mount; clean up on unmount.
+  // Latch workerEnabled on the first submitted query (non-iOS only).
   useEffect(() => {
     if (!isSupabaseConfigured || isIOS) return
+    if (query && !workerEnabled) setWorkerEnabled(true)
+  }, [query, workerEnabled])
+
+  // Spin up the worker once, only after workerEnabled latches.
+  useEffect(() => {
+    if (!isSupabaseConfigured || isIOS || !workerEnabled) return
     const worker = new Worker(
       new URL('../workers/nomicEncoder.js', import.meta.url),
       { type: 'module' }
@@ -82,7 +91,7 @@ export function useSemanticSearch(query) {
       worker.terminate()
       workerRef.current = null
     }
-  }, [])
+  }, [workerEnabled])
 
   // Re-encode whenever the query changes (or when the model finishes loading).
   useEffect(() => {
