@@ -95,3 +95,32 @@ models:
     columns:
       - name: user_id
         tests: [not_null, unique]
+
+  - name: stg_posthog_events
+    description: Daily PostHog event counts from posthog_raw.events_daily. Grain: (day, event).
+    columns:
+      - name: day
+        tests: [not_null]
+      - name: event
+        tests: [not_null]
+      - name: event_count
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+
+  - name: stg_posthog_search_stats
+    description: Daily search stats from PostHog split by semantic/keyword mode.
+    columns:
+      - name: day
+        tests: [not_null]
+
+  - name: stg_posthog_toggle_stats
+    description: Daily favorite/ignore toggle counts from PostHog.
+    columns:
+      - name: day
+        tests: [not_null]
+      - name: event
+        tests:
+          - accepted_values:
+              values: ['favorite_toggled', 'ignored_toggled']
