@@ -30,6 +30,33 @@ models:
           Of all decisive actions (favorite or ignore), what % were favorites?
           50% = equal mix; 100% = only favorites; 0% = only ignores.
 
+  - name: fct_posthog_engagement
+    description: >
+      Daily product engagement metrics derived from PostHog behavioral events.
+      Grain: day. Source data exported via scraper/posthog_export.py.
+      Covers: active users, pageviews, item opens, search behaviour (semantic vs
+      keyword, query length, result counts), and curation decisions (favorites /
+      ignores added/removed, decisions-per-user ratio, ignore dominance).
+    columns:
+      - name: day
+        tests: [not_null, unique]
+      - name: daily_active_users
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: total_searches
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: pct_semantic
+        description: >
+          Percentage of searches that used CLIP semantic mode vs keyword mode.
+      - name: pct_ignores_of_decisions
+        description: >
+          Of all add-decisions (favorite or ignore), what % were ignores?
+          100 = only ignoring; 0 = only favoriting. High values mean users are
+          actively pruning the feed rather than building a watch list.
+
   - name: fct_item_engagement
     description: >
       One row per item that has been favorited or ignored by at least one user.
