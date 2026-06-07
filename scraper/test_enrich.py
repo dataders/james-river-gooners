@@ -136,6 +136,25 @@ class ParseEnrichmentTests(unittest.TestCase):
         out = parse_enrichment({"product_url": "dewalt.com/dcd771"})
         self.assertEqual(out["productUrl"], "")
 
+    def test_per_field_confidence_maps_and_takes_max(self):
+        # A confident brand with an unreadable SKU: keep both, overall = max, so
+        # the lot still clears the medium/high bar (more data gets surfaced).
+        out = parse_enrichment({
+            "brand": "DeWalt", "model_or_sku": "",
+            "condition": "used", "product_url": "",
+            "brand_confidence": "high", "model_confidence": "low",
+        })
+        self.assertEqual(out["brandConfidence"], "high")
+        self.assertEqual(out["modelConfidence"], "low")
+        self.assertEqual(out["enrichmentConfidence"], "high")
+
+    def test_legacy_single_confidence_still_parsed(self):
+        # Older cached rows carried one `confidence`; it backfills both fields.
+        out = parse_enrichment({"brand": "X", "model_or_sku": "Y", "confidence": "medium"})
+        self.assertEqual(out["brandConfidence"], "medium")
+        self.assertEqual(out["modelConfidence"], "medium")
+        self.assertEqual(out["enrichmentConfidence"], "medium")
+
     def test_non_dict_returns_all_empty(self):
         out = parse_enrichment("nope")
         self.assertEqual(set(out), set(enrich.ENRICHMENT_FIELDS))
@@ -167,6 +186,19 @@ class PromptShapeTests(unittest.TestCase):
         content = build_content({"title": "Drill", "images": []})
         self.assertEqual(len(content), 1)
         self.assertEqual(content[0]["type"], "text")
+
+    def test_build_content_includes_up_to_max_images(self):
+        # #152: feed the first few photos, not just one (capped at MAX_IMAGES).
+        item = {"title": "Drill", "images": [f"https://img/{n}.jpg" for n in range(5)]}
+        content = build_content(item)
+        image_blocks = [b for b in content if b["type"] == "image"]
+        self.assertEqual(len(image_blocks), enrich.MAX_IMAGES)
+        self.assertEqual(content[-1]["type"], "text")
+
+    def test_item_image_urls_filters_non_http_and_respects_limit(self):
+        item = {"images": ["ftp://x/1.jpg", "https://img/1.jpg", "https://img/2.jpg"]}
+        self.assertEqual(enrich.item_image_urls(item, limit=5), ["https://img/1.jpg", "https://img/2.jpg"])
+        self.assertEqual(enrich.item_image_urls(item, limit=1), ["https://img/1.jpg"])
 
 
 class EnablementTests(unittest.TestCase):

@@ -92,22 +92,38 @@ BATCH_MAX_WAIT = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(2
 # identifiable well below full resolution. Fetched concurrently.
 MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "512"))
 IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16"))
+# How many photos to feed the model (#152). The identifying detail — a brand
+# label, a model/SKU plate, the back of a tag — is often on photo 2 or 3, not
+# photo 1, so the first N images materially lift the model/SKU hit rate. One
+# shared knob (intended to also govern embeddings) keeps the passes in lockstep.
+MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
+
+# Bump when the prompt/schema changes so every lot re-enriches once instead of
+# reusing a now-stale cached row (the fingerprint folds this in). v2: 2-3 images
+# + per-field brand/model confidence.
+ENRICHMENT_SCHEMA_VERSION = "2"
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
 # produced the row (provenance for the Supabase API / future re-runs).
 # `enrichmentInputHash` fingerprints the inputs that produced the row (model +
-# text + first photo) so a later scrape can reuse an unchanged lot's enrichment
-# instead of paying for an identical API call (see `enrich_items`).
+# text + photos + schema version) so a later scrape can reuse an unchanged lot's
+# enrichment instead of paying for an identical API call (see `enrich_items`).
+# `brandConfidence`/`modelConfidence` are scored separately (a confident brand is
+# useful even when the SKU is unreadable); `enrichmentConfidence` is their max,
+# the overall bar the Supabase mirror + UI still use.
 ENRICHMENT_FIELDS = (
     "brand", "modelOrSku", "condition", "productUrl",
-    "enrichmentConfidence", "enrichmentModel", "enrichmentInputHash",
+    "brandConfidence", "modelConfidence", "enrichmentConfidence",
+    "enrichmentModel", "enrichmentInputHash",
 )
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
+# Rank for taking the max of the per-field confidences.
+_CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
 # Structured-output schema (json_schema). Haiku 4.5 supports structured outputs;
-# enums keep condition/confidence on the closed value sets above. Every field is
+# enums keep condition/confidences on the closed value sets above. Every field is
 # required and additionalProperties is false, so the response is always parseable.
 OUTPUT_SCHEMA = {
     "type": "object",
@@ -116,30 +132,38 @@ OUTPUT_SCHEMA = {
         "model_or_sku": {"type": "string"},
         "condition": {"type": "string", "enum": list(CONDITION_VALUES)},
         "product_url": {"type": "string"},
-        "confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
+        "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
+        "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
-    "required": ["brand", "model_or_sku", "condition", "product_url", "confidence"],
+    "required": ["brand", "model_or_sku", "condition", "product_url",
+                 "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
 
 SYSTEM_PROMPT = (
     "You identify consumer products from auction-lot listings so they can be "
     "matched against eBay sold listings and shown to resale buyers. For each "
-    "lot you are given its text and (usually) one photo. Extract:\n"
+    "lot you are given its text and up to a few photos (often the brand label is "
+    "on the first photo and the model/SKU plate or tag is on a later one — use "
+    "them all). Extract:\n"
     "- brand: the manufacturer or brand name (e.g. \"DeWalt\", \"KitchenAid\"). "
     "Empty string if there is no identifiable brand.\n"
     "- model_or_sku: the specific model name or number / SKU (e.g. \"DCD771\", "
-    "\"Artisan KSM150\"). Empty string if not identifiable. This is the most "
-    "valuable field — a brand+model pair becomes the exact search query.\n"
+    "\"Artisan KSM150\"). Empty string if not identifiable. A brand+model pair "
+    "becomes the exact search query, so look hard across the photos for it.\n"
     "- condition: one of new, open box, used, for parts, unknown.\n"
     "- product_url: a canonical manufacturer or major-retailer product page URL "
     "ONLY if you are certain it is real. A hallucinated URL is worse than none, "
     "so when in any doubt return an empty string.\n"
-    "- confidence: high only when the brand and model are clearly identifiable; "
-    "medium when you are reasonably sure; low for generic, mixed, or ambiguous "
-    "lots (e.g. \"box of assorted hardware\", \"Lot - 207\").\n"
-    "Never guess. If a field is not supported by the text or photo, return an "
-    "empty string and lower your confidence accordingly."
+    "- brand_confidence: high when the brand is clearly identifiable, medium when "
+    "reasonably sure, low for generic/mixed/ambiguous lots (e.g. \"box of "
+    "assorted hardware\", \"Lot - 207\").\n"
+    "- model_confidence: the same scale, but for the model/SKU specifically. "
+    "Score it independently of the brand — you may be highly confident of the "
+    "brand yet unable to read the model (then brand_confidence high, "
+    "model_confidence low).\n"
+    "Never guess. If a field is not supported by the text or photos, return an "
+    "empty string and lower the matching confidence accordingly."
 )
 
 
@@ -220,32 +244,44 @@ def item_prompt_text(item: dict) -> str:
     return "\n".join(lines) if lines else "(no text provided)"
 
 
+def item_image_urls(item: dict, limit: int = MAX_IMAGES) -> list[str]:
+    """The first ``limit`` http(s) photo URLs (#152). Many lots put the model/SKU
+    plate on photo 2 or 3, so enrichment reads several, not just the first."""
+    urls = []
+    for raw in item_images(item):
+        url = str(raw)
+        if url.startswith(("http://", "https://")):
+            urls.append(url)
+        if len(urls) >= limit:
+            break
+    return urls
+
+
 def first_image_url(item: dict) -> str:
-    """The first http(s) photo URL, or "" — the only image enrichment reads."""
-    images = item_images(item)
-    if images:
-        first = str(images[0])
-        if first.startswith(("http://", "https://")):
-            return first
-    return ""
+    """The first http(s) photo URL, or "" (kept for callers that want just one)."""
+    urls = item_image_urls(item, limit=1)
+    return urls[0] if urls else ""
 
 
 def enrichment_fingerprint(item: dict) -> str:
-    """Stable hash of everything that feeds an enrichment call: the model, the
-    lot's identifying text, and its first photo. Two lots (across scrapes) with
-    the same fingerprint would get an identical API result, so the prior one can
-    be reused. Binding in the model means a model change re-enriches everything."""
-    payload = "\x1f".join((MODEL, item_prompt_text(item), first_image_url(item)))
+    """Stable hash of everything that feeds an enrichment call: the schema
+    version, the model, the lot's identifying text, and its photos. Two lots with
+    the same fingerprint get an identical API result, so the prior one can be
+    reused. Folding in the schema version + image set means a prompt/schema change
+    or a new photo count re-enriches everything once."""
+    payload = "\x1f".join(
+        (ENRICHMENT_SCHEMA_VERSION, MODEL, item_prompt_text(item), *item_image_urls(item))
+    )
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
 def build_content(item: dict) -> list:
-    """The user-turn content: the first photo (when it's an http(s) URL) plus the
-    lot's identifying text."""
-    content = []
-    first = first_image_url(item)
-    if first:
-        content.append({"type": "image", "source": {"type": "url", "url": first}})
+    """The user-turn content: the first few photos (http(s) URLs) plus the lot's
+    identifying text."""
+    content = [
+        {"type": "image", "source": {"type": "url", "url": url}}
+        for url in item_image_urls(item)
+    ]
     content.append({"type": "text", "text": item_prompt_text(item)})
     return content
 
@@ -275,16 +311,13 @@ def fetch_image_base64(url: str) -> tuple[str, str] | None:
         return None
 
 
-def build_content_inline(item: dict, image: tuple[str, str] | None) -> list:
-    """User content with the photo inlined as base64 (or text-only when there's
-    no usable image). The batch counterpart to ``build_content``."""
-    content = []
-    if image is not None:
-        media_type, data = image
-        content.append({
-            "type": "image",
-            "source": {"type": "base64", "media_type": media_type, "data": data},
-        })
+def build_content_inline(item: dict, images: list[tuple[str, str]]) -> list:
+    """User content with the photos inlined as base64 (text-only when none could
+    be fetched). The batch counterpart to ``build_content``."""
+    content = [
+        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}}
+        for media_type, data in images
+    ]
     content.append({"type": "text", "text": item_prompt_text(item)})
     return content
 
@@ -307,21 +340,33 @@ def _response_text(content) -> str:
     return next((block.text for block in content if getattr(block, "type", None) == "text"), "")
 
 
+def _valid_confidence(raw_value) -> str:
+    value = str(raw_value or "").strip().lower()
+    return value if value in CONFIDENCE_VALUES else ""
+
+
 def parse_enrichment(raw: dict) -> dict:
     """Map the model's JSON to the camelCase fields, validating the closed sets.
     An invalid condition/confidence or a non-http product_url is dropped to ""
-    rather than trusted."""
+    rather than trusted. Brand and model are scored separately; the overall
+    ``enrichmentConfidence`` is their max (a confident brand alone clears the bar,
+    so brand-only lots still get surfaced — falls back to a legacy single
+    ``confidence`` for older cached rows)."""
     out = _empty_enrichment()
     if not isinstance(raw, dict):
         return out
     condition = str(raw.get("condition") or "").strip().lower()
-    confidence = str(raw.get("confidence") or "").strip().lower()
     product_url = str(raw.get("product_url") or "").strip()
+    legacy = _valid_confidence(raw.get("confidence"))
+    brand_conf = _valid_confidence(raw.get("brand_confidence")) or legacy
+    model_conf = _valid_confidence(raw.get("model_confidence")) or legacy
     out["brand"] = str(raw.get("brand") or "").strip()
     out["modelOrSku"] = str(raw.get("model_or_sku") or "").strip()
     out["condition"] = condition if condition in CONDITION_VALUES else ""
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
-    out["enrichmentConfidence"] = confidence if confidence in CONFIDENCE_VALUES else ""
+    out["brandConfidence"] = brand_conf
+    out["modelConfidence"] = model_conf
+    out["enrichmentConfidence"] = max((brand_conf, model_conf), key=lambda c: _CONFIDENCE_RANK[c])
     return out
 
 
@@ -519,15 +564,21 @@ def _wait_for_batch(client, batch_id: str, poll_interval: float, max_wait: float
         time.sleep(poll_interval)
 
 
-def _fetch_chunk_images(chunk: list[dict]) -> dict[int, tuple[str, str] | None]:
-    """Concurrently download + downscale each lot's first image, keyed by
-    ``id(item)``. A failed/absent image maps to ``None`` (→ text-only)."""
-    targets = {id(item): first_image_url(item) for item in chunk}
-    images: dict[int, tuple[str, str] | None] = {}
+def _fetch_chunk_images(chunk: list[dict]) -> dict[int, list[tuple[str, str]]]:
+    """Concurrently download + downscale each lot's first few images (#152),
+    keyed by ``id(item)`` → list of ``(media_type, base64)`` in original order.
+    Failed/absent images are dropped; a lot with none falls back to text-only."""
+    # One fetch task per (lot, url); preserve per-lot order when reassembling.
+    order: dict[int, list[str]] = {id(item): item_image_urls(item) for item in chunk}
+    fetched: dict[tuple[int, str], tuple[str, str] | None] = {}
+    tasks = {(key, url) for key, urls in order.items() for url in urls}
     with concurrent.futures.ThreadPoolExecutor(max_workers=IMAGE_FETCH_WORKERS) as pool:
-        futures = {pool.submit(fetch_image_base64, url): key for key, url in targets.items() if url}
+        futures = {pool.submit(fetch_image_base64, url): (key, url) for key, url in tasks}
         for future in concurrent.futures.as_completed(futures):
-            images[futures[future]] = future.result()
+            fetched[futures[future]] = future.result()
+    images: dict[int, list[tuple[str, str]]] = {}
+    for key, urls in order.items():
+        images[key] = [img for url in urls if (img := fetched.get((key, url))) is not None]
     return images
 
 
@@ -543,7 +594,7 @@ def _build_batch_requests(chunk: list[dict], inline_images: bool) -> tuple[list[
     for i, item in enumerate(chunk):
         custom_id = f"lot-{i}"
         by_custom_id[custom_id] = item
-        content = build_content_inline(item, images.get(id(item))) if inline_images else None
+        content = build_content_inline(item, images.get(id(item), [])) if inline_images else None
         requests.append({"custom_id": custom_id, "params": build_request_params(item, content=content)})
     return requests, by_custom_id
 
@@ -641,9 +692,9 @@ def _chunk_for_batch(to_enrich: list[dict], max_count: int, inline_images: bool)
         # Rough per-request size: prompt text + (for inline) the on-disk image.
         est = len(item_prompt_text(item).encode("utf-8")) + 2048
         if inline_images:
-            # base64 of a downscaled JPEG; cap the estimate so one big source
+            # base64 of the downscaled JPEGs; cap per-photo so one big source
             # image doesn't over-inflate the budget (we downscale before send).
-            est += min(_estimated_image_bytes(item), 400 * 1024)
+            est += min(_estimated_image_bytes(item), 400 * 1024 * MAX_IMAGES)
         if chunk and (len(chunk) >= max_count or (inline_images and chunk_bytes + est > BATCH_MAX_BYTES)):
             yield chunk
             chunk, chunk_bytes = [], 0
@@ -654,10 +705,10 @@ def _chunk_for_batch(to_enrich: list[dict], max_count: int, inline_images: bool)
 
 
 def _estimated_image_bytes(item: dict) -> int:
-    """A cheap upper-bound estimate of an inlined image's base64 size for chunk
-    budgeting — we can't know the real size without fetching, so assume a
-    downscaled JPEG near the per-image cap."""
-    return 300 * 1024 if first_image_url(item) else 0
+    """A cheap upper-bound estimate of a lot's inlined images' base64 size for
+    chunk budgeting — we can't know the real size without fetching, so assume a
+    downscaled JPEG near the per-image cap, times the number of photos."""
+    return 300 * 1024 * len(item_image_urls(item))
 
 
 def _write_rows(items_dir, safe_id: str, rows: list[dict]) -> None:
