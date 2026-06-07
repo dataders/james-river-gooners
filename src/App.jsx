@@ -640,7 +640,6 @@ export default function App() {
                 <span className="fetch-label">
                   Fetching auction data<span className="fetch-dots"><span>.</span><span>.</span><span>.</span></span>
                 </span>
-                <div className="fetch-bar"><div className="fetch-bar-fill" /></div>
               </div>
             </div>
           ) : bestDeals && finalItems.length === 0 ? (
