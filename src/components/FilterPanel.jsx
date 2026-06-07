@@ -36,8 +36,6 @@ export function FilterPanel({
   onShowMyBidsOnlyChange,
   bestDeals,
   onBestDealsToggle,
-  viewMode,
-  onViewModeChange,
   favoriteCount,
   ignoredCount,
   cannonBidsLinked,
@@ -124,12 +122,12 @@ export function FilterPanel({
             </div>
 
             <label className="local-toggle">
+              <span>Richmond area only</span>
               <input
                 type="checkbox"
                 checked={localOnly}
                 onChange={e => onLocalOnlyChange(e.target.checked)}
               />
-              <span>Richmond area only</span>
             </label>
 
             <div className="fp-pill-row">
@@ -153,24 +151,6 @@ export function FilterPanel({
               >
                 Best deals
               </button>
-            </div>
-
-            <div className="fp-control-row">
-              <span className="fp-control-label">Layout</span>
-              <div className="archive-segmented" role="group" aria-label="Grid layout">
-                {[
-                  { value: 'grid', label: 'Grid' },
-                  { value: 'compact', label: 'Compact' },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`segmented-option${viewMode === opt.value ? ' active' : ''}`}
-                    aria-pressed={viewMode === opt.value}
-                    onClick={() => onViewModeChange(opt.value)}
-                  >{opt.label}</button>
-                ))}
-              </div>
             </div>
           </div>
         </Accordion>

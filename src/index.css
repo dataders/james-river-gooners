@@ -185,6 +185,40 @@ body {
   line-height: 1.4;
 }
 
+/* ── Layout toggle (header) ─────────────────────────────────────────────── */
+.layout-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.layout-toggle-btn {
+  background: var(--surface);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 1rem;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.layout-toggle-btn:last-child {
+  border-right: none;
+}
+.layout-toggle-btn.active {
+  background: color-mix(in srgb, var(--gold) 22%, var(--chip-bg));
+  color: var(--gold);
+}
+.layout-toggle-btn:hover:not(.active) {
+  color: var(--text);
+  background: var(--chip-bg);
+}
+
 /* ── Filter panel shell (desktop persistent sidebar + mobile bottom-sheet) ── */
 .filter-backdrop {
   display: none;
@@ -231,7 +265,8 @@ body {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 0;
+  padding: 12px 0;
+  min-height: 48px;
   background: none;
   border: none;
   color: var(--text);
@@ -257,25 +292,55 @@ body {
 .fp-view-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
 }
+/* Each control block: label stacked above a full-width control */
 .fp-control-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.fp-control-row:last-child {
+  border-bottom: none;
 }
 .fp-control-label {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
   color: var(--text-muted);
-  min-width: 52px;
-  flex-shrink: 0;
+}
+/* Segmented controls inside the filter panel fill full width */
+.fp-control-row .archive-segmented {
+  display: flex;
+  width: 100%;
+}
+.fp-control-row .segmented-option {
+  flex: 1;
+  min-height: 44px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+.fp-control-row .segmented-option.active {
+  background: var(--gold);
+  color: #1a1a1a;
+  font-weight: 700;
 }
 .fp-pill-row {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0;
+}
+.fp-pill-row .deals-toggle {
+  flex: 1;
+  justify-content: center;
+  min-height: 44px;
 }
 
 /* ── Active filter chips bar ────────────────────────────────────────────── */
@@ -1610,13 +1675,17 @@ body {
 
 /* View toggles */
 .local-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  min-height: 44px;
 }
 .local-toggle input[type="checkbox"] {
   appearance: none;
