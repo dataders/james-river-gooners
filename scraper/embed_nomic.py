@@ -61,10 +61,35 @@ _ARCHIVE_ITEMS_DIR = (
 _text_model = None
 _vision_model = None
 _vision_processor = None
+_device = None
 
 NOMIC_TABLE = "nomic_embeddings"
 NOMIC_TEXT_MODEL = "nomic-embed-text-v1.5"
 NOMIC_VISION_MODEL = "nomic-embed-vision-v1.5"
+
+
+def _get_device() -> str:
+    """Best available torch device: CUDA (NVIDIA) → MPS (Apple Silicon) → CPU.
+
+    Lets a GPU laptop or GPU CI runner accelerate encoding ~10-30× without
+    config; falls back to CPU on the standard runners. Override with
+    GOONERS_EMBED_DEVICE (e.g. 'cpu') if a backend misbehaves.
+    """
+    global _device
+    if _device is None:
+        forced = os.environ.get("GOONERS_EMBED_DEVICE")
+        if forced:
+            _device = forced
+        else:
+            import torch
+            if torch.cuda.is_available():
+                _device = "cuda"
+            elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+                _device = "mps"
+            else:
+                _device = "cpu"
+        print(f"[nomic] embedding device: {_device}")
+    return _device
 
 
 def _get_text_model():
@@ -73,7 +98,7 @@ def _get_text_model():
         from sentence_transformers import SentenceTransformer
         print("Loading Nomic text model (first run: ~550 MB download)...")
         _text_model = SentenceTransformer(
-            f"nomic-ai/{NOMIC_TEXT_MODEL}", trust_remote_code=True
+            f"nomic-ai/{NOMIC_TEXT_MODEL}", trust_remote_code=True, device=_get_device()
         )
         print("Nomic text model ready.")
     return _text_model
@@ -97,7 +122,7 @@ def _get_vision_model():
         )
         _vision_model = AutoModel.from_pretrained(
             f"nomic-ai/{NOMIC_VISION_MODEL}", trust_remote_code=True
-        ).eval()
+        ).eval().to(_get_device())
         print("Nomic vision model ready.")
     return _vision_model, _vision_processor
 
@@ -108,11 +133,12 @@ def _encode_images(images: list, batch_size: int = 32) -> np.ndarray:
     import torch.nn.functional as F
 
     model, processor = _get_vision_model()
+    device = _get_device()
     chunks = []
     with torch.no_grad():
         for start in range(0, len(images), batch_size):
             batch = images[start : start + batch_size]
-            inputs = processor(images=batch, return_tensors="pt")
+            inputs = processor(images=batch, return_tensors="pt").to(device)
             hidden = model(**inputs).last_hidden_state
             emb = F.normalize(hidden[:, 0], p=2, dim=1)  # CLS token
             chunks.append(emb.cpu().numpy())
