@@ -634,7 +634,15 @@ export default function App() {
             onClearAll={clearAllFilters}
           />
           {loading ? (
-            <div className="loading">Loading auction items...</div>
+            <div className="loading">
+              <div className="fetch-loader">
+                <div className="fetch-spinner" />
+                <span className="fetch-label">
+                  Fetching auction data<span className="fetch-dots"><span>.</span><span>.</span><span>.</span></span>
+                </span>
+                <div className="fetch-bar"><div className="fetch-bar-fill" /></div>
+              </div>
+            </div>
           ) : bestDeals && finalItems.length === 0 ? (
             <div className="no-deals-message">
               <div className="item-count">0 items</div>
