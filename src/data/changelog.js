@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-06',
+    title: 'Comps filter',
+    changes: [
+      { id: 'comps-filter-rename', icon: '🔎', text: 'The sidebar comp filters are now grouped under "Comps" with clearer labels: eBay, Auctions, and Claude.' },
+    ],
+  },
+  {
+    date: '2026-06-06',
     title: 'Image search',
     changes: [
       { id: 'image-search-modal', icon: '📷', text: 'New image search: snap or upload a photo and Claude identifies the item, then surfaces matching active lots, eBay sold comps, FB Marketplace links, and historical Cannon\'s sold prices — all from the 📷 button in the search bar.' },
