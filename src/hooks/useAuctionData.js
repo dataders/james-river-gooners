@@ -63,9 +63,7 @@ async function fetchSupabaseDataset({ archived = false } = {}) {
   const viewName = archived ? 'public_archived_lots' : 'public_active_lots'
   const rows = await fetchAllFromView(viewName)
   const { items, auctions } = normalizeRowsSupabase(rows, archived)
-  // Embeddings sidecars are not yet in Supabase (#132); semantic search
-  // is unavailable when using the Supabase path.
-  return { items, auctions, embeddingEntries: [], loadTimeMs: Math.round(performance.now() - t0) }
+  return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 // --- Shared dataset fetch ---
@@ -80,14 +78,7 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
     return fetchNdjson(dataUrl(path))
   }))
   const { items, auctions } = normalizeRowsNdjson(results, entries, archived)
-
-  // Carry each auction's safeId with its embeddings path: the .embeddings binary
-  // stores bare item ids (unique within one auction), so the loader must namespace
-  // them by safeId to form globally-unique keys when merging auctions in-browser.
-  const embeddingEntries = entries.flatMap(e =>
-    e.embeddingsPath ? [{ path: e.embeddingsPath, safeId: e.safeId }] : []
-  )
-  return { items, auctions, embeddingEntries, loadTimeMs: Math.round(performance.now() - t0) }
+  return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 // archiveMode: 'active' (active auctions only), 'both' (active + archived),
@@ -99,7 +90,6 @@ export function useAuctionData(archiveMode = 'active') {
   const includeArchived = archiveMode !== 'active'
   const [activeItems, setActiveItems] = useState([])
   const [activeAuctions, setActiveAuctions] = useState([])
-  const [activeEmbeddingEntries, setActiveEmbeddingEntries] = useState([])
   const [archiveItems, setArchiveItems] = useState([])
   const [archiveAuctions, setArchiveAuctions] = useState([])
   const [archiveLoaded, setArchiveLoaded] = useState(false)
@@ -126,11 +116,10 @@ export function useAuctionData(archiveMode = 'active') {
       ? () => fetchSupabaseDataset({ archived: false })
       : () => fetchDataset('data/manifest.json')
     activeLoader()
-      .then(({ items, auctions, embeddingEntries, loadTimeMs }) => {
+      .then(({ items, auctions, loadTimeMs }) => {
         if (cancelled) return
         setActiveItems(items)
         setActiveAuctions(auctions)
-        setActiveEmbeddingEntries(embeddingEntries)
         setLoadTimeMs(loadTimeMs)
         setLoading(false)
       })
@@ -290,7 +279,6 @@ export function useAuctionData(archiveMode = 'active') {
     hideSource,
     showSource,
     items,
-    embeddingEntries: activeEmbeddingEntries,
     loading,
     loadTimeMs,
     archiveLoading: includeArchived && !archiveLoaded && !archiveError,
