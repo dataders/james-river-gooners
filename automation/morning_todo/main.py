@@ -30,6 +30,10 @@ Configuration (environment variables, supplied as GitHub Actions secrets):
                                                ET year-round.
   MORNING_TODO_FORCE     "1" ignores the hour guard (set on manual dispatch)
   MORNING_TODO_DRY_RUN   "1" prints to stdout instead of sending the email
+  ANTHROPIC_API_KEY      enables smart AI triage (see triage.py): catches
+                         read-but-unreplied threads, decides what truly needs a
+                         reply/action, and pre-writes a Gmail draft reply for
+                         each. Absent -> falls back to the simple unread digest.
 
 The script is deliberately defensive: a failure pulling one source (calendar or
 gmail) still sends an email with whatever it did gather, so a transient API
@@ -51,9 +55,12 @@ from zoneinfo import ZoneInfo
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
+import triage
+
 SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.compose",  # create draft replies (AI triage)
     "https://www.googleapis.com/auth/gmail.send",
 ]
 
@@ -260,7 +267,18 @@ def compose(events: list[dict], mail: dict, tz: ZoneInfo) -> tuple[str, str, str
         lines.append("  Nothing on the calendar — open day.")
     lines.append("")
 
-    if mail.get("needs_attention"):
+    if mail.get("actions"):
+        lines.append("NEEDS YOUR RESPONSE / ACTION")
+        for a in mail["actions"]:
+            lines.append(f"  • {a['from']}: {a['subject']}")
+            if a.get("suggested_action"):
+                lines.append(f"      -> {a['suggested_action']}")
+            if a.get("draft_created"):
+                lines.append("      [draft reply ready in Gmail]")
+            elif a.get("draft_exists"):
+                lines.append("      [draft already in this thread]")
+        lines.append("")
+    elif mail.get("needs_attention"):
         lines.append("NEEDS A REPLY / ATTENTION")
         for m in mail["needs_attention"]:
             lines.append(f"  • {m['from']}: {m['subject']}")
@@ -310,7 +328,34 @@ def compose(events: list[dict], mail: dict, tz: ZoneInfo) -> tuple[str, str, str
     else:
         html_parts.append("<p style='color:#666'>Nothing on the calendar — open day.</p>")
 
-    if mail.get("needs_attention"):
+    if mail.get("actions"):
+        html_parts.append(
+            "<h2 style='font-size:16px;border-bottom:2px solid #eee;padding-bottom:4px'>"
+            "✅ Needs your response / action</h2>"
+            "<ul style='list-style:none;padding-left:0'>"
+        )
+        for a in mail["actions"]:
+            badge = ""
+            if a.get("draft_created"):
+                badge = ("<span style='display:inline-block;margin-left:8px;font-size:11px;"
+                         "background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px'>"
+                         "📝 draft reply ready</span>")
+            elif a.get("draft_exists"):
+                badge = ("<span style='display:inline-block;margin-left:8px;font-size:11px;"
+                         "background:#f1f5f9;color:#475569;padding:1px 6px;border-radius:4px'>"
+                         "draft already in thread</span>")
+            action_line = ""
+            if a.get("suggested_action"):
+                action_line = (f"<div style='color:#2563eb;font-size:13px;margin-top:2px'>"
+                               f"→ {escape(a['suggested_action'])}</div>")
+            html_parts.append(
+                li(
+                    f"<strong>{escape(a['from'])}</strong>: {escape(a['subject'])}{badge}"
+                    f"{action_line}"
+                )
+            )
+        html_parts.append("</ul>")
+    elif mail.get("needs_attention"):
         html_parts.append(
             "<h2 style='font-size:16px;border-bottom:2px solid #eee;padding-bottom:4px'>"
             "✉️ Needs a reply / attention</h2><ul>"
@@ -374,11 +419,28 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001 - report, keep going
         print(f"WARN: calendar fetch failed: {exc}", file=sys.stderr)
 
+    # Resolve the account's own address once — used both to detect "Jay replied
+    # last" during triage and as the default recipient.
+    me_email = ""
+    try:
+        me_email = whoami(creds)
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARN: could not resolve account address: {exc}", file=sys.stderr)
+
     mail: dict = {}
     try:
-        mail = fetch_mail_buckets(creds)
+        mail = fetch_mail_buckets(creds)  # application_count (+ fallback needs_attention)
     except Exception as exc:  # noqa: BLE001
         print(f"WARN: gmail fetch failed: {exc}", file=sys.stderr)
+
+    # Smart AI triage supersedes the simple unread heuristic when enabled: it
+    # catches read-but-unreplied threads and pre-writes Gmail draft replies.
+    if triage.is_triage_enabled() and me_email:
+        try:
+            mail["actions"] = triage.run_triage(creds, me_email)
+            mail.pop("needs_attention", None)  # the action list is the better signal
+        except Exception as exc:  # noqa: BLE001
+            print(f"WARN: AI triage failed, keeping simple digest: {exc}", file=sys.stderr)
 
     subject, plain, html = compose(events, mail, tz)
 
@@ -388,10 +450,15 @@ def main() -> int:
         print(plain)
         return 0
 
-    to_addr = _env("MORNING_TODO_TO") or whoami(creds)
+    to_addr = _env("MORNING_TODO_TO") or me_email
+    if not to_addr:
+        print("ERROR: no recipient (set MORNING_TODO_TO)", file=sys.stderr)
+        return 1
     send_email(creds, to_addr, subject, plain, html)
+    drafts = sum(1 for a in mail.get("actions", []) if a.get("draft_created"))
     print(f"Sent morning to-do email to {to_addr}: {len(events)} events, "
-          f"{len(mail.get('needs_attention', []))} attention items.")
+          f"{len(mail.get('actions', mail.get('needs_attention', [])))} action items, "
+          f"{drafts} draft replies prepared.")
     return 0
 
 

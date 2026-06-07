@@ -34,6 +34,8 @@ jobs:
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
       MORNING_TODO_TO: ${{ secrets.MORNING_TODO_TO }}
+      # Optional: enables AI inbox triage + draft replies. Absent => simple digest.
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       # Manual dispatch should always run regardless of the time-of-day guard.
       MORNING_TODO_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
       MORNING_TODO_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
@@ -49,5 +51,5 @@ jobs:
             exit 0
           fi
           cd automation/morning_todo
-          uv run --with google-api-python-client --with google-auth \
+          uv run --with google-api-python-client --with google-auth --with anthropic \
             python main.py
