@@ -88,9 +88,11 @@ BATCH_INLINE_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_
 BATCH_MAX_BYTES = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024)))
 BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
 BATCH_MAX_WAIT = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600)))
-# Downscale inlined images to keep the batch payload small — a brand/model is
-# identifiable well below full resolution. Fetched concurrently.
-MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "512"))
+# Downscale inlined images for the batch payload. 512px made model/SKU plate
+# text illegible (multi-image gave no model lift at 512), so default to 768 —
+# small printed text stays readable while the payload stays modest (Anthropic
+# resizes anything over ~1568px anyway). Fetched concurrently.
+MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "768"))
 IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16"))
 # How many photos to feed the model (#152). The identifying detail — a brand
 # label, a model/SKU plate, the back of a tag — is often on photo 2 or 3, not
@@ -265,12 +267,13 @@ def first_image_url(item: dict) -> str:
 
 def enrichment_fingerprint(item: dict) -> str:
     """Stable hash of everything that feeds an enrichment call: the schema
-    version, the model, the lot's identifying text, and its photos. Two lots with
-    the same fingerprint get an identical API result, so the prior one can be
-    reused. Folding in the schema version + image set means a prompt/schema change
-    or a new photo count re-enriches everything once."""
+    version, the model, the inline-image downscale size, the lot's identifying
+    text, and its photos. Two lots with the same fingerprint get an identical API
+    result, so the prior one can be reused. Folding in the schema version + image
+    set + size means a prompt/schema change, a new photo count, or a resolution
+    change re-enriches everything once."""
     payload = "\x1f".join(
-        (ENRICHMENT_SCHEMA_VERSION, MODEL, item_prompt_text(item), *item_image_urls(item))
+        (ENRICHMENT_SCHEMA_VERSION, MODEL, str(MAX_IMAGE_PX), item_prompt_text(item), *item_image_urls(item))
     )
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
