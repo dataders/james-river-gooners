@@ -312,27 +312,34 @@ async function refreshItemStatus(
   }
 }
 
-// Fetches a CSRF token by loading one watchlist item from an authenticated session.
+// Fetches a CSRF token from an authenticated session.
+// Tries several pages in order: the Watchlist HTML page always renders a form
+// with the hidden token even when the watchlist is empty; the GetWatchlist AJAX
+// endpoint only returns a token when there are items to display.
 async function fetchCsrf(cookies: Record<string, string>, base: string): Promise<string> {
-  try {
-    const resp = await fetch(
-      `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=1&auctionFilter=&filter=&searchFilter=&statusFilter=Current`,
-      {
-        headers: {
-          'Cookie': cookieHeader(cookies),
-          'User-Agent': UA,
-          'Accept': '*/*',
-          'X-Requested-With': 'XMLHttpRequest',
-          'Referer': `${base}/Public/Auction/Watchlist`,
-        },
-        redirect: 'manual',
-      },
-    )
-    if (resp.ok) {
-      const html = await resp.text()
-      return html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
-    }
-  } catch { /* non-fatal */ }
+  // Try the full HTML Watchlist page first — reliably contains the hidden token
+  const candidates = [
+    { url: `${base}/Public/Auction/Watchlist`, ajax: false },
+    { url: `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=1&auctionFilter=&filter=&searchFilter=&statusFilter=Current`, ajax: true },
+    { url: `${base}/Public`, ajax: false },
+  ]
+  for (const { url, ajax } of candidates) {
+    try {
+      const headers: Record<string, string> = {
+        'Cookie': cookieHeader(cookies),
+        'User-Agent': UA,
+        'Accept': ajax ? '*/*' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': `${base}/Public/Auction/Watchlist`,
+      }
+      if (ajax) headers['X-Requested-With'] = 'XMLHttpRequest'
+      const resp = await fetch(url, { headers, redirect: 'manual' })
+      if (resp.ok) {
+        const html = await resp.text()
+        const tok = html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1]
+        if (tok) return tok
+      }
+    } catch { /* try next */ }
+  }
   return ''
 }
 
@@ -1338,12 +1345,17 @@ async function autoBid(
   catch { return json({ error: 'Failed to decrypt credentials' }, 500) }
 
   let cookies: Record<string, string>
-  try { ({ cookies } = await maxanetLogin(creds.cannon_username, password)) }
+  let loginCookieKeys: string[] = []
+  try {
+    const loginRes = await maxanetLogin(creds.cannon_username, password)
+    cookies = loginRes.cookies
+    loginCookieKeys = Object.keys(cookies)
+  }
   catch (e) { return json({ error: `Login failed: ${(e as Error).message}` }, 400) }
 
   const base = 'https://bid.cannonsauctions.com'
   let sessionCsrf = await fetchCsrf(cookies, base)
-  console.log(`[cannon-proxy] auto_bid: logged in, csrf=${!!sessionCsrf}`)
+  console.log(`[cannon-proxy] auto_bid: logged in, csrf=${!!sessionCsrf} cookieKeys=${loginCookieKeys.join(',')}`)
 
   // 5. Refresh each candidate to get the true minimumNextBid, then re-filter
   const refreshed = await Promise.all(
@@ -1426,10 +1438,12 @@ async function autoBid(
       })
       cookies = mergeCookies(cookies, getSetCookies(submitResp.headers))
       const submitHtml = await submitResp.text()
+      const submitHtmlSnippet = submitHtml.slice(0, 400).replace(/\s+/g, ' ')
       const formFields = parseHiddenInputs(submitHtml)
       const bidCsrf = formFields.__RequestVerificationToken ?? sessionCsrf
       // Refresh sessionCsrf for next lot
       if (formFields.__RequestVerificationToken) sessionCsrf = formFields.__RequestVerificationToken
+      console.log(`[cannon-proxy] auto_bid: SubmitBid ${lot.auctionItemId} status=${submitResp.status} hasTenantId=${!!formFields.TenantId} csrf=${!!bidCsrf} snippet=${submitHtmlSnippet.slice(0, 200)}`)
 
       // SaveBid — places the actual bid
       const saveBidResp = await fetch(`${base}/Public/Auction/SaveBid`, {
@@ -1528,6 +1542,8 @@ async function autoBid(
         // Diagnostic fields — surfaced in response so the GitHub Action summary shows them
         hasTenantId: !!formFields.TenantId,
         hasUserId: !!formFields.UserId,
+        submitBidStatus: submitResp.status,
+        submitHtmlSnippet: submitHtmlSnippet.slice(0, 300),
         saveBidStatus: saveBidResp.status,
         saveBidApiCode: saveBidResult.ApiStatusCode,
         saveBidRaw: saveBidRaw.slice(0, 300),
@@ -1540,7 +1556,18 @@ async function autoBid(
   }
 
   const placed = results.filter(r => r.ok).length
-  return json({ ok: true, message: `Placed ${placed}/${eligible.length} bids`, bids: results })
+  return json({
+    ok: true,
+    message: `Placed ${placed}/${eligible.length} bids`,
+    bids: results,
+    debug: {
+      loginCookieKeys,
+      hasAspxAuth: loginCookieKeys.includes('.ASPXAUTH'),
+      csrfObtained: !!sessionCsrf,
+      candidates: candidates.length,
+      eligible: eligible.length,
+    },
+  })
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
