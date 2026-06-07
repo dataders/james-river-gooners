@@ -4,6 +4,13 @@ import { compositeKey } from '../utils/itemKey'
 
 const TOP_K = 150
 
+// The Nomic ONNX worker requires ~23 MB of WASM + ~40 MB of model weights.
+// iOS Safari does not isolate Worker memory from the parent WebContent process,
+// so an OOM in the Worker crashes the entire page. Skip the worker on iOS and
+// fall back to keyword-only search, which works fine on mobile.
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
 /**
  * Semantic search over Nomic embeddings.
  *
@@ -18,13 +25,14 @@ const TOP_K = 150
  *                    similarity, or null when there's no query / no result
  *   semanticStatus — 'loading' | 'ready' | 'error'
  *
- * When Supabase is unconfigured the hook reports 'error' and stays inert, so the
- * static site still works (keyword search alone).
+ * When Supabase is unconfigured or running on iOS the hook reports 'error' and
+ * stays inert, so the static site and iOS browsers work (keyword search alone).
  */
 export function useSemanticSearch(query) {
   // Start in 'loading' — the worker downloads the model immediately on mount.
+  // On iOS, skip the worker entirely to avoid OOM crashes (see isIOS above).
   const [semanticStatus, setSemanticStatus] = useState(
-    isSupabaseConfigured ? 'loading' : 'error'
+    isSupabaseConfigured && !isIOS ? 'loading' : 'error'
   )
   const [lastSemanticIds, setLastSemanticIds] = useState(null)
   const workerRef = useRef(null)
@@ -32,7 +40,7 @@ export function useSemanticSearch(query) {
 
   // Spin up the worker once on mount; clean up on unmount.
   useEffect(() => {
-    if (!isSupabaseConfigured) return
+    if (!isSupabaseConfigured || isIOS) return
     const worker = new Worker(
       new URL('../workers/nomicEncoder.js', import.meta.url),
       { type: 'module' }
