@@ -588,11 +588,10 @@ body {
 
 .histogram {
   position: absolute;
-  /* Inset by the thumb radius (8px) so bins line up with the slider's value
-     track — a native range thumb travels within [8px, width - 8px], not the
-     full container width. Without this the bars sit left of the thumb. */
-  left: 8px;
-  right: 8px;
+  /* Bar positions are computed in JS using the same thumb-travel formula,
+     so no CSS inset is needed — the SVG overrides left/right via inline style. */
+  left: 0;
+  right: 0;
   bottom: 6px;
   height: 28px;
   width: auto;
