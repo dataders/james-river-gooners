@@ -175,11 +175,63 @@ def read_embeddings(path: Path) -> tuple[np.ndarray, list[str]]:
     return embeddings, ids
 
 
-def generate_and_write(items: list[dict], base_path: Path, session=None) -> Path:
-    """Embed items and write to {base_path.stem}.embeddings. Returns the path written."""
-    print(f"\nGenerating CLIP embeddings for {len(items)} items...")
-    embeddings, ids = embed_items(items, session)
+def generate_and_write(items: list[dict], base_path: Path, session=None, *, reuse: bool = True) -> Path:
+    """Embed items and write to {base_path.stem}.embeddings. Returns the path written.
+
+    Incremental by default: vectors for item ids already present in the existing
+    sidecar are reused, and only new ids are embedded. Most hourly scrapes only
+    change *bids* (not photos/text), so the embedding-relevant content of a lot is
+    effectively immutable once listed — re-embedding every lot every run just to
+    capture bid deltas was the bulk of the scrape's wall-clock. With reuse, an
+    unchanged auction loads the model zero times and re-embeds nothing.
+
+    Caveat: reuse is keyed on item id alone, so an edit to an *existing* lot's
+    photo/description keeps its prior vector until the lot is re-listed. That is
+    an acceptable trade for the speed-up; pass reuse=False to force a full
+    regeneration (e.g. a one-off recompute after a model change).
+    """
     emb_path = base_path.with_suffix(".embeddings")
-    write_embeddings(embeddings, ids, emb_path)
-    print(f"Wrote {len(items)} embeddings → {emb_path}")
+    n = len(items)
+    item_ids = [item["id"] for item in items]
+
+    cached: dict[str, np.ndarray] = {}
+    if reuse and emb_path.exists():
+        try:
+            old_emb, old_ids = read_embeddings(emb_path)
+            cached = {old_ids[i]: old_emb[i] for i in range(len(old_ids))}
+        except Exception:
+            cached = {}  # unreadable/stale sidecar → regenerate from scratch
+
+    to_embed = [i for i, iid in enumerate(item_ids) if iid not in cached]
+    new_by_id: dict[str, np.ndarray] = {}
+    if to_embed:
+        n_reused = n - len(to_embed)
+        print(
+            f"\nGenerating CLIP embeddings: {len(to_embed)} new/changed of {n} items"
+            + (f" ({n_reused} reused from cache)" if n_reused else "")
+            + "..."
+        )
+        subset = [items[i] for i in to_embed]
+        new_emb, new_ids = embed_items(subset, session)
+        new_by_id = {new_ids[k]: new_emb[k] for k in range(len(new_ids))}
+    else:
+        print(f"\nReusing all {n} cached CLIP embeddings (none re-embedded).")
+
+    # Determine vector width from whichever source we have.
+    if new_by_id:
+        n_dims = next(iter(new_by_id.values())).shape[0]
+    elif cached:
+        n_dims = next(iter(cached.values())).shape[0]
+    else:
+        n_dims = 0  # nothing to write (empty auction)
+
+    embeddings = np.empty((n, n_dims), dtype=np.float32)
+    for i, iid in enumerate(item_ids):
+        vec = new_by_id.get(iid)
+        if vec is None:
+            vec = cached[iid]
+        embeddings[i] = vec
+
+    write_embeddings(embeddings, item_ids, emb_path)
+    print(f"Wrote {n} embeddings → {emb_path}")
     return emb_path
