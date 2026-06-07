@@ -387,13 +387,6 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     existing_bids = load_existing_bids(items_path)
     if not has_bid_changes(all_items, existing_bids):
         print(f"\nNo bid changes detected; skipping write for {safe_id}")
-        import os
-        if os.environ.get("GOONERS_EMBEDDINGS") == "1":
-            emb_path = items_path.with_suffix(".embeddings")
-            if not emb_path.exists():
-                print(f"Embeddings missing for {safe_id}; generating now")
-                from embed import generate_and_write as _gen_embeddings
-                _gen_embeddings(all_items, items_path, session)
         return {"changed": False}
 
     # Count distinct bidders per lot (incremental: only fetch changed/new lots)
@@ -452,12 +445,8 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         from supabase_lots import upsert_lots
         upsert_lots(all_items, safe_id)
 
-    # Generate CLIP embeddings (images still arrays at this point)
-    if os.environ.get("GOONERS_EMBEDDINGS") == "1":
-        from embed import generate_and_write as _gen_embeddings
-        _gen_embeddings(all_items, items_path, session)
-
     # Generate Nomic Embed (text+vision, 768-dim) → Supabase pgvector table (#165)
+    # (images still arrays at this point)
     from embed_nomic import maybe_generate_and_upsert as _gen_nomic
     _gen_nomic(all_items, safe_id, session)
 

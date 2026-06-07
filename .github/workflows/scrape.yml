@@ -35,7 +35,6 @@ jobs:
       # model is written and MotherDuck is an optional mirror.
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      GOONERS_EMBEDDINGS: '1'
       # Nomic Embed (text+vision, 768-dim) → Supabase pgvector (#165). Always on
       # when Supabase is configured; no-op when SUPABASE_SECRET_KEY is absent so
       # local/offline scrapes are unaffected.
