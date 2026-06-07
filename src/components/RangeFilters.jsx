@@ -48,7 +48,7 @@ function buildHistogram(values, min, max, logScale) {
 }
 
 function Histogram({ bins, valueLoPct, valueHiPct }) {
-  const peak = Math.max(...bins, 1)
+  const sqrtPeak = Math.sqrt(Math.max(...bins, 1))
 
   return (
     <svg className="histogram" viewBox={`0 0 ${NUM_BINS} 20`} preserveAspectRatio="none">
@@ -56,7 +56,7 @@ function Histogram({ bins, valueLoPct, valueHiPct }) {
         const barLo = i / NUM_BINS
         const barHi = (i + 1) / NUM_BINS
         const inRange = barHi >= valueLoPct && barLo <= valueHiPct
-        const h = (count / peak) * 20
+        const h = (Math.sqrt(count) / sqrtPeak) * 20
         return (
           <rect
             key={i}
