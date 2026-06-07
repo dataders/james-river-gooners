@@ -169,7 +169,8 @@ export default function App() {
   const [imageSearchOpen, setImageSearchOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(() => {
     const stored = localStorage.getItem('gooners-filter-open')
-    return stored !== null ? stored === 'true' : true
+    if (stored !== null) return stored === 'true'
+    return window.innerWidth >= 1024 // sidebar open on desktop, drawer closed on mobile
   })
   const toggleFilter = useCallback(() => {
     setFilterOpen(v => {
@@ -453,6 +454,7 @@ export default function App() {
 
           <div className="header-title">
             <h1 className="logo">James River Gooners</h1>
+            <span className="tagline">Cannon's Auctions · Richmond VA</span>
           </div>
 
           <div className="header-search-wrap">
