@@ -1250,8 +1250,22 @@ async function autoBid(
     if (!auction.ndjsonPath) continue
 
     if (auction.endDate) {
-      const hoursLeft = (new Date(auction.endDate).getTime() - Date.now()) / 3600000
-      if (hoursLeft < AUTO_BID_MIN_HOURS) continue
+      // Manifest stores dates as "2026-06-07 6:55:00 PM" (12-hour ET, no TZ suffix).
+      // new Date() can't parse AM/PM — convert to 24-hour ISO and assume ET (UTC-4 in summer).
+      const m = auction.endDate.match(/(\d{4}-\d{2}-\d{2}) (\d+):(\d+):(\d+) (AM|PM)/i)
+      let endMs = NaN
+      if (m) {
+        let h = parseInt(m[2]); const min = m[3], sec = m[4], ampm = m[5].toUpperCase()
+        if (ampm === 'PM' && h !== 12) h += 12
+        if (ampm === 'AM' && h === 12) h = 0
+        endMs = new Date(`${m[1]}T${String(h).padStart(2,'0')}:${min}:${sec}-04:00`).getTime()
+      } else {
+        endMs = new Date(auction.endDate).getTime()
+      }
+      if (!isNaN(endMs)) {
+        const hoursLeft = (endMs - Date.now()) / 3600000
+        if (hoursLeft < AUTO_BID_MIN_HOURS) continue
+      }
     }
 
     let text: string
@@ -1267,6 +1281,22 @@ async function autoBid(
       if (item.source !== 'cannons') continue
       if (item.closed) continue
       if (biddedIds.has(String(item.id))) continue
+
+      // Skip items whose own endDate is within AUTO_BID_MIN_HOURS (items can
+      // close before the auction-level end, so check at item level too)
+      if (item.endDate) {
+        const im = String(item.endDate).match(/(\d{4}-\d{2}-\d{2}) (\d+):(\d+):(\d+) (AM|PM)/i)
+        let itemEndMs = NaN
+        if (im) {
+          let ih = parseInt(im[2]); const imin = im[3], isec = im[4], iampm = im[5].toUpperCase()
+          if (iampm === 'PM' && ih !== 12) ih += 12
+          if (iampm === 'AM' && ih === 12) ih = 0
+          itemEndMs = new Date(`${im[1]}T${String(ih).padStart(2,'0')}:${imin}:${isec}-04:00`).getTime()
+        } else {
+          itemEndMs = new Date(String(item.endDate)).getTime()
+        }
+        if (!isNaN(itemEndMs) && (itemEndMs - Date.now()) / 3600000 < AUTO_BID_MIN_HOURS) continue
+      }
       const currentBid = Number(item.currentBid ?? 0)
       if (currentBid > AUTO_BID_MAX_CURRENT) continue
 
@@ -1426,9 +1456,12 @@ async function autoBid(
         }).toString(),
       })
 
+      let saveBidRaw = ''
+      try { saveBidRaw = await saveBidResp.text() } catch { /* ignore */ }
       let saveBidResult: { ApiStatusCode?: number; Description?: string } = {}
-      try { saveBidResult = await saveBidResp.json() } catch { /* non-JSON */ }
+      try { saveBidResult = JSON.parse(saveBidRaw) } catch { /* non-JSON */ }
       const ok = saveBidResult.ApiStatusCode === 200
+      console.log(`[cannon-proxy] auto_bid: SaveBid ${lot.auctionItemId} status=${saveBidResp.status} hasTenantId=${!!formFields.TenantId} hasUserId=${!!formFields.UserId} ApiCode=${saveBidResult.ApiStatusCode} desc="${saveBidResult.Description}" raw=${saveBidRaw.slice(0, 200)}`)
 
       // RefreshItem for winning status
       let winning: boolean | null = null
@@ -1485,7 +1518,20 @@ async function autoBid(
 
       const description = saveBidResult.Description ?? (ok ? 'Bid placed' : 'Bid failed')
       console.log(`[cannon-proxy] auto_bid: ${lot.auctionItemId} ok=${ok} winning=${winning} "${description}"`)
-      results.push({ itemId: lot.auctionItemId, title: lot.itemName ?? '', bid: lot.newBidAmount, ok, winning, description })
+      results.push({
+        itemId: lot.auctionItemId,
+        title: lot.itemName ?? '',
+        bid: lot.newBidAmount,
+        ok,
+        winning,
+        description,
+        // Diagnostic fields — surfaced in response so the GitHub Action summary shows them
+        hasTenantId: !!formFields.TenantId,
+        hasUserId: !!formFields.UserId,
+        saveBidStatus: saveBidResp.status,
+        saveBidApiCode: saveBidResult.ApiStatusCode,
+        saveBidRaw: saveBidRaw.slice(0, 300),
+      })
     } catch (e) {
       const msg = (e as Error).message
       console.log(`[cannon-proxy] auto_bid: ${lot.auctionItemId} error: ${msg}`)
