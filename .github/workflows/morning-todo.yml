@@ -1,0 +1,53 @@
+name: Morning To-Do Email
+
+# Emails a daily to-do list (today's calendar agenda + actionable unread mail)
+# every morning at ~7:00 AM America/New_York. See automation/morning_todo/.
+#
+# The schedule fires at BOTH 11:00 and 12:00 UTC so it stays at 7am ET across
+# US daylight-saving changes (GitHub cron is UTC and has no DST). The run whose
+# local hour isn't 7 quietly no-ops (see MORNING_TODO_SEND_HOUR), so exactly one
+# email is sent per day.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
+# Optional:
+#   MORNING_TODO_TO  (recipient; defaults to the token's own Gmail address)
+# Mint the refresh token once with automation/morning_todo/get_refresh_token.py.
+
+on:
+  schedule:
+    - cron: '0 11 * * *'   # 7am EDT (summer)
+    - cron: '0 12 * * *'   # 7am EST (winter)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the email to the log instead of sending it'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  morning-todo:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+      MORNING_TODO_TO: ${{ secrets.MORNING_TODO_TO }}
+      # Manual dispatch should always run regardless of the time-of-day guard.
+      MORNING_TODO_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+      MORNING_TODO_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Send morning to-do email
+        run: |
+          if [ -z "${GOOGLE_REFRESH_TOKEN:-}" ]; then
+            echo "GOOGLE_REFRESH_TOKEN not set — add the Google OAuth secrets to enable this job."
+            exit 0
+          fi
+          cd automation/morning_todo
+          uv run --with google-api-python-client --with google-auth \
+            python main.py
