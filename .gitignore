@@ -8,3 +8,4 @@ __pycache__/
 playwright-report/
 test-results/
 supabase/.temp/
+scripts/search-eval/judge.html
