@@ -1666,6 +1666,65 @@ body {
   color: var(--accent);
 }
 
+.fetch-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.fetch-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: fetch-spin 0.8s linear infinite;
+}
+
+@keyframes fetch-spin {
+  to { transform: rotate(360deg); }
+}
+
+.fetch-label {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.fetch-dots span {
+  animation: fetch-blink 1.2s step-start infinite;
+  opacity: 0;
+}
+.fetch-dots span:nth-child(2) { animation-delay: 0.2s; }
+.fetch-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes fetch-blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.fetch-bar {
+  width: 160px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.fetch-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: fetch-sweep 1.6s ease-in-out infinite;
+  transform-origin: left;
+}
+
+@keyframes fetch-sweep {
+  0%   { transform: translateX(-100%) scaleX(0.4); }
+  50%  { transform: translateX(60%)   scaleX(0.6); }
+  100% { transform: translateX(260%)  scaleX(0.4); }
+}
+
 .no-deals-message {
   text-align: center;
   padding: 48px 24px;
