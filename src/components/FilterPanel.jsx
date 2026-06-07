@@ -176,7 +176,7 @@ export function FilterPanel({
         </Accordion>
 
         {/* Price & bidding range sliders */}
-        <Accordion title="Price & Bidding" defaultOpen={false}>
+        <Accordion title="Price & Bidding" defaultOpen={true}>
           <RangeFilters
             items={items}
             minPrice={minPrice} maxPrice={maxPrice}
