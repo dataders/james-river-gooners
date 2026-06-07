@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-07 — Smarter semantic search
+
+- 🔍 **Smarter search** — search now understands what you mean and also matches lots by their photos, so even lots with vague titles like "Lot - 27" turn up for searches like "power tools" — and it loads instantly with nothing to download first.
+
 ## 2026-06-07 — Filter panel overhaul
 
 - ⚙ **Filter panel** — all filter and view controls are now in a dedicated collapsible sidebar panel; open or close it with the Filters button in the header, with a cleaner header showing search always up top.
