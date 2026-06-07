@@ -206,12 +206,7 @@ body {
   color: var(--gold);
 }
 .filter-toggle-label {
-  /* hide label text on very small screens, leave icon + badge */
-}
-@media (max-width: 400px) {
-  .filter-toggle-label {
-    display: none;
-  }
+  /* always visible — label clarifies the gear icon */
 }
 .filter-count-badge {
   background: var(--accent);
