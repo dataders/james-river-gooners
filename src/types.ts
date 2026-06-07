@@ -46,6 +46,17 @@ export interface Item {
   source: string
   /** Set by the loader for archived datasets. */
   archived?: boolean
+
+  // Enrichment fields — overlaid from Supabase or NDJSON after scrape.
+  // Optional because lots that haven't been enriched omit them entirely.
+  brand?: string
+  modelOrSku?: string
+  productType?: string
+  productUrl?: string
+  condition?: string
+  searchQuery?: string
+  enrichmentConfidence?: 'low' | 'medium' | 'high'
+  enrichmentModel?: string
 }
 
 /**
