@@ -351,6 +351,44 @@ def apply_enrichment(item: dict, enrichment: dict) -> None:
         item[field] = enrichment.get(field, "")
 
 
+def enrichment_summary(rows: list[dict]) -> dict:
+    """Identification counts for a set of lots. ``identified`` is the medium/high
+    bar that actually reaches Supabase + the UI — the real success metric, as
+    opposed to merely *processed* (which the per-run ``enriched N/M`` line counts,
+    since even an unidentifiable lot gets a bookkeeping fingerprint)."""
+    from collections import Counter
+
+    conf = Counter()
+    brand = model = 0
+    for row in rows:
+        c = str(row.get("enrichmentConfidence") or "").strip().lower()
+        conf[c if c in CONFIDENCE_VALUES else "none"] += 1
+        if str(row.get("brand") or "").strip():
+            brand += 1
+        if str(row.get("modelOrSku") or "").strip():
+            model += 1
+    return {
+        "total": len(rows),
+        "identified": conf["high"] + conf["medium"],
+        "high": conf["high"],
+        "medium": conf["medium"],
+        "low": conf["low"],
+        "none": conf["none"],
+        "brand": brand,
+        "model": model,
+    }
+
+
+def format_enrichment_summary(label: str, summary: dict) -> str:
+    total = summary["total"]
+    pct = (100 * summary["identified"] / total) if total else 0
+    return (
+        f"  {label}: {summary['identified']}/{total} identified ({pct:.0f}%) "
+        f"[high={summary['high']} medium={summary['medium']} low={summary['low']} none={summary['none']}] "
+        f"brand={summary['brand']} model={summary['model']}"
+    )
+
+
 def load_prior_enrichment(ndjson_path: Path) -> dict:
     """Map lot id → its previous read-model row from a sidecar, for incremental
     reuse. Empty dict when the sidecar is absent (first scrape of an auction)."""
@@ -724,11 +762,18 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     for items_dir, safe_id, rows in loaded:
         _write_rows(items_dir, safe_id, rows)
         print(f"enriched + rewrote {safe_id} ({len(rows)} lots)")
+        print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
+
+    # Overall identification rate across the whole backfill, so a low-yield run is
+    # obvious at a glance (and which auctions dragged it down, from the per-auction
+    # lines above).
+    all_rows = [row for _, _, rows in loaded for row in rows]
+    print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
 
     # Mirror the freshly-enriched lots into Supabase (identified lots only).
     # Resilient: a no-op without credentials, warns rather than crashing.
     from supabase_enrichment import maybe_export_enrichment
-    maybe_export_enrichment([row for _, _, rows in loaded for row in rows])
+    maybe_export_enrichment(all_rows)
     return 0
 
 

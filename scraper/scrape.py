@@ -430,9 +430,12 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     # so default behavior is unchanged. Runs while images are still arrays.
     # Hand it the prior sidecar so unchanged lots reuse their enrichment instead
     # of re-paying for an identical API call (incremental enrichment).
-    from enrich import enrich_items, load_prior_enrichment
+    from enrich import enrich_items, enrichment_summary, format_enrichment_summary, load_prior_enrichment
     prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
-    enrich_items(all_items, prior_by_id=prior_by_id)
+    if enrich_items(all_items, prior_by_id=prior_by_id):
+        # Report the medium/high identification rate (what reaches Supabase + the
+        # UI), not just the processed count — visible in the workflow logs.
+        print(format_enrichment_summary(safe_id, enrichment_summary(all_items)))
     # Mirror enriched lots into Supabase so they're queryable via the API (#104).
     # No-op without SUPABASE_SECRET_KEY or enriched lots.
     from supabase_enrichment import maybe_export_enrichment

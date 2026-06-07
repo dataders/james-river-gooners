@@ -456,6 +456,29 @@ class EnrichItemsBatchTests(unittest.TestCase):
         self.assertEqual(enriched, 1)  # still enriched from the text
 
 
+class EnrichmentSummaryTests(unittest.TestCase):
+    def test_counts_identified_vs_processed(self):
+        rows = [
+            {"enrichmentConfidence": "high", "brand": "DeWalt", "modelOrSku": "DCD771"},
+            {"enrichmentConfidence": "medium", "brand": "Delta", "modelOrSku": ""},
+            {"enrichmentConfidence": "low", "brand": "", "modelOrSku": ""},
+            {"enrichmentConfidence": "", "brand": "", "modelOrSku": ""},  # processed, unidentified
+        ]
+        s = enrich.enrichment_summary(rows)
+        self.assertEqual(s["total"], 4)
+        self.assertEqual(s["identified"], 2)  # high + medium only
+        self.assertEqual((s["high"], s["medium"], s["low"], s["none"]), (1, 1, 1, 1))
+        self.assertEqual(s["brand"], 2)
+        self.assertEqual(s["model"], 1)
+
+    def test_format_includes_percentage(self):
+        line = enrich.format_enrichment_summary("a1", enrich.enrichment_summary([
+            {"enrichmentConfidence": "high", "brand": "X", "modelOrSku": "Y"},
+            {"enrichmentConfidence": "low"},
+        ]))
+        self.assertIn("a1: 1/2 identified (50%)", line)
+
+
 class BackfillTargetTests(unittest.TestCase):
     def _dirs(self, tmp):
         active = Path(tmp) / "items"
