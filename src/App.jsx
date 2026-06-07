@@ -25,11 +25,9 @@ import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { SortBar } from './components/SortBar'
-import { AuctionFilter } from './components/AuctionFilter'
 import { SearchBar } from './components/SearchBar'
-import { RangeFilters } from './components/RangeFilters'
-import { HasFilters } from './components/HasFilters'
-import { FilterBar } from './components/FilterBar'
+import { FilterPanel } from './components/FilterPanel'
+import { ActiveFilters } from './components/ActiveFilters'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
@@ -169,6 +167,25 @@ export default function App() {
   const [swipeOpen, setSwipeOpen] = useState(false)
   const [swipeItems, setSwipeItems] = useState([])
   const [imageSearchOpen, setImageSearchOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(() => {
+    const stored = localStorage.getItem('gooners-filter-open')
+    if (stored !== null) return stored === 'true'
+    return window.innerWidth >= 1024 // sidebar open on desktop, drawer closed on mobile
+  })
+  const toggleFilter = useCallback(() => {
+    setFilterOpen(v => {
+      const next = !v
+      localStorage.setItem('gooners-filter-open', String(next))
+      return next
+    })
+  }, [])
+  const handleBestDealsToggle = useCallback(() => {
+    setBestDeals(v => {
+      const next = !v
+      syncUrlParam('bestDeals', next)
+      return next
+    })
+  }, [])
 
   // Favorites and the ignore bin are opposite views of the same "Show" segmented
   // control — only one can be active at a time, and 'all' clears both.
@@ -375,6 +392,49 @@ export default function App() {
     return sortItems(finalItems, sort)
   }, [finalItems, sort, marginByKey, maxBidByKey])
 
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (localOnly) n++
+    if (archiveMode !== 'active') n++
+    if (decisionView !== 'all') n++
+    if (showMyBidsOnly) n++
+    if (bestDeals) n++
+    if (minPrice !== null || maxPrice !== null) n++
+    if (minBids !== null || maxBids !== null) n++
+    if (minBidders !== null || maxBidders !== null) n++
+    if (minHours !== null || maxHours !== null) n++
+    if (hasComp) n++
+    if (hasCannonsComp) n++
+    if (showEnrichedOnly) n++
+    if (excludedCategories.length > 0 || excludedGroups.length > 0) n++
+    if (excludedAuctions.length > 0) n++
+    if (searchQuery.trim()) n++
+    return n
+  }, [localOnly, archiveMode, decisionView, showMyBidsOnly, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, excludedAuctions, searchQuery])
+
+  const clearAllFilters = useCallback(() => {
+    setLocalOnly(false)
+    changeArchiveMode('active')
+    setDecisionView('all')
+    setShowMyBidsOnly(false)
+    setBestDeals(false)
+    syncUrlParam('bestDeals', false)
+    setMinPrice(null)
+    setMaxPrice(null)
+    setMinBids(null)
+    setMaxBids(null)
+    setMinBidders(null)
+    setMaxBidders(null)
+    setMinHours(null)
+    setMaxHours(null)
+    setHasComp(false)
+    setHasCannonsComp(false)
+    setShowEnrichedOnly(false)
+    showAll()
+    showAllAuctions()
+    setSearchQuery('')
+  }, [setLocalOnly, changeArchiveMode, setDecisionView, setMinPrice, setMaxPrice, setMinBids, setMaxBids, setMinBidders, setMaxBidders, setMinHours, setMaxHours, setHasComp, setHasCannonsComp, setShowEnrichedOnly, showAll, showAllAuctions, setSearchQuery])
+
   if (error) {
     return <div className="error">Error: {error}</div>
   }
@@ -382,7 +442,7 @@ export default function App() {
   return (
     <div className="app" style={{ '--header-height': `${isFinite(headerHeight) ? headerHeight : 0}px` }}>
       <header ref={headerRef} className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
-        <div className="header-banner">
+        <div className="header-row">
           <button
             className="home-button"
             onClick={() => { window.location.href = '/' }}
@@ -391,218 +451,177 @@ export default function App() {
           >
             <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
           </button>
-<div className="banner-text">
+
+          <div className="header-title">
             <h1 className="logo">James River Gooners</h1>
-            <p className="tagline">A better way to browse Cannon's Auctions</p>
+            <span className="tagline">Cannon's Auctions · Richmond VA</span>
           </div>
-          <button
-            className="help-button"
-            onClick={openTutorial}
-            title="How to use this site"
-            aria-label="Open help"
-          >?</button>
-          <button
-            className={`whatsnew-button${hasUnseen ? ' has-unseen' : ''}`}
-            onClick={() => {
-              captureEvent('whats_new_opened', { hasUnseen })
-              openWhatsNew()
-            }}
-            title="What's new"
-            aria-label={hasUnseen ? "What's new (updates available)" : "What's new"}
-          >
-            <span aria-hidden="true">✨</span>
-          </button>
-          <ArsenalTrivia />
+
+          <div className="header-search-wrap">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              semanticStatus={semanticStatus}
+              onCameraClick={() => setImageSearchOpen(true)}
+            />
+          </div>
+
           <button
             type="button"
-            className="swipe-banner-button"
-            onClick={openSwipe}
-            title="Review items one at a time"
+            className={`filter-toggle-btn${filterOpen ? ' filter-toggle-btn--open' : ''}`}
+            onClick={toggleFilter}
+            aria-expanded={filterOpen}
+            aria-label="Toggle filters"
           >
-            ⇄ Swipe
+            <span className="filter-toggle-icon" aria-hidden="true">⚙</span>
+            <span className="filter-toggle-label">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="filter-count-badge">{activeFilterCount}</span>
+            )}
           </button>
-          <AccountButton
-            auth={auth}
-            cannonBids={auth.user ? cannonBids : null}
-            onSignInClick={() => setAuthOpen(true)}
-            onCannonLinkClick={() => setCannonLinkOpen(true)}
-          />
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
-        </div>
-        <div className="view-toggles">
-          <label className="local-toggle">
-            <input
-              type="checkbox"
-              checked={localOnly}
-              onChange={e => setLocalOnly(e.target.checked)}
-            />
-            <span>Richmond area only</span>
-          </label>
-          <div className="archive-control">
-            <span className="archive-label">Auctions</span>
-            <div
-              className="archive-segmented"
-              role="group"
-              aria-label="Which auctions to show"
-            >
-              {[
-                { value: 'active', label: 'Active' },
-                { value: 'archived', label: 'Archived' },
-                { value: 'both', label: 'All' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`segmented-option${archiveMode === opt.value ? ' active' : ''}`}
-                  aria-pressed={archiveMode === opt.value}
-                  onClick={() => changeArchiveMode(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+
+          <SortBar value={sort} onChange={setSort} />
+
+          <div className="layout-toggle" role="group" aria-label="Grid layout">
+            {[
+              { value: 'grid', label: '⊞', title: 'Grid view' },
+              { value: 'compact', label: '≡', title: 'Compact view' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`layout-toggle-btn${viewMode === opt.value ? ' active' : ''}`}
+                aria-pressed={viewMode === opt.value}
+                title={opt.title}
+                onClick={() => setViewMode(opt.value)}
+              >{opt.label}</button>
+            ))}
           </div>
-          <div className="archive-control">
-            <span className="archive-label">Show</span>
-            <div
-              className="archive-segmented"
-              role="group"
-              aria-label="Which items to show"
-            >
-              {[
-                { value: 'all', label: 'All' },
-                { value: 'favorites', label: favoriteIds.length > 0 ? `Favorites (${favoriteIds.length})` : 'Favorites' },
-                { value: 'ignored', label: ignoredIds.length > 0 ? `Ignored (${ignoredIds.length})` : 'Ignored' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`segmented-option${decisionView === opt.value ? ' active' : ''}`}
-                  aria-pressed={decisionView === opt.value}
-                  onClick={() => setDecisionView(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {cannonBids.linked && (
+
+          <div className="header-actions">
             <button
               type="button"
-              className={`deals-toggle${showMyBidsOnly ? ' active' : ''}`}
-              onClick={() => setShowMyBidsOnly(v => !v)}
-              title={cannonBids.bidsLoading ? 'Fetching bids…' : `${cannonBids.bidItemIds.size} items bid on`}
+              className="swipe-banner-button"
+              onClick={openSwipe}
+              title="Review items one at a time"
+            >⇄</button>
+            <button
+              className="help-button"
+              onClick={openTutorial}
+              title="How to use this site"
+              aria-label="Open help"
+            >?</button>
+            <button
+              className={`whatsnew-button${hasUnseen ? ' has-unseen' : ''}`}
+              onClick={() => {
+                captureEvent('whats_new_opened', { hasUnseen })
+                openWhatsNew()
+              }}
+              title="What's new"
+              aria-label={hasUnseen ? "What's new (updates available)" : "What's new"}
             >
-              {cannonBids.bidsLoading
-                ? 'My Bids…'
-                : cannonBids.bidItemIds.size > 0
-                  ? `My Bids (${cannonBids.bidItemIds.size})`
-                  : 'My Bids'}
+              <span aria-hidden="true">✨</span>
             </button>
-          )}
-          <button
-            type="button"
-            className={`deals-toggle${bestDeals ? ' active' : ''}`}
-            onClick={() => setBestDeals(v => {
-              syncUrlParam('bestDeals', !v)
-              return !v
-            })}
-          >
-            Best deals
-          </button>
-          <div className="view-controls-end">
-            <div className="archive-control">
-              <span className="archive-label">View</span>
-              <div
-                className="archive-segmented"
-                role="group"
-                aria-label="Grid layout"
-              >
-                {[
-                  { value: 'grid', label: 'Grid' },
-                  { value: 'compact', label: 'Compact' },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`segmented-option${viewMode === opt.value ? ' active' : ''}`}
-                    aria-pressed={viewMode === opt.value}
-                    onClick={() => setViewMode(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <SortBar value={sort} onChange={setSort} />
+            <ArsenalTrivia />
+            <AccountButton
+              auth={auth}
+              cannonBids={auth.user ? cannonBids : null}
+              onSignInClick={() => setAuthOpen(true)}
+              onCannonLinkClick={() => setCannonLinkOpen(true)}
+            />
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
           </div>
         </div>
       </header>
 
-      <div className="app-body">
-        <aside className="filter-sidebar">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            semanticStatus={semanticStatus}
-            onCameraClick={() => setImageSearchOpen(true)}
-          />
-          <RangeFilters
-            items={visibleItems}
-            minPrice={minPrice}
-            maxPrice={maxPrice}
-            minBids={minBids}
-            maxBids={maxBids}
-            minBidders={minBidders}
-            maxBidders={maxBidders}
-            minHours={minHours}
-            maxHours={maxHours}
-            onMinPriceChange={v => setMinPrice(v)}
-            onMaxPriceChange={v => setMaxPrice(v)}
-            onMinBidsChange={v => setMinBids(v)}
-            onMaxBidsChange={v => setMaxBids(v)}
-            onMinBiddersChange={v => setMinBidders(v)}
-            onMaxBiddersChange={v => setMaxBidders(v)}
-            onMinHoursChange={v => setMinHours(v)}
-            onMaxHoursChange={v => setMaxHours(v)}
-          />
-          <HasFilters
-            hasEbayComp={hasComp}
-            onHasEbayCompChange={setHasComp}
-            hasCannonsComp={hasCannonsComp}
-            onHasCannonsCompChange={setHasCannonsComp}
-            hasEnrichment={showEnrichedOnly}
-            onHasEnrichmentChange={handleEnrichmentFilterChange}
-          />
-          <AuctionFilter
-            auctions={visibleAuctions}
-            excludedAuctions={excludedAuctions}
-            onToggle={toggleAuction}
-            onShowAll={showAllAuctions}
-            onShowOnly={showOnlyAuction}
-            onHideSource={(src) => hideSource(src, visibleAuctions)}
-            onShowSource={(src) => showSource(src, visibleAuctions)}
-          />
-          {archiveLoading && (
-            <div className="inline-status">Loading archived auctions...</div>
-          )}
-          {archiveError && (
-            <div className="inline-error">Archived auctions failed to load: {archiveError}</div>
-          )}
-          <FilterBar
-            groupedCategories={groupedCategories}
-            excludedCategories={excludedCategories}
-            excludedGroups={excludedGroups}
-            onToggleExcluded={toggleExcluded}
-            onHideGroup={hideGroup}
-            onShowGroup={showGroup}
-            onHideAll={() => hideAll(groupedCategories.map(g => g.group))}
-            onShowAll={showAll}
-            onShowOnly={showOnly}
-          />
-        </aside>
+      <div className={`app-body${filterOpen ? '' : ' app-body--sidebar-closed'}`}>
+        <FilterPanel
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          archiveMode={archiveMode}
+          onArchiveModeChange={changeArchiveMode}
+          decisionView={decisionView}
+          onDecisionViewChange={setDecisionView}
+          localOnly={localOnly}
+          onLocalOnlyChange={setLocalOnly}
+          showMyBidsOnly={showMyBidsOnly}
+          onShowMyBidsOnlyChange={setShowMyBidsOnly}
+          bestDeals={bestDeals}
+          onBestDealsToggle={handleBestDealsToggle}
+          favoriteCount={favoriteIds.length}
+          ignoredCount={ignoredIds.length}
+          cannonBidsLinked={cannonBids.linked}
+          cannonBidCount={cannonBids.bidItemIds.size}
+          cannonBidsLoading={cannonBids.bidsLoading}
+          items={visibleItems}
+          minPrice={minPrice} maxPrice={maxPrice}
+          onMinPriceChange={setMinPrice} onMaxPriceChange={setMaxPrice}
+          minBids={minBids} maxBids={maxBids}
+          onMinBidsChange={setMinBids} onMaxBidsChange={setMaxBids}
+          minBidders={minBidders} maxBidders={maxBidders}
+          onMinBiddersChange={setMinBidders} onMaxBiddersChange={setMaxBidders}
+          minHours={minHours} maxHours={maxHours}
+          onMinHoursChange={setMinHours} onMaxHoursChange={setMaxHours}
+          hasEbayComp={hasComp}
+          onHasEbayCompChange={setHasComp}
+          hasCannonsComp={hasCannonsComp}
+          onHasCannonsCompChange={setHasCannonsComp}
+          hasEnrichment={showEnrichedOnly}
+          onHasEnrichmentChange={handleEnrichmentFilterChange}
+          auctions={visibleAuctions}
+          excludedAuctions={excludedAuctions}
+          onToggleAuction={toggleAuction}
+          onShowAllAuctions={showAllAuctions}
+          onShowOnlyAuction={showOnlyAuction}
+          onHideSource={(src) => hideSource(src, visibleAuctions)}
+          onShowSource={(src) => showSource(src, visibleAuctions)}
+          archiveLoading={archiveLoading}
+          archiveError={archiveError}
+          groupedCategories={groupedCategories}
+          excludedCategories={excludedCategories}
+          excludedGroups={excludedGroups}
+          onToggleExcluded={toggleExcluded}
+          onHideGroup={hideGroup}
+          onShowGroup={showGroup}
+          onHideAll={() => hideAll(groupedCategories.map(g => g.group))}
+          onShowAll={showAll}
+          onShowOnly={showOnly}
+        />
 
         <main>
+          <ActiveFilters
+            searchQuery={searchQuery}
+            onClearSearch={() => setSearchQuery('')}
+            localOnly={localOnly}
+            onClearLocal={() => setLocalOnly(false)}
+            archiveMode={archiveMode}
+            onClearArchive={() => changeArchiveMode('active')}
+            decisionView={decisionView}
+            onClearDecision={() => setDecisionView('all')}
+            showMyBidsOnly={showMyBidsOnly}
+            onClearMyBids={() => setShowMyBidsOnly(false)}
+            bestDeals={bestDeals}
+            onClearBestDeals={() => { setBestDeals(false); syncUrlParam('bestDeals', false) }}
+            minPrice={minPrice} maxPrice={maxPrice}
+            onClearPrice={() => { setMinPrice(null); setMaxPrice(null) }}
+            minBids={minBids} maxBids={maxBids}
+            onClearBids={() => { setMinBids(null); setMaxBids(null) }}
+            minBidders={minBidders} maxBidders={maxBidders}
+            onClearBidders={() => { setMinBidders(null); setMaxBidders(null) }}
+            minHours={minHours} maxHours={maxHours}
+            onClearHours={() => { setMinHours(null); setMaxHours(null) }}
+            hasComp={hasComp}
+            onClearComp={() => setHasComp(false)}
+            hasCannonsComp={hasCannonsComp}
+            onClearCannonsComp={() => setHasCannonsComp(false)}
+            hasEnrichment={showEnrichedOnly}
+            onClearEnrichment={() => setShowEnrichedOnly(false)}
+            excludedCategoryCount={excludedCategories.length + excludedGroups.length}
+            onClearCategories={showAll}
+            excludedAuctionCount={excludedAuctions.length}
+            onClearAuctions={showAllAuctions}
+            onClearAll={clearAllFilters}
+          />
           {loading ? (
             <div className="loading">Loading auction items...</div>
           ) : bestDeals && finalItems.length === 0 ? (

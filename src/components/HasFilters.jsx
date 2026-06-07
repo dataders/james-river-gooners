@@ -1,6 +1,3 @@
-// Sidebar "Comps" checkbox group. Replaces the standalone top-bar pill toggles
-// (Has eBay comp / Has auction comp / ✨ Identified) with a single labeled
-// section of checkboxes so the resale-data presence filters live together.
 export function HasFilters({
   hasEbayComp,
   onHasEbayCompChange,
@@ -9,35 +6,26 @@ export function HasFilters({
   hasEnrichment,
   onHasEnrichmentChange,
 }) {
+  const filters = [
+    { label: 'eBay resale data', sublabel: 'Shows estimated sell price', checked: hasEbayComp, onChange: onHasEbayCompChange },
+    { label: "Cannon's sold history", sublabel: 'Similar lots have sold before', checked: hasCannonsComp, onChange: onHasCannonsCompChange },
+    { label: '✨ Brand & model known', sublabel: 'AI has identified the item', checked: hasEnrichment, onChange: onHasEnrichmentChange },
+  ]
   return (
-    <div className="filter-section has-filters">
-      <div className="filter-label">
-        <span className="filter-label-text">Comps</span>
-      </div>
-      <label className="has-filter-row">
-        <input
-          type="checkbox"
-          checked={hasEbayComp}
-          onChange={e => onHasEbayCompChange(e.target.checked)}
-        />
-        <span>eBay</span>
-      </label>
-      <label className="has-filter-row">
-        <input
-          type="checkbox"
-          checked={hasCannonsComp}
-          onChange={e => onHasCannonsCompChange(e.target.checked)}
-        />
-        <span>Auctions</span>
-      </label>
-      <label className="has-filter-row">
-        <input
-          type="checkbox"
-          checked={hasEnrichment}
-          onChange={e => onHasEnrichmentChange(e.target.checked)}
-        />
-        <span>✨ Claude</span>
-      </label>
+    <div className="has-filters">
+      {filters.map(({ label, sublabel, checked, onChange }) => (
+        <label key={label} className="has-filter-row">
+          <div className="has-filter-text">
+            <span className="has-filter-label">{label}</span>
+            <span className="has-filter-sublabel">{sublabel}</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={e => onChange(e.target.checked)}
+          />
+        </label>
+      ))}
     </div>
   )
 }
