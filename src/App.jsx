@@ -13,7 +13,7 @@ import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { filterItems, getGroupedCategories } from './utils/filters'
 import { useSearch } from './hooks/useSearch'
-import { useSemanticSearch, MIN_SEMANTIC_QUERY_LENGTH } from './hooks/useSemanticSearch'
+import { useSemanticSearch } from './hooks/useSemanticSearch'
 import { isDeal } from './utils/roiCalc'
 import { marginForItem, maxBidForItem } from './utils/soldHistory'
 import { itemKey } from './utils/itemKey'
@@ -265,7 +265,7 @@ export default function App() {
 
   const searchIndex = useSearch(visibleItems)
   const miniSearchIds = useMemo(() => {
-    if (!searchQuery || searchQuery.trim().length < MIN_SEMANTIC_QUERY_LENGTH) return null
+    if (!searchQuery) return null
     return new Set(searchIndex.search(searchQuery).map(r => r.id))
   }, [searchIndex, searchQuery])
 
