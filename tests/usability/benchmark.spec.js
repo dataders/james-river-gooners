@@ -80,7 +80,10 @@ test.describe('Usability benchmark', () => {
     // Interaction latencies on a warm page.
     const token = await page.locator('.item-card .item-title').first().textContent()
       .then(t => (t || 'table').split(/\s+/).find(w => w.replace(/[^a-z]/gi, '').length >= 4) || 'table')
-    const searchLatencyMs = await measureSettle(page, () => page.locator('.search-bar').fill(token))
+    const searchLatencyMs = await measureSettle(page, async () => {
+      await page.locator('.search-bar').fill(token)
+      await page.locator('.search-bar').press('Enter')
+    })
     await page.locator('.search-clear').click().catch(() => {})
     await page.waitForTimeout(300)
 

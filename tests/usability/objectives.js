@@ -67,6 +67,7 @@ export const objectives = [
       tracker.step(`Type "${token}" in search`)
       const latency = await measureSettle(page, async () => {
         await page.locator('.search-bar').fill(token)
+        await page.locator('.search-bar').press('Enter')
       })
       tracker.note(`Search settled in ${latency}ms`)
       const narrowed = await getItemCount(page)
@@ -338,6 +339,7 @@ export const objectives = [
 
       tracker.step('Search on mobile')
       await page.locator('.search-bar').fill(token)
+      await page.locator('.search-bar').press('Enter')
       await page.waitForTimeout(400)
       if (await getItemCount(page) === 0) {
         tracker.note('Mobile search produced no results')
