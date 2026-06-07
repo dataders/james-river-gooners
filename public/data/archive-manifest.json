@@ -353,6 +353,39 @@
       "embeddingsPath": "data/archive/items/hibid_739431.embeddings"
     },
     {
+      "safeId": "vIgvMk-ow4F5FT9vYFpABw",
+      "title": "06/07/26: Ample Seller Onsite Warehouse Auction | S West St. |  Petersburg VA 23803- Cannon's Online Auctions, LLC",
+      "endDate": "2026-06-07 6:55:00 PM",
+      "scrapedAt": "2026-06-07T23:01:01.238422+00:00",
+      "itemCount": 223,
+      "itemsPath": "data/archive/items/vIgvMk-ow4F5FT9vYFpABw.parquet",
+      "source": "cannons",
+      "ndjsonPath": "data/archive/items/vIgvMk-ow4F5FT9vYFpABw.ndjson",
+      "embeddingsPath": "data/archive/items/vIgvMk-ow4F5FT9vYFpABw.embeddings"
+    },
+    {
+      "safeId": "hibid_739442",
+      "title": "June 7th, 2026 Coin and Paper Money Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-07T23:00:00+00:00",
+      "scrapedAt": "2026-06-04T20:31:36.096704+00:00",
+      "itemCount": 404,
+      "itemsPath": "data/archive/items/hibid_739442.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/archive/items/hibid_739442.ndjson",
+      "embeddingsPath": "data/archive/items/hibid_739442.embeddings"
+    },
+    {
+      "safeId": "hibid_739720",
+      "title": "June 7th, 2026 Weekly Stamp Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-07T23:00:00+00:00",
+      "scrapedAt": "2026-06-04T20:24:20.797683+00:00",
+      "itemCount": 198,
+      "itemsPath": "data/archive/items/hibid_739720.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/archive/items/hibid_739720.ndjson",
+      "embeddingsPath": "data/archive/items/hibid_739720.embeddings"
+    },
+    {
       "safeId": "bLkOiYnlcePwcQwm8L25cw",
       "title": "03/16/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "",
