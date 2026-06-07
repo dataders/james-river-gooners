@@ -936,15 +936,35 @@ async function placeBid(
 
   const base = 'https://bid.cannonsauctions.com'
 
-  // Fetch the item page to get a fresh CSRF token for this session
-  const itemPageResp = await fetch(
-    `${base}/Public/Auction/AuctionItemDetail?AuctionItemId=${params.auctionItemId}&AuctionId=${params.auctionId}`,
-    { headers: { Cookie: cookieHeader(cookies), 'User-Agent': UA }, redirect: 'manual' },
-  )
-  if (itemPageResp.status === 302) return json({ error: 'Session expired fetching item page' }, 400)
-  const itemHtml = await itemPageResp.text()
-  cookies = mergeCookies(cookies, getSetCookies(itemPageResp.headers))
-  const itemCsrf = itemHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+  // Fetch the item page to get a fresh CSRF token for this session.
+  // Follow redirects manually (up to 5 hops) — Maxanet sometimes issues a
+  // session-establishment redirect before serving the page, and redirect:'manual'
+  // would have incorrectly treated that as "session expired". Only bail if the
+  // redirect target is the login page (genuine session expiry). Fall back to the
+  // watchlist CSRF endpoint if the item page doesn't yield a token.
+  let itemPageUrl = `${base}/Public/Auction/AuctionItemDetail?AuctionItemId=${params.auctionItemId}&AuctionId=${params.auctionId}`
+  let itemHtml = ''
+  for (let hop = 0; hop < 5; hop++) {
+    const resp = await fetch(itemPageUrl, {
+      headers: { Cookie: cookieHeader(cookies), 'User-Agent': UA },
+      redirect: 'manual',
+    })
+    cookies = mergeCookies(cookies, getSetCookies(resp.headers))
+    if (resp.status === 302) {
+      const loc = resp.headers.get('location') ?? ''
+      console.log(`[cannon-proxy] item page redirect hop ${hop + 1}: ${itemPageUrl} → ${loc}`)
+      if (/\/Login\//i.test(loc) || /\/Account\/Login/i.test(loc)) {
+        return json({ error: 'Session expired fetching item page' }, 400)
+      }
+      if (!loc) break
+      itemPageUrl = loc.startsWith('http') ? loc : `${base}${loc.startsWith('/') ? '' : '/'}${loc}`
+      continue
+    }
+    itemHtml = await resp.text()
+    break
+  }
+  const itemCsrf = itemHtml.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1]
+    ?? await fetchCsrf(cookies, base)
 
   // POST SubmitBid — Maxanet uses this to render the bid confirmation modal.
   // The response HTML contains a pre-populated form with hidden fields we need
