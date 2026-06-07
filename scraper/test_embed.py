@@ -2,10 +2,25 @@ import struct
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
-from embed import read_embeddings, write_embeddings
+import embed
+from embed import generate_and_write, read_embeddings, write_embeddings
+
+
+DIM = 8
+
+
+def _fake_embed_items(items, session=None):
+    """Deterministic stand-in for the CLIP model: vector i is all-(hash) so we
+    can assert which ids were (re)embedded, and record the call."""
+    ids = [it["id"] for it in items]
+    embs = np.array(
+        [[float(hash(iid) % 100)] * DIM for iid in ids], dtype=np.float32
+    )
+    return embs, ids
 
 
 class EmbeddingsRoundTripTest(unittest.TestCase):
@@ -59,6 +74,61 @@ class EmbeddingsRoundTripTest(unittest.TestCase):
             path.write_bytes(struct.pack("<II", 10, 512))
             with self.assertRaises(ValueError):
                 read_embeddings(path)
+
+
+class IncrementalGenerateTest(unittest.TestCase):
+    def _items(self, ids):
+        return [{"id": i, "title": i, "description": "", "images": []} for i in ids]
+
+    def test_first_run_embeds_all(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "auction.parquet"
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items) as m:
+                generate_and_write(self._items(["a", "b", "c"]), base)
+            # embed_items called once with all three items
+            self.assertEqual(m.call_count, 1)
+            self.assertEqual([it["id"] for it in m.call_args.args[0]], ["a", "b", "c"])
+            embs, ids = read_embeddings(base.with_suffix(".embeddings"))
+            self.assertEqual(ids, ["a", "b", "c"])
+
+    def test_unchanged_rerun_embeds_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "auction.parquet"
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items):
+                generate_and_write(self._items(["a", "b", "c"]), base)
+            # Second run, identical ids → model never invoked
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items) as m:
+                generate_and_write(self._items(["a", "b", "c"]), base)
+            m.assert_not_called()
+            embs, ids = read_embeddings(base.with_suffix(".embeddings"))
+            self.assertEqual(ids, ["a", "b", "c"])
+
+    def test_only_new_ids_are_embedded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "auction.parquet"
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items):
+                generate_and_write(self._items(["a", "b"]), base)
+            old_embs, _ = read_embeddings(base.with_suffix(".embeddings"))
+            old_a = old_embs[0].copy()
+            # Add "c", keep "a"/"b" → only "c" goes through the model
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items) as m:
+                generate_and_write(self._items(["a", "b", "c"]), base)
+            self.assertEqual(m.call_count, 1)
+            self.assertEqual([it["id"] for it in m.call_args.args[0]], ["c"])
+            embs, ids = read_embeddings(base.with_suffix(".embeddings"))
+            self.assertEqual(ids, ["a", "b", "c"])
+            # "a"'s reused vector is byte-identical to the original
+            np.testing.assert_array_equal(embs[0], old_a)
+
+    def test_reuse_false_forces_full_regeneration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "auction.parquet"
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items):
+                generate_and_write(self._items(["a", "b"]), base)
+            with mock.patch.object(embed, "embed_items", side_effect=_fake_embed_items) as m:
+                generate_and_write(self._items(["a", "b"]), base, reuse=False)
+            m.assert_called_once()
+            self.assertEqual([it["id"] for it in m.call_args.args[0]], ["a", "b"])
 
 
 if __name__ == "__main__":

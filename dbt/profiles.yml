@@ -1,0 +1,25 @@
+gooners:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # MotherDuck writes land in my_db; Supabase Postgres is attached read-only.
+      path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      schema: gooners          # mart tables → my_db.gooners.*
+      attach:
+        - path: "host={{ env_var('SUPABASE_DB_HOST') }} user=postgres password={{ env_var('SUPABASE_DB_PASSWORD') }} dbname=postgres sslmode=require"
+          type: postgres
+          alias: supabase
+          read_only: true
+      threads: 4
+
+    prod:
+      type: duckdb
+      path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      schema: gooners
+      attach:
+        - path: "host={{ env_var('SUPABASE_DB_HOST') }} user=postgres password={{ env_var('SUPABASE_DB_PASSWORD') }} dbname=postgres sslmode=require"
+          type: postgres
+          alias: supabase
+          read_only: true
+      threads: 8

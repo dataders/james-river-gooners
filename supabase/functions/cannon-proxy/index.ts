@@ -312,6 +312,30 @@ async function refreshItemStatus(
   }
 }
 
+// Fetches a CSRF token by loading one watchlist item from an authenticated session.
+async function fetchCsrf(cookies: Record<string, string>, base: string): Promise<string> {
+  try {
+    const resp = await fetch(
+      `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=1&auctionFilter=&filter=&searchFilter=&statusFilter=Current`,
+      {
+        headers: {
+          'Cookie': cookieHeader(cookies),
+          'User-Agent': UA,
+          'Accept': '*/*',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Referer': `${base}/Public/Auction/Watchlist`,
+        },
+        redirect: 'manual',
+      },
+    )
+    if (resp.ok) {
+      const html = await resp.text()
+      return html.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)?.[1] ?? ''
+    }
+  } catch { /* non-fatal */ }
+  return ''
+}
+
 async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemIds: string[]; items: BidItem[]; csrf: string; bidderId: string | null }> {
   const base = 'https://bid.cannonsauctions.com'
 
@@ -777,25 +801,45 @@ async function getBids(
   supabase: ReturnType<typeof createClient>,
   userId: string,
 ): Promise<Response> {
-  const { data, error } = await supabase
+  // Fast path: return stored data if the table is already seeded.
+  const { data: storedBids, error: dbError } = await supabase
+    .from('user_bids')
+    .select('auction_item_id, auction_id, is_winning, current_bid, min_next_bid')
+    .eq('user_id', userId)
+
+  if (dbError) return json({ error: dbError.message }, 500)
+
+  if (storedBids && storedBids.length > 0) {
+    const itemIds = storedBids.map(r => r.auction_item_id)
+    const statuses: BidStatus[] = storedBids.map(r => ({
+      auctionItemId: r.auction_item_id,
+      winning: r.is_winning,
+      currentBid: r.current_bid,
+      minimumNextBid: r.min_next_bid,
+    }))
+    return json({ itemIds, statuses })
+  }
+
+  // Zero rows: one-time seed from Maxanet watchlist for existing users.
+  const { data: creds, error: credsError } = await supabase
     .from('cannon_credentials')
     .select('cannon_username, cannon_password_enc')
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (error) return json({ error: error.message }, 500)
-  if (!data) return json({ error: 'No Cannon\'s account linked' }, 400)
+  if (credsError) return json({ error: credsError.message }, 500)
+  if (!creds) return json({ itemIds: [], statuses: [] })
 
   let password: string
   try {
-    password = await decryptText(data.cannon_password_enc)
+    password = await decryptText(creds.cannon_password_enc)
   } catch {
     return json({ error: 'Failed to decrypt stored credentials' }, 500)
   }
 
   let loginResult: LoginResult
   try {
-    loginResult = await maxanetLogin(data.cannon_username, password)
+    loginResult = await maxanetLogin(creds.cannon_username, password)
   } catch (e: unknown) {
     return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
   }
@@ -823,6 +867,27 @@ async function getBids(
   const statuses: BidStatus[] = await Promise.all(
     toRefresh.map(item => refreshItemStatus(base, cookies, history.csrf, item))
   )
+
+  // Seed user_bids so future calls hit the fast path.
+  if (history.items.length > 0) {
+    const now = new Date().toISOString()
+    const rows = history.items.map(item => {
+      const status = statuses.find(s => s.auctionItemId === item.itemId)
+      return {
+        user_id: userId,
+        auction_item_id: item.itemId,
+        auction_id: item.auctionId || null,
+        is_winning: status?.winning ?? null,
+        current_bid: status?.currentBid ?? null,
+        min_next_bid: status?.minimumNextBid ?? null,
+        last_bid_at: now,
+        status_refreshed_at: now,
+      }
+    })
+    await supabase
+      .from('user_bids')
+      .upsert(rows, { onConflict: 'user_id,auction_item_id' })
+  }
 
   return json({ itemIds: history.itemIds, statuses })
 }
@@ -1028,6 +1093,26 @@ async function placeBid(
     ;({ winning, currentBid, minimumNextBid } = parseRefreshItemHtml(await refreshResp.text()))
   } catch { /* non-fatal — SaveBid result is still returned */ }
 
+  // Persist to user_bids on success so the hook has a durable record.
+  // first_bid_at is omitted intentionally: the DB default sets it on INSERT
+  // and the upsert preserves the existing value on UPDATE.
+  if (ok) {
+    const now = new Date().toISOString()
+    await supabase.from('user_bids').upsert({
+      user_id: userId,
+      auction_item_id: params.auctionItemId,
+      auction_id: params.auctionId,
+      item_title: params.itemName ?? null,
+      item_category: params.category ?? null,
+      bid_amount: params.newBidAmount,
+      last_bid_at: now,
+      is_winning: winning,
+      current_bid: currentBid,
+      min_next_bid: minimumNextBid,
+      status_refreshed_at: winning !== null ? now : null,
+    }, { onConflict: 'user_id,auction_item_id' })
+  }
+
   return json({
     ok,
     status: result.status,
@@ -1036,6 +1121,76 @@ async function placeBid(
     currentBid,
     minimumNextBid,
   }, ok ? 200 : 400)
+}
+
+// Refreshes live bid status (winning/currentBid/minNextBid) for all non-closed
+// user_bids rows by re-authenticating with Maxanet and calling RefreshItem.
+// Updates the status columns in-place; does not add or remove rows.
+async function refreshBidStatuses(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<Response> {
+  const { data: bids, error: dbError } = await supabase
+    .from('user_bids')
+    .select('auction_item_id, auction_id')
+    .eq('user_id', userId)
+    .eq('item_closed', false)
+
+  if (dbError) return json({ error: dbError.message }, 500)
+  if (!bids || bids.length === 0) return json({ itemIds: [], statuses: [] })
+
+  const { data: creds, error: credsError } = await supabase
+    .from('cannon_credentials')
+    .select('cannon_username, cannon_password_enc')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (credsError) return json({ error: credsError.message }, 500)
+  if (!creds) return json({ error: "No Cannon's account linked" }, 400)
+
+  let password: string
+  try {
+    password = await decryptText(creds.cannon_password_enc)
+  } catch {
+    return json({ error: 'Failed to decrypt stored credentials' }, 500)
+  }
+
+  let loginResult: LoginResult
+  try {
+    loginResult = await maxanetLogin(creds.cannon_username, password)
+  } catch (e: unknown) {
+    return json({ error: `Cannon's login failed: ${(e as Error).message}` }, 400)
+  }
+  const { cookies } = loginResult
+
+  const base = 'https://bid.cannonsauctions.com'
+  const csrf = await fetchCsrf(cookies, base)
+  // Cap at 20 to avoid flooding Maxanet with concurrent requests
+  const items: BidItem[] = bids.map(r => ({ itemId: r.auction_item_id, auctionId: r.auction_id ?? '0' }))
+  const toRefresh = items.slice(0, 20)
+  const statuses: BidStatus[] = await Promise.all(
+    toRefresh.map(item => refreshItemStatus(base, cookies, csrf, item))
+  )
+
+  if (statuses.length > 0) {
+    const now = new Date().toISOString()
+    const updates = statuses.map(s => ({
+      user_id: userId,
+      auction_item_id: s.auctionItemId,
+      is_winning: s.winning,
+      current_bid: s.currentBid,
+      min_next_bid: s.minimumNextBid,
+      status_refreshed_at: now,
+    }))
+    await supabase
+      .from('user_bids')
+      .upsert(updates, { onConflict: 'user_id,auction_item_id' })
+  }
+
+  return json({
+    itemIds: bids.map(r => r.auction_item_id),
+    statuses,
+  })
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -1082,6 +1237,8 @@ Deno.serve(async (req: Request) => {
       return getStatus(supabase, user.id)
     case 'get_bids':
       return getBids(supabase, user.id)
+    case 'refresh_bid_statuses':
+      return refreshBidStatuses(supabase, user.id)
     case 'debug_login':
       return debugLogin(supabase, user.id)
     case 'debug_auth_v2':

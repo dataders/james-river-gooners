@@ -342,6 +342,17 @@
       "embeddingsPath": "data/archive/items/Gb1d9TSVzPoNpFRycmPhSQ.embeddings"
     },
     {
+      "safeId": "hibid_739431",
+      "title": "June 6th, 2026 Sports Card & Comics Auction | Live and Online Auctions on HiBid.com",
+      "endDate": "2026-06-06T23:00:00+00:00",
+      "scrapedAt": "2026-06-04T20:20:48.523298+00:00",
+      "itemCount": 146,
+      "itemsPath": "data/archive/items/hibid_739431.parquet",
+      "source": "emerald_ventures",
+      "ndjsonPath": "data/archive/items/hibid_739431.ndjson",
+      "embeddingsPath": "data/archive/items/hibid_739431.embeddings"
+    },
+    {
       "safeId": "bLkOiYnlcePwcQwm8L25cw",
       "title": "03/16/26: F and L Auctions | Oakview Ave, Richmond VA 23228- Cannon's Online Auctions, LLC",
       "endDate": "",

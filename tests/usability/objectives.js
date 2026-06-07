@@ -290,9 +290,9 @@ export const objectives = [
       await gotoApp(page)
 
       // Need a lot that has eBay comps for the calculator to appear. The comp
-      // presence filter now lives in the sidebar "Has" checkbox group.
+      // presence filter now lives in the sidebar "Comps" checkbox group.
       tracker.step('Filter to lots with comps')
-      await page.locator('.has-filters .has-filter-row', { hasText: 'eBay comp' })
+      await page.locator('.has-filters .has-filter-row', { hasText: 'eBay' })
         .locator('input[type="checkbox"]').check()
       await page.waitForTimeout(400)
       const withComp = await getItemCount(page)

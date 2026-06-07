@@ -428,6 +428,308 @@ body {
   color: #4a9;
   border: 1px solid #4a9;
 }
+.search-camera-btn {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  z-index: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.search-camera-btn:hover {
+  color: var(--text);
+  background: var(--chip-bg);
+}
+.search-bar--with-camera {
+  padding-left: 36px;
+}
+
+/* Image Search Modal */
+.image-search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 300;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px 16px;
+  overflow-y: auto;
+}
+.image-search-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  padding: 20px;
+  position: relative;
+  animation: modal-drop 0.2s ease-out;
+}
+@keyframes modal-drop {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.image-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.image-search-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.image-search-gate {
+  text-align: center;
+  padding: 32px 0;
+  color: var(--text-muted);
+}
+.image-search-signin-btn {
+  margin-top: 12px;
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.image-upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.image-upload-zone:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.image-upload-zone--active {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.image-upload-zone--has-image {
+  cursor: default;
+  border-style: solid;
+  min-height: 200px;
+}
+.image-upload-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.image-upload-icon {
+  font-size: 2rem;
+}
+.image-upload-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.image-preview-img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+}
+.image-search-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.image-search-pick-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: border-color 0.12s;
+}
+.image-search-pick-btn:hover {
+  border-color: var(--accent);
+}
+.image-search-analyze-btn {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: opacity 0.12s;
+}
+.image-search-analyze-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.image-search-error {
+  color: #c55;
+  font-size: 0.88rem;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(200, 50, 50, 0.08);
+  border-radius: var(--radius);
+  border: 1px solid rgba(200, 50, 50, 0.2);
+}
+.identification-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.identification-what {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.identification-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.identification-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.identification-description {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.45;
+}
+.identification-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.identification-keyword {
+  background: var(--chip-bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.image-search-action-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.image-search-grid-btn {
+  padding: 7px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.image-search-grid-btn:hover {
+  opacity: 0.9;
+}
+.image-search-ext-link {
+  padding: 7px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition: border-color 0.12s;
+}
+.image-search-ext-link:hover {
+  border-color: var(--accent);
+}
+.image-search-section {
+  margin-bottom: 16px;
+}
+.image-search-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+.image-search-lot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.image-lot-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.image-lot-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+  background: var(--chip-bg);
+}
+.image-lot-body {
+  flex: 1;
+  min-width: 0;
+}
+.image-lot-title {
+  font-size: 0.88rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.image-lot-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.image-lot-sold-price {
+  color: #4a9;
+  font-weight: 600;
+}
+.image-search-loading {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  padding: 8px 0;
+}
 
 /* Filter bar */
 .filter-bar {
@@ -2054,6 +2356,300 @@ body {
 }
 .detail-share:hover {
   background: var(--border);
+}
+
+.detail-fb-listing-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: #1877F2;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.detail-fb-listing-btn:hover {
+  background: #0d65d9;
+}
+
+/* ── Facebook Marketplace listing modal ─────────────────────────────────── */
+
+.fb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.fb-modal {
+  background: var(--bg);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.fb-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #1877F2;
+  color: #fff;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
+}
+
+.fb-modal-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.fb-modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+.fb-modal-close:hover {
+  opacity: 1;
+}
+
+.fb-modal-body {
+  overflow-y: auto;
+  padding: 20px;
+  flex: 1;
+}
+
+.fb-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.fb-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: #1877F2;
+  border-radius: 50%;
+  animation: fb-spin 0.8s linear infinite;
+}
+@keyframes fb-spin { to { transform: rotate(360deg); } }
+
+.fb-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.fb-retry-btn {
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fb-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.fb-field-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fb-field-row .fb-field {
+  flex: 1;
+  min-width: 120px;
+}
+
+.fb-field {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.fb-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.fb-field-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.fb-copy-btn {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.fb-copy-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.fb-field-value {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.fb-field-multiline {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  margin: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.fb-photos-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-bottom: 20px;
+}
+
+.fb-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.fb-photo-group {
+  margin-bottom: 14px;
+}
+
+.fb-photo-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+.fb-photo-ok { color: #22863a; }
+.fb-photo-skip { color: #cb2431; }
+
+.fb-photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fb-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 110px;
+}
+
+.fb-photo-thumb {
+  width: 110px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid #22863a;
+}
+.fb-photo-thumb-skip {
+  border-color: #cb2431;
+  opacity: 0.6;
+  filter: grayscale(30%);
+}
+
+.fb-photo-note {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.fb-photo-recs {
+  margin-top: 10px;
+}
+
+.fb-photo-rec-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.fb-copy-all-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.fb-copy-all-btn {
+  padding: 10px 22px;
+  background: #1877F2;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.fb-copy-all-btn:hover {
+  background: #0d65d9;
+}
+
+.fb-copy-all-hint {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
 }
 
 /* In-app bidding for live Cannon's lots (cannon-proxy place_bid). */
