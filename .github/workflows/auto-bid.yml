@@ -18,30 +18,15 @@ jobs:
       - name: Place minimum bids on new Cannon's lots
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          AUTO_BID_EMAIL: ${{ secrets.AUTO_BID_EMAIL }}
-          AUTO_BID_PASSWORD: ${{ secrets.AUTO_BID_PASSWORD }}
+          AUTO_BID_SECRET: ${{ secrets.AUTO_BID_SECRET }}
         run: |
           set -euo pipefail
 
-          # Sign in with email/password to get a short-lived JWT
-          LOGIN=$(curl -sS -X POST \
-            "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"email\":\"${AUTO_BID_EMAIL}\",\"password\":\"${AUTO_BID_PASSWORD}\"}")
-
-          ACCESS_TOKEN=$(echo "$LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token',''))")
-          if [ -z "$ACCESS_TOKEN" ]; then
-            echo "Login failed:"
-            echo "$LOGIN" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error_description', d.get('msg', 'unknown')))"
-            exit 1
-          fi
-          echo "Signed in. Calling auto_bid..."
+          echo "Calling auto_bid..."
 
           curl -sS -X POST \
             "${SUPABASE_URL}/functions/v1/cannon-proxy" \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Authorization: Bearer ${AUTO_BID_SECRET}" \
             -H "Content-Type: application/json" \
             -d '{"action":"auto_bid"}' \
             -o /tmp/auto_bid_result.json
