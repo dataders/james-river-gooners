@@ -462,7 +462,6 @@ export default function App() {
               value={searchQuery}
               onChange={setSearchQuery}
               semanticStatus={semanticStatus}
-              onCameraClick={() => setImageSearchOpen(true)}
             />
           </div>
 
@@ -499,6 +498,13 @@ export default function App() {
           </div>
 
           <div className="header-actions">
+            <button
+              type="button"
+              className="swipe-banner-button"
+              onClick={() => setImageSearchOpen(true)}
+              title="Search by photo"
+              aria-label="Search by photo"
+            >📷</button>
             <button
               type="button"
               className="swipe-banner-button"
