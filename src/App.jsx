@@ -168,9 +168,10 @@ export default function App() {
   const [swipeItems, setSwipeItems] = useState([])
   const [imageSearchOpen, setImageSearchOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(() => {
+    if (window.innerWidth < 1024) return false // mobile always starts closed
     const stored = localStorage.getItem('gooners-filter-open')
     if (stored !== null) return stored === 'true'
-    return window.innerWidth >= 1024 // sidebar open on desktop, drawer closed on mobile
+    return true // desktop defaults to open
   })
   const toggleFilter = useCallback(() => {
     setFilterOpen(v => {
