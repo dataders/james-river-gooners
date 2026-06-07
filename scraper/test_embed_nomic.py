@@ -20,6 +20,49 @@ def _fake_embed_items(items, session=None):
     return embs, ids, [0] * len(ids)
 
 
+class SupabaseUserAgentTest(unittest.TestCase):
+    """Supabase rejects the secret key from a browser-looking request; the
+    scrapers pass a Chrome-UA session, so the embed REST calls must override UA."""
+
+    def _capture_get(self, session):
+        captured = {}
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            captured["headers"] = headers
+            resp = mock.Mock(status_code=200)
+            resp.raise_for_status = mock.Mock()
+            resp.json = mock.Mock(return_value=[])
+            return resp
+
+        session.get = fake_get
+        return captured
+
+    def test_existing_item_ids_overrides_user_agent(self):
+        session = mock.Mock()
+        captured = self._capture_get(session)
+        with mock.patch("supabase_comps.resolve_credentials",
+                        return_value=("https://x.supabase.co", "sb_secret_x")):
+            embed_nomic.existing_item_ids("auc", session=session)
+        self.assertEqual(captured["headers"].get("User-Agent"), embed_nomic._SUPABASE_UA)
+        self.assertNotIn("Mozilla", captured["headers"].get("User-Agent", ""))
+
+    def test_upsert_overrides_user_agent(self):
+        session = mock.Mock()
+        captured = {}
+
+        def fake_post(url, headers=None, data=None, timeout=None):
+            captured["headers"] = headers
+            return mock.Mock(status_code=200)
+
+        session.post = fake_post
+        with mock.patch("supabase_comps.resolve_credentials",
+                        return_value=("https://x.supabase.co", "sb_secret_x")):
+            embed_nomic.upsert_embeddings(
+                np.zeros((1, 768), dtype=np.float32), ["a"], [0], "auc", session=session
+            )
+        self.assertEqual(captured["headers"].get("User-Agent"), embed_nomic._SUPABASE_UA)
+
+
 class NomicIncrementalTest(unittest.TestCase):
     def setUp(self):
         self.env = mock.patch.dict(
