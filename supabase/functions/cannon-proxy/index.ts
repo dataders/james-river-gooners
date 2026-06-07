@@ -1243,12 +1243,20 @@ async function autoBid(
   const auctions = manifest.auctions ?? []
   if (auctions.length === 0) return json({ ok: true, message: 'Manifest empty', bids: [] })
 
-  // 2. Load the user's already-bid item IDs
-  const { data: existingBids } = await supabase
-    .from('user_bids')
-    .select('auction_item_id')
-    .eq('user_id', userId)
+  // 2. Load the user's already-bid item IDs and their favorited item IDs.
+  // Auto-bid only places bids on favorited lots so users control what they buy.
+  const [{ data: existingBids }, { data: userFavorites }] = await Promise.all([
+    supabase.from('user_bids').select('auction_item_id').eq('user_id', userId),
+    supabase.from('favorites').select('item_key').eq('user_id', userId),
+  ])
   const biddedIds = new Set((existingBids ?? []).map(r => String(r.auction_item_id)))
+  // item_key format: "<auctionSafeId>:<itemId>" — extract the item ID portion
+  const favoritedItemIds = new Set(
+    (userFavorites ?? []).map(r => r.item_key.slice(r.item_key.indexOf(':') + 1))
+  )
+  if (favoritedItemIds.size === 0) {
+    return json({ ok: true, message: 'No favorites to bid on', bids: [] })
+  }
 
   // 3. Collect candidate lots from all Cannon's auctions
   const candidates: PlaceBidParams[] = []
@@ -1287,6 +1295,7 @@ async function autoBid(
       try { item = JSON.parse(line) } catch { continue }
       if (item.source !== 'cannons') continue
       if (item.closed) continue
+      if (!favoritedItemIds.has(String(item.id))) continue
       if (biddedIds.has(String(item.id))) continue
 
       // Skip items whose own endDate is within AUTO_BID_MIN_HOURS (items can
