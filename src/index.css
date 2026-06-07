@@ -94,6 +94,307 @@ body {
   transform: translateY(-100%);
 }
 
+/* ── New single-row header ──────────────────────────────────────────────── */
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-title {
+  flex-shrink: 0;
+}
+
+.header-search-wrap {
+  flex: 1;
+  min-width: 0;
+  max-width: 480px;
+}
+/* On mobile the search sits below the logo row */
+@media (max-width: 700px) {
+  .header-row {
+    flex-wrap: wrap;
+  }
+  .header-title {
+    flex: 1;
+  }
+  .header-search-wrap {
+    order: 10;
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+@media (max-width: 700px) {
+  .header-actions {
+    margin-left: 0;
+  }
+  .header-title + .header-actions {
+    margin-left: auto;
+  }
+}
+
+/* Filter toggle button */
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 36px;
+}
+.filter-toggle-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.filter-toggle-btn--open {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.filter-toggle-label {
+  /* hide label text on very small screens, leave icon + badge */
+}
+@media (max-width: 400px) {
+  .filter-toggle-label {
+    display: none;
+  }
+}
+.filter-count-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ── Layout toggle (header) ─────────────────────────────────────────────── */
+.layout-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.layout-toggle-btn {
+  background: var(--surface);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 1rem;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.layout-toggle-btn:last-child {
+  border-right: none;
+}
+.layout-toggle-btn.active {
+  background: color-mix(in srgb, var(--gold) 22%, var(--chip-bg));
+  color: var(--gold);
+}
+.layout-toggle-btn:hover:not(.active) {
+  color: var(--text);
+  background: var(--chip-bg);
+}
+
+/* ── Filter panel shell (desktop persistent sidebar + mobile bottom-sheet) ── */
+.filter-backdrop {
+  display: none;
+}
+
+.filter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.filter-panel-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+.filter-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.filter-panel-close:hover {
+  color: var(--text);
+  background: var(--chip-bg);
+}
+
+/* Accordion sections inside the filter panel */
+.fp-accordion {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.fp-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0;
+  min-height: 48px;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.fp-accordion-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+.fp-accordion-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.fp-accordion-body {
+  padding-bottom: 10px;
+}
+
+/* View section controls inside the accordion */
+.fp-view-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Each control block: label stacked above a full-width control */
+.fp-control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.fp-control-row:last-child {
+  border-bottom: none;
+}
+.fp-control-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+/* Segmented controls inside the filter panel fill full width */
+.fp-control-row .archive-segmented {
+  display: flex;
+  width: 100%;
+}
+.fp-control-row .segmented-option {
+  flex: 1;
+  min-height: 36px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+.fp-control-row .segmented-option.active {
+  background: var(--gold);
+  color: #1a1a1a;
+  font-weight: 700;
+}
+.fp-pill-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.fp-pill-row .deals-toggle {
+  flex: 1;
+  justify-content: center;
+  min-height: 36px;
+}
+
+/* ── Active filter chips bar ────────────────────────────────────────────── */
+.active-filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 0 8px;
+}
+.af-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px 2px 10px;
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+.af-chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 1px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.12s;
+}
+.af-chip-remove:hover {
+  color: var(--accent);
+}
+.af-clear-all {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.af-clear-all:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Legacy: keep .header-banner alias so any component that still uses it won't break */
 .header-banner {
   display: flex;
   align-items: center;
@@ -182,10 +483,11 @@ body {
   color: var(--text-muted);
 }
 
-/* Range filters */
+/* Range filters — always stacked vertically in the filter panel */
 .range-filters {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 8px;
 }
 
@@ -1334,11 +1636,7 @@ body {
 }
 
 .view-toggles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 8px;
+  display: none; /* moved into FilterPanel */
 }
 
 /* View + sort controls — pushed to the end of the view-toggles row */
@@ -1378,13 +1676,17 @@ body {
 
 /* View toggles */
 .local-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  min-height: 40px;
 }
 .local-toggle input[type="checkbox"] {
   appearance: none;
@@ -2234,6 +2536,8 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  position: relative;
+  z-index: 2; /* above the abs-positioned .detail-close (z-index: 1) */
 }
 .detail-title-row .detail-title {
   flex: 1;
@@ -3249,22 +3553,64 @@ a.cannons-comp-card:hover {
   font-size: 0.68rem;
 }
 
-/* Sidebar "Has" presence-filter checkboxes */
+/* "Only show items with…" presence-filter rows — iOS-style toggle layout */
 .has-filters .has-filter-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 0.85rem;
-  color: var(--text);
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
+  min-height: 40px;
 }
+.has-filters .has-filter-row:last-child {
+  border-bottom: none;
+}
+.has-filter-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.has-filter-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.has-filter-sublabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+/* Reuse the local-toggle switch styling */
 .has-filters .has-filter-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.has-filters .has-filter-row input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
   width: 16px;
   height: 16px;
-  flex: none;
-  accent-color: var(--accent);
-  cursor: pointer;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.2s, background 0.2s;
+}
+.has-filters .has-filter-row input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+.has-filters .has-filter-row input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+  background: #fff;
 }
 
 /* Arsenal Trivia — header-banner button + popover */
@@ -3570,6 +3916,10 @@ a.cannons-comp-card:hover {
     gap: 0 20px;
     align-items: start;
     padding-top: 12px;
+    transition: grid-template-columns 0.2s ease;
+  }
+  .app-body--sidebar-closed {
+    grid-template-columns: 0px 1fr;
   }
 
   /* min-width:0 lets the grid track shrink below its content's intrinsic width
@@ -3579,6 +3929,10 @@ a.cannons-comp-card:hover {
   }
 
   .filter-sidebar {
+    overflow: hidden; /* clip content while column animates closed */
+    min-width: 0;
+  }
+  .filter-sidebar--open {
     position: sticky;
     top: var(--header-height, 0px);
     max-height: calc(100vh - var(--header-height, 0px));
@@ -3592,19 +3946,58 @@ a.cannons-comp-card:hover {
     border-right: 1px solid var(--border);
   }
 
-  /* Stack range filters vertically — side-by-side is too cramped at 280px */
+  /* Range filters always stack vertically in the filter panel */
   .filter-sidebar .range-filters {
     flex-direction: column;
     gap: 4px;
   }
 }
 
-/* ── Tablet (between mobile and desktop sidebar) ────────────────────────── */
-@media (min-width: 601px) and (max-width: 1023px) {
-  .range-filters {
-    gap: 12px;
+/* ── Mobile / tablet: filter panel is a bottom-sheet drawer ────────────── */
+@media (max-width: 1023px) {
+  .filter-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 199;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .filter-backdrop--visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filter-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 88vh;
+    max-height: 88vh;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 200;
+    background: var(--bg);
+    border-top: 2px solid var(--accent);
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 16px 32px;
+  }
+  .filter-sidebar--open {
+    transform: translateY(0);
+  }
+
+  /* Range filters stack vertically on narrow screens */
+  .filter-sidebar .range-filters {
+    flex-direction: column;
+    gap: 4px;
   }
 }
+
 
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
