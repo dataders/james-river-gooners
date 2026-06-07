@@ -772,6 +772,23 @@ body {
   color: var(--text);
   background: var(--chip-bg);
 }
+.search-submit {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.search-submit:hover {
+  background: var(--chip-bg);
+}
 .search-bar:focus {
   border-color: var(--accent);
 }

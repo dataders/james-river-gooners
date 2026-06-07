@@ -17,8 +17,9 @@ test.describe('Filters', () => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping filter test')
 
-    await page.locator('input.search-bar').fill('zzz_unlikely_match_xyz')
-    // Debounce is 200ms; wait a bit then check
+    const input = page.locator('input.search-bar')
+    await input.fill('zzz_unlikely_match_xyz')
+    await input.press('Enter')
     await page.waitForTimeout(400)
     const countAfter = await getItemCount(page)
     expect(countAfter).toBeLessThan(totalBefore)
@@ -30,8 +31,10 @@ test.describe('Filters', () => {
 
     const input = page.locator('input.search-bar')
     await input.fill('zzz_unlikely_match_xyz')
+    await input.press('Enter')
     await page.waitForTimeout(400)
-    await input.fill('')
+    // × button appears after a committed search — click it to clear
+    await page.locator('.search-clear').click()
     await page.waitForTimeout(400)
     expect(await getItemCount(page)).toBe(totalBefore)
   })
