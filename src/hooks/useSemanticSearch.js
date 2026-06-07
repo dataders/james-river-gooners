@@ -1,73 +1,69 @@
 import { useState, useEffect, useRef } from 'react'
-import { useEmbeddings } from './useEmbeddings'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { compositeKey } from '../utils/itemKey'
 
 const TOP_K = 150
 
-function dotProductTopK(queryEmb, vectors, ids, nDims, totalItems, k) {
-  const scores = new Float32Array(totalItems)
-  for (let i = 0; i < totalItems; i++) {
-    let dot = 0
-    const base = i * nDims
-    for (let j = 0; j < nDims; j++) {
-      dot += queryEmb[j] * vectors[base + j]
-    }
-    scores[i] = dot
-  }
-
-  const indices = Array.from({ length: totalItems }, (_, i) => i)
-  indices.sort((a, b) => scores[b] - scores[a])
-
-  const result = new Set()
-  for (let i = 0; i < Math.min(k, totalItems); i++) {
-    result.add(ids[indices[i]])
-  }
-  return result
-}
-
 /**
- * Semantic search using CLIP embeddings decoded in a Web Worker.
+ * Semantic search over Nomic embeddings.
  *
- * `embeddingEntries` is an array of { path, safeId } passed through to
- * useEmbeddings so results can be keyed on globally-unique composite keys.
+ * The query is embedded in a Web Worker with nomic-embed-text (transformers.js),
+ * then the 768-dim vector is sent to the Supabase `match_lots` RPC, which runs
+ * the pgvector HNSW cosine search server-side and returns the top-K lot keys.
+ * No vectors are downloaded into the browser (the old CLIP approach fetched
+ * every auction's .embeddings binary and scanned it client-side).
  *
  * Returns:
- *   semanticIds   — Set of composite item keys (`${safeId}:${id}`) in top-K by
- *                   cosine similarity, or null when no query
+ *   semanticIds    — Set of composite item keys (`${safeId}:${id}`) in top-K by
+ *                    similarity, or null when there's no query / no result
  *   semanticStatus — 'loading' | 'ready' | 'error'
+ *
+ * When Supabase is unconfigured the hook reports 'error' and stays inert, so the
+ * static site still works (keyword search alone).
  */
-export function useSemanticSearch(query, embeddingEntries) {
-  // Start in 'loading' — the worker begins downloading the model immediately on mount
-  const [semanticStatus, setSemanticStatus] = useState('loading')
+export function useSemanticSearch(query) {
+  // Start in 'loading' — the worker downloads the model immediately on mount.
+  const [semanticStatus, setSemanticStatus] = useState(
+    isSupabaseConfigured ? 'loading' : 'error'
+  )
   const [lastSemanticIds, setLastSemanticIds] = useState(null)
   const workerRef = useRef(null)
   const queryIdRef = useRef(0)
-  const embeddingsRef = useRef(null)
 
-  const embeddings = useEmbeddings(embeddingEntries, Boolean(query))
-
+  // Spin up the worker once on mount; clean up on unmount.
   useEffect(() => {
-    embeddingsRef.current = embeddings
-  }, [embeddings])
-
-  // Spin up the worker once on mount; clean up on unmount
-  useEffect(() => {
+    if (!isSupabaseConfigured) return
     const worker = new Worker(
-      new URL('../workers/clipEncoder.js', import.meta.url),
+      new URL('../workers/nomicEncoder.js', import.meta.url),
       { type: 'module' }
     )
 
-    worker.onmessage = (e) => {
+    worker.onmessage = async (e) => {
       const { type, id, embedding } = e.data
       if (type === 'ready') {
         setSemanticStatus('ready')
-      } else if (type === 'embedding') {
-        if (id !== queryIdRef.current) return  // stale
-        const embs = embeddingsRef.current
-        if (!embs) { setLastSemanticIds(null); return }
-        const { vectors, ids, nDims, totalItems } = embs
-        setLastSemanticIds(dotProductTopK(embedding, vectors, ids, nDims, totalItems, TOP_K))
-      } else if (type === 'error') {
+        return
+      }
+      if (type === 'error') {
         setSemanticStatus('error')
+        return
+      }
+      if (type !== 'embedding') return
+      if (id !== queryIdRef.current) return // stale query
+
+      try {
+        const { data, error } = await supabase.rpc('match_lots', {
+          query_embedding: Array.from(embedding),
+          match_count: TOP_K,
+        })
+        if (error) throw error
+        if (id !== queryIdRef.current) return // a newer query landed during the await
+        setLastSemanticIds(
+          new Set((data || []).map(r => compositeKey(r.auction_safe_id, r.item_id)))
+        )
+      } catch (err) {
+        console.warn('match_lots RPC failed:', err)
+        setLastSemanticIds(null)
       }
     }
 
@@ -80,7 +76,7 @@ export function useSemanticSearch(query, embeddingEntries) {
     }
   }, [])
 
-  // Re-encode whenever the query changes (or when the model finishes loading)
+  // Re-encode whenever the query changes (or when the model finishes loading).
   useEffect(() => {
     const worker = workerRef.current
     if (!query || !worker || semanticStatus !== 'ready') return
@@ -88,7 +84,7 @@ export function useSemanticSearch(query, embeddingEntries) {
     worker.postMessage({ type: 'encode', query, id })
   }, [query, semanticStatus])
 
-  // When query is empty don't expose stale results from a previous search
+  // When query is empty don't expose stale results from a previous search.
   const semanticIds = query ? lastSemanticIds : null
 
   return { semanticIds, semanticStatus }

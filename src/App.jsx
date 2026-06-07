@@ -59,7 +59,6 @@ export default function App() {
     hideSource,
     showSource,
     items: rawItems,
-    embeddingEntries,
     loading,
     error,
     archiveLoading,
@@ -269,7 +268,7 @@ export default function App() {
     return new Set(searchIndex.search(searchQuery).map(r => r.id))
   }, [searchIndex, searchQuery])
 
-  const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery, embeddingEntries)
+  const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery)
 
   // Hybrid blend: intersect when both are available so semantic filters keyword false positives.
   // If keyword finds nothing (semantic-only query like "vintage mid-century"), use semantic alone.
