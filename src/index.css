@@ -298,15 +298,15 @@ body {
 .fp-control-row {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px 0;
+  gap: 4px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 .fp-control-row:last-child {
   border-bottom: none;
 }
 .fp-control-label {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -319,8 +319,8 @@ body {
 }
 .fp-control-row .segmented-option {
   flex: 1;
-  min-height: 44px;
-  font-size: 0.9rem;
+  min-height: 36px;
+  font-size: 0.85rem;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -335,12 +335,13 @@ body {
 .fp-pill-row {
   display: flex;
   gap: 8px;
-  padding: 6px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
 }
 .fp-pill-row .deals-toggle {
   flex: 1;
   justify-content: center;
-  min-height: 44px;
+  min-height: 36px;
 }
 
 /* ── Active filter chips bar ────────────────────────────────────────────── */
@@ -1679,13 +1680,13 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
-  min-height: 44px;
+  min-height: 40px;
 }
 .local-toggle input[type="checkbox"] {
   appearance: none;
@@ -3552,22 +3553,64 @@ a.cannons-comp-card:hover {
   font-size: 0.68rem;
 }
 
-/* Sidebar "Has" presence-filter checkboxes */
+/* "Only show items with…" presence-filter rows — iOS-style toggle layout */
 .has-filters .has-filter-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 0.85rem;
-  color: var(--text);
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
+  min-height: 40px;
 }
+.has-filters .has-filter-row:last-child {
+  border-bottom: none;
+}
+.has-filter-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.has-filter-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.has-filter-sublabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+/* Reuse the local-toggle switch styling */
 .has-filters .has-filter-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.has-filters .has-filter-row input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
   width: 16px;
   height: 16px;
-  flex: none;
-  accent-color: var(--accent);
-  cursor: pointer;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.2s, background 0.2s;
+}
+.has-filters .has-filter-row input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+.has-filters .has-filter-row input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+  background: #fff;
 }
 
 /* Arsenal Trivia — header-banner button + popover */
