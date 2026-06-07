@@ -443,18 +443,27 @@ export default function App() {
     <div className="app" style={{ '--header-height': `${isFinite(headerHeight) ? headerHeight : 0}px` }}>
       <header ref={headerRef} className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
         <div className="header-row">
-          <button
-            className="home-button"
-            onClick={() => { window.location.href = '/' }}
-            title="Go to home"
-            aria-label="Home"
-          >
-            <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
-          </button>
+          <div className="header-banner">
+            <button
+              className="home-button"
+              onClick={() => { window.location.href = '/' }}
+              title="Go to home"
+              aria-label="Home"
+            >
+              <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
+            </button>
 
-          <div className="header-title">
-            <h1 className="logo">James River Gooners</h1>
-            <span className="tagline">the best way to browse RVA auctions</span>
+            <div className="header-title">
+              <h1 className="logo">James River Gooners</h1>
+              <span className="tagline">the best way to browse RVA auctions</span>
+            </div>
+
+            <AccountButton
+              auth={auth}
+              cannonBids={auth.user ? cannonBids : null}
+              onSignInClick={() => setAuthOpen(true)}
+              onCannonLinkClick={() => setCannonLinkOpen(true)}
+            />
           </div>
 
           <div className="header-search-wrap">
@@ -531,12 +540,6 @@ export default function App() {
               <span aria-hidden="true">✨</span>
             </button>
             <ArsenalTrivia />
-            <AccountButton
-              auth={auth}
-              cannonBids={auth.user ? cannonBids : null}
-              onSignInClick={() => setAuthOpen(true)}
-              onCannonLinkClick={() => setCannonLinkOpen(true)}
-            />
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
           </div>
         </div>
