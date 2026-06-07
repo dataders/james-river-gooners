@@ -443,18 +443,27 @@ export default function App() {
     <div className="app" style={{ '--header-height': `${isFinite(headerHeight) ? headerHeight : 0}px` }}>
       <header ref={headerRef} className={`app-header${headerVisible ? '' : ' header-hidden'}`}>
         <div className="header-row">
-          <button
-            className="home-button"
-            onClick={() => { window.location.href = '/' }}
-            title="Go to home"
-            aria-label="Home"
-          >
-            <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
-          </button>
+          <div className="header-banner">
+            <button
+              className="home-button"
+              onClick={() => { window.location.href = '/' }}
+              title="Go to home"
+              aria-label="Home"
+            >
+              <img src="/arsenal-1930s.png" className="home-crest" alt="Arsenal FC Art Deco crest" />
+            </button>
 
-          <div className="header-title">
-            <h1 className="logo">James River Gooners</h1>
-            <span className="tagline">Cannon's Auctions · Richmond VA</span>
+            <div className="header-title">
+              <h1 className="logo">James River Gooners</h1>
+              <span className="tagline">the best way to browse RVA auctions</span>
+            </div>
+
+            <AccountButton
+              auth={auth}
+              cannonBids={auth.user ? cannonBids : null}
+              onSignInClick={() => setAuthOpen(true)}
+              onCannonLinkClick={() => setCannonLinkOpen(true)}
+            />
           </div>
 
           <div className="header-search-wrap">
@@ -465,36 +474,38 @@ export default function App() {
             />
           </div>
 
-          <button
-            type="button"
-            className={`filter-toggle-btn${filterOpen ? ' filter-toggle-btn--open' : ''}`}
-            onClick={toggleFilter}
-            aria-expanded={filterOpen}
-            aria-label="Toggle filters"
-          >
-            <span className="filter-toggle-icon" aria-hidden="true">⚙</span>
-            <span className="filter-toggle-label">Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="filter-count-badge">{activeFilterCount}</span>
-            )}
-          </button>
+          <div className="header-controls">
+            <button
+              type="button"
+              className={`filter-toggle-btn${filterOpen ? ' filter-toggle-btn--open' : ''}`}
+              onClick={toggleFilter}
+              aria-expanded={filterOpen}
+              aria-label="Toggle filters"
+            >
+              <span className="filter-toggle-icon" aria-hidden="true">⚙</span>
+              <span className="filter-toggle-label">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="filter-count-badge">{activeFilterCount}</span>
+              )}
+            </button>
 
-          <SortBar value={sort} onChange={setSort} />
+            <div className="layout-toggle" role="group" aria-label="Grid layout">
+              {[
+                { value: 'grid', label: '⊞', title: 'Grid view' },
+                { value: 'compact', label: '≡', title: 'Compact view' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`layout-toggle-btn${viewMode === opt.value ? ' active' : ''}`}
+                  aria-pressed={viewMode === opt.value}
+                  title={opt.title}
+                  onClick={() => setViewMode(opt.value)}
+                >{opt.label}</button>
+              ))}
+            </div>
 
-          <div className="layout-toggle" role="group" aria-label="Grid layout">
-            {[
-              { value: 'grid', label: '⊞', title: 'Grid view' },
-              { value: 'compact', label: '≡', title: 'Compact view' },
-            ].map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`layout-toggle-btn${viewMode === opt.value ? ' active' : ''}`}
-                aria-pressed={viewMode === opt.value}
-                title={opt.title}
-                onClick={() => setViewMode(opt.value)}
-              >{opt.label}</button>
-            ))}
+            <SortBar value={sort} onChange={setSort} />
           </div>
 
           <div className="header-actions">
@@ -529,12 +540,6 @@ export default function App() {
               <span aria-hidden="true">✨</span>
             </button>
             <ArsenalTrivia />
-            <AccountButton
-              auth={auth}
-              cannonBids={auth.user ? cannonBids : null}
-              onSignInClick={() => setAuthOpen(true)}
-              onCannonLinkClick={() => setCannonLinkOpen(true)}
-            />
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
           </div>
         </div>

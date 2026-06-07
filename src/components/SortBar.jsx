@@ -3,7 +3,7 @@ import { SORT_OPTIONS } from '../utils/sort'
 export function SortBar({ value, onChange }) {
   return (
     <div className="sort-bar">
-      <label className="sort-label" htmlFor="sort-select">Sort</label>
+      <label className="sort-icon-label" htmlFor="sort-select" title="Sort order" aria-label="Sort">↕</label>
       <select
         id="sort-select"
         className="sort-select"

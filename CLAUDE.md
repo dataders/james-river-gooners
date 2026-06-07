@@ -50,6 +50,10 @@ GOONERS_ENRICHMENT=1 uv run --with requests --with beautifulsoup4 --with pyarrow
 GOONERS_ENRICHMENT=1 uv run --with pyarrow --with anthropic python3 enrich.py "<safeId>"   # backfill existing read model
 ```
 
+## UI Changes — Screenshot Before Merging
+
+For any change that affects the visual layout (CSS, component structure, new controls), **take a Playwright screenshot of the affected area at mobile (375×667) and desktop (1280×800) viewports** using the dev server, send it to the user, and **wait for explicit approval before merging**. Use `npm run dev` + Playwright to capture the screenshot — do not rely on CI or the deployed site. The screenshot shows what the change actually looks like, not what you think it looks like.
+
 ## Key Constraints
 
 - Never use pip/pip3 — always `uv`
