@@ -1517,11 +1517,6 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(
-    authHeader.replace('Bearer ', ''),
-  )
-  if (authError || !user) return json({ error: 'Unauthorized' }, 401)
-
   let body: Record<string, unknown>
   try {
     body = await req.json()
@@ -1530,6 +1525,24 @@ Deno.serve(async (req: Request) => {
   }
 
   const { action, username, password } = body
+
+  // Service-account path for auto_bid: GitHub Action authenticates with a
+  // pre-shared secret (AUTO_BID_SECRET env var) instead of a user JWT.
+  // Avoids storing the user's personal Supabase credentials in CI.
+  if (action === 'auto_bid') {
+    const autoSecret = Deno.env.get('AUTO_BID_SECRET')
+    const autoUserId = Deno.env.get('AUTO_BID_USER_ID')
+    if (autoSecret && authHeader === `Bearer ${autoSecret}`) {
+      if (!autoUserId) return json({ error: 'AUTO_BID_USER_ID not configured' }, 500)
+      return autoBid(supabase, autoUserId)
+    }
+    // Secret mismatch — fall through to JWT validation (user can also call auto_bid)
+  }
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(
+    authHeader.replace('Bearer ', ''),
+  )
+  if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
   switch (action) {
     case 'save_credentials':
