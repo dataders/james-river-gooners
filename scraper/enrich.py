@@ -721,14 +721,16 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     the identified lots into Supabase.
 
     Spans the **active and archive** read models — ``--all`` covers every auction
-    in both; named ids resolve in either. With ``use_batch`` every selected
-    auction's lots are enriched in one combined Message Batch (one async
-    submission, 50% cost) before any file is rewritten — the efficient path for a
-    large historical backfill. Without it, each auction is enriched synchronously
-    in turn (the original behavior). After rewriting the local read model (the
-    primary deliverable), the enriched lots are mirrored to the Supabase
-    ``lot_enrichment`` table via the resilient ``maybe_export_enrichment`` hook
-    (a no-op without ``SUPABASE_SECRET_KEY``; warns rather than raising)."""
+    in both; named ids resolve in either. ``use_batch`` uses the Message Batches
+    API (50% cost); otherwise the synchronous path.
+
+    Processing is **per auction, write-and-mirror as it goes** — each auction is
+    enriched, its sidecars rewritten, and its identified lots mirrored to Supabase
+    before the next auction starts. So an interrupted run keeps every auction it
+    finished, and a rerun **resumes**: each auction's already-enriched lots are
+    reused via their input hash (``prior_by_id`` built from the on-disk rows) and
+    are not re-billed. The Supabase mirror is the resilient ``maybe_export_enrichment``
+    hook (a no-op without ``SUPABASE_SECRET_KEY``; warns rather than raising)."""
     if not is_enrichment_enabled():
         print("Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.", file=sys.stderr)
         return 1
@@ -750,30 +752,29 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     if not loaded:
         return 0
 
-    if use_batch:
-        # One batch across every selected auction's lots, so a 5,000-lot backfill
-        # is a single async submission rather than one synchronous run per auction.
-        all_rows = [row for _, _, rows in loaded for row in rows]
-        enrich_items_batch(all_rows, client=client)
-    else:
-        for _, _, rows in loaded:
-            enrich_items(rows, client=client)
+    from supabase_enrichment import maybe_export_enrichment
 
+    all_rows = []
     for items_dir, safe_id, rows in loaded:
+        # The on-disk rows are the prior state: any lot already enriched (carrying
+        # an input hash) is reused, so a rerun after an interruption skips the
+        # auctions/lots already done instead of re-billing them.
+        prior_by_id = {r["id"]: dict(r) for r in rows if r.get("id") is not None}
+        if use_batch:
+            enrich_items_batch(rows, client=client, prior_by_id=prior_by_id)
+        else:
+            enrich_items(rows, client=client, prior_by_id=prior_by_id)
+        # Persist + mirror this auction before moving on, so progress survives an
+        # interrupted run.
         _write_rows(items_dir, safe_id, rows)
         print(f"enriched + rewrote {safe_id} ({len(rows)} lots)")
         print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
+        maybe_export_enrichment(rows)
+        all_rows.extend(rows)
 
-    # Overall identification rate across the whole backfill, so a low-yield run is
-    # obvious at a glance (and which auctions dragged it down, from the per-auction
-    # lines above).
-    all_rows = [row for _, _, rows in loaded for row in rows]
+    # Overall identification rate, so a low-yield run is obvious at a glance (and
+    # which auctions dragged it down, from the per-auction lines above).
     print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
-
-    # Mirror the freshly-enriched lots into Supabase (identified lots only).
-    # Resilient: a no-op without credentials, warns rather than crashing.
-    from supabase_enrichment import maybe_export_enrichment
-    maybe_export_enrichment(all_rows)
     return 0
 
 

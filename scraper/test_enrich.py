@@ -553,14 +553,42 @@ class BackfillRunTests(unittest.TestCase):
                 rc = enrich._backfill([], use_batch=True, include_all=True)
 
         self.assertEqual(rc, 0)
-        # One combined batch for both lots.
-        self.assertEqual(client.messages.batches.created, 1)
-        # Both files rewritten.
+        # Per-auction (durable/resumable): one batch + one write + one mirror each.
+        self.assertEqual(client.messages.batches.created, 2)
         self.assertEqual(sorted(s for _, s, _ in writes), ["a1", "old1"])
-        # Mirror called once with both enriched lots.
-        self.assertEqual(len(mirrored), 1)
-        self.assertEqual(len(mirrored[0]), 2)
-        self.assertTrue(all(row["brand"] == "DeWalt" for row in mirrored[0]))
+        self.assertEqual(len(mirrored), 2)
+        self.assertEqual(sum(len(m) for m in mirrored), 2)
+        self.assertTrue(all(row["brand"] == "DeWalt" for m in mirrored for row in m))
+
+
+    def test_rerun_resumes_skipping_already_enriched(self):
+        # An on-disk auction whose lots already carry a matching input hash is
+        # reused on rerun — no batch is created, so a resumed backfill doesn't
+        # re-bill finished auctions.
+        with tempfile.TemporaryDirectory() as tmp:
+            active = Path(tmp) / "items"
+            active.mkdir(parents=True)
+            row = {"id": "x", "title": "DeWalt DCD771 drill", "images": [],
+                   "brand": "DeWalt", "modelOrSku": "DCD771", "condition": "used",
+                   "productUrl": "", "enrichmentConfidence": "high",
+                   "enrichmentModel": enrich.MODEL}
+            row["enrichmentInputHash"] = enrich.enrichment_fingerprint(row)
+            (active / "done1.ndjson").write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+            client = _FakeBatchClient({})  # would error if any lot were submitted
+            fake_supabase = types.ModuleType("supabase_enrichment")
+            fake_supabase.maybe_export_enrichment = lambda rows: None
+
+            with mock.patch.object(enrich, "_backfill_dirs", lambda: [active]), \
+                 mock.patch.object(enrich, "is_enrichment_enabled", lambda: True), \
+                 mock.patch.object(enrich, "_make_client", lambda: client), \
+                 mock.patch.object(enrich, "_write_rows", lambda *a: None), \
+                 mock.patch.object(enrich.time, "sleep", lambda *_: None), \
+                 mock.patch.dict(sys.modules, {"supabase_enrichment": fake_supabase}):
+                rc = enrich._backfill([], use_batch=True, include_all=True)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(client.messages.batches.created, 0)  # nothing re-submitted
 
 
 if __name__ == "__main__":
