@@ -35,7 +35,15 @@ jobs:
       # model is written and MotherDuck is an optional mirror.
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      GOONERS_EMBEDDINGS: '1'
+      # CLIP embeddings are OFF. They were superseded by Nomic (#165): both the
+      # browser's semantic search (match_lots RPC) and Cannon's comps now read
+      # the Supabase nomic_embeddings table, and the old CLIP frontend hook
+      # (useEmbeddings) is no longer wired up. Since #225 stopped committing the
+      # .embeddings sidecars to git, every CI run was a cold CLIP run —
+      # reloading the model and re-encoding every lot — which is what pushed the
+      # Cannon's scrape past its 45-minute timeout. Nomic stays incremental (it
+      # reads prior state from Supabase), so dropping CLIP only removes dead work.
+      GOONERS_EMBEDDINGS: '0'
       # Nomic Embed (text+vision, 768-dim) → Supabase pgvector (#165). Always on
       # when Supabase is configured; no-op when SUPABASE_SECRET_KEY is absent so
       # local/offline scrapes are unaffected.
