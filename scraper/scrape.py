@@ -8,6 +8,7 @@ Usage: python scrape.py <auction_url>
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -387,7 +388,6 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     existing_bids = load_existing_bids(items_path)
     if not has_bid_changes(all_items, existing_bids):
         print(f"\nNo bid changes detected; skipping write for {safe_id}")
-        import os
         if os.environ.get("GOONERS_EMBEDDINGS") == "1":
             emb_path = items_path.with_suffix(".embeddings")
             if not emb_path.exists():
@@ -451,7 +451,6 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
     print(f"Wrote {len(all_items)} items to {ndjson_path}")
 
-    import os
     if os.environ.get("SUPABASE_SECRET_KEY"):
         from supabase_lots import upsert_lots
         upsert_lots(all_items, safe_id)
