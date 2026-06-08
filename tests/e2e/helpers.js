@@ -1,10 +1,10 @@
 import { expect } from '@playwright/test'
 
-// Wait for the ndjson data pipeline to finish.
-// Reloads once if data loading errored — handles Vite dev-server cold-start on CI
-// where the first fetch can fail before the server has fully initialised.
+// Wait for the Supabase data load to finish.
+// Reloads once if data loading errored — handles both Vite dev-server cold-start
+// and Supabase free-tier database wake-up (~25-35s on first request after pause).
 export async function waitForLoad(page) {
-  await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+  await expect(page.locator('.loading')).toBeHidden({ timeout: 45_000 })
   if (await page.locator('.error').isVisible()) {
     await page.reload()
     await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })

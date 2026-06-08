@@ -48,10 +48,10 @@ export async function gotoApp(page, query = '') {
   return Date.now() - start
 }
 
-// Wait until the Parquet/ndjson load finishes and the grid is populated.
+// Wait until the Supabase data load finishes and the grid is populated.
 export async function waitForLoad(page) {
-  await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
-  await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.loading')).toBeHidden({ timeout: 45_000 })
+  await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 45_000 })
 }
 
 // Read the "<n> items" count from the grid header.
