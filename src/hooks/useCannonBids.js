@@ -13,10 +13,38 @@
 //
 // Falls back gracefully when Supabase is not configured or the user is
 // not signed in — returns unlinked state so the rest of the app is unaffected.
+//
+// Bid alert tracking: unseenAlertCount counts open items where is_winning===false
+// and the user hasn't yet viewed that outbid state in MyBidsPanel. Persisted in
+// localStorage under SEEN_ALERTS_KEY so it survives page reloads.
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { callProxy as _callProxy } from '../utils/cannonProxy'
+
+const SEEN_ALERTS_KEY = 'gooners-bid-alerts-seen'
+
+function loadSeenAlerts() {
+  try { return JSON.parse(localStorage.getItem(SEEN_ALERTS_KEY) || '{}') } catch { return {} }
+}
+
+function saveSeenAlerts(map) {
+  // eslint-disable-next-line no-empty
+  try { localStorage.setItem(SEEN_ALERTS_KEY, JSON.stringify(map)) } catch {}
+}
+
+function computeUnseen(rows) {
+  const seen = loadSeenAlerts()
+  let count = 0
+  for (const row of rows) {
+    if (row.item_closed) continue
+    if (row.is_winning === false) {
+      const prev = seen[String(row.auction_item_id)]
+      if (!prev || prev.winning !== false) count++
+    }
+  }
+  return count
+}
 
 function callProxy(action, params = {}) {
   return _callProxy(action, params, supabase)
@@ -28,6 +56,7 @@ export function useCannonBids(user) {
   const [bidItemIds, setBidItemIds] = useState(() => new Set())
   const [bidStatuses, setBidStatuses] = useState(() => new Map())
   const [bidRows, setBidRows] = useState([])
+  const [unseenAlertCount, setUnseenAlertCount] = useState(0)
   const [statusLoading, setStatusLoading] = useState(false)
   const [bidsLoading, setBidsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -82,6 +111,7 @@ export function useCannonBids(user) {
     setBidItemIds(ids)
     setBidStatuses(statusMap)
     setBidRows(rows)
+    setUnseenAlertCount(computeUnseen(rows))
     return rows
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
@@ -122,7 +152,7 @@ export function useCannonBids(user) {
   useEffect(() => {
     if (!linked || bidItemIds.size === 0) return
     const tick = () => { if (document.visibilityState !== 'hidden') refreshBidsRef.current() }
-    const id = setInterval(tick, 2 * 60 * 1000)
+    const id = setInterval(tick, 60 * 1000)
     return () => clearInterval(id)
   }, [linked, bidItemIds.size])
 
@@ -176,6 +206,12 @@ export function useCannonBids(user) {
       })
       return next
     })
+    // If winning after placing, mark this item seen so we don't show a stale outbid alert.
+    if (result.winning) {
+      const seen = loadSeenAlerts()
+      seen[id] = { winning: true }
+      saveSeenAlerts(seen)
+    }
     // Sync bidRows with the DB record the EF just wrote (non-blocking)
     loadBidsFromDb()
     return {
@@ -195,9 +231,23 @@ export function useCannonBids(user) {
     setBidItemIds(new Set())
     setBidStatuses(new Map())
     setBidRows([])
+    setUnseenAlertCount(0)
     loadedUserId.current = null
     return {}
   }, [])
+
+  // Mark all currently-outbid open items as seen. Call when MyBidsPanel opens
+  // so the badge clears once the user has viewed their bid status.
+  const markAlertsAsSeen = useCallback((rows = bidRows) => {
+    const seen = loadSeenAlerts()
+    for (const row of rows) {
+      if (!row.item_closed) {
+        seen[String(row.auction_item_id)] = { winning: row.is_winning }
+      }
+    }
+    saveSeenAlerts(seen)
+    setUnseenAlertCount(0)
+  }, [bidRows])
 
   return {
     linked,
@@ -205,6 +255,8 @@ export function useCannonBids(user) {
     bidItemIds,
     bidStatuses,
     bidRows,
+    unseenAlertCount,
+    markAlertsAsSeen,
     statusLoading,
     bidsLoading,
     error,

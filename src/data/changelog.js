@@ -9,6 +9,16 @@
 export const CHANGELOG = [
   {
     date: '2026-06-08',
+    title: 'Bid status notifications',
+    changes: [
+      { id: 'bid-alert-badge', icon: '🔴', text: 'A red badge now appears on the account icon when you\'ve been outbid on any active item — tap your profile to see what\'s changed.' },
+      { id: 'bid-outbid-highlight', icon: '📋', text: 'Outbid items are now highlighted with a red left border in My Bids so they jump out at a glance.' },
+      { id: 'bid-checked-time', icon: '🕐', text: 'Each item in My Bids now shows when its status was last checked, so you know exactly how fresh the winning/outbid information is.' },
+      { id: 'bid-poll-faster', icon: '⚡', text: 'Bid statuses now refresh every minute (was every 2 minutes) while the page is open.' },
+    ],
+  },
+  {
+    date: '2026-06-08',
     title: 'My Bids panel & live bid prices',
     changes: [
       { id: 'my-bids-panel', icon: '🏷', text: 'My Bids is now a history panel instead of a grid filter — it shows all your bids (including from ended auctions) with winning/outbid/closed status and current prices in one place.' },
