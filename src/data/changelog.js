@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-07',
+    title: 'Semantic search on iPhone',
+    changes: [
+      { id: 'ios-semantic-search-restored', icon: '📱', text: 'Semantic search now works on iPhone and iPad — results rank by meaning, not just keywords, the same as desktop.' },
+    ],
+  },
+  {
+    date: '2026-06-07',
     title: 'Smarter semantic search',
     changes: [
       { id: 'nomic-semantic-search', icon: '🔍', text: 'Search is smarter: it now understands what you mean and also matches lots by their photos, so even lots with vague titles like "Lot - 27" turn up for searches like "power tools" — and it loads instantly with nothing to download first.' },
