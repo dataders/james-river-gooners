@@ -720,7 +720,17 @@ export default function App() {
                   <p className="no-deals-hint">
                     {cannonBids.bidsLoading
                       ? 'Fetching your bid history from Cannon\'s…'
-                      : 'Your Cannon\'s bid history didn\'t match any currently listed items. Try enabling archived auctions.'}
+                      : archiveMode === 'active'
+                        ? <>Your bids may be from a closed auction.{' '}
+                            <button
+                              type="button"
+                              className="bids-retry-button"
+                              onClick={() => changeArchiveMode('all')}
+                            >
+                              Show all auctions
+                            </button>
+                          </>
+                        : 'Your Cannon\'s bid history didn\'t match any listed items.'}
                   </p>
                 </>
               )}
