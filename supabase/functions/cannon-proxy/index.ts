@@ -400,6 +400,9 @@ async function deleteCredentials(
 ): Promise<Response> {
   const { error } = await supabase.from('cannon_credentials').delete().eq('user_id', userId)
   if (error) return json({ error: error.message }, 500)
+  // Clear bid history — it's tied to the specific Cannon's account being unlinked.
+  // On re-link, get_bids will re-seed from the new account's watchlist.
+  await supabase.from('user_bids').delete().eq('user_id', userId)
   return json({ ok: true })
 }
 
