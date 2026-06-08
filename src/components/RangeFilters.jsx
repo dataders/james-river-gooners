@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState, useLayoutEffect } from 'react'
 
 function hoursUntil(endDate) {
   if (!endDate) return Infinity
@@ -47,22 +47,36 @@ function buildHistogram(values, min, max, logScale) {
   return bins
 }
 
-function Histogram({ bins, valueLoPct, valueHiPct }) {
+// Thumb radius must match half the CSS width of ::-webkit-slider-thumb (16px → 8px).
+// We compute bar pixel positions using the same formula the browser uses for the thumb
+// center, so bins always align with the slider track across all browsers and screen sizes.
+const THUMB_RADIUS = 8
+
+function Histogram({ bins, valueLoPct, valueHiPct, containerWidth }) {
+  if (!containerWidth) return null
+  const trackWidth = containerWidth - 2 * THUMB_RADIUS
   const sqrtPeak = Math.sqrt(Math.max(...bins, 1))
 
   return (
-    <svg className="histogram" viewBox={`0 0 ${NUM_BINS} 20`} preserveAspectRatio="none">
+    <svg
+      className="histogram"
+      viewBox={`0 0 ${containerWidth} 20`}
+      preserveAspectRatio="none"
+      style={{ left: 0, right: 0 }}
+    >
       {bins.map((count, i) => {
         const barLo = i / NUM_BINS
         const barHi = (i + 1) / NUM_BINS
         const inRange = barHi >= valueLoPct && barLo <= valueHiPct
         const h = (Math.sqrt(count) / sqrtPeak) * 20
+        const x = THUMB_RADIUS + barLo * trackWidth
+        const w = (barHi - barLo) * trackWidth * 0.85
         return (
           <rect
             key={i}
-            x={i}
+            x={x}
             y={20 - h}
-            width={0.85}
+            width={w}
             height={h}
             className={inRange ? 'hist-bar-active' : 'hist-bar'}
           />
@@ -73,6 +87,18 @@ function Histogram({ bins, valueLoPct, valueHiPct }) {
 }
 
 function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, formatBoundLo, formatBoundHi, onLoChange, onHiChange, histogram, logScale }) {
+  const sliderContainerRef = useRef(null)
+  const [containerWidth, setContainerWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = sliderContainerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(entries => {
+      setContainerWidth(Math.round(entries[0].contentRect.width))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const loAtMin = valueLo <= min
   const hiAtMax = valueHi >= max
   const summary = loAtMin && hiAtMax
@@ -130,9 +156,9 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
         {label}
         <span className="range-value">{summary}</span>
       </label>
-      <div className="dual-slider">
+      <div className="dual-slider" ref={sliderContainerRef}>
         {histogram && (
-          <Histogram bins={histogram} valueLoPct={valueLoPct} valueHiPct={valueHiPct} />
+          <Histogram bins={histogram} valueLoPct={valueLoPct} valueHiPct={valueHiPct} containerWidth={containerWidth} />
         )}
         <input
           type="range"
