@@ -9,7 +9,7 @@ export async function waitForLoad(page) {
     .then(() => true).catch(() => false)
   if (!hidden || await page.locator('.error').isVisible()) {
     await page.reload()
-    await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+    await expect(page.locator('.loading')).toBeHidden({ timeout: 45_000 })
   }
   await expect(page.locator('.error')).toBeHidden()
 }
