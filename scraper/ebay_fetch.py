@@ -10,7 +10,7 @@ import random
 import re
 import shlex
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from time import sleep

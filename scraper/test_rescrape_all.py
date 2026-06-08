@@ -142,7 +142,7 @@ class FinalizeClosedFileTest(unittest.TestCase):
 
             finalize_closed_file(path)
 
-            rows = [json.loads(l) for l in path.with_suffix(".ndjson").read_text().splitlines() if l.strip()]
+            rows = [json.loads(line) for line in path.with_suffix(".ndjson").read_text().splitlines() if line.strip()]
             self.assertEqual(rows[0]["closed"], True)
             self.assertEqual(rows[0]["finalBid"], 120.0)
             # A lot that closed with no bids has no sold price.
@@ -162,7 +162,7 @@ class FinalizeClosedFileTest(unittest.TestCase):
 
             finalize_closed_file(path)
 
-            rows = [json.loads(l) for l in path.with_suffix(".ndjson").read_text().splitlines() if l.strip()]
+            rows = [json.loads(line) for line in path.with_suffix(".ndjson").read_text().splitlines() if line.strip()]
             self.assertEqual(rows[0]["finalBid"], 999.0)
 
 

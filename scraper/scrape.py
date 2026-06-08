@@ -167,7 +167,7 @@ def create_session(auction_url: str) -> tuple[requests.Session, str]:
 
 def fetch_categories(session: requests.Session, auction_id: str) -> dict:
     """Fetch category list from Maxanet API. Returns {id: name} dict."""
-    url = f"https://bid.cannonsauctions.com/Public/Lookup/GetCategories"
+    url = "https://bid.cannonsauctions.com/Public/Lookup/GetCategories"
     resp = session.get(url, params={"AuctionId": auction_id}, timeout=30)
     resp.raise_for_status()
     data = resp.json()
@@ -298,7 +298,6 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     # Category from hidden Types input
     cat_input = card.find("input", attrs={"name": lambda n: n and str(n).startswith("Types")})
     raw_category = cat_input["value"] if cat_input else ""
-    category = normalize_category(raw_category, source="cannons")
 
     # Detail URL
     detail_link = card.select_one('a[href*="AuctionItemDetail"]')

@@ -21,7 +21,6 @@ CLI usage (one-time backfill of existing NDJSON files):
 
 import argparse
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -292,7 +291,7 @@ def backfill(
         paths = sorted(ITEMS_DIR.glob("*.ndjson"))
         print(f"Backfilling {len(paths)} active auction file(s)…")
         for ndjson_path in paths:
-            items = [json.loads(l) for l in ndjson_path.read_text().splitlines() if l.strip()]
+            items = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
             if items:
                 active_total += upsert_lots(items, ndjson_path.stem, url=url, key=key, session=session)
 
@@ -301,7 +300,7 @@ def backfill(
         paths = sorted(ARCHIVE_ITEMS_DIR.glob("*.ndjson"))
         print(f"Backfilling {len(paths)} archived auction file(s)…")
         for ndjson_path in paths:
-            items = [json.loads(l) for l in ndjson_path.read_text().splitlines() if l.strip()]
+            items = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
             if items:
                 archived_total += archive_lots(ndjson_path.stem, items, url=url, key=key, session=session)
 

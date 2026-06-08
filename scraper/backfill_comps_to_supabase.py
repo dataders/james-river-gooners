@@ -13,7 +13,6 @@ the ledger knows it was tried. Run via the "Refresh eBay Comps" workflow with
 ``backfill_from_json=true`` (it has the Supabase secret).
 """
 
-import sys
 from decimal import Decimal, InvalidOperation
 
 from ebay_comps import EBAY_COMPS_DIR, load_comp_file

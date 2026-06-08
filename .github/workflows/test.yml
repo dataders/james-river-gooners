@@ -76,6 +76,38 @@ jobs:
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
             --with 'duckdb==1.5.2' --with numpy --with pytest python -m pytest -q
 
+  scraper-lint:
+    name: Scraper lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      # Blocking: ruff's default rules (incl. pyflakes F-codes) catch real bugs
+      # like names used before assignment — exactly the class of error a unit
+      # test on a network-bound scrape path would not.
+      - name: Run ruff
+        run: |
+          cd scraper
+          uvx ruff@0.15.8 check .
+
+  scraper-type-check:
+    name: Scraper type check (ty)
+    runs-on: ubuntu-latest
+    # Non-blocking for now: ty is pre-1.0 and the scraper is largely untyped,
+    # so surface its findings without failing the build.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Run ty
+        run: |
+          cd scraper
+          uvx ty@0.0.44 check .
+
   e2e:
     name: E2E tests (Playwright)
     runs-on: ubuntu-latest
