@@ -8,6 +8,14 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-08',
+    title: 'Live bid prices for your bids',
+    changes: [
+      { id: 'bid-price-live-display', icon: '💰', text: 'The current bid shown on items you\'ve bid on now reflects the true Maxanet price — so if a proxy bidder immediately outbids you, you see the real current bid right away, not the stale pre-bid price.' },
+      { id: 'bid-auto-poll', icon: '🔄', text: 'Bid prices on items you\'ve bid on refresh automatically every 2 minutes while you\'re on the page, so outbids by other bidders surface without needing to hit Refresh.' },
+    ],
+  },
+  {
     date: '2026-06-07',
     title: 'Semantic search on iPhone',
     changes: [

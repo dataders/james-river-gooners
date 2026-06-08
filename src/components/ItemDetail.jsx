@@ -141,7 +141,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
           <div className="detail-price-section">
             <div className="detail-price-label">Current bid</div>
             <div className="detail-bid-row">
-              <span className="detail-bid">${item.currentBid.toLocaleString()}</span>
+              <span className="detail-bid">${(bidStatus?.currentBid ?? item.currentBid).toLocaleString()}</span>
               <span className="detail-bids">
                 {item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}
                 {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}

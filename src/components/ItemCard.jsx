@@ -82,7 +82,7 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
           </div>
         )}
         <div className="item-bid-row">
-          <span className="item-bid">${item.currentBid.toLocaleString()}</span>
+          <span className="item-bid">${(bidStatus?.currentBid ?? item.currentBid).toLocaleString()}</span>
           <span className="item-bids">
             {item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}
             {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}
