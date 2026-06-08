@@ -17,7 +17,6 @@ export function ActiveFilters({
   localOnly, onClearLocal,
   archiveMode, onClearArchive,
   decisionView, onClearDecision,
-  showMyBidsOnly, onClearMyBids,
   bestDeals, onClearBestDeals,
   minPrice, maxPrice, onClearPrice,
   minBids, maxBids, onClearBids,
@@ -41,7 +40,6 @@ export function ActiveFilters({
   if (archiveMode === 'both') chips.push({ label: 'All auctions', onRemove: onClearArchive })
   if (decisionView === 'favorites') chips.push({ label: 'Favorites', onRemove: onClearDecision })
   if (decisionView === 'ignored') chips.push({ label: 'Ignored', onRemove: onClearDecision })
-  if (showMyBidsOnly) chips.push({ label: 'My Bids', onRemove: onClearMyBids })
   if (bestDeals) chips.push({ label: 'Best deals', onRemove: onClearBestDeals })
   if (minPrice !== null || maxPrice !== null) {
     const lo = minPrice != null ? `$${minPrice}` : '$0'

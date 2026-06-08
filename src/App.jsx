@@ -36,6 +36,7 @@ import { TutorialModal } from './components/TutorialModal'
 import { WhatsNewModal } from './components/WhatsNewModal'
 import { AuthModal } from './components/AuthModal'
 import { CannonLinkModal } from './components/CannonLinkModal'
+import { MyBidsPanel } from './components/MyBidsPanel'
 import { ImageSearchModal } from './components/ImageSearchModal'
 import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
@@ -161,7 +162,7 @@ export default function App() {
   )
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [showIgnoredOnly, setShowIgnoredOnly] = useState(false)
-  const [showMyBidsOnly, setShowMyBidsOnly] = useState(false)
+  const [myBidsPanelOpen, setMyBidsPanelOpen] = useState(false)
   const [showEnrichedOnly, setShowEnrichedOnly] = useState(false)
   const [swipeOpen, setSwipeOpen] = useState(false)
   const [swipeItems, setSwipeItems] = useState([])
@@ -347,10 +348,9 @@ export default function App() {
     if (showIgnoredOnly) return displayItems.filter(isIgnored)
     let result = displayItems.filter(item => !isIgnored(item))
     if (showFavoritesOnly) result = result.filter(isFavorite)
-    if (showMyBidsOnly) result = result.filter(item => cannonBids.bidItemIds.has(String(item.id)))
     if (showEnrichedOnly) result = result.filter(hasEnrichment)
     return result
-  }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds, showEnrichedOnly])
+  }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showEnrichedOnly])
 
   // Count bids against loaded listings only — don't count seeded bids for
   // auctions not in the read model. Computed from filteredItems (respects
@@ -413,7 +413,6 @@ export default function App() {
     if (localOnly) n++
     if (archiveMode !== 'active') n++
     if (decisionView !== 'all') n++
-    if (showMyBidsOnly) n++
     if (bestDeals) n++
     if (minPrice !== null || maxPrice !== null) n++
     if (minBids !== null || maxBids !== null) n++
@@ -426,13 +425,12 @@ export default function App() {
     if (excludedAuctions.length > 0) n++
     if (searchQuery.trim()) n++
     return n
-  }, [localOnly, archiveMode, decisionView, showMyBidsOnly, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, excludedAuctions, searchQuery])
+  }, [localOnly, archiveMode, decisionView, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, excludedAuctions, searchQuery])
 
   const clearAllFilters = useCallback(() => {
     setLocalOnly(false)
     changeArchiveMode('active')
     setDecisionView('all')
-    setShowMyBidsOnly(false)
     setBestDeals(false)
     syncUrlParam('bestDeals', false)
     setMinPrice(null)
@@ -571,8 +569,7 @@ export default function App() {
           onDecisionViewChange={setDecisionView}
           localOnly={localOnly}
           onLocalOnlyChange={setLocalOnly}
-          showMyBidsOnly={showMyBidsOnly}
-          onShowMyBidsOnlyChange={setShowMyBidsOnly}
+          onMyBidsPanelOpen={() => setMyBidsPanelOpen(true)}
           bestDeals={bestDeals}
           onBestDealsToggle={handleBestDealsToggle}
           favoriteCount={favoriteIds.length}
@@ -625,8 +622,6 @@ export default function App() {
             onClearArchive={() => changeArchiveMode('active')}
             decisionView={decisionView}
             onClearDecision={() => setDecisionView('all')}
-            showMyBidsOnly={showMyBidsOnly}
-            onClearMyBids={() => setShowMyBidsOnly(false)}
             bestDeals={bestDeals}
             onClearBestDeals={() => { setBestDeals(false); syncUrlParam('bestDeals', false) }}
             minPrice={minPrice} maxPrice={maxPrice}
@@ -695,62 +690,6 @@ export default function App() {
                 next run.
               </p>
             </div>
-          ) : showMyBidsOnly && finalItems.length === 0 ? (
-            <div className="no-deals-message">
-              <div className="item-count">0 items</div>
-              {cannonBids.error ? (
-                <>
-                  <p>Couldn't load your bids from Cannon's.</p>
-                  {/session expired|not logged in|login failed/i.test(cannonBids.error) ? (
-                    <p className="no-deals-hint">
-                      Your Cannon&apos;s login didn&apos;t work — your password may have changed.{' '}
-                      <button
-                        type="button"
-                        className="bids-retry-button"
-                        onClick={() => setCannonLinkOpen(true)}
-                      >
-                        Update credentials
-                      </button>
-                      <br /><small style={{opacity:0.5}}>{cannonBids.error}</small>
-                    </p>
-                  ) : (
-                    <>
-                      <p className="no-deals-hint bids-error">{cannonBids.error}</p>
-                      <p className="no-deals-hint">
-                        This is a problem reaching Cannon&apos;s — not a missing match.{' '}
-                        <button
-                          type="button"
-                          className="bids-retry-button"
-                          onClick={cannonBids.refreshBids}
-                          disabled={cannonBids.bidsLoading}
-                        >
-                          {cannonBids.bidsLoading ? 'Retrying…' : 'Retry'}
-                        </button>
-                      </p>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p>No bids found in current auctions.</p>
-                  <p className="no-deals-hint">
-                    {cannonBids.bidsLoading
-                      ? 'Fetching your bid history from Cannon\'s…'
-                      : archiveMode === 'active'
-                        ? <>Your bids may be from a closed auction.{' '}
-                            <button
-                              type="button"
-                              className="bids-retry-button"
-                              onClick={() => changeArchiveMode('all')}
-                            >
-                              Show all auctions
-                            </button>
-                          </>
-                        : 'Your Cannon\'s bid history didn\'t match any listed items.'}
-                  </p>
-                </>
-              )}
-            </div>
           ) : (
             <ItemGrid
               items={sortedItems}
@@ -775,6 +714,10 @@ export default function App() {
 
       {cannonLinkOpen && auth.user && (
         <CannonLinkModal cannonBids={cannonBids} onClose={() => setCannonLinkOpen(false)} />
+      )}
+
+      {myBidsPanelOpen && auth.user && (
+        <MyBidsPanel cannonBids={cannonBids} onClose={() => setMyBidsPanelOpen(false)} />
       )}
 
       {selectedItem && (

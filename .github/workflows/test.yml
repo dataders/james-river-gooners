@@ -92,6 +92,15 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
+      - name: Warm up Supabase database
+        run: |
+          curl -sf -o /dev/null \
+            "$VITE_SUPABASE_URL/rest/v1/public_active_lots?select=count&limit=1" \
+            -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" || true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
       - name: Run E2E tests
         run: npm run test:e2e
         env:
@@ -121,6 +130,15 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
+
+      - name: Warm up Supabase database
+        run: |
+          curl -sf -o /dev/null \
+            "$VITE_SUPABASE_URL/rest/v1/public_active_lots?select=count&limit=1" \
+            -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" || true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Run usability benchmark
         run: npm run test:usability
