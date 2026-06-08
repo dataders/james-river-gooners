@@ -2284,6 +2284,27 @@ body {
 .account-icon-btn:hover { border-color: var(--accent); background: var(--surface); }
 .account-icon-btn[aria-expanded="true"] { border-color: var(--accent); background: var(--surface); }
 
+/* Red notification badge on the account icon button */
+.bid-alert-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #e53e3e;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--bg);
+  pointer-events: none;
+}
+
 .account-dropdown {
   position: absolute;
   right: 0;
@@ -3869,6 +3890,18 @@ a.cannons-comp-card:hover {
   margin: 0;
 }
 
+.my-bids-outbid-count {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.my-bids-refreshed-at {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 2px 0 0;
+  opacity: 0.7;
+}
+
 .my-bids-refresh {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -3908,6 +3941,10 @@ a.cannons-comp-card:hover {
 }
 .my-bid-row.mb-closed {
   opacity: 0.65;
+}
+.my-bid-row.mb-outbid {
+  border-left: 3px solid #e53e3e;
+  padding-left: 17px;
 }
 .my-bid-row:last-child {
   border-bottom: none;

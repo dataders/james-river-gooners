@@ -4,6 +4,13 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-08 — Bid status notifications
+
+- 🔴 **Bid alert badge** — a red badge now appears on the account icon when you've been outbid on any active item — tap your profile to see what's changed.
+- 📋 **Outbid highlight** — outbid items are now highlighted with a red left border in My Bids so they jump out at a glance.
+- 🕐 **Checked time** — each item in My Bids now shows when its status was last checked, so you know exactly how fresh the winning/outbid information is.
+- ⚡ **Faster bid refresh** — bid statuses now refresh every minute (was every 2 minutes) while the page is open.
+
 ## 2026-06-07 — Smarter semantic search
 
 - 🔍 **Smarter search** — search now understands what you mean and also matches lots by their photos, so even lots with vague titles like "Lot - 27" turn up for searches like "power tools" — and it loads instantly with nothing to download first.

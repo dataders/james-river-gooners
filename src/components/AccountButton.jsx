@@ -61,17 +61,23 @@ export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkCli
   if (!auth.available) return null
 
   if (auth.user) {
+    const alertCount = cannonBids?.unseenAlertCount ?? 0
     return (
       <div className="account-menu" ref={ref}>
         <button
           type="button"
           className="account-icon-btn"
           onClick={openDropdown}
-          aria-label="Account menu"
+          aria-label={alertCount > 0 ? `Account menu (${alertCount} bid update${alertCount > 1 ? 's' : ''})` : 'Account menu'}
           aria-expanded={open}
           aria-haspopup="menu"
         >
           <PersonIcon />
+          {alertCount > 0 && (
+            <span className="bid-alert-badge" aria-hidden="true">
+              {alertCount > 9 ? '9+' : alertCount}
+            </span>
+          )}
         </button>
         {open && (
           <div className="account-dropdown" role="menu">

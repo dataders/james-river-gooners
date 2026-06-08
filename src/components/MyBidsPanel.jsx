@@ -3,6 +3,8 @@
 // open/outbid, then closed. Reads directly from cannonBids.bidRows so no
 // additional data fetch is needed.
 
+import { useEffect } from 'react'
+
 function timeAgo(isoString) {
   if (!isoString) return ''
   const diff = Date.now() - new Date(isoString).getTime()
@@ -23,7 +25,12 @@ function statusOrder(row) {
 }
 
 export function MyBidsPanel({ cannonBids, onClose }) {
-  const { bidRows, bidsLoading, refreshBids, error } = cannonBids
+  const { bidRows, bidsLoading, refreshBids, markAlertsAsSeen, error } = cannonBids
+
+  // Clear the notification badge as soon as the panel opens.
+  useEffect(() => {
+    markAlertsAsSeen?.()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const sorted = [...bidRows].sort((a, b) => {
     const so = statusOrder(a) - statusOrder(b)
@@ -33,6 +40,13 @@ export function MyBidsPanel({ cannonBids, onClose }) {
 
   const openCount = bidRows.filter(r => !r.item_closed).length
   const winningCount = bidRows.filter(r => !r.item_closed && r.is_winning === true).length
+  const outbidCount = bidRows.filter(r => !r.item_closed && r.is_winning === false).length
+
+  // Oldest status_refreshed_at among open items tells us when all statuses were last synced.
+  const openRows = bidRows.filter(r => !r.item_closed && r.status_refreshed_at)
+  const oldestRefresh = openRows.length > 0
+    ? openRows.reduce((min, r) => r.status_refreshed_at < min ? r.status_refreshed_at : min, openRows[0].status_refreshed_at)
+    : null
 
   return (
     <div
@@ -48,7 +62,11 @@ export function MyBidsPanel({ cannonBids, onClose }) {
                 {bidRows.length} total
                 {openCount > 0 && ` · ${openCount} open`}
                 {winningCount > 0 && ` · ${winningCount} winning`}
+                {outbidCount > 0 && <span className="my-bids-outbid-count"> · {outbidCount} outbid</span>}
               </p>
+            )}
+            {oldestRefresh && (
+              <p className="my-bids-refreshed-at">Checked {timeAgo(oldestRefresh)}</p>
             )}
           </div>
           <div className="my-bids-header-actions">
@@ -83,7 +101,7 @@ export function MyBidsPanel({ cannonBids, onClose }) {
         ) : (
           <ul className="my-bids-list">
             {sorted.map(row => (
-              <li key={row.auction_item_id} className={`my-bid-row${row.item_closed ? ' mb-closed' : ''}`}>
+              <li key={row.auction_item_id} className={`my-bid-row${row.item_closed ? ' mb-closed' : ''}${!row.item_closed && row.is_winning === false ? ' mb-outbid' : ''}`}>
                 <div className="mb-title">
                   {row.item_title || `Item ${row.auction_item_id}`}
                 </div>
@@ -105,7 +123,11 @@ export function MyBidsPanel({ cannonBids, onClose }) {
                   {row.bid_amount != null && (
                     <span className="mb-your-bid">Your bid: ${row.bid_amount.toLocaleString()}</span>
                   )}
-                  <span className="mb-time">{timeAgo(row.last_bid_at)}</span>
+                  {!row.item_closed && row.status_refreshed_at ? (
+                    <span className="mb-time" title={`Bid placed ${timeAgo(row.last_bid_at)}`}>checked {timeAgo(row.status_refreshed_at)}</span>
+                  ) : (
+                    <span className="mb-time">{timeAgo(row.last_bid_at)}</span>
+                  )}
                 </div>
               </li>
             ))}
