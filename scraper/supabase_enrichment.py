@@ -50,13 +50,18 @@ ENRICHMENT_COLUMNS = (
     "raw_category",
     "brand",
     "model_or_sku",
+    "product_type",
+    "search_query",
     "condition",
     "product_url",
+    "brand_confidence",
+    "model_confidence",
     "confidence",
     "model",
     "image_url",
     "detail_url",
     "source",
+    "input_hash",
 )
 
 DEFAULT_ITEMS_DIR = Path(__file__).resolve().parent.parent / "public" / "data" / "items"
@@ -138,13 +143,18 @@ def enrichment_row(lot: dict) -> dict | None:
         "raw_category": lot.get("rawCategory"),
         "brand": lot.get("brand") or "",
         "model_or_sku": lot.get("modelOrSku") or "",
+        "product_type": lot.get("productType") or "",
+        "search_query": lot.get("searchQuery") or "",
         "condition": lot.get("condition") or "",
         "product_url": lot.get("productUrl") or "",
+        "brand_confidence": lot.get("brandConfidence") or "",
+        "model_confidence": lot.get("modelConfidence") or "",
         "confidence": confidence,
         "model": lot.get("enrichmentModel") or "",
         "image_url": _first_image(lot),
         "detail_url": lot.get("detailUrl"),
         "source": lot.get("source"),
+        "input_hash": lot.get("enrichmentInputHash") or "",
     }
     return {column: json_safe(row.get(column)) for column in ENRICHMENT_COLUMNS}
 
@@ -227,6 +237,78 @@ def maybe_export_enrichment(items: list[dict], session=None) -> int:
         return 0
     print(f"  upserted {written} enrichment row(s) to Supabase")
     return written
+
+
+def load_prior_enrichment_from_supabase(
+    safe_id: str,
+    *,
+    url: str = None,
+    key: str = None,
+    session=None,
+) -> dict:
+    """Load prior enrichment for one auction from the lot_enrichment table.
+
+    Returns ``{item_id: camelCase_dict}`` in the same shape as
+    ``enrich.load_prior_enrichment`` so callers can use either interchangeably.
+    The dict has at minimum all ENRICHMENT_FIELDS (brand, modelOrSku, …,
+    enrichmentInputHash) needed by ``enrich.reuse_prior_enrichment``.
+
+    Returns an empty dict when Supabase is unconfigured or the table has no rows
+    for this auction yet (first scrape of a new auction).
+    """
+    from supabase_comps import resolve_credentials
+
+    url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return {}
+
+    import requests as _requests
+
+    session = session or _requests.Session()
+    endpoint = f"{url.rstrip('/')}/rest/v1/{ENRICHMENT_TABLE}"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+    }
+    PAGE = 1000
+    rows = []
+    offset = 0
+    while True:
+        resp = session.get(
+            endpoint,
+            headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
+            params={"auction_safe_id": f"eq.{safe_id}", "select": "*"},
+            timeout=30,
+        )
+        if not resp.ok:
+            return {}
+        batch = resp.json()
+        rows.extend(batch)
+        if len(batch) < PAGE:
+            break
+        offset += len(batch)
+
+    prior: dict = {}
+    for row in rows:
+        item_id = row.get("item_id")
+        if not item_id:
+            continue
+        prior[item_id] = {
+            "id": item_id,
+            "brand": row.get("brand") or "",
+            "modelOrSku": row.get("model_or_sku") or "",
+            "productType": row.get("product_type") or "",
+            "searchQuery": row.get("search_query") or "",
+            "condition": row.get("condition") or "",
+            "productUrl": row.get("product_url") or "",
+            "brandConfidence": row.get("brand_confidence") or "",
+            "modelConfidence": row.get("model_confidence") or "",
+            "enrichmentConfidence": row.get("confidence") or "",
+            "enrichmentModel": row.get("model") or "",
+            "enrichmentInputHash": row.get("input_hash") or "",
+        }
+    return prior
 
 
 def _iter_ndjson(path: Path):

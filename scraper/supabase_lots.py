@@ -8,6 +8,11 @@ latency is unchanged.
 Writes use the secret key (bypasses RLS); the browser reads
 ``public_active_lots`` / ``public_archived_lots`` with the publishable key.
 
+Also provides read-back helpers (``fetch_lots_for_auction``,
+``list_auction_safe_ids``) used by the ``--from-supabase`` backfill paths in
+``embed_nomic.py``, ``enrich.py``, and ``sold_history.py`` so those workflows
+can run without committed NDJSON files.
+
 CLI usage (one-time backfill of existing NDJSON files):
     uv run --with requests python3 supabase_lots.py --backfill
     uv run --with requests python3 supabase_lots.py --backfill --active-only
@@ -140,6 +145,124 @@ def archive_lots(
 
     print(f"Archived {len(rows)} lots for {safe_id} in Supabase")
     return len(rows)
+
+
+def _row_to_item(row: dict) -> dict:
+    """Convert a Supabase snake_case ``lots`` row to the camelCase item dict."""
+    images = row.get("images") or []
+    if isinstance(images, str):
+        try:
+            images = json.loads(images)
+        except Exception:
+            images = [images] if images else []
+    return {
+        "auctionSafeId": row.get("auction_safe_id"),
+        "id": row.get("item_id"),
+        "lotNumber": row.get("lot_number"),
+        "title": row.get("title"),
+        "description": row.get("description"),
+        "currentBid": row.get("current_bid"),
+        "totalBids": row.get("total_bids"),
+        "uniqueBidders": row.get("unique_bidders"),
+        "endDate": row.get("end_date"),
+        "images": images,
+        "category": row.get("category"),
+        "rawCategory": row.get("raw_category"),
+        "detailUrl": row.get("detail_url"),
+        "auctionId": row.get("auction_id"),
+        "auctionTitle": row.get("auction_title"),
+        "auctionEndDate": row.get("auction_end_date"),
+        "scrapedAt": row.get("scraped_at"),
+        "source": row.get("source"),
+        "finalBid": row.get("final_bid"),
+        "closed": row.get("closed"),
+    }
+
+
+def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[dict]:
+    """Paginate through a PostgREST endpoint and return all rows."""
+    PAGE = 1000
+    rows = []
+    offset = 0
+    while True:
+        resp = session.get(
+            endpoint,
+            headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
+            params=params,
+            timeout=30,
+        )
+        if not resp.ok:
+            raise RuntimeError(f"Supabase GET failed: {resp.status_code} {resp.text[:300]}")
+        batch = resp.json()
+        rows.extend(batch)
+        if len(batch) < PAGE:
+            break
+        offset += len(batch)
+    return rows
+
+
+def list_auction_safe_ids(
+    *,
+    url: str = None,
+    key: str = None,
+    session=None,
+    archived: bool = False,
+) -> list[str]:
+    """Return all distinct auction_safe_id values from the lots table."""
+    url, key = resolve_credentials(url, key)
+    if session is None:
+        import requests as _requests
+        session = _requests.Session()
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+    }
+    rows = _get_paginated(
+        f"{url.rstrip('/')}/rest/v1/{LOTS_TABLE}",
+        headers,
+        {"select": "auction_safe_id", "archived": f"eq.{str(archived).lower()}"},
+        session,
+    )
+    seen: set = set()
+    ids = []
+    for row in rows:
+        sid = row.get("auction_safe_id")
+        if sid and sid not in seen:
+            seen.add(sid)
+            ids.append(sid)
+    return ids
+
+
+def fetch_lots_for_auction(
+    safe_id: str,
+    *,
+    url: str = None,
+    key: str = None,
+    session=None,
+    archived: bool = False,
+) -> list[dict]:
+    """Fetch all lots for one auction from Supabase as camelCase item dicts."""
+    url, key = resolve_credentials(url, key)
+    if session is None:
+        import requests as _requests
+        session = _requests.Session()
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+    }
+    rows = _get_paginated(
+        f"{url.rstrip('/')}/rest/v1/{LOTS_TABLE}",
+        headers,
+        {
+            "auction_safe_id": f"eq.{safe_id}",
+            "archived": f"eq.{str(archived).lower()}",
+            "select": "*",
+        },
+        session,
+    )
+    return [_row_to_item(r) for r in rows]
 
 
 def backfill(

@@ -490,12 +490,66 @@ def backfill_from_read_model(
     return total
 
 
+def backfill_from_supabase(
+    safe_ids: list[str] | None = None,
+    *,
+    include_archive: bool = False,
+    session=None,
+) -> int:
+    """Populate ``nomic_embeddings`` by fetching lot items from the Supabase
+    ``lots`` table instead of on-disk NDJSON files.
+
+    Incrementally resumes — lots already in ``nomic_embeddings`` are skipped.
+    Requires ``SUPABASE_SECRET_KEY`` (reads and writes to Supabase).
+    """
+    if not os.environ.get("SUPABASE_SECRET_KEY"):
+        raise RuntimeError("SUPABASE_SECRET_KEY is required to backfill Nomic embeddings from Supabase")
+
+    from supabase_lots import list_auction_safe_ids, fetch_lots_for_auction
+
+    if session is None:
+        session = _req.Session()
+
+    scopes = [(False, "active")]
+    if include_archive:
+        scopes.append((True, "archive"))
+
+    if safe_ids:
+        pairs = [(sid, archived) for archived in ([False] + ([True] if include_archive else [])) for sid in safe_ids]
+    else:
+        pairs = []
+        for archived, label in scopes:
+            ids = list_auction_safe_ids(archived=archived, session=session)
+            print(f"[nomic] {label}: {len(ids)} auction(s) discovered in Supabase")
+            pairs.extend((sid, archived) for sid in ids)
+
+    total = 0
+    for safe_id, archived in pairs:
+        items = fetch_lots_for_auction(safe_id, archived=archived, session=session)
+        if not items:
+            print(f"[nomic] skip (empty): {safe_id} (archived={archived})")
+            continue
+        try:
+            total += generate_and_upsert(items, safe_id, session=session)
+        except Exception as exc:
+            print(f"  [nomic] WARNING: backfill failed for {safe_id}: {exc}")
+    print(f"\n[nomic] Supabase backfill complete: {total} embeddings upserted")
+    return total
+
+
 if __name__ == "__main__":
     # Backfill the table from already-scraped NDJSON sidecars:
     #   uv run --with sentence-transformers --with 'transformers==4.49.0' \
     #     --with torchvision --with pillow --with einops --with numpy \
     #     --with requests python embed_nomic.py [--archive] [<safeId> ...]
+    #
+    # Or from the Supabase lots table (no NDJSON needed):
+    #   ... python embed_nomic.py --from-supabase [--archive] [<safeId> ...]
     args = sys.argv[1:]
     include_archive = "--archive" in args
+    from_supabase = "--from-supabase" in args
     ids = [a for a in args if not a.startswith("--")]
-    backfill_from_read_model(ids or None, include_archive=include_archive)
+    if from_supabase:
+        backfill_from_supabase(ids or None, include_archive=include_archive)
+    else:
+        backfill_from_read_model(ids or None, include_archive=include_archive)

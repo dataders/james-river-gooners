@@ -431,7 +431,11 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     # Hand it the prior sidecar so unchanged lots reuse their enrichment instead
     # of re-paying for an identical API call (incremental enrichment).
     from enrich import enrich_items, enrichment_summary, format_enrichment_summary, load_prior_enrichment
-    prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
+    if os.environ.get("SUPABASE_SECRET_KEY"):
+        from supabase_enrichment import load_prior_enrichment_from_supabase
+        prior_by_id = load_prior_enrichment_from_supabase(safe_id)
+    else:
+        prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
     if enrich_items(all_items, prior_by_id=prior_by_id):
         # Report the medium/high identification rate (what reaches Supabase + the
         # UI), not just the processed count — visible in the workflow logs.

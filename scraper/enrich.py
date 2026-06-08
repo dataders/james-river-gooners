@@ -844,11 +844,75 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     return 0
 
 
+def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False) -> int:
+    """Enrich lots fetched from the Supabase ``lots`` table (no NDJSON needed).
+
+    Prior enrichment hashes are loaded from ``lot_enrichment`` so unchanged lots
+    are reused without re-paying for an API call. Enriched results are upserted
+    back to ``lot_enrichment`` via ``maybe_export_enrichment``.
+    """
+    if not is_enrichment_enabled():
+        print("Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.", file=sys.stderr)
+        return 1
+    client = _make_client()
+    if client is None:
+        return 1
+
+    import os as _os
+    if not _os.environ.get("SUPABASE_SECRET_KEY"):
+        print("error: SUPABASE_SECRET_KEY is required for --from-supabase", file=sys.stderr)
+        return 1
+
+    from supabase_lots import list_auction_safe_ids, fetch_lots_for_auction
+    from supabase_enrichment import load_prior_enrichment_from_supabase, maybe_export_enrichment
+
+    if safe_ids:
+        # Named IDs: collect (safe_id, archived, rows) for each that resolves.
+        work: list[tuple[str, bool, list]] = []
+        for sid in safe_ids:
+            for archived in (False, True):
+                lots = fetch_lots_for_auction(sid, archived=archived)
+                if lots:
+                    work.append((sid, archived, lots))
+        if not work:
+            print("No matching auctions found in Supabase lots table.")
+            return 0
+    else:
+        active_ids = list_auction_safe_ids(archived=False)
+        archive_ids = list_auction_safe_ids(archived=True)
+        work = [(sid, False, []) for sid in active_ids] + [(sid, True, []) for sid in archive_ids]
+
+    if not work:
+        print("No auctions found in Supabase lots table.")
+        return 0
+
+    all_rows = []
+    for safe_id, archived, prefetched in work:
+        rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
+        if not rows:
+            continue
+        prior_by_id = load_prior_enrichment_from_supabase(safe_id)
+        if use_batch:
+            enrich_items_batch(rows, client=client, prior_by_id=prior_by_id)
+        else:
+            enrich_items(rows, client=client, prior_by_id=prior_by_id)
+        print(f"enriched {safe_id} ({len(rows)} lots, archived={archived})")
+        print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
+        maybe_export_enrichment(rows)
+        all_rows.extend(rows)
+
+    print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     use_batch = "--batch" in argv
     include_all = "--all" in argv
-    argv = [arg for arg in argv if arg not in ("--batch", "--all")]
+    from_supabase = "--from-supabase" in argv
+    argv = [arg for arg in argv if arg not in ("--batch", "--all", "--from-supabase")]
+    if from_supabase:
+        return _backfill_from_supabase(argv or None, use_batch=use_batch)
     if not argv and not include_all:
         print(__doc__)
         return 1
