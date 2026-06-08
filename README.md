@@ -22,7 +22,7 @@ GitHub Action that re-scrapes hourly and commits fresh data.
 Maxanet ─► scrape.py     ──┐   public/data/manifest.json        ┌─► React SPA
 HiBid   ─► scrape_hibid.py ─┼─► public/data/items/*.ndjson      ─┤   (one loader
 eBay    ─► ebay_comps.py  ──┘   public/data/ebay-comps/*.json   └─►  convention)
-                               (+ *.parquet / *.embeddings sidecars)
+                               (+ *.parquet sidecars)
 
                   [SnapshotSink] ─► MotherDuck (optional analytics mirror)
 ```
@@ -52,9 +52,9 @@ back to build manifests and the columnar artifact mirrored to the warehouse.
 
 | Layer | Tech |
 | --- | --- |
-| Frontend | Vite 8, React 19, `minisearch` (keyword), `@xenova/transformers` (CLIP semantic search), `react-masonry-css` |
-| Scraper | Python 3.11+, `requests` + `beautifulsoup4`, `pyarrow`, `pyyaml`; optional `duckdb`, `sentence-transformers` + `pillow` |
-| Data | NDJSON (served) + Parquet (warehouse/manifest source) + JSON comps; optional CLIP `.embeddings` binaries |
+| Frontend | Vite 8, React 19, `minisearch` (keyword), `@huggingface/transformers` (Nomic semantic search), `react-masonry-css` |
+| Scraper | Python 3.11+, `requests` + `beautifulsoup4`, `pyarrow`, `pyyaml`; optional `duckdb`, `sentence-transformers` + `transformers` + `torchvision` + `pillow` + `einops` (Nomic embeddings) |
+| Data | NDJSON (served) + Parquet (warehouse/manifest source) + JSON comps; semantic-search embeddings live in Supabase pgvector (Nomic) |
 | Hosting / CI | GitHub Pages + GitHub Actions |
 
 ---
@@ -99,10 +99,11 @@ GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 \
   --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
   python3 scrape.py "<full_auction_url>"
 
-# Generate CLIP embeddings for semantic search
-# (first run downloads ~350 MB of model weights to ~/.cache/huggingface)
-GOONERS_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 \
-  --with pyarrow --with pyyaml --with sentence-transformers --with pillow \
+# Generate Nomic embeddings for semantic search (text+vision → Supabase pgvector)
+# (needs SUPABASE_SECRET_KEY; first run downloads the model weights to ~/.cache/huggingface)
+GOONERS_NOMIC_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 \
+  --with pyarrow --with pyyaml --with sentence-transformers --with 'transformers==4.49.0' \
+  --with torchvision --with pillow --with einops \
   python3 scrape.py "<full_auction_url>"
 ```
 
@@ -116,7 +117,7 @@ src/                     React SPA
   components/            UI (cards, grid, filters, detail modal, ROI calc…)
   hooks/                 Data loading, search, favorites, prefs, theme…
   utils/                 Pure helpers (filters, roiCalc, net, manifest…) + unit tests
-  workers/               CLIP text-encoder web worker
+  workers/               Nomic text-encoder web worker
 scraper/                 Python ingest
   rescrape_all.py        Orchestrator: discover → scrape → archive → manifest
   scrape.py              Maxanet (Cannon's) scraper

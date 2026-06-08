@@ -148,10 +148,9 @@ def archive_file(path: Path) -> None:
     ARCHIVE_ITEMS_DIR.mkdir(parents=True, exist_ok=True)
     target = ARCHIVE_ITEMS_DIR / path.name
     path.replace(target)
-    for ext in (".ndjson", ".embeddings"):
-        sidecar = path.with_suffix(ext)
-        if sidecar.exists():
-            sidecar.replace(ARCHIVE_ITEMS_DIR / sidecar.name)
+    sidecar = path.with_suffix(".ndjson")
+    if sidecar.exists():
+        sidecar.replace(ARCHIVE_ITEMS_DIR / sidecar.name)
     print(f"Archived closed auction data: {path.name}")
 
 
@@ -187,8 +186,6 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
     }
     if path.with_suffix(".ndjson").exists():
         entry["ndjsonPath"] = f"data/{item_dir}/{path.stem}.ndjson"
-    if path.with_suffix(".embeddings").exists():
-        entry["embeddingsPath"] = f"data/{item_dir}/{path.stem}.embeddings"
     return entry
 
 
