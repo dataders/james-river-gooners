@@ -1,0 +1,18 @@
+# Backblaze Personal Backup — version-controlled exclusion paths
+#
+# This is the source of truth for paths we want Backblaze to SKIP. It is NOT a
+# live config file Backblaze reads — apply these via the Backblaze GUI
+# (Settings → Exclusions) or by editing the platform file below. Backblaze owns
+# and rewrites its own config, so do NOT symlink its file to this repo (the
+# service replaces the file in place, which breaks symlinks and silently
+# desyncs your repo copy).
+#
+# Backblaze's editable exclusion file lives at:
+#   macOS:   /Library/Backblaze.bzpkg/bzdata/bzexcluderules_editable.xml
+#   Windows: C:\ProgramData\Backblaze\bzdata\bzexcluderules_editable.xml
+# (The sibling bzexcluderules_mandatory.xml is Backblaze-owned — leave it alone.)
+#
+# One path per line. '~' is the current user's home directory.
+
+# Moonlander keyboard keystroke log — must stay local, never leave the machine.
+~/.local/share/moonlander-keylog
