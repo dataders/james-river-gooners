@@ -344,6 +344,14 @@ export default function App() {
     return result
   }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showMyBidsOnly, cannonBids.bidItemIds, showEnrichedOnly])
 
+  // Count bids against loaded listings only — don't count seeded bids for
+  // auctions not in the read model. Computed from filteredItems (respects
+  // auction/search/price/category filters but not the My Bids toggle itself).
+  const cannonBidCount = useMemo(
+    () => filteredItems.filter(item => cannonBids.bidItemIds.has(String(item.id))).length,
+    [filteredItems, cannonBids.bidItemIds],
+  )
+
   // Snapshot the not-yet-decided items when the swipe deck opens so the deck
   // doesn't reshuffle as the user favorites/ignores its way through.
   const openSwipe = useCallback(() => {
@@ -562,7 +570,7 @@ export default function App() {
           favoriteCount={favoriteIds.length}
           ignoredCount={ignoredIds.length}
           cannonBidsLinked={cannonBids.linked}
-          cannonBidCount={cannonBids.bidItemIds.size}
+          cannonBidCount={cannonBidCount}
           cannonBidsLoading={cannonBids.bidsLoading}
           items={visibleItems}
           minPrice={minPrice} maxPrice={maxPrice}
