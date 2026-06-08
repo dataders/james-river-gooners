@@ -64,7 +64,7 @@ jobs:
       - name: Scrape Cannon's (Maxanet) auctions
         id: scrape_maxanet
         continue-on-error: true
-        timeout-minutes: 45
+        timeout-minutes: 90
         run: |
           cd scraper
           if [ "${{ inputs.dry_run }}" = "true" ]; then
