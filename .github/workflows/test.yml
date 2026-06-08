@@ -93,7 +93,6 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Warm up Supabase database
-        if: ${{ secrets.VITE_SUPABASE_URL != '' }}
         run: |
           curl -sf -o /dev/null \
             "$VITE_SUPABASE_URL/rest/v1/public_active_lots?select=count&limit=1" \
@@ -133,7 +132,6 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Warm up Supabase database
-        if: ${{ secrets.VITE_SUPABASE_URL != '' }}
         run: |
           curl -sf -o /dev/null \
             "$VITE_SUPABASE_URL/rest/v1/public_active_lots?select=count&limit=1" \
