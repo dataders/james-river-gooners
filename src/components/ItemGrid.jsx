@@ -55,13 +55,22 @@ export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, on
     return () => observer.disconnect()
   }, [])
 
-  // Derive loaded count: reset to BATCH_SIZE if the items reference changed.
-  const loaded = loadState.items === items ? loadState.loaded : BATCH_SIZE
+  // When items[0] is the same item as before, the list head is stable — a single
+  // item was removed from the middle or end (e.g. the user ignored it). Clamp
+  // the old loaded count rather than resetting to BATCH_SIZE so scroll is
+  // preserved. Reset fully only when the head changes (new search, filter, sort).
+  const sameHead = loadState.items[0]?.auctionSafeId === items[0]?.auctionSafeId &&
+    loadState.items[0]?.id === items[0]?.id
+  const loaded = loadState.items === items ? loadState.loaded
+    : sameHead ? Math.min(loadState.loaded, items.length) : BATCH_SIZE
 
   const observerCallback = useCallback((entries) => {
     if (entries[0].isIntersecting) {
       setLoadState(prev => {
-        const current = prev.items === items ? prev.loaded : BATCH_SIZE
+        const sh = prev.items[0]?.auctionSafeId === items[0]?.auctionSafeId &&
+          prev.items[0]?.id === items[0]?.id
+        const current = prev.items === items ? prev.loaded
+          : sh ? Math.min(prev.loaded, items.length) : BATCH_SIZE
         return { items, loaded: Math.min(current + BATCH_SIZE, items.length) }
       })
     }
