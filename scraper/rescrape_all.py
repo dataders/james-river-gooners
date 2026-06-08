@@ -222,7 +222,7 @@ def _supabase_archive_file(path: Path) -> None:
     ndjson = path.with_suffix(".ndjson")
     if not ndjson.exists():
         return
-    items = [json.loads(l) for l in ndjson.read_text().splitlines() if l.strip()]
+    items = [json.loads(line) for line in ndjson.read_text().splitlines() if line.strip()]
     if items:
         from supabase_lots import archive_lots
         archive_lots(path.stem, items)

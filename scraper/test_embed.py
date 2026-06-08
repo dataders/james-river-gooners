@@ -48,7 +48,6 @@ class EmbeddingsRoundTripTest(unittest.TestCase):
 
     def test_ids_stored_as_json_at_end(self):
         import json
-        import struct
         embs = np.zeros((3, 512), dtype=np.float32)
         ids = ["abc", "def", "ghi"]
         with tempfile.TemporaryDirectory() as tmp:

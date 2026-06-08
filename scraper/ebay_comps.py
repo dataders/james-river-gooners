@@ -26,6 +26,12 @@ Implementation is split across focused sub-modules:
 See docs/data-architecture.md.
 """
 
+# This module is a public-API aggregator: it re-exports names from the focused
+# sub-modules above so external callers can keep importing them from
+# ``ebay_comps``. Those imports are intentionally "unused" within this file, so
+# silence ruff's unused-import rule for the whole module.
+# ruff: noqa: F401
+
 import argparse
 import os
 import random

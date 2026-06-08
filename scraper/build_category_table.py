@@ -26,7 +26,6 @@ Run from scraper/:
 import argparse
 import collections
 import json
-import os
 from pathlib import Path
 
 import yaml

@@ -38,7 +38,6 @@ from ebay_fetch import (
     date_from_iso,
     extract_ebay_item_id,
     price_amount,
-    price_currency,
     shipping_label,
     sold_date_label_from_iso,
 )

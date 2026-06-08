@@ -7,7 +7,7 @@ Owns the warehouse write contract: how comp rows are shaped for the
 import json
 from datetime import datetime, timezone
 
-from ebay_util import decimal_text, text_value, utc_now_text
+from ebay_util import decimal_text, text_value
 
 SNAPSHOT_TABLE = "ebay_comp_snapshots"
 PUBLIC_VIEW = "public_auction_comps"

@@ -5,6 +5,8 @@ description-keyword fallback) rather than the contents of
 category_mappings.yml, so they stay valid as the mappings evolve.
 """
 
+import unittest
+
 from categories import (
     infer_from_description,
     normalize_category,
@@ -97,9 +99,6 @@ def test_raw_with_description_falls_back_to_description_canonical():
 
 def test_raw_with_description_keeps_unknown_when_no_inference():
     assert normalize_raw_with_description("Widgets", "nothing matches") == "Widgets"
-
-
-import unittest
 
 
 class NormalizeCategoryFallbackTest(unittest.TestCase):
