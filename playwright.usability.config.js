@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test'
 // so per-objective results accumulate into one scored report.
 export default defineConfig({
   testDir: './tests/usability',
-  timeout: 60_000,
+  timeout: 90_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,

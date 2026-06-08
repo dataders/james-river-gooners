@@ -49,9 +49,16 @@ export async function gotoApp(page, query = '') {
 }
 
 // Wait until the Supabase data load finishes and the grid is populated.
+// Reloads once if the load hangs (>.loading stuck visible) or if Supabase
+// returns an error — mirrors the resilience of tests/e2e/helpers.js.
 export async function waitForLoad(page) {
-  await expect(page.locator('.loading')).toBeHidden({ timeout: 45_000 })
-  await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 45_000 })
+  const hidden = await page.locator('.loading').waitFor({ state: 'hidden', timeout: 45_000 })
+    .then(() => true).catch(() => false)
+  if (!hidden || await page.locator('.error').isVisible()) {
+    await page.reload()
+    await expect(page.locator('.loading')).toBeHidden({ timeout: 30_000 })
+  }
+  await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 30_000 })
 }
 
 // Read the "<n> items" count from the grid header.

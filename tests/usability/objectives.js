@@ -12,6 +12,7 @@
 import { expect } from '@playwright/test'
 import {
   gotoApp,
+  waitForLoad,
   getItemCount,
   measureSettle,
   VIEWPORTS,
@@ -221,7 +222,7 @@ export const objectives = [
 
       // Reload — favorites are cookie-backed and should survive.
       await page.reload()
-      await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+      await waitForLoad(page)
 
       tracker.step('Open the Favorites view')
       // Favorites is now an option in the "Show" segmented control (All / Favorites / Ignored).
