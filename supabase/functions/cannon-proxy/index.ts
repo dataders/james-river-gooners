@@ -21,6 +21,7 @@ import {
   cookieHeader,
   parseHiddenInputs,
   parseBidderId,
+  parseBidItems,
   parseRefreshItemHtml,
   parseWatchlistItems,
 } from './parsers.js'
@@ -376,6 +377,67 @@ async function fetchBidHistory(cookies: Record<string, string>): Promise<{ itemI
   const bidderId = parseBidderId(html)
   console.log('[cannon-proxy] watchlist items:', items.length, '| csrf:', !!csrf)
   return { itemIds: items.map(b => b.itemId), items, csrf, bidderId }
+}
+
+// Tries to fetch past/closed bids. Attempts several statusFilter values on
+// GetWatchlist, then falls back to dedicated BidHistory pages.
+// Returns items de-duped against `currentIds` so we never double-seed.
+async function fetchPastBids(
+  cookies: Record<string, string>,
+  currentIds: Set<string>,
+): Promise<BidItem[]> {
+  const base = 'https://bid.cannonsauctions.com'
+
+  // Try watchlist with alternate status filters first (same HTML structure,
+  // so parseWatchlistItems works unchanged).
+  for (const filter of ['Past', 'Closed', 'All']) {
+    try {
+      const resp = await fetch(
+        `${base}/Public/Auction/GetWatchlist?Page=1&itemsPerPage=100&auctionFilter=&filter=&searchFilter=&statusFilter=${filter}`,
+        {
+          headers: {
+            'Cookie': cookieHeader(cookies),
+            'User-Agent': UA,
+            'Accept': '*/*',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Referer': `${base}/Public/Auction/Watchlist`,
+          },
+          redirect: 'manual',
+        },
+      )
+      if (!resp.ok || resp.status === 302) { await resp.body?.cancel(); continue }
+      const html = await resp.text()
+      const items = parseWatchlistItems(html).filter(i => !currentIds.has(i.itemId))
+      console.log(`[cannon-proxy] fetchPastBids statusFilter=${filter}: ${items.length} new items`)
+      if (items.length > 0) return items
+    } catch (e) {
+      console.log(`[cannon-proxy] fetchPastBids ${filter} failed:`, (e as Error).message)
+    }
+  }
+
+  // Fallback: dedicated BidHistory pages (different HTML, use parseBidItems).
+  for (const path of ['/Public/Account/BidHistory', '/Public/Bidder/BidHistory', '/Public/Account/MyBids']) {
+    try {
+      const resp = await fetch(`${base}${path}`, {
+        headers: {
+          'Cookie': cookieHeader(cookies),
+          'User-Agent': UA,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Referer': `${base}/Public`,
+        },
+        redirect: 'manual',
+      })
+      if (!resp.ok || resp.status === 302) { await resp.body?.cancel(); continue }
+      const html = await resp.text()
+      const items = parseBidItems(html).filter(i => !currentIds.has(i.itemId))
+      console.log(`[cannon-proxy] fetchPastBids ${path}: ${items.length} new items`)
+      if (items.length > 0) return items
+    } catch (e) {
+      console.log(`[cannon-proxy] fetchPastBids ${path} failed:`, (e as Error).message)
+    }
+  }
+
+  return []
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────────
@@ -897,6 +959,36 @@ async function getBids(
     await supabase
       .from('user_bids')
       .upsert(rows, { onConflict: 'user_id,auction_item_id' })
+  }
+
+  // Also seed past/closed bids. These come from the watchlist history or a
+  // dedicated BidHistory page. We cap at 50 and skip RefreshItem — those items
+  // are closed so winning may not parse, but having them in user_bids means
+  // they show up in My Bids under "All auctions".
+  const currentIds = new Set(history.items.map(i => i.itemId))
+  const pastItems = await fetchPastBids(cookies, currentIds)
+  if (pastItems.length > 0) {
+    // Try RefreshItem for the first batch — it sometimes still works for
+    // recently closed lots and gives us the won/lost outcome.
+    const pastStatuses = await Promise.all(
+      pastItems.slice(0, 50).map(item => refreshItemStatus(base, cookies, history.csrf, item))
+    )
+    const now2 = new Date().toISOString()
+    const pastRows = pastItems.slice(0, 50).map((item, i) => ({
+      user_id: userId,
+      auction_item_id: item.itemId,
+      auction_id: item.auctionId || null,
+      is_winning: pastStatuses[i]?.winning ?? null,
+      current_bid: pastStatuses[i]?.currentBid ?? null,
+      min_next_bid: null,
+      item_closed: true,
+      last_bid_at: now2,
+      status_refreshed_at: now2,
+    }))
+    await supabase
+      .from('user_bids')
+      .upsert(pastRows, { onConflict: 'user_id,auction_item_id' })
+    console.log(`[cannon-proxy] seeded ${pastRows.length} past bid items`)
   }
 
   return json({ itemIds: history.itemIds, statuses })
