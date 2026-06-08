@@ -95,15 +95,17 @@ jobs:
   scraper-type-check:
     name: Scraper type check (ty)
     runs-on: ubuntu-latest
-    # Non-blocking for now: ty is pre-1.0 and the scraper is largely untyped,
-    # so surface its findings without failing the build.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
 
+      # Non-blocking for now: ty is pre-1.0 and the scraper is largely untyped.
+      # continue-on-error lives on the step (not the job) so a non-zero ty exit
+      # surfaces as a warning annotation while the job's check still reports
+      # green — advisory, without a scary red X on the PR.
       - name: Run ty
+        continue-on-error: true
         run: |
           cd scraper
           uvx ty@0.0.44 check .
