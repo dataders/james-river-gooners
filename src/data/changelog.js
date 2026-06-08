@@ -13,6 +13,8 @@ export const CHANGELOG = [
     changes: [
       { id: 'bid-price-live-display', icon: '💰', text: 'The current bid shown on items you\'ve bid on now reflects the true Maxanet price — so if a proxy bidder immediately outbids you, you see the real current bid right away, not the stale pre-bid price.' },
       { id: 'bid-auto-poll', icon: '🔄', text: 'Bid prices on items you\'ve bid on refresh automatically every 2 minutes while you\'re on the page, so outbids by other bidders surface without needing to hit Refresh.' },
+      { id: 'bid-won-lost', icon: '🏆', text: 'Closed lots you bid on now show a clear Won or Lost badge — no more guessing whether you were the winning bidder on an ended auction.' },
+      { id: 'bid-archived-cta', icon: '📦', text: 'If your bids are from a closed auction and not showing, the filter panel now offers a one-tap "Show all auctions" button instead of just a text hint.' },
     ],
   },
   {

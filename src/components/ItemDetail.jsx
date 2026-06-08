@@ -139,7 +139,9 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
           )}
 
           <div className="detail-price-section">
-            <div className="detail-price-label">Current bid</div>
+            <div className="detail-price-label">
+              {(item.closed || bidStatus?.itemClosed) ? 'Final bid' : 'Current bid'}
+            </div>
             <div className="detail-bid-row">
               <span className="detail-bid">${(bidStatus?.currentBid ?? item.currentBid).toLocaleString()}</span>
               <span className="detail-bids">
@@ -147,6 +149,11 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
                 {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}
               </span>
             </div>
+            {bidStatus?.winning != null && (item.closed || bidStatus.itemClosed) && (
+              <div className={`bid-status-badge${bidStatus.winning ? ' bid-status-winning' : ' bid-status-outbid'}`}>
+                {bidStatus.winning ? '✓ Won this lot' : `✗ Lost · winning bid was $${bidStatus.currentBid != null ? bidStatus.currentBid.toLocaleString() : '?'}`}
+              </div>
+            )}
           </div>
 
           {remaining && <div className="detail-time">{remaining}</div>}
