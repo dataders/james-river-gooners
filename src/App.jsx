@@ -297,6 +297,14 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [searchQuery, searchIds, semanticStatus])
 
+  // Items for range-slider histograms: search + category filtered but no range filters,
+  // so slider min/max/distribution dynamically reflects the current search/category context
+  // without a circular dependency between the sliders themselves.
+  const rangeFilterItems = useMemo(
+    () => filterItems(visibleItems, { excludedCategories, excludedGroups, searchIds }),
+    [visibleItems, excludedCategories, excludedGroups, searchIds]
+  )
+
   // Items passing price/time/bids/search but NOT category filters — for dynamic counts
   const preFilteredItems = useMemo(
     () => filterItems(visibleItems, { excludedCategories: [], searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours }),
@@ -564,7 +572,7 @@ export default function App() {
           cannonBidsLinked={cannonBids.linked}
           cannonBidCount={cannonBids.bidItemIds.size}
           cannonBidsLoading={cannonBids.bidsLoading}
-          items={visibleItems}
+          items={rangeFilterItems}
           minPrice={minPrice} maxPrice={maxPrice}
           onMinPriceChange={setMinPrice} onMaxPriceChange={setMaxPrice}
           minBids={minBids} maxBids={maxBids}
