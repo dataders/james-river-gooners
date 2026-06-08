@@ -8,7 +8,7 @@ triggered. Adds new catalog IDs; existing ones are preserved so the scraper's
 hourly rescrape_all.py can pick them up automatically.
 
 Usage:
-    uv run --with requests --with beautifulsoup4 --with pyyaml --with ruamel.yaml \\
+    uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml \\
         python discover_hibid.py
 """
 
@@ -27,6 +27,7 @@ def main() -> int:
     ryaml = YAML()
     ryaml.preserve_quotes = True
     ryaml.width = 4096  # prevent ruamel from wrapping long comment lines
+    ryaml.indent(mapping=2, sequence=4, offset=2)  # match original file's indent style
 
     with open(SOURCES_FILE) as f:
         config = ryaml.load(f)

@@ -31,7 +31,7 @@ jobs:
           direct_prompt: |
             Check HiBid for new auction catalogs by running the discovery script:
 
-              cd scraper && uv run --with requests --with beautifulsoup4 --with pyyaml --with ruamel.yaml python discover_hibid.py
+              cd scraper && uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml python discover_hibid.py
 
             If scraper/hibid_sources.yml was modified (new catalog_ids were added),
             commit and push it to the current branch:
