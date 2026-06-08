@@ -32,15 +32,14 @@ export function FilterPanel({
   onDecisionViewChange,
   localOnly,
   onLocalOnlyChange,
-  showMyBidsOnly,
-  onShowMyBidsOnlyChange,
+  onMyBidsPanelOpen,
+  cannonBidCount,
+  cannonBidsLoading,
   bestDeals,
   onBestDealsToggle,
   favoriteCount,
   ignoredCount,
   cannonBidsLinked,
-  cannonBidCount,
-  cannonBidsLoading,
   // Range filters
   items,
   minPrice, maxPrice, onMinPriceChange, onMaxPriceChange,
@@ -134,8 +133,8 @@ export function FilterPanel({
               {cannonBidsLinked && (
                 <button
                   type="button"
-                  className={`deals-toggle${showMyBidsOnly ? ' active' : ''}`}
-                  onClick={() => onShowMyBidsOnlyChange(v => !v)}
+                  className="deals-toggle"
+                  onClick={onMyBidsPanelOpen}
                 >
                   {cannonBidsLoading
                     ? 'My Bids…'

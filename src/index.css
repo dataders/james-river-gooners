@@ -3836,6 +3836,126 @@ a.cannons-comp-card:hover {
   padding-top: 16px;
 }
 
+/* ── My Bids panel ─────────────────────────────────────────────────────────── */
+.my-bids-panel {
+  max-width: 480px;
+}
+
+.my-bids-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.my-bids-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.my-bids-title {
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+
+.my-bids-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.my-bids-refresh {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.my-bids-refresh:hover:not(:disabled) { background: var(--hover); }
+.my-bids-refresh:disabled { opacity: 0.5; cursor: default; }
+
+.my-bids-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.my-bids-empty {
+  padding: 24px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.my-bids-error {
+  padding: 12px 20px;
+  color: var(--danger, #e5534b);
+  font-size: 0.85rem;
+}
+
+.my-bid-row {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.my-bid-row.mb-closed {
+  opacity: 0.65;
+}
+.my-bid-row:last-child {
+  border-bottom: none;
+}
+
+.mb-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.mb-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mb-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mb-badge-winning { background: #1a4d2e; color: #4ade80; }
+.mb-badge-outbid  { background: #4d1a1a; color: #f87171; }
+.mb-badge-closed  { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.mb-badge-unknown { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+.mb-bid-amount {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.mb-your-bid {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.mb-time {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
 .deals-panel-controls {
   display: flex;
   align-items: center;
