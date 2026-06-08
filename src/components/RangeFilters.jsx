@@ -218,7 +218,16 @@ export function RangeFilters({
         if (h > hMax) hMax = h
       }
     }
-    pMax = Math.ceil(pMax)
+    // Cap price/bids/bidders at the 99th percentile so a single outlier
+    // (e.g. one $20k lot) doesn't compress everyone else into a sliver.
+    const p99 = arr => {
+      if (arr.length < 2) return arr[0] ?? 0
+      const s = [...arr].sort((a, b) => a - b)
+      return s[Math.floor(s.length * 0.99)]
+    }
+    pMax = Math.ceil(Math.max(p99(prices), 1))
+    bMax = Math.ceil(Math.max(p99(bidCounts), 1))
+    brMax = Math.ceil(Math.max(p99(bidderCounts), 1))
     hMax = Math.ceil(hMax)
     return {
       priceMax: pMax,
@@ -228,7 +237,7 @@ export function RangeFilters({
       priceHist: buildHistogram(prices, 0, pMax, true),
       bidsHist: buildHistogram(bidCounts, 0, bMax, true),
       biddersHist: buildHistogram(bidderCounts, 0, brMax, true),
-      hoursHist: buildHistogram(hours, 0, hMax, false),
+      hoursHist: buildHistogram(hours, 0, hMax, true),
     }
   }, [items])
 
@@ -298,6 +307,7 @@ export function RangeFilters({
         onLoChange={onMinHoursChange}
         onHiChange={onMaxHoursChange}
         histogram={hoursHist}
+        logScale
       />
     </div>
   )
