@@ -342,15 +342,24 @@ export default function App() {
     return result
   }, [filteredItems, hasComp, hasCannonsComp, bestDeals, allComps, allCannonsComps])
 
-  const finalItems = useMemo(() => {
-    // Ignored bin is its own exclusive view; otherwise ignored items are hidden
-    // from the grid entirely (that's the point of marking "not interested").
+  // Base filter: applies ignored/enriched filters but NOT favorites. Kept
+  // separate so a favorite toggle doesn't invalidate this memo (which would
+  // produce a new array reference, reset ItemGrid's loaded count, and jump
+  // the scroll position back to the top).
+  const decisionFilteredItems = useMemo(() => {
     if (showIgnoredOnly) return displayItems.filter(isIgnored)
     let result = displayItems.filter(item => !isIgnored(item))
-    if (showFavoritesOnly) result = result.filter(isFavorite)
     if (showEnrichedOnly) result = result.filter(hasEnrichment)
     return result
-  }, [displayItems, showIgnoredOnly, isIgnored, showFavoritesOnly, isFavorite, showEnrichedOnly])
+  }, [displayItems, showIgnoredOnly, isIgnored, showEnrichedOnly])
+
+  // Apply favorites filter only when active. When inactive, return the stable
+  // decisionFilteredItems reference so downstream memos don't recalculate and
+  // ItemGrid's scroll position is preserved across favorite toggles.
+  const finalItems = useMemo(() => {
+    if (showFavoritesOnly) return decisionFilteredItems.filter(isFavorite)
+    return decisionFilteredItems
+  }, [decisionFilteredItems, showFavoritesOnly, isFavorite])
 
   // Count bids against loaded listings only — don't count seeded bids for
   // auctions not in the read model. Computed from filteredItems (respects
