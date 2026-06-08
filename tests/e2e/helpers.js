@@ -1,11 +1,13 @@
 import { expect } from '@playwright/test'
 
 // Wait for the Supabase data load to finish.
-// Reloads once if data loading errored — handles both Vite dev-server cold-start
-// and Supabase free-tier database wake-up (~25-35s on first request after pause).
+// Reloads once if the load hangs (Supabase connection timeout in parallel workers)
+// or if data loading errored — handles Vite dev-server cold-start and Supabase
+// free-tier database wake-up (~25-35s on first request after pause).
 export async function waitForLoad(page) {
-  await expect(page.locator('.loading')).toBeHidden({ timeout: 45_000 })
-  if (await page.locator('.error').isVisible()) {
+  const hidden = await page.locator('.loading').waitFor({ state: 'hidden', timeout: 45_000 })
+    .then(() => true).catch(() => false)
+  if (!hidden || await page.locator('.error').isVisible()) {
     await page.reload()
     await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
   }
