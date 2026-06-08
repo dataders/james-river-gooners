@@ -22,16 +22,15 @@ companies:
     name: "Emerald Ventures"
     location: "Richmond, VA"
     catalog_ids:
-      - 739431   # Jun 6 Sports Card & Comics
-      - 739720   # Jun 7 Weekly Stamp
-      - 739442   # Jun 7 Coin and Paper Money
       - 743703   # Jun 14 Weekly Stamp
       - 745663   # Jun 21 Weekly Stamp
       - 745666   # Jun 21 Graded & Raw Coin
       - 747559   # Jun 28 Weekly Stamp
+      - 748988   # Jul 12 Coin and Paper Money
     closed_catalog_ids:
-      # Add already-closed catalog IDs here to backfill their sold prices, e.g.:
-      # - 739418   # May 31 Stamps & Postal History (already archived)
+      - 739431   # Jun 6 Sports Card & Comics
+      - 739720   # Jun 7 Weekly Stamp
+      - 739442   # Jun 7 Coin and Paper Money
 
   - id: 138254
     slug: past_chapters
