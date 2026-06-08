@@ -115,6 +115,17 @@ export function useCannonBids(user) {
     setBidsLoading(false)
   }, [loadBidsFromDb])
 
+  // Poll every 2 minutes when bids exist and the page is visible, so outbids
+  // by other bidders surface without requiring a manual refresh.
+  const refreshBidsRef = useRef(refreshBids)
+  useEffect(() => { refreshBidsRef.current = refreshBids }, [refreshBids])
+  useEffect(() => {
+    if (!linked || bidItemIds.size === 0) return
+    const tick = () => { if (document.visibilityState !== 'hidden') refreshBidsRef.current() }
+    const id = setInterval(tick, 2 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [linked, bidItemIds.size])
+
   const saveCredentials = useCallback(async (cannonUsername, cannonPassword) => {
     setError(null)
     const result = await callProxy('save_credentials', { username: cannonUsername, password: cannonPassword })

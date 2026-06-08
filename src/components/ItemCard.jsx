@@ -74,15 +74,20 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
         {compact && item.description && (
           <div className="item-description">{item.description}</div>
         )}
-        {bidStatus?.winning != null && (
-          <div className={`bid-status-badge${bidStatus.winning ? ' bid-status-winning' : ' bid-status-outbid'}`}>
-            {bidStatus.winning
-              ? '✓ Winning'
-              : `Outbid · $${bidStatus.currentBid != null ? bidStatus.currentBid.toLocaleString() : '?'}`}
-          </div>
-        )}
+        {bidStatus?.winning != null && (() => {
+          const closed = item.closed || bidStatus.itemClosed
+          return (
+            <div className={`bid-status-badge${bidStatus.winning ? ' bid-status-winning' : ' bid-status-outbid'}`}>
+              {bidStatus.winning
+                ? (closed ? '✓ Won' : '✓ Winning')
+                : (closed
+                    ? `✗ Lost · $${bidStatus.currentBid != null ? bidStatus.currentBid.toLocaleString() : '?'}`
+                    : `Outbid · $${bidStatus.currentBid != null ? bidStatus.currentBid.toLocaleString() : '?'}`)}
+            </div>
+          )
+        })()}
         <div className="item-bid-row">
-          <span className="item-bid">${item.currentBid.toLocaleString()}</span>
+          <span className="item-bid">${(bidStatus?.currentBid ?? item.currentBid).toLocaleString()}</span>
           <span className="item-bids">
             {item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}
             {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}
