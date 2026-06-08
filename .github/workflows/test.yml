@@ -94,6 +94,9 @@ jobs:
 
       - name: Run E2E tests
         run: npm run test:e2e
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Upload Playwright report
         if: always()
@@ -121,6 +124,9 @@ jobs:
 
       - name: Run usability benchmark
         run: npm run test:usability
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Check usability score gate
         run: node tests/usability/check-score.js
