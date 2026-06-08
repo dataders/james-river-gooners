@@ -205,6 +205,28 @@ def export_sold_history(archive_dir: Path = DEFAULT_ARCHIVE_DIR, **kwargs) -> in
     return written
 
 
+def iter_lots_from_supabase(session=None):
+    """Yield archived lot dicts from the Supabase ``lots`` table."""
+    from supabase_lots import list_auction_safe_ids, fetch_lots_for_auction
+
+    session = session or __import__("requests").Session()
+    safe_ids = list_auction_safe_ids(archived=True, session=session)
+    print(f"Found {len(safe_ids)} archived auction(s) in Supabase")
+    for safe_id in safe_ids:
+        for item in fetch_lots_for_auction(safe_id, archived=True, session=session):
+            yield item
+
+
+def build_sold_lot_rows_from_supabase(session=None) -> list[dict]:
+    """Build ``sold_lots`` rows by reading archived lots from Supabase."""
+    rows: dict[tuple[str, str], dict] = {}
+    for lot in iter_lots_from_supabase(session=session):
+        row = sold_lot_row(lot)
+        if row:
+            rows[(row["auction_safe_id"], row["item_id"])] = row
+    return list(rows.values())
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upsert Cannon's sold-price history to Supabase")
     parser.add_argument(
@@ -218,16 +240,29 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Build rows and report the count without writing to Supabase",
     )
+    parser.add_argument(
+        "--from-supabase",
+        action="store_true",
+        help="Read archived lots from the Supabase lots table instead of NDJSON files",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
-    rows = build_sold_lot_rows(args.archive_dir)
+    if args.from_supabase:
+        rows = build_sold_lot_rows_from_supabase()
+    else:
+        rows = build_sold_lot_rows(args.archive_dir)
     if args.dry_run:
-        print(f"[dry-run] {len(rows)} sold lot(s) from {args.archive_dir}")
+        source = "Supabase" if args.from_supabase else str(args.archive_dir)
+        print(f"[dry-run] {len(rows)} sold lot(s) from {source}")
         return 0
-    export_sold_history(args.archive_dir)
+    if args.from_supabase:
+        written = upsert_sold_lots(rows)
+        print(f"Upserted {written} sold lot(s) from Supabase")
+    else:
+        export_sold_history(args.archive_dir)
     return 0
 
 

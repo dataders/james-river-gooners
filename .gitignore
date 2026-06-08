@@ -9,3 +9,10 @@ playwright-report/
 test-results/
 supabase/.temp/
 scripts/search-eval/judge.html
+
+# Scraper output — lives in Supabase, not git.
+# The scraper still writes these locally during a run but they are not committed.
+public/data/items/
+public/data/archive/
+public/data/manifest.json
+public/data/archive-manifest.json

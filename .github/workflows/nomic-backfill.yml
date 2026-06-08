@@ -1,16 +1,16 @@
 name: Backfill Nomic Embeddings
 
 # One-time (re-runnable) backfill of Nomic text+vision embeddings into the
-# Supabase `nomic_embeddings` pgvector table from the committed NDJSON read
-# model. The hourly scrape only embeds *active* lots incrementally; this fills
-# in the large *archive* corpus that Cannon's comps need (issue #165 / CLIP→Nomic
-# migration).
+# Supabase ``nomic_embeddings`` pgvector table. Reads lot data from the
+# Supabase ``lots`` table (no committed NDJSON needed). The hourly scrape
+# embeds *active* lots incrementally; this fills in the *archive* corpus that
+# Cannon's comps need (issue #165 / CLIP→Nomic migration).
 #
 # Resumable: embed_nomic skips lots already in the table, so re-running only
 # embeds what's still missing. CPU-only here — a full archive backfill is slow
 # and may need several runs to complete (each run makes progress).
 #
-# Requires SUPABASE_SECRET_KEY (writes bypass RLS).
+# Requires SUPABASE_SECRET_KEY (reads lots, writes embeddings).
 
 on:
   workflow_dispatch:
@@ -64,4 +64,4 @@ jobs:
           GOONERS_NOMIC_EMBEDDINGS=1 uv run \
             --with sentence-transformers --with 'transformers==4.49.0' \
             --with torchvision --with pillow --with einops --with numpy --with requests \
-            python embed_nomic.py $ARCHIVE_FLAG ${{ inputs.safe_ids }}
+            python embed_nomic.py --from-supabase $ARCHIVE_FLAG ${{ inputs.safe_ids }}

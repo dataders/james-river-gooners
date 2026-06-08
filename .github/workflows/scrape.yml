@@ -21,7 +21,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   scrape:
@@ -148,32 +148,6 @@ jobs:
                 --monthly-budget "${GOONERS_EBAY_COMPS_MONTHLY_BUDGET:-10000}" \
                 --limit "${GOONERS_EBAY_COMPS_LIMIT:-2000}"
           fi
-
-      - name: Commit and push
-        if: ${{ inputs.dry_run != 'true' }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/
-          if git diff --staged --quiet; then
-            echo "No data changes to commit"
-            exit 0
-          fi
-          git commit -m "data: update scraped auction data [$(date -u +%Y-%m-%dT%H:%M)]"
-          for attempt in 1 2 3; do
-            if git push; then
-              exit 0
-            fi
-            echo "Push rejected (attempt ${attempt}); rebasing on origin/main"
-            git fetch origin main
-            # -X theirs: auto-resolve binary Parquet conflicts in favour of our
-            # freshly-scraped data when a concurrent commit landed during the run.
-            if ! git rebase -X theirs origin/main; then
-              git rebase --abort
-              exit 1
-            fi
-          done
-          git push
 
       - name: Fail if Cannon's scrape errored
         if: ${{ steps.scrape_maxanet.outcome == 'failure' }}
