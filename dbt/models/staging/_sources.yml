@@ -29,6 +29,41 @@ sources:
             tests: [not_null]
 
 
+  - name: supabase_metrics
+    description: >
+      Supabase platform telemetry (host load, database internals, service layer)
+      scraped from the project's privileged Prometheus endpoint and loaded by
+      supabase_stats/pipeline.py (dlt). Lives in the dedicated supabase_metrics
+      schema of the attached Supabase Postgres — NOT an RLS-public app table.
+      Long-format: one row per (scraped_at, metric, label set).
+    database: supabase   # alias set in profiles.yml attach config
+    schema: supabase_metrics
+    tables:
+      - name: metric_samples
+        description: >
+          One point-in-time sample per metric series per scrape run. Counters are
+          cumulative (diff over a window for rates); gauges are instantaneous.
+        columns:
+          - name: scraped_at
+            description: Scrape time (UTC), shared by every row in a run.
+            tests: [not_null]
+          - name: metric
+            description: Prometheus metric name (e.g. node_load1, pg_stat_database_blks_hit).
+            tests: [not_null]
+          - name: metric_type
+            description: Prometheus type — counter, gauge, or untyped.
+          - name: subsystem
+            description: host / database / auth / storage / realtime / other.
+          - name: pillar
+            description: reliability / load / performance (null for uncurated metrics).
+          - name: labels_json
+            description: Sorted JSON of the series' Prometheus labels.
+          - name: label_hash
+            description: Stable short hash of the label set — the per-series identity.
+          - name: value
+            description: Sample value (finite floats only; NaN/Inf dropped on load).
+            tests: [not_null]
+
   - name: gooners
     description: Supabase Postgres tables, attached to DuckDB read-only as the "supabase" database.
     database: supabase   # alias set in profiles.yml attach config

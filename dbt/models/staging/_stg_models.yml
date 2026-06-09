@@ -96,6 +96,28 @@ models:
       - name: user_id
         tests: [not_null, unique]
 
+  - name: stg_supabase_metrics
+    description: >
+      Typed, long-format Supabase platform-metric samples. One row per
+      (scraped_at, metric, label_hash). Parses common Prometheus labels out of
+      labels_json and flags counters (is_counter) for the rate models.
+    columns:
+      - name: scraped_at
+        tests: [not_null]
+      - name: metric
+        tests: [not_null]
+      - name: value
+        tests: [not_null]
+      - name: pillar
+        description: reliability / load / performance (null for uncurated metrics).
+        tests:
+          - accepted_values:
+              values: ['reliability', 'load', 'performance']
+              config:
+                where: "pillar is not null"
+      - name: subsystem
+        tests: [not_null]
+
   - name: stg_posthog_events
     description: "Daily PostHog event counts from posthog_raw.events_daily. Grain: (day, event)."
     columns:

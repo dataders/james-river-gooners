@@ -13,6 +13,25 @@ models:
       - name: is_enriched
         tests: [not_null]
 
+  - name: int_supabase_metric_rates
+    description: >
+      Supabase metric samples with per-series counter deltas and per-second
+      rates (lag over scraped_at, partitioned by metric + label_hash). Counter
+      resets are nulled out; gauges pass through with null delta/rate.
+    columns:
+      - name: scraped_at
+        tests: [not_null]
+      - name: metric
+        tests: [not_null]
+      - name: per_second_rate
+        description: >
+          Counter increase per second vs the previous sample. Null for gauges,
+          first samples of a series, resets, and same-second retries.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              where: "per_second_rate is not null"
+
   - name: int_sold_lots_enriched
     description: >
       Sold lots joined to enrichment, best eBay comp, and best Cannon's comp.
