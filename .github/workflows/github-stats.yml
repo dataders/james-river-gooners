@@ -13,11 +13,6 @@ name: GitHub Repo Stats
 # user postgres.<ref>) for the runner to connect. The job skips if it's unset.
 
 on:
-  # TEMP: branch-scoped push trigger to validate the pooler connection + first
-  # load on a real runner before merge (workflow_dispatch needs the workflow on
-  # the default branch). Removed before merge.
-  push:
-    branches: [claude/github-stats-dlt-pipeline-1ijhl9]
   schedule:
     # Hourly, a few minutes past the hour so it trails the scrape/deploy runs.
     - cron: '7 * * * *'
