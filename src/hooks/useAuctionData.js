@@ -5,6 +5,7 @@ import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
 import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { captureEvent } from '../lib/telemetry'
 import {
   normalizeRowsNdjson,
   normalizeRowsSupabase,
@@ -167,9 +168,11 @@ export function useAuctionData(archiveMode = 'active') {
           setLoading(false)
         }
       : undefined
+    const source = isSupabaseConfigured ? 'supabase' : 'ndjson'
     const activeLoader = isSupabaseConfigured
       ? () => fetchSupabaseDataset({ archived: false, onPartial })
       : () => fetchDataset('data/manifest.json')
+    const startedAt = performance.now()
     activeLoader()
       .then(({ items, auctions, loadTimeMs }) => {
         if (cancelled) return
@@ -178,12 +181,28 @@ export function useAuctionData(archiveMode = 'active') {
         setLoadTimeMs(loadTimeMs)
         setLoading(false)
         setLoadComplete(true)
+        // Surface real-world load latency to telemetry so slowness is
+        // measurable (and alertable) instead of just "feels slow". No-op when
+        // analytics is unconfigured.
+        captureEvent('dataset_loaded', {
+          dataset: 'active',
+          source,
+          loadTimeMs,
+          itemCount: items.length,
+          auctionCount: auctions.length,
+        })
       })
       .catch(e => {
         if (cancelled) return
         setError(e.message)
         setLoading(false)
         setLoadComplete(true)
+        captureEvent('dataset_load_failed', {
+          dataset: 'active',
+          source,
+          loadTimeMs: Math.round(performance.now() - startedAt),
+          error: String(e && e.message ? e.message : e),
+        })
       })
     return () => { cancelled = true }
   }, [])
@@ -192,21 +211,36 @@ export function useAuctionData(archiveMode = 'active') {
     if (!includeArchived || archiveLoaded || archiveError || archiveLoadingRef.current) return
     let cancelled = false
     archiveLoadingRef.current = true
+    const source = isSupabaseConfigured ? 'supabase' : 'ndjson'
     const archiveLoader = isSupabaseConfigured
       ? () => fetchSupabaseDataset({ archived: true })
       : () => fetchDataset('data/archive-manifest.json', { archived: true })
+    const startedAt = performance.now()
     archiveLoader()
-      .then(({ items, auctions }) => {
+      .then(({ items, auctions, loadTimeMs }) => {
         if (cancelled) return
         setArchiveItems(items)
         setArchiveAuctions(auctions)
         setArchiveLoaded(true)
         archiveLoadingRef.current = false
+        captureEvent('dataset_loaded', {
+          dataset: 'archive',
+          source,
+          loadTimeMs,
+          itemCount: items.length,
+          auctionCount: auctions.length,
+        })
       })
       .catch(e => {
         if (cancelled) return
         setArchiveError(e.message)
         archiveLoadingRef.current = false
+        captureEvent('dataset_load_failed', {
+          dataset: 'archive',
+          source,
+          loadTimeMs: Math.round(performance.now() - startedAt),
+          error: String(e && e.message ? e.message : e),
+        })
       })
     return () => {
       cancelled = true
