@@ -1,8 +1,11 @@
 // Shared PostgREST pagination. The browser reads several per-auction Supabase
 // views (eBay comps, Cannon's comps, lot enrichment) that can each exceed
 // PostgREST's 1000-row response cap, so every reader pages until a short page
-// comes back. This was copy-pasted into four places (compsLoader, the comps
-// hooks, useAuctionData); it now lives here once.
+// comes back. This was copy-pasted into the per-auction readers (compsLoader +
+// the comps/enrichment hooks); it now lives here once for those. The whole-
+// dataset loader (useAuctionData's fetchAllFromView) keeps its own variant on
+// purpose: it advances by rows-actually-returned and is being reworked into
+// parallel paging separately (#243).
 //
 // The helper is decoupled from the Supabase client on purpose: callers pass a
 // `makePage(from, to)` closure that runs whatever query they need (table,
