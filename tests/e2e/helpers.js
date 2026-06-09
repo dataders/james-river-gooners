@@ -1,15 +1,23 @@
 import { expect } from '@playwright/test'
 
-// Wait for the Supabase data load to finish.
-// Reloads once if the load hangs (Supabase connection timeout in parallel workers)
-// or if data loading errored — handles Vite dev-server cold-start and Supabase
-// free-tier database wake-up (~25-35s on first request after pause).
+// Wait for the FULL Supabase data load to finish.
+//
+// The grid renders progressively: `.loading` hides as soon as the first page
+// paints, but the rest of the ~6.5K-row set is still streaming in from the slow
+// free-tier DB, so the item count isn't yet stable. Tests assert exact counts,
+// so we wait for `main[data-load-complete="true"]` (the useAuctionData
+// `loadComplete` flag), which also implies the spinner is gone.
+//
+// The full load is slow (and parallel CI workers add contention), so the window
+// is generous; reload once if it stalls or errored (Vite cold-start, free-tier
+// wake-up). CI retries (retries: 1) cover the rare case where even a reload
+// runs past the test timeout.
 export async function waitForLoad(page) {
-  const hidden = await page.locator('.loading').waitFor({ state: 'hidden', timeout: 45_000 })
-    .then(() => true).catch(() => false)
-  if (!hidden || await page.locator('.error').isVisible()) {
+  const ready = await page.locator('main[data-load-complete="true"]')
+    .waitFor({ state: 'visible', timeout: 70_000 }).then(() => true).catch(() => false)
+  if (!ready || await page.locator('.error').isVisible()) {
     await page.reload()
-    await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
+    await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 70_000 })
   }
   await expect(page.locator('.error')).toBeHidden()
 }

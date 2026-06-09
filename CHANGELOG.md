@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-09 — Faster loading
+
+- ⚡ **Faster loading** — the auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.
+
 ## 2026-06-08 — Bid status notifications
 
 - 🔴 **Bid alert badge** — a red badge now appears on the account icon when you've been outbid on any active item — tap your profile to see what's changed.

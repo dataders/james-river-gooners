@@ -38,30 +38,67 @@ async function fetchNdjson(url) {
 
 // --- Supabase dataset fetch ---
 
-async function fetchAllFromView(viewName) {
-  // PostgREST caps each response at the server's `max-rows` setting (1000 by
-  // default), so the page size must stay at or below that cap — a larger PAGE
-  // would come back short on the very first request and the loop would quit
-  // early, silently truncating the dataset to 1000 rows. Advance by the rows
-  // actually returned so this self-adjusts if the cap ever changes.
-  const PAGE = 1000
-  const rows = []
-  let from = 0
+// PostgREST caps each response at the server's `max-rows` setting (1000 by
+// default), so a page can never exceed this cap — a larger PAGE would come back
+// short on the very first request and be mistaken for the end of the data.
+const PAGE = 1000
+
+async function fetchPage(viewName, from) {
+  const { data, error } = await supabase.from(viewName).select('*').range(from, from + PAGE - 1)
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+// How many pages to fetch concurrently per wave. The old loop paged strictly
+// sequentially — with ~6.6K active lots that's 7 serial round-trips against a
+// slow free-tier instance, the bulk of the "Fetching auction data" wait.
+// Fetching a wave of pages at once collapses that to a couple of round-trips,
+// while the cap keeps it gentle: the E2E/usability suites open many pages at
+// once (Playwright workers), and N workers × unbounded pages saturated
+// free-tier Supabase's connections.
+const PAGE_CONCURRENCY = 4
+
+// Load every row from a paginated PostgREST view via adaptive parallel waves.
+//
+// We deliberately avoid a COUNT query: an exact COUNT over this view costs
+// several seconds on the cold free-tier instance (as much as the data itself),
+// and a planned/estimated count can be stale right after a scrape. Instead we
+// fetch page 0 first (so `onFirstPage` can paint it as soon as possible —
+// progressive render), then fetch the rest in PAGE_CONCURRENCY-wide waves,
+// stopping as soon as a page comes back short (the last page). A trailing empty
+// page per run is the only waste.
+async function fetchAllFromView(viewName, onFirstPage) {
+  const first = await fetchPage(viewName, 0)
+  if (onFirstPage) onFirstPage(first)
+  if (first.length < PAGE) return first
+
+  const rows = [...first]
+  let from = PAGE
   while (true) {
-    const { data, error } = await supabase.from(viewName).select('*').range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    if (!data || data.length === 0) break
-    rows.push(...data)
-    if (data.length < PAGE) break
-    from += data.length
+    const offsets = []
+    for (let k = 0; k < PAGE_CONCURRENCY; k++) offsets.push(from + k * PAGE)
+    const wave = await Promise.all(offsets.map(o => fetchPage(viewName, o)))
+    let reachedEnd = false
+    for (const page of wave) {
+      rows.push(...page)
+      if (page.length < PAGE) reachedEnd = true
+    }
+    if (reachedEnd) break
+    from += PAGE_CONCURRENCY * PAGE
   }
   return rows
 }
 
-async function fetchSupabaseDataset({ archived = false } = {}) {
+async function fetchSupabaseDataset({ archived = false, onPartial } = {}) {
   const t0 = performance.now()
-  const viewName = archived ? 'public_archived_lots' : 'public_active_lots'
-  const rows = await fetchAllFromView(viewName)
+  // The _card views slice images down to the first (thumbnail) element — the
+  // only one the grid renders — cutting the payload roughly in half. The detail
+  // panel hydrates the full image set on demand (see useFullImages).
+  const viewName = archived ? 'public_archived_lots_card' : 'public_active_lots_card'
+  const onFirstPage = onPartial
+    ? rows => onPartial(normalizeRowsSupabase(rows, archived))
+    : undefined
+  const rows = await fetchAllFromView(viewName, onFirstPage)
   const { items, auctions } = normalizeRowsSupabase(rows, archived)
   return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
 }
@@ -98,6 +135,11 @@ export function useAuctionData(archiveMode = 'active') {
     new URLSearchParams(window.location.search).getAll('hideAuction')
   )
   const [loading, setLoading] = useState(true)
+  // `loading` flips false as soon as the first page paints (progressive render);
+  // `loadComplete` only flips once the entire active set is in, so consumers
+  // that must see every item (e.g. the deep-link finder, the E2E suite) can
+  // wait for the stable full count.
+  const [loadComplete, setLoadComplete] = useState(false)
   const [loadTimeMs, setLoadTimeMs] = useState(null)
   const [error, setError] = useState(null)
   const [archiveError, setArchiveError] = useState(null)
@@ -112,8 +154,21 @@ export function useAuctionData(archiveMode = 'active') {
 
   useEffect(() => {
     let cancelled = false
+    // Paint the first page the moment it lands (Supabase path only — the NDJSON
+    // path resolves its file fetches in one shot, so there's nothing partial to
+    // show). The final `.then` below replaces this with the complete set. This
+    // matters because the free-tier DB serves the full ~6.5K-row set slowly
+    // (~10-20s); progressive render shows lots in ~2s regardless.
+    const onPartial = isSupabaseConfigured
+      ? ({ items, auctions }) => {
+          if (cancelled) return
+          setActiveItems(items)
+          setActiveAuctions(auctions)
+          setLoading(false)
+        }
+      : undefined
     const activeLoader = isSupabaseConfigured
-      ? () => fetchSupabaseDataset({ archived: false })
+      ? () => fetchSupabaseDataset({ archived: false, onPartial })
       : () => fetchDataset('data/manifest.json')
     activeLoader()
       .then(({ items, auctions, loadTimeMs }) => {
@@ -122,11 +177,13 @@ export function useAuctionData(archiveMode = 'active') {
         setActiveAuctions(auctions)
         setLoadTimeMs(loadTimeMs)
         setLoading(false)
+        setLoadComplete(true)
       })
       .catch(e => {
         if (cancelled) return
         setError(e.message)
         setLoading(false)
+        setLoadComplete(true)
       })
     return () => { cancelled = true }
   }, [])
@@ -280,6 +337,7 @@ export function useAuctionData(archiveMode = 'active') {
     showSource,
     items,
     loading,
+    loadComplete,
     loadTimeMs,
     archiveLoading: includeArchived && !archiveLoaded && !archiveError,
     error,

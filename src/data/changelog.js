@@ -8,6 +8,13 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-09',
+    title: 'Faster loading',
+    changes: [
+      { id: 'faster-load-progressive', icon: '⚡', text: 'The auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.' },
+    ],
+  },
+  {
     date: '2026-06-08',
     title: 'Bid status notifications',
     changes: [

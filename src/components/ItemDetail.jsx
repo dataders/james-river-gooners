@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { itemTimeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
@@ -8,11 +8,22 @@ import { getDisplayEnrichment } from '../utils/enrichment'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
+import { useFullImages } from '../hooks/useFullImages'
 
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, cannonBids, bidStatus, user, onCannonLinkClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
   const [showFbModal, setShowFbModal] = useState(false)
+  // The grid carries only the thumbnail (the _card view trims images[] to the
+  // first element); pull the full image set for the carousel and for any child
+  // that needs every photo (e.g. FbListingModal's photo assessment). Memoized
+  // so the hydrated item keeps a stable identity across re-renders — otherwise
+  // FbListingModal would re-run its listing-generation effect on every render.
+  const images = useFullImages(item)
+  const itemWithImages = useMemo(
+    () => (item ? { ...item, images } : item),
+    [item, images]
+  )
 
   const handleShare = () => {
     const url = window.location.href
@@ -44,7 +55,6 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
   if (!item) return null
 
-  const images = item.images || []
   const maxImgIndex = Math.max(images.length - 1, 0)
   const imgIndex = imageState.itemKey === itemKey
     ? Math.min(imageState.imgIndex, maxImgIndex)
@@ -196,7 +206,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
             )}
           </div>
           {showFbModal && (
-            <FbListingModal item={item} onClose={() => setShowFbModal(false)} />
+            <FbListingModal item={itemWithImages} onClose={() => setShowFbModal(false)} />
           )}
 
           {cannonBids && (
