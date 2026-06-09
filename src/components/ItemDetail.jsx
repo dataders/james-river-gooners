@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { itemTimeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'
 import { CannonsComps } from './CannonsComps'
@@ -14,8 +14,16 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
   const [showFbModal, setShowFbModal] = useState(false)
-  // The grid carries only the thumbnail; pull the full image set for the carousel.
+  // The grid carries only the thumbnail (the _card view trims images[] to the
+  // first element); pull the full image set for the carousel and for any child
+  // that needs every photo (e.g. FbListingModal's photo assessment). Memoized
+  // so the hydrated item keeps a stable identity across re-renders — otherwise
+  // FbListingModal would re-run its listing-generation effect on every render.
   const images = useFullImages(item)
+  const itemWithImages = useMemo(
+    () => (item ? { ...item, images } : item),
+    [item, images]
+  )
 
   const handleShare = () => {
     const url = window.location.href
@@ -198,7 +206,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
             )}
           </div>
           {showFbModal && (
-            <FbListingModal item={item} onClose={() => setShowFbModal(false)} />
+            <FbListingModal item={itemWithImages} onClose={() => setShowFbModal(false)} />
           )}
 
           {cannonBids && (

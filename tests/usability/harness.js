@@ -49,23 +49,23 @@ export async function gotoApp(page, query = '') {
 }
 
 // Wait until the Supabase data load finishes and the grid is populated.
-// Reloads once if the load hangs (>.loading stuck visible) or if Supabase
-// returns an error — mirrors the resilience of tests/e2e/helpers.js.
+// Mirrors tests/e2e/helpers.js waitForLoad.
 //
-// The grid renders progressively: .loading hides at first paint (~1000 of
-// ~6600 active lots) while the rest stream in. Objectives that measure counts
-// or look for a specific lot must see the FULL set, signalled by
-// main[data-load-complete="true"] (useAuctionData's loadComplete flag) — not
-// just the spinner going away.
+// The grid renders progressively: `.loading` hides at first paint while the
+// rest of the set streams in, so objectives that measure counts or look for a
+// specific lot must wait for the FULL set — `main[data-load-complete="true"]`
+// (useAuctionData's loadComplete flag) — not just the spinner going away. The
+// usability suite runs single-worker (no contention), so the load is reliably
+// well within the window; reload once if it stalls or errors.
 export async function waitForLoad(page) {
-  const hidden = await page.locator('.loading').waitFor({ state: 'hidden', timeout: 45_000 })
-    .then(() => true).catch(() => false)
-  if (!hidden || await page.locator('.error').isVisible()) {
+  const ready = await page.locator('main[data-load-complete="true"]')
+    .waitFor({ state: 'visible', timeout: 70_000 }).then(() => true).catch(() => false)
+  if (!ready || await page.locator('.error').isVisible()) {
     await page.reload()
-    await expect(page.locator('.loading')).toBeHidden({ timeout: 30_000 })
+    await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 70_000 })
   }
+  await expect(page.locator('.error')).toBeHidden()
   await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 45_000 })
 }
 
 // Read the "<n> items" count from the grid header.

@@ -49,47 +49,42 @@ async function fetchPage(viewName, from) {
   return data || []
 }
 
-// Load every row from a paginated PostgREST view.
+// How many pages to fetch concurrently per wave. The old loop paged strictly
+// sequentially — with ~6.6K active lots that's 7 serial round-trips against a
+// slow free-tier instance, the bulk of the "Fetching auction data" wait.
+// Fetching a wave of pages at once collapses that to a couple of round-trips,
+// while the cap keeps it gentle: the E2E/usability suites open many pages at
+// once (Playwright workers), and N workers × unbounded pages saturated
+// free-tier Supabase's connections.
+const PAGE_CONCURRENCY = 4
+
+// Load every row from a paginated PostgREST view via adaptive parallel waves.
 //
-// The old loop fetched pages strictly sequentially (await page 0, then page 1,
-// …). With ~6.6K active lots that's 7 serial round-trips, and OFFSET paging
-// re-scans from the top each time, so later pages get progressively slower —
-// the bulk of the "Fetching auction data" wait. Instead we fetch page 0
-// alongside an exact COUNT, then fire all remaining pages concurrently, so the
-// wall-clock is roughly one round-trip rather than the sum.
-//
-// `onFirstPage` fires as soon as page 0 lands so the caller can paint the first
-// 1000 lots immediately instead of waiting for the whole set (progressive
-// render). A sequential tail after the parallel batch guards against an
-// undercount (rows inserted since the COUNT) and doubles as the fallback when
-// COUNT is unavailable — in that case the parallel batch is empty and this is
-// the only paging that runs.
+// We deliberately avoid a COUNT query: an exact COUNT over this view costs
+// several seconds on the cold free-tier instance (as much as the data itself),
+// and a planned/estimated count can be stale right after a scrape. Instead we
+// fetch page 0 first (so `onFirstPage` can paint it as soon as possible —
+// progressive render), then fetch the rest in PAGE_CONCURRENCY-wide waves,
+// stopping as soon as a page comes back short (the last page). A trailing empty
+// page per run is the only waste.
 async function fetchAllFromView(viewName, onFirstPage) {
-  const [{ count, error: countErr }, firstPage] = await Promise.all([
-    supabase.from(viewName).select('*', { count: 'exact', head: true }),
-    fetchPage(viewName, 0),
-  ])
-  if (onFirstPage) onFirstPage(firstPage)
-  if (firstPage.length < PAGE) return firstPage
+  const first = await fetchPage(viewName, 0)
+  if (onFirstPage) onFirstPage(first)
+  if (first.length < PAGE) return first
 
-  const rows = [...firstPage]
-  const total = !countErr && typeof count === 'number' ? count : firstPage.length
-
-  const offsets = []
-  for (let from = PAGE; from < total; from += PAGE) offsets.push(from)
-  const pages = await Promise.all(offsets.map(from => fetchPage(viewName, from)))
-  for (const page of pages) rows.push(...page)
-
-  // Sequential tail starting just past the parallel batch. If COUNT was exact
-  // this fetches one empty page and stops; if it undercounted (or was absent)
-  // it keeps paging until a short/empty page.
-  let from = PAGE * (offsets.length + 1)
+  const rows = [...first]
+  let from = PAGE
   while (true) {
-    const page = await fetchPage(viewName, from)
-    if (page.length === 0) break
-    rows.push(...page)
-    if (page.length < PAGE) break
-    from += PAGE
+    const offsets = []
+    for (let k = 0; k < PAGE_CONCURRENCY; k++) offsets.push(from + k * PAGE)
+    const wave = await Promise.all(offsets.map(o => fetchPage(viewName, o)))
+    let reachedEnd = false
+    for (const page of wave) {
+      rows.push(...page)
+      if (page.length < PAGE) reachedEnd = true
+    }
+    if (reachedEnd) break
+    from += PAGE_CONCURRENCY * PAGE
   }
   return rows
 }
@@ -142,7 +137,8 @@ export function useAuctionData(archiveMode = 'active') {
   const [loading, setLoading] = useState(true)
   // `loading` flips false as soon as the first page paints (progressive render);
   // `loadComplete` only flips once the entire active set is in, so consumers
-  // that must see every item (e.g. the deep-link finder) can wait for it.
+  // that must see every item (e.g. the deep-link finder, the E2E suite) can
+  // wait for the stable full count.
   const [loadComplete, setLoadComplete] = useState(false)
   const [loadTimeMs, setLoadTimeMs] = useState(null)
   const [error, setError] = useState(null)
@@ -160,7 +156,9 @@ export function useAuctionData(archiveMode = 'active') {
     let cancelled = false
     // Paint the first page the moment it lands (Supabase path only — the NDJSON
     // path resolves its file fetches in one shot, so there's nothing partial to
-    // show). The final `.then` below replaces this with the complete set.
+    // show). The final `.then` below replaces this with the complete set. This
+    // matters because the free-tier DB serves the full ~6.5K-row set slowly
+    // (~10-20s); progressive render shows lots in ~2s regardless.
     const onPartial = isSupabaseConfigured
       ? ({ items, auctions }) => {
           if (cancelled) return

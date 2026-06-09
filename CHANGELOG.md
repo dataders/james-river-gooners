@@ -6,7 +6,7 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 
 ## 2026-06-09 — Faster loading
 
-- ⚡ **Faster loading** — the grid now appears almost immediately and fills in the rest of the lots as they load, instead of sitting on a spinner until everything is ready.
+- ⚡ **Faster loading** — the auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.
 
 ## 2026-06-08 — Bid status notifications
 

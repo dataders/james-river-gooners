@@ -11,7 +11,7 @@ export const CHANGELOG = [
     date: '2026-06-09',
     title: 'Faster loading',
     changes: [
-      { id: 'faster-load-progressive', icon: '⚡', text: 'The grid now appears almost immediately and fills in the rest of the lots as they load, instead of sitting on a spinner until everything is ready.' },
+      { id: 'faster-load-progressive', icon: '⚡', text: 'The auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.' },
     ],
   },
   {
