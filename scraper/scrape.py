@@ -7,8 +7,6 @@ Usage: python scrape.py <auction_url>
 """
 
 import argparse
-import json
-import os
 import re
 import sys
 import time
@@ -20,6 +18,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from categories import normalize_category, normalize_raw_with_description
+from persist import WriteContext, write_read_model
 from scraper_common import has_bid_changes, load_existing_bids, load_existing_unique_bidders
 
 
@@ -393,84 +392,24 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
     existing_unique = load_existing_unique_bidders(items_path)
     enrich_unique_bidders(session, all_items, existing_bids, existing_unique)
 
-    # Write items with embedded auction metadata
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    ITEMS_DIR.mkdir(parents=True, exist_ok=True)
-
     end_dates = [item["endDate"] for item in all_items if item["endDate"]]
     # Closed/backfilled auctions have no per-lot end date; fall back to the
     # date in the auction title so they still sort and archive correctly.
     latest_end = max(end_dates) if end_dates else auction_date_from_title(auction_title)
-    scraped_at = datetime.now(timezone.utc).isoformat()
 
-    for item in all_items:
-        item["auctionId"] = auction_id
-        item["auctionSafeId"] = safe_id
-        item["auctionTitle"] = auction_title
-        item["auctionEndDate"] = latest_end
-        # Closed lots carry no live countdown, so their per-lot endDate is
-        # blank. Fall back to the auction end date so the UI's countdown shows
-        # "Ended" instead of an empty time line.
-        if not item["endDate"]:
-            item["endDate"] = latest_end
-        item["scrapedAt"] = scraped_at
-        item["source"] = "cannons"
-
-    # LLM metadata enrichment (#99/#104): brand/model/condition for sharper eBay
-    # comp queries + UI display. No-op unless GOONERS_ENRICHMENT=1 + a key is set,
-    # so default behavior is unchanged. Runs while images are still arrays.
-    # Hand it the prior sidecar so unchanged lots reuse their enrichment instead
-    # of re-paying for an identical API call (incremental enrichment).
-    from enrich import enrich_items, enrichment_summary, format_enrichment_summary, load_prior_enrichment
-    if os.environ.get("SUPABASE_SECRET_KEY"):
-        from supabase_enrichment import load_prior_enrichment_from_supabase
-        prior_by_id = load_prior_enrichment_from_supabase(safe_id)
-    else:
-        prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
-    if enrich_items(all_items, prior_by_id=prior_by_id):
-        # Report the medium/high identification rate (what reaches Supabase + the
-        # UI), not just the processed count — visible in the workflow logs.
-        print(format_enrichment_summary(safe_id, enrichment_summary(all_items)))
-    # Mirror enriched lots into Supabase so they're queryable via the API (#104).
-    # No-op without SUPABASE_SECRET_KEY or enriched lots.
-    from supabase_enrichment import maybe_export_enrichment
-    maybe_export_enrichment(all_items)
-
-    # Write NDJSON (images as real array)
-    ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
-    ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]
-    ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
-    print(f"Wrote {len(all_items)} items to {ndjson_path}")
-
-    if os.environ.get("SUPABASE_SECRET_KEY"):
-        from supabase_lots import upsert_lots
-        upsert_lots(all_items, safe_id)
-
-    # Generate Nomic Embed (text+vision, 768-dim) → Supabase pgvector table (#165)
-    from embed_nomic import maybe_generate_and_upsert as _gen_nomic
-    _gen_nomic(all_items, safe_id, session)
-
-    # Write Parquet (images stringified — Arrow doesn't support list-of-strings natively here)
-    for item in all_items:
-        item["images"] = json.dumps(item["images"])
-    table = pa.Table.from_pylist(all_items)
-    pq.write_table(table, items_path, compression="snappy")
-    print(f"Wrote {len(all_items)} items to {items_path}")
-
-    if snapshot_to_motherduck is None:
-        from motherduck import should_snapshot_to_motherduck
-        snapshot_to_motherduck = should_snapshot_to_motherduck()
-
-    if snapshot_to_motherduck:
-        from warehouse import get_sink
-        sink = get_sink()
-        if sink is not None:
-            snapshot_count = sink.append_listing_snapshots(all_items, auction_url)
-            print(f"Appended {snapshot_count} listing snapshots to the warehouse")
-
-    return {"changed": True}
+    ctx = WriteContext(
+        safe_id=safe_id,
+        auction_id=auction_id,
+        auction_title=auction_title,
+        auction_end_date=latest_end,
+        source="cannons",
+        source_url=auction_url,
+        scraped_at=datetime.now(timezone.utc).isoformat(),
+        session=session,
+        snapshot_to_motherduck=snapshot_to_motherduck,
+        fill_blank_end_dates=True,
+    )
+    return write_read_model(all_items, ctx)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
