@@ -112,10 +112,43 @@ class AppendTest(unittest.TestCase):
         session.post.return_value = unittest.mock.MagicMock(
             status_code=400, text="bad request"
         )
-        with self.assertRaisesRegex(RuntimeError, "Supabase comp insert failed"):
-            supabase_comps.append_ebay_comp_snapshots(
+        with patch("supabase_comps.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "Supabase comp insert failed"):
+                supabase_comps.append_ebay_comp_snapshots(
+                    [{"item_id": "i"}], url="https://x.supabase.co", key="k", session=session
+                )
+        # 4xx is permanent — no retry, no backoff.
+        self.assertEqual(session.post.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_transient_error_retried_then_succeeds(self):
+        session = unittest.mock.MagicMock()
+        session.post.side_effect = [
+            unittest.mock.MagicMock(status_code=503, text="PGRST002 schema cache"),
+            unittest.mock.MagicMock(status_code=201),
+        ]
+        with patch("supabase_comps.time.sleep") as sleep:
+            written = supabase_comps.append_ebay_comp_snapshots(
                 [{"item_id": "i"}], url="https://x.supabase.co", key="k", session=session
             )
+        self.assertEqual(written, 1)
+        self.assertEqual(session.post.call_count, 2)
+        sleep.assert_called_once_with(2)
+
+    def test_network_error_retried_then_succeeds(self):
+        import requests
+
+        session = unittest.mock.MagicMock()
+        session.post.side_effect = [
+            requests.exceptions.ConnectionError("reset"),
+            unittest.mock.MagicMock(status_code=201),
+        ]
+        with patch("supabase_comps.time.sleep"):
+            written = supabase_comps.append_ebay_comp_snapshots(
+                [{"item_id": "i"}], url="https://x.supabase.co", key="k", session=session
+            )
+        self.assertEqual(written, 1)
+        self.assertEqual(session.post.call_count, 2)
 
 
 class ContentRangeTotalTest(unittest.TestCase):
@@ -196,11 +229,32 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         _, kwargs = session.get.call_args
         self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-05T00:00:00+00:00")
 
-    def test_ledger_read_http_error_raises(self):
+    def test_ledger_read_http_error_retries_then_raises(self):
         session = unittest.mock.MagicMock()
         session.get.return_value = unittest.mock.MagicMock(status_code=500, text="boom")
-        with self.assertRaisesRegex(RuntimeError, "Supabase ledger read failed"):
-            self._ledger(session).fresh_keys(stale_hours=168)
+        with patch("supabase_comps.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "Supabase ledger read failed"):
+                self._ledger(session).fresh_keys(stale_hours=168)
+        # Transient 5xx is retried with backoff before giving up.
+        self.assertEqual(session.get.call_count, supabase_comps.DEFAULT_MAX_RETRIES + 1)
+        self.assertEqual(
+            [call.args[0] for call in sleep.call_args_list], [2, 4, 8, 16]
+        )
+
+    def test_ledger_read_transient_503_recovers(self):
+        session = unittest.mock.MagicMock()
+        session.get.side_effect = [
+            unittest.mock.MagicMock(
+                status_code=503, text='{"code":"PGRST002","message":"schema cache"}'
+            ),
+            unittest.mock.MagicMock(
+                status_code=200, json=lambda: [{"auction_safe_id": "A", "item_id": "1"}]
+            ),
+        ]
+        with patch("supabase_comps.time.sleep") as sleep:
+            keys = self._ledger(session).fresh_keys(stale_hours=168)
+        self.assertEqual(keys, {"A:1"})
+        sleep.assert_called_once_with(2)
 
 
 if __name__ == "__main__":
