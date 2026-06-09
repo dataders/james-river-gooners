@@ -20,8 +20,12 @@ concurrency:
 
 jobs:
   request-review:
-    # Don't pester drafts — wait until the PR is ready for review.
-    if: ${{ !github.event.pull_request.draft }}
+    # Skip drafts (wait until ready for review) and fork PRs: a cross-repo
+    # PR's GITHUB_TOKEN is read-only regardless of the permissions block, so
+    # requestReviews would fail and (under set -euo pipefail) show a red check.
+    if: >-
+      ${{ !github.event.pull_request.draft
+          && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Request a review from Copilot
