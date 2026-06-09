@@ -14,8 +14,9 @@ incrementally with merge semantics — exactly dlt's job. They are NOT the
 RLS-public app tables; they live in their own ``github_stats`` schema.
 
 Config (all via env):
-- ``SUPABASE_DB_URL`` / ``DLT_PG_URL`` — the Postgres connection string
-  (``postgresql://user:pass@host:5432/db``). Required to load.
+- ``SUPABASE_POSTGRES_URL`` (or ``SUPABASE_DB_URL`` / ``DLT_PG_URL``) — the
+  Postgres connection string (``postgresql://user:pass@host:5432/db``).
+  Required to load.
 - ``GITHUB_TOKEN`` / ``GH_TOKEN`` — bumps the API rate limit (and is required for
   log download); set automatically in GitHub Actions.
 - ``GITHUB_REPOSITORY`` — ``owner/name`` to monitor; defaults to the project repo.
@@ -155,7 +156,13 @@ def github_source(
 
 
 def _resolve_pg_credentials() -> str | None:
-    return os.environ.get("SUPABASE_DB_URL") or os.environ.get("DLT_PG_URL")
+    # SUPABASE_POSTGRES_URL is the name the project's environment provides;
+    # SUPABASE_DB_URL / DLT_PG_URL are accepted aliases.
+    return (
+        os.environ.get("SUPABASE_POSTGRES_URL")
+        or os.environ.get("SUPABASE_DB_URL")
+        or os.environ.get("DLT_PG_URL")
+    )
 
 
 def _iter_sql_statements(sql: str):
@@ -188,7 +195,7 @@ def run(
     creds = _resolve_pg_credentials()
     if not creds:
         raise RuntimeError(
-            "Set SUPABASE_DB_URL (or DLT_PG_URL) to the Postgres connection string "
+            "Set SUPABASE_POSTGRES_URL (or SUPABASE_DB_URL / DLT_PG_URL) to the Postgres connection string "
             "(postgresql://user:pass@host:5432/db) to load GitHub stats."
         )
 

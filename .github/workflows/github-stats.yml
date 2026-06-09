@@ -5,9 +5,12 @@ name: GitHub Repo Stats
 # manages the `github_stats` schema and incremental state in the destination;
 # derived stats are SQL views (see github_stats/views.sql), re-applied each run.
 #
-# Requires the SUPABASE_DB_URL secret — the Supabase Postgres connection string
-# (postgresql://user:pass@host:5432/db). dlt needs a direct DB connection, not
-# the PostgREST endpoint the scrapers use. The job skips cleanly if it's unset.
+# Reads the SUPABASE_POSTGRES_URL secret — the Supabase Postgres connection
+# string. dlt needs a direct DB connection, not the PostgREST endpoint the
+# scrapers use. NOTE: GitHub-hosted runners are IPv4-only, and Supabase's
+# direct host (db.<ref>.supabase.co) is IPv6-only — so this secret must hold
+# the **session pooler** URL (aws-0-<region>.pooler.supabase.com:5432,
+# user postgres.<ref>) for the runner to connect. The job skips if it's unset.
 
 on:
   schedule:
@@ -41,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_POSTGRES_URL: ${{ secrets.SUPABASE_POSTGRES_URL }}
     steps:
       - uses: actions/checkout@v5
 
@@ -50,8 +53,8 @@ jobs:
       - name: Load GitHub stats to Postgres
         run: |
           cd github_stats
-          if [ -z "${SUPABASE_DB_URL:-}" ]; then
-            echo "SUPABASE_DB_URL not set — skipping GitHub-stats load"
+          if [ -z "${SUPABASE_POSTGRES_URL:-}" ]; then
+            echo "SUPABASE_POSTGRES_URL not set — skipping GitHub-stats load"
             exit 0
           fi
           LOOKBACK="${{ inputs.lookback_days || '180' }}"

@@ -41,13 +41,18 @@ re-applies (idempotent `CREATE OR REPLACE`) after every load:
 
 | var | purpose |
 | --- | --- |
-| `SUPABASE_DB_URL` (or `DLT_PG_URL`) | **Required.** Postgres connection string `postgresql://user:pass@host:5432/db`. For Supabase use the connection string from *Project Settings → Database* (the pooler URL works). |
+| `SUPABASE_POSTGRES_URL` (or `SUPABASE_DB_URL` / `DLT_PG_URL`) | **Required.** Postgres connection string `postgresql://user:pass@host:5432/db`. |
 | `GITHUB_TOKEN` / `GH_TOKEN` | Bumps the API rate limit and is **required to download workflow-run logs** (the items-processed source). Auto-set in GitHub Actions. |
 | `GITHUB_REPOSITORY` | `owner/name` to monitor. Defaults to `dataders/james-river-gooners`. Auto-set in Actions. |
 
 > The repo's other Supabase writes use the PostgREST REST API + the secret key.
-> dlt's Postgres destination instead needs a **direct DB connection string**
-> (`SUPABASE_DB_URL`) — that's the one extra secret to add.
+> dlt's Postgres destination instead needs a **direct DB connection string**.
+>
+> **Use the session-pooler URL, not the direct host.** Supabase's direct host
+> (`db.<ref>.supabase.co`) is **IPv6-only**; GitHub-hosted runners (and many
+> sandboxes) are IPv4-only and can't reach it. The session pooler is IPv4:
+> `postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres`
+> (from *Project Settings → Database → Connection string → Session pooler*).
 
 ## Run
 
