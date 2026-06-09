@@ -10,6 +10,9 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // A healthy benchmark run takes ~2 minutes; bound the whole run so a hung
+  // app load can't hold the CI job for hours (mirrors playwright.config.js).
+  globalTimeout: process.env.CI ? 10 * 60_000 : 0,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:5173',
