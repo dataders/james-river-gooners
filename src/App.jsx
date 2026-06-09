@@ -11,16 +11,9 @@ import { useCannonBids } from './hooks/useCannonBids'
 import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
-import { filterItems, getGroupedCategories } from './utils/filters'
-import { useSearch } from './hooks/useSearch'
-import { useSemanticSearch } from './hooks/useSemanticSearch'
-import { isDeal } from './utils/roiCalc'
-import { marginForItem, maxBidForItem } from './utils/soldHistory'
+import { useItemPipeline } from './hooks/useItemPipeline'
 import { itemKey } from './utils/itemKey'
-import { hasEbayComps } from './utils/ebayComps'
-import { hasCannonsComps } from './utils/cannonsComps'
-import { hasEnrichment, overlayEnrichment } from './utils/enrichment'
-import { sortItems, sortByMargin, sortByMaxBid } from './utils/sort'
+import { overlayEnrichment } from './utils/enrichment'
 import { syncUrlParam } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
@@ -254,42 +247,45 @@ export default function App() {
   // sort (#97) and the detail panel's category history (#96).
   const categorySoldStats = useCategorySoldStats(Boolean(auth.user))
 
-  const localAuctionIds = useMemo(() => {
-    const ids = new Set()
-    for (const a of auctions) {
-      if (a.isLocal) ids.add(a.safeId)
-    }
-    return ids
-  }, [auctions])
-
-  // Apply locality filter upstream so auctions list + category counts reflect it
-  const visibleAuctions = useMemo(
-    () => localOnly ? auctions.filter(a => a.isLocal) : auctions,
-    [auctions, localOnly]
-  )
-
-  const visibleItems = useMemo(
-    () => localOnly ? items.filter(item => localAuctionIds.has(item.auctionSafeId)) : items,
-    [items, localOnly, localAuctionIds]
-  )
-
-  const searchIndex = useSearch(visibleItems)
-  const miniSearchIds = useMemo(() => {
-    if (!searchQuery) return null
-    return new Set(searchIndex.search(searchQuery).map(r => r.id))
-  }, [searchIndex, searchQuery])
-
-  const { semanticIds, semanticStatus } = useSemanticSearch(searchQuery)
-
-  // Hybrid blend: intersect when both are available so semantic filters keyword false positives.
-  // If keyword finds nothing (semantic-only query like "vintage mid-century"), use semantic alone.
-  // Falls back to keyword-only while the model is still loading.
-  const searchIds = useMemo(() => {
-    if (!searchQuery) return null
-    if (!semanticIds) return miniSearchIds
-    if (miniSearchIds.size === 0) return semanticIds
-    return new Set([...miniSearchIds].filter(id => semanticIds.has(id)))
-  }, [searchQuery, miniSearchIds, semanticIds])
+  // The whole locality → search → filter → sort chain lives in useItemPipeline
+  // (extracted verbatim from here — see that hook for the per-stage comments).
+  const {
+    visibleAuctions,
+    visibleItems,
+    searchIds,
+    semanticStatus,
+    rangeFilterItems,
+    groupedCategories,
+    displayItems,
+    finalItems,
+    sortedItems,
+    cannonBidCount,
+  } = useItemPipeline({
+    items,
+    auctions,
+    localOnly,
+    searchQuery,
+    excludedCategories,
+    excludedGroups,
+    minPrice, maxPrice,
+    minBids, maxBids,
+    minBidders, maxBidders,
+    minHours, maxHours,
+    hasComp,
+    hasCannonsComp,
+    bestDeals,
+    showFavoritesOnly,
+    showIgnoredOnly,
+    showEnrichedOnly,
+    sort,
+    margin,
+    isFavorite,
+    isIgnored,
+    allComps,
+    allCannonsComps,
+    categorySoldStats,
+    bidItemIds: cannonBids.bidItemIds,
+  })
 
   // Search telemetry — debounced so it fires once the query settles, not on
   // every keystroke. We log the query *shape* (length, result count, whether
@@ -307,77 +303,6 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [searchQuery, searchIds, semanticStatus])
 
-  // Items for range-slider histograms: search + category filtered but no range filters,
-  // so slider min/max/distribution dynamically reflects the current search/category context
-  // without a circular dependency between the sliders themselves.
-  const rangeFilterItems = useMemo(
-    () => filterItems(visibleItems, { excludedCategories, excludedGroups, searchIds }),
-    [visibleItems, excludedCategories, excludedGroups, searchIds]
-  )
-
-  // Items passing price/time/bids/search but NOT category filters — for dynamic counts
-  const preFilteredItems = useMemo(
-    () => filterItems(visibleItems, { excludedCategories: [], searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours }),
-    [visibleItems, searchIds, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours]
-  )
-
-  const groupedCategories = useMemo(() => getGroupedCategories(preFilteredItems), [preFilteredItems])
-
-  const filteredItems = useMemo(
-    () => preFilteredItems.filter(item =>
-      !excludedGroups.includes(item.category) &&
-      !excludedCategories.includes(item.rawCategory)
-    ),
-    [preFilteredItems, excludedCategories, excludedGroups]
-  )
-
-  const displayItems = useMemo(() => {
-    let result = filteredItems
-    if (hasComp) {
-      result = result.filter(item =>
-        hasEbayComps(allComps[item.auctionSafeId]?.[item.id])
-      )
-    }
-    if (hasCannonsComp) {
-      result = result.filter(item =>
-        hasCannonsComps(allCannonsComps[item.auctionSafeId]?.[item.id])
-      )
-    }
-    if (bestDeals) {
-      result = result.filter(item =>
-        isDeal(item.currentBid, allComps[item.auctionSafeId]?.[item.id])
-      )
-    }
-    return result
-  }, [filteredItems, hasComp, hasCannonsComp, bestDeals, allComps, allCannonsComps])
-
-  // Base filter: applies ignored/enriched filters but NOT favorites. Kept
-  // separate so a favorite toggle doesn't invalidate this memo (which would
-  // produce a new array reference, reset ItemGrid's loaded count, and jump
-  // the scroll position back to the top).
-  const decisionFilteredItems = useMemo(() => {
-    if (showIgnoredOnly) return displayItems.filter(isIgnored)
-    let result = displayItems.filter(item => !isIgnored(item))
-    if (showEnrichedOnly) result = result.filter(hasEnrichment)
-    return result
-  }, [displayItems, showIgnoredOnly, isIgnored, showEnrichedOnly])
-
-  // Apply favorites filter only when active. When inactive, return the stable
-  // decisionFilteredItems reference so downstream memos don't recalculate and
-  // ItemGrid's scroll position is preserved across favorite toggles.
-  const finalItems = useMemo(() => {
-    if (showFavoritesOnly) return decisionFilteredItems.filter(isFavorite)
-    return decisionFilteredItems
-  }, [decisionFilteredItems, showFavoritesOnly, isFavorite])
-
-  // Count bids against loaded listings only — don't count seeded bids for
-  // auctions not in the read model. Computed from filteredItems (respects
-  // auction/search/price/category filters but not the My Bids toggle itself).
-  const cannonBidCount = useMemo(
-    () => filteredItems.filter(item => cannonBids.bidItemIds.has(String(item.id))).length,
-    [filteredItems, cannonBids.bidItemIds],
-  )
-
   // Snapshot the not-yet-decided items when the swipe deck opens so the deck
   // doesn't reshuffle as the user favorites/ignores its way through.
   const openSwipe = useCallback(() => {
@@ -386,45 +311,6 @@ export default function App() {
     setSwipeOpen(true)
     captureEvent('swipe_deck_opened', { count: deck.length })
   }, [displayItems, isIgnored, isFavorite])
-
-  // Estimated profit per item ($) for the "Best margin" sort (#97): eBay comp
-  // median when present, else the Cannon's category median sold (#95). Only
-  // computed when that sort is active.
-  const marginByKey = useMemo(() => {
-    const map = new Map()
-    if (sort !== 'margin') return map
-    for (const item of finalItems) {
-      const m = marginForItem(
-        item.currentBid,
-        allComps[item.auctionSafeId]?.[item.id],
-        categorySoldStats[item.category]
-      )
-      map.set(itemKey(item), m ? m.profit : null)
-    }
-    return map
-  }, [sort, finalItems, allComps, categorySoldStats])
-
-  // Recommended max bid per item ($) for the "Max bid" sort: resale estimate
-  // (eBay comp median, else Cannon's category median) backed out through the
-  // default resale margin + fees. Only computed when that sort is active.
-  const maxBidByKey = useMemo(() => {
-    const map = new Map()
-    if (sort !== 'maxbid') return map
-    for (const item of finalItems) {
-      map.set(itemKey(item), maxBidForItem(
-        allComps[item.auctionSafeId]?.[item.id],
-        categorySoldStats[item.category],
-        margin / 100
-      ))
-    }
-    return map
-  }, [sort, finalItems, allComps, categorySoldStats, margin])
-
-  const sortedItems = useMemo(() => {
-    if (sort === 'margin') return sortByMargin(finalItems, marginByKey)
-    if (sort === 'maxbid') return sortByMaxBid(finalItems, maxBidByKey)
-    return sortItems(finalItems, sort)
-  }, [finalItems, sort, marginByKey, maxBidByKey])
 
   const activeFilterCount = useMemo(() => {
     let n = 0

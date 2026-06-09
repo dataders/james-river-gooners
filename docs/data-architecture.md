@@ -125,7 +125,7 @@ is additive, not a rewrite:
 3. Optionally keep `MotherDuckSink` as a second analytics mirror, or retire it.
 4. The static read model continues to power the public site unchanged. **For
    comps, Supabase is now the sole source** (#6 phase 2): the browser reads the
-   `public_auction_comps` view via the publishable key (`src/hooks/useEbayComps.js`),
+   `public_auction_comps` view via the publishable key (`src/hooks/useEbayComps.ts`),
    and the scraper uses the table as its own ledger too (see below), so it no
    longer writes or commits `data/ebay-comps/*.json`.
 5. *Future, optional:* dynamic features that a static site can't serve (favorites
