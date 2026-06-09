@@ -97,6 +97,8 @@ After pushing a branch and opening a PR, always call `mcp__github__subscribe_pr_
 - Review comment → address or ask the user if ambiguous
 - Do NOT just say "I'm watching" and go quiet — each event requires a visible response and action
 
+**Copilot code review:** every PR auto-requests a GitHub Copilot review via `.github/workflows/copilot-review.yml`. Enabling the feature + the recommended (read-only Supabase) MCP servers the reviewer should use is documented in `.github/copilot-code-review.md`.
+
 **Actively watching CI with Monitor:** use the Monitor tool (not just subscribe) to poll CI results after pushing. This version of `gh` does NOT support `--json` on `pr checks` — use plain text output:
 
 ```bash
