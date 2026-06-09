@@ -630,7 +630,7 @@ export default function App() {
           onShowOnly={showOnly}
         />
 
-        <main>
+        <main data-load-complete={loadComplete ? 'true' : 'false'}>
           <ActiveFilters
             searchQuery={searchQuery}
             onClearSearch={() => setSearchQuery('')}

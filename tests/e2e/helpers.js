@@ -4,6 +4,12 @@ import { expect } from '@playwright/test'
 // Reloads once if the load hangs (Supabase connection timeout in parallel workers)
 // or if data loading errored — handles Vite dev-server cold-start and Supabase
 // free-tier database wake-up (~25-35s on first request after pause).
+//
+// The grid renders progressively: `.loading` hides as soon as the first page
+// paints, but the remaining pages are still streaming in, so the item count is
+// not yet stable. Tests that assert exact counts must wait for the FULL set —
+// signalled by `main[data-load-complete="true"]` (the useAuctionData
+// `loadComplete` flag) — not merely for the spinner to disappear.
 export async function waitForLoad(page) {
   const hidden = await page.locator('.loading').waitFor({ state: 'hidden', timeout: 45_000 })
     .then(() => true).catch(() => false)
@@ -12,6 +18,7 @@ export async function waitForLoad(page) {
     await expect(page.locator('.loading')).toBeHidden({ timeout: 20_000 })
   }
   await expect(page.locator('.error')).toBeHidden()
+  await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 45_000 })
 }
 
 // Open the item-detail modal for a card that has eBay comp data (the ROI row).
