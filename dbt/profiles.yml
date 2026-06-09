@@ -23,3 +23,13 @@ gooners:
           alias: supabase
           read_only: true
       threads: 8
+
+    # Connectionless target for `dbt compile` in CI. An in-memory DuckDB with no
+    # MotherDuck token and no Supabase attach — compile only resolves ref()/
+    # source() names from config, so the real warehouse isn't needed and CI
+    # stays secret-free. (`dbt build`/`run` still use dev/prod.)
+    ci:
+      type: duckdb
+      path: ":memory:"
+      schema: gooners
+      threads: 4
