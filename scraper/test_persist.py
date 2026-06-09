@@ -79,7 +79,7 @@ class WriteReadModelTest(unittest.TestCase):
 
         # NDJSON sidecar: images stay a real array, metadata stamped.
         ndjson = self._items_dir / "src_42.ndjson"
-        rows = [json.loads(l) for l in ndjson.read_text().splitlines() if l.strip()]
+        rows = [json.loads(line) for line in ndjson.read_text().splitlines() if line.strip()]
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["auctionId"], "42")
