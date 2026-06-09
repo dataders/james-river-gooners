@@ -1,2 +1,2 @@
-dlt[postgres]
+dlt[motherduck]
 requests

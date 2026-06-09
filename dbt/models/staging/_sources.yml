@@ -89,12 +89,12 @@ sources:
 
   - name: github_stats
     description: >
-      This repo's GitHub activity, loaded into Supabase Postgres (schema
-      github_stats, not public) by the dlt pipeline in github_stats/. Reached
-      through the same read-only "supabase" attachment as the gooners source.
-      Raw entity tables; dlt manages their schema and loads them incrementally.
-    database: supabase   # alias set in profiles.yml attach config
-    schema: github_stats
+      This repo's GitHub activity, loaded straight into MotherDuck (my_db,
+      schema github_stats) by the dlt pipeline in github_stats/. Analytics-only
+      (not read by the app), so it lives natively in the warehouse the dashboard
+      reads — no Postgres hop. Raw entity tables; dlt manages their schema and
+      loads them incrementally.
+    schema: github_stats   # native MotherDuck (my_db), like posthog_raw
     tables:
       - name: workflow_runs
         description: >
