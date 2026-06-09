@@ -12,8 +12,10 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 import pyarrow.parquet as pq
 
@@ -316,58 +318,93 @@ def _run_with_retry(cmd: list[str], cwd: Path, label: str) -> int:
     return result.returncode
 
 
-def _scrape_maxanet(maxanet_urls: list[str], total: int, start_i: int) -> list[str]:
-    failures: list[str] = []
-    cwd = Path(__file__).resolve().parent
-    for j, url in enumerate(maxanet_urls, start_i):
-        print(f"\n{'='*60}")
-        print(f"[{j}/{total}] Maxanet: {url[:80]}")
-        print(f"{'='*60}")
-        rc = _run_with_retry([sys.executable, "scrape.py", url], cwd, url[:60])
-        if rc != 0:
-            print(f"FAILED: {url[:80]}")
-            failures.append(url)
-    return failures
+# --- Generic per-source scrape driver -------------------------------------
+#
+# All three sources run the identical loop: print a banner, shell out to the
+# source's scrape script as an isolated subprocess (retried once), and collect
+# failures. Only the banner text and the command differ per source, so each
+# source supplies a *job builder* that turns one spec into a SourceJob; the
+# driver below runs them. (Subprocesses, not in-process calls, are deliberate:
+# they contain a crashing auction and keep the ~550 MB embedding models from
+# accumulating across auctions in one process.)
 
 
-def _scrape_hibid(hibid_specs: list[dict], total: int, start_i: int) -> list[str]:
-    failures: list[str] = []
-    cwd = Path(__file__).resolve().parent
-    for j, spec in enumerate(hibid_specs, start_i):
-        print(f"\n{'='*60}")
-        print(f"[{j}/{total}] HiBid ({spec['company_name']}): {spec['catalog_url']}")
-        print(f"{'='*60}")
-        cmd = [
+@dataclass
+class SourceJob:
+    """A single auction's subprocess invocation, plus how to label it in logs."""
+
+    header: str         # banner line after "[i/total] <SourceName>: "
+    cmd: list[str]      # argv for the subprocess
+    retry_label: str    # short label for the retry message
+    fail_id: str        # what to record/print when the job fails
+
+
+@dataclass
+class SourceRunner:
+    """Binds a source's display name to its spec→SourceJob builder."""
+
+    name: str
+    build: Callable[[object], SourceJob]
+
+
+def _maxanet_job(url: str) -> SourceJob:
+    return SourceJob(
+        header=url[:80],
+        cmd=[sys.executable, "scrape.py", url],
+        retry_label=url[:60],
+        fail_id=url,
+    )
+
+
+def _hibid_job(spec: dict) -> SourceJob:
+    return SourceJob(
+        header=f"({spec['company_name']}): {spec['catalog_url']}",
+        cmd=[
             sys.executable, "scrape_hibid.py",
             spec["catalog_url"],
             "--source", spec["source_slug"],
             "--company", spec["company_name"],
-        ]
-        rc = _run_with_retry(cmd, cwd, spec["catalog_url"])
-        if rc != 0:
-            print(f"FAILED: {spec['catalog_url']}")
-            failures.append(spec["catalog_url"])
-    return failures
+        ],
+        retry_label=spec["catalog_url"],
+        fail_id=spec["catalog_url"],
+    )
 
 
-def _scrape_rasmus(rasmus_specs: list[dict], total: int, start_i: int) -> list[str]:
-    failures: list[str] = []
-    cwd = Path(__file__).resolve().parent
-    for j, spec in enumerate(rasmus_specs, start_i):
-        print(f"\n{'='*60}")
-        print(f"[{j}/{total}] Rasmus ({spec['company_name']}): {spec['title'][:60]}")
-        print(f"{'='*60}")
-        cmd = [
+def _rasmus_job(spec: dict) -> SourceJob:
+    return SourceJob(
+        header=f"({spec['company_name']}): {spec['title'][:60]}",
+        cmd=[
             sys.executable, "scrape_rasmus.py",
             spec["aid"],
             "--source", spec["source_slug"],
             "--company", spec["company_name"],
             "--title", spec["title"],
-        ]
-        rc = _run_with_retry(cmd, cwd, spec["aid"])
+        ],
+        retry_label=spec["aid"],
+        fail_id=spec["aid"],
+    )
+
+
+MAXANET = SourceRunner("Maxanet", _maxanet_job)
+HIBID = SourceRunner("HiBid", _hibid_job)
+RASMUS = SourceRunner("Rasmus", _rasmus_job)
+
+
+def _scrape_source(
+    runner: SourceRunner, specs: list, total: int, start_i: int
+) -> list[str]:
+    """Run every spec for one source as an isolated subprocess; return failures."""
+    failures: list[str] = []
+    cwd = Path(__file__).resolve().parent
+    for j, spec in enumerate(specs, start_i):
+        job = runner.build(spec)
+        print(f"\n{'='*60}")
+        print(f"[{j}/{total}] {runner.name}: {job.header}")
+        print(f"{'='*60}")
+        rc = _run_with_retry(job.cmd, cwd, job.retry_label)
         if rc != 0:
-            print(f"FAILED: {spec['aid']}")
-            failures.append(spec["aid"])
+            print(f"FAILED: {job.header}")
+            failures.append(job.fail_id)
     return failures
 
 
@@ -434,10 +471,10 @@ def main() -> None:
         f"{len(rasmus_specs)} Rasmus)..."
     )
     failures: list[str] = []
-    failures += _scrape_maxanet(maxanet_urls, total, 1)
-    failures += _scrape_hibid(hibid_specs, total, len(maxanet_urls) + 1)
-    failures += _scrape_rasmus(
-        rasmus_specs, total, len(maxanet_urls) + len(hibid_specs) + 1
+    failures += _scrape_source(MAXANET, maxanet_urls, total, 1)
+    failures += _scrape_source(HIBID, hibid_specs, total, len(maxanet_urls) + 1)
+    failures += _scrape_source(
+        RASMUS, rasmus_specs, total, len(maxanet_urls) + len(hibid_specs) + 1
     )
 
     print(f"\n{'='*60}")

@@ -15,17 +15,17 @@ import json
 import re
 import sys
 import time
-import warnings
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pyarrow as pa
-import pyarrow.parquet as pq
 import requests
 import yaml
 from bs4 import BeautifulSoup
 
 from categories import normalize_category, normalize_raw_with_description
+from filters import is_real_estate_auction  # noqa: F401 (re-exported for test/back-compat)
+from http_client import make_session
+from persist import WriteContext, write_read_model
 from scraper_common import has_bid_changes, load_existing_bids
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
@@ -35,28 +35,10 @@ SOURCES_FILE = Path(__file__).resolve().parent / "hibid_sources.yml"
 HIBID_BASE = "https://hibid.com"
 REQUEST_DELAY = 0.5  # seconds between lot-page fetches
 
-REAL_ESTATE_KEYWORDS = [
-    "real estate",
-    "property auction",
-    "land auction",
-    "land sale",
-    "parcel",
-    "acres",
-    "foreclosure",
-    "tax sale",
-    "tax auction",
-    "deed",
-]
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def is_real_estate_auction(title: str) -> bool:
-    lower = title.lower()
-    return any(kw in lower for kw in REAL_ESTATE_KEYWORDS)
-
 
 def hibid_safe_id(catalog_id: str | int) -> str:
     return f"hibid_{catalog_id}"
@@ -68,22 +50,9 @@ def extract_catalog_id(url: str) -> str | None:
 
 
 def create_session() -> requests.Session:
-    import urllib3
     # HiBid occasionally serves a cert with a future not-before date during
     # rotation; disable verification rather than hard-failing the whole run.
-    warnings.filterwarnings("ignore", message="Unverified HTTPS request")
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
-    })
-    session.verify = False
-    return session
+    return make_session(verify=False)
 
 
 def parse_date_range_end(text: str) -> str:
@@ -603,60 +572,18 @@ def scrape_hibid_auction(
         print(f"  No bid changes; skipping write for {safe_id}")
         return {"changed": False}
 
-    ITEMS_DIR.mkdir(parents=True, exist_ok=True)
-    scraped_at_str = scraped_at.isoformat()
-
-    for item in all_items:
-        item["auctionId"] = catalog_id
-        item["auctionSafeId"] = safe_id
-        item["auctionTitle"] = auction_title
-        item["auctionEndDate"] = auction_end_date
-        item["scrapedAt"] = scraped_at_str
-        item["source"] = source_slug
-
-    # LLM metadata enrichment (#99/#104): no-op unless GOONERS_ENRICHMENT=1 + a
-    # key is set. Runs while images are still arrays.
-    from enrich import enrich_items, load_prior_enrichment
-    import os as _os
-    if _os.environ.get("SUPABASE_SECRET_KEY"):
-        from supabase_enrichment import load_prior_enrichment_from_supabase
-        _prior_by_id = load_prior_enrichment_from_supabase(safe_id)
-    else:
-        _prior_by_id = load_prior_enrichment(ITEMS_DIR / f"{safe_id}.ndjson")
-    enrich_items(all_items, prior_by_id=_prior_by_id)
-    from supabase_enrichment import maybe_export_enrichment
-    maybe_export_enrichment(all_items)
-
-    # Write NDJSON (images as real array)
-    ndjson_path = ITEMS_DIR / f"{safe_id}.ndjson"
-    ndjson_lines = [json.dumps(item, separators=(',', ':')) for item in all_items]
-    ndjson_path.write_text('\n'.join(ndjson_lines) + '\n', encoding='utf-8')
-    print(f"  Wrote {len(all_items)} items → {ndjson_path.name}")
-
-    import os
-    if os.environ.get("SUPABASE_SECRET_KEY"):
-        from supabase_lots import upsert_lots
-        upsert_lots(all_items, safe_id)
-
-    # Write Parquet (images stringified for Arrow compatibility)
-    for item in all_items:
-        item["images"] = json.dumps(item["images"])
-    table = pa.Table.from_pylist(all_items)
-    pq.write_table(table, items_path, compression="snappy")
-    print(f"  Wrote {len(all_items)} items → {items_path.name}")
-
-    if snapshot_to_motherduck is None:
-        from motherduck import should_snapshot_to_motherduck
-        snapshot_to_motherduck = should_snapshot_to_motherduck()
-
-    if snapshot_to_motherduck:
-        from warehouse import get_sink
-        sink = get_sink()
-        if sink is not None:
-            snapshot_count = sink.append_listing_snapshots(all_items, catalog_url)
-            print(f"  Appended {snapshot_count} listing snapshots to the warehouse")
-
-    return {"changed": True, "count": len(all_items)}
+    ctx = WriteContext(
+        safe_id=safe_id,
+        auction_id=catalog_id,
+        auction_title=auction_title,
+        auction_end_date=auction_end_date,
+        source=source_slug,
+        source_url=catalog_url,
+        scraped_at=scraped_at.isoformat(),
+        session=session,
+        snapshot_to_motherduck=snapshot_to_motherduck,
+    )
+    return write_read_model(all_items, ctx)
 
 
 # ---------------------------------------------------------------------------
