@@ -57,7 +57,7 @@ jobs:
             -f owner="$OWNER" -f name="$NAME" \
             --jq '.data.repository.suggestedActors.nodes[]
                   | select(.login == "copilot-pull-request-reviewer")
-                  | .id')
+                  | .id // empty')
 
           if [ -z "$copilot_id" ]; then
             echo "::notice::Copilot code review is not available for this repo." \
