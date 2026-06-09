@@ -8,11 +8,14 @@ import { getDisplayEnrichment } from '../utils/enrichment'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
+import { useFullImages } from '../hooks/useFullImages'
 
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, cannonBids, bidStatus, user, onCannonLinkClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
   const [showFbModal, setShowFbModal] = useState(false)
+  // The grid carries only the thumbnail; pull the full image set for the carousel.
+  const images = useFullImages(item)
 
   const handleShare = () => {
     const url = window.location.href
@@ -44,7 +47,6 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
   if (!item) return null
 
-  const images = item.images || []
   const maxImgIndex = Math.max(images.length - 1, 0)
   const imgIndex = imageState.itemKey === itemKey
     ? Math.min(imageState.imgIndex, maxImgIndex)

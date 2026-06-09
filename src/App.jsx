@@ -61,6 +61,7 @@ export default function App() {
     showSource,
     items: rawItems,
     loading,
+    loadComplete,
     error,
     archiveLoading,
     archiveError,
@@ -206,16 +207,24 @@ export default function App() {
   const initialItemKey = useRef(new URLSearchParams(window.location.search).get('item'))
   const itemDeepLinked = useRef(false)
   useEffect(() => {
-    if (!initialItemKey.current || loading || itemDeepLinked.current) return
-    itemDeepLinked.current = true
+    if (!initialItemKey.current || itemDeepLinked.current) return
+    // Wait for at least the first page; with progressive render the target lot
+    // may only arrive in a later page, so keep retrying as `items` grows and
+    // only give up (latch) once the full set is in.
+    if (loading && !loadComplete) return
     const key = initialItemKey.current
     const colonIdx = key.indexOf(':')
-    if (colonIdx < 0) return
+    if (colonIdx < 0) { itemDeepLinked.current = true; return }
     const safeId = key.slice(0, colonIdx)
     const itemId = key.slice(colonIdx + 1)
     const found = items.find(i => i.auctionSafeId === safeId && String(i.id) === itemId)
-    if (found) setSelectedItem(found)
-  }, [loading, items])
+    if (found) {
+      setSelectedItem(found)
+      itemDeepLinked.current = true
+    } else if (loadComplete) {
+      itemDeepLinked.current = true
+    }
+  }, [loading, loadComplete, items])
 
   const handleItemClick = useCallback((item) => {
     syncUrlParam('item', itemKey(item))

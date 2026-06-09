@@ -38,30 +38,72 @@ async function fetchNdjson(url) {
 
 // --- Supabase dataset fetch ---
 
-async function fetchAllFromView(viewName) {
-  // PostgREST caps each response at the server's `max-rows` setting (1000 by
-  // default), so the page size must stay at or below that cap — a larger PAGE
-  // would come back short on the very first request and the loop would quit
-  // early, silently truncating the dataset to 1000 rows. Advance by the rows
-  // actually returned so this self-adjusts if the cap ever changes.
-  const PAGE = 1000
-  const rows = []
-  let from = 0
+// PostgREST caps each response at the server's `max-rows` setting (1000 by
+// default), so a page can never exceed this cap — a larger PAGE would come back
+// short on the very first request and be mistaken for the end of the data.
+const PAGE = 1000
+
+async function fetchPage(viewName, from) {
+  const { data, error } = await supabase.from(viewName).select('*').range(from, from + PAGE - 1)
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+// Load every row from a paginated PostgREST view.
+//
+// The old loop fetched pages strictly sequentially (await page 0, then page 1,
+// …). With ~6.6K active lots that's 7 serial round-trips, and OFFSET paging
+// re-scans from the top each time, so later pages get progressively slower —
+// the bulk of the "Fetching auction data" wait. Instead we fetch page 0
+// alongside an exact COUNT, then fire all remaining pages concurrently, so the
+// wall-clock is roughly one round-trip rather than the sum.
+//
+// `onFirstPage` fires as soon as page 0 lands so the caller can paint the first
+// 1000 lots immediately instead of waiting for the whole set (progressive
+// render). A sequential tail after the parallel batch guards against an
+// undercount (rows inserted since the COUNT) and doubles as the fallback when
+// COUNT is unavailable — in that case the parallel batch is empty and this is
+// the only paging that runs.
+async function fetchAllFromView(viewName, onFirstPage) {
+  const [{ count, error: countErr }, firstPage] = await Promise.all([
+    supabase.from(viewName).select('*', { count: 'exact', head: true }),
+    fetchPage(viewName, 0),
+  ])
+  if (onFirstPage) onFirstPage(firstPage)
+  if (firstPage.length < PAGE) return firstPage
+
+  const rows = [...firstPage]
+  const total = !countErr && typeof count === 'number' ? count : firstPage.length
+
+  const offsets = []
+  for (let from = PAGE; from < total; from += PAGE) offsets.push(from)
+  const pages = await Promise.all(offsets.map(from => fetchPage(viewName, from)))
+  for (const page of pages) rows.push(...page)
+
+  // Sequential tail starting just past the parallel batch. If COUNT was exact
+  // this fetches one empty page and stops; if it undercounted (or was absent)
+  // it keeps paging until a short/empty page.
+  let from = PAGE * (offsets.length + 1)
   while (true) {
-    const { data, error } = await supabase.from(viewName).select('*').range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    if (!data || data.length === 0) break
-    rows.push(...data)
-    if (data.length < PAGE) break
-    from += data.length
+    const page = await fetchPage(viewName, from)
+    if (page.length === 0) break
+    rows.push(...page)
+    if (page.length < PAGE) break
+    from += PAGE
   }
   return rows
 }
 
-async function fetchSupabaseDataset({ archived = false } = {}) {
+async function fetchSupabaseDataset({ archived = false, onPartial } = {}) {
   const t0 = performance.now()
-  const viewName = archived ? 'public_archived_lots' : 'public_active_lots'
-  const rows = await fetchAllFromView(viewName)
+  // The _card views slice images down to the first (thumbnail) element — the
+  // only one the grid renders — cutting the payload roughly in half. The detail
+  // panel hydrates the full image set on demand (see useFullImages).
+  const viewName = archived ? 'public_archived_lots_card' : 'public_active_lots_card'
+  const onFirstPage = onPartial
+    ? rows => onPartial(normalizeRowsSupabase(rows, archived))
+    : undefined
+  const rows = await fetchAllFromView(viewName, onFirstPage)
   const { items, auctions } = normalizeRowsSupabase(rows, archived)
   return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
 }
@@ -98,6 +140,10 @@ export function useAuctionData(archiveMode = 'active') {
     new URLSearchParams(window.location.search).getAll('hideAuction')
   )
   const [loading, setLoading] = useState(true)
+  // `loading` flips false as soon as the first page paints (progressive render);
+  // `loadComplete` only flips once the entire active set is in, so consumers
+  // that must see every item (e.g. the deep-link finder) can wait for it.
+  const [loadComplete, setLoadComplete] = useState(false)
   const [loadTimeMs, setLoadTimeMs] = useState(null)
   const [error, setError] = useState(null)
   const [archiveError, setArchiveError] = useState(null)
@@ -112,8 +158,19 @@ export function useAuctionData(archiveMode = 'active') {
 
   useEffect(() => {
     let cancelled = false
+    // Paint the first page the moment it lands (Supabase path only — the NDJSON
+    // path resolves its file fetches in one shot, so there's nothing partial to
+    // show). The final `.then` below replaces this with the complete set.
+    const onPartial = isSupabaseConfigured
+      ? ({ items, auctions }) => {
+          if (cancelled) return
+          setActiveItems(items)
+          setActiveAuctions(auctions)
+          setLoading(false)
+        }
+      : undefined
     const activeLoader = isSupabaseConfigured
-      ? () => fetchSupabaseDataset({ archived: false })
+      ? () => fetchSupabaseDataset({ archived: false, onPartial })
       : () => fetchDataset('data/manifest.json')
     activeLoader()
       .then(({ items, auctions, loadTimeMs }) => {
@@ -122,11 +179,13 @@ export function useAuctionData(archiveMode = 'active') {
         setActiveAuctions(auctions)
         setLoadTimeMs(loadTimeMs)
         setLoading(false)
+        setLoadComplete(true)
       })
       .catch(e => {
         if (cancelled) return
         setError(e.message)
         setLoading(false)
+        setLoadComplete(true)
       })
     return () => { cancelled = true }
   }, [])
@@ -280,6 +339,7 @@ export function useAuctionData(archiveMode = 'active') {
     showSource,
     items,
     loading,
+    loadComplete,
     loadTimeMs,
     archiveLoading: includeArchived && !archiveLoaded && !archiveError,
     error,
