@@ -131,6 +131,11 @@ jobs:
   e2e:
     name: E2E tests (Playwright)
     runs-on: ubuntu-latest
+    # Hard ceiling: a healthy run takes ~8 minutes end to end and Playwright's
+    # globalTimeout aborts a wedged run at 15 — if the job is still going at 20
+    # something is hung outside the test runner. Without this, GitHub's 6-hour
+    # default applies (a backend outage once ran this job for 2h42m).
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -170,6 +175,9 @@ jobs:
   usability:
     name: Usability benchmark
     runs-on: ubuntu-latest
+    # Hard ceiling mirroring the e2e job: healthy run ~4 minutes, Playwright
+    # globalTimeout aborts at 10 — past 15 the job is hung, not slow.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
