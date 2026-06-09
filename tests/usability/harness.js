@@ -51,6 +51,12 @@ export async function gotoApp(page, query = '') {
 // Wait until the Supabase data load finishes and the grid is populated.
 // Reloads once if the load hangs (>.loading stuck visible) or if Supabase
 // returns an error — mirrors the resilience of tests/e2e/helpers.js.
+//
+// The grid renders progressively: .loading hides at first paint (~1000 of
+// ~6600 active lots) while the rest stream in. Objectives that measure counts
+// or look for a specific lot must see the FULL set, signalled by
+// main[data-load-complete="true"] (useAuctionData's loadComplete flag) — not
+// just the spinner going away.
 export async function waitForLoad(page) {
   const hidden = await page.locator('.loading').waitFor({ state: 'hidden', timeout: 45_000 })
     .then(() => true).catch(() => false)
@@ -59,6 +65,7 @@ export async function waitForLoad(page) {
     await expect(page.locator('.loading')).toBeHidden({ timeout: 30_000 })
   }
   await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 45_000 })
 }
 
 // Read the "<n> items" count from the grid header.
