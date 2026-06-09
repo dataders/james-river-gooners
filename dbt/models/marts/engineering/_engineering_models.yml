@@ -1,0 +1,92 @@
+version: 2
+
+models:
+  - name: fct_repo_overview
+    description: >
+      Single-row headline snapshot of repo health — open/closed issues, open/
+      merged/closed-unmerged PRs, avg hours-to-merge, commits + authors tracked,
+      and the overall workflow-run failure rate. The dashboard's top tiles.
+    columns:
+      - name: overall_failure_rate_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "overall_failure_rate_pct is not null"
+
+  - name: fct_workflow_run_health
+    description: >
+      Lifetime CI reliability per workflow: total/failed/succeeded runs,
+      failure_rate_pct (over decided runs only), avg/p50/p95/max run-time, and
+      days_since_last_run. The "which workflows are flaky or slow" table.
+    columns:
+      - name: workflow_name
+        tests: [not_null, unique]
+      - name: failure_rate_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "failure_rate_pct is not null"
+      - name: p95_duration_seconds
+        description: 95th-percentile run time in seconds (DuckDB quantile_cont).
+
+  - name: fct_ci_run_daily
+    description: >
+      Daily CI trend per workflow: runs, failures, failure_rate_pct, avg + p95
+      duration, plus a 7-day rolling failure rate. Grain: (run_date, workflow_name).
+    columns:
+      - name: run_date
+        tests: [not_null]
+      - name: workflow_name
+        tests: [not_null]
+      - name: rolling_7d_failure_rate_pct
+        description: >
+          7-day trailing average of failure_rate_pct — the alerting metric;
+          set a threshold per workflow.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [run_date, workflow_name]
+
+  - name: fct_scraper_items_daily
+    description: >
+      Items the scrapers processed per day, by metric (parsed from run logs).
+      Grain: (metric_date, metric). rolling_7d_total smooths per-day spikes.
+    columns:
+      - name: metric_date
+        tests: [not_null]
+      - name: metric
+        tests: [not_null]
+      - name: total
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [metric_date, metric]
+
+  - name: fct_pull_request_activity
+    description: >
+      One row per pull request with merge timing and a merge_speed_bucket.
+      Drill-down companion to fct_repo_activity_daily.
+    columns:
+      - name: pr_id
+        tests: [not_null, unique]
+      - name: merge_speed_bucket
+        tests:
+          - accepted_values:
+              values: ['under 1h', '1–6h', '6–24h', '1–3d', 'over 3d']
+              where: "merge_speed_bucket is not null"
+
+  - name: fct_repo_activity_daily
+    description: >
+      Daily engineering throughput: PRs opened/merged, issues opened/closed,
+      commits authored + distinct authors, with 7-day rolling PRs-merged and
+      commits. One row per calendar day with any activity.
+    columns:
+      - name: activity_date
+        tests: [not_null, unique]
+      - name: prs_merged
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0

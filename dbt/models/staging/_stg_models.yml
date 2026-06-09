@@ -97,7 +97,7 @@ models:
         tests: [not_null, unique]
 
   - name: stg_posthog_events
-    description: Daily PostHog event counts from posthog_raw.events_daily. Grain: (day, event).
+    description: "Daily PostHog event counts from posthog_raw.events_daily. Grain: (day, event)."
     columns:
       - name: day
         tests: [not_null]
@@ -124,3 +124,63 @@ models:
         tests:
           - accepted_values:
               values: ['favorite_toggled', 'ignored_toggled']
+
+  - name: stg_workflow_runs
+    description: >
+      One row per GitHub Actions workflow run, with outcome flags and derived
+      time dimensions (run_date/week/hour/dow) + duration_minutes.
+    columns:
+      - name: run_id
+        tests: [not_null, unique]
+      - name: workflow_name
+        tests: [not_null]
+      - name: duration_seconds
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              where: "duration_seconds is not null"
+
+  - name: stg_github_pull_requests
+    description: >
+      One row per pull request, with merge timing (hours_to_merge/days_to_merge)
+      and a closed_unmerged flag.
+    columns:
+      - name: pr_id
+        tests: [not_null, unique]
+      - name: pr_number
+        tests: [not_null]
+      - name: state
+        tests:
+          - accepted_values:
+              values: ['open', 'closed']
+
+  - name: stg_github_issues
+    description: True issues only (pull requests excluded). One row per issue.
+    columns:
+      - name: issue_id
+        tests: [not_null, unique]
+      - name: issue_number
+        tests: [not_null]
+      - name: state
+        tests:
+          - accepted_values:
+              values: ['open', 'closed']
+
+  - name: stg_github_commits
+    description: One row per commit on the default branch.
+    columns:
+      - name: commit_sha
+        tests: [not_null, unique]
+
+  - name: stg_scraper_run_metrics
+    description: >
+      Items processed per scraper run, parsed from run logs.
+      Grain: (run_id, metric).
+    columns:
+      - name: run_id
+        tests: [not_null]
+      - name: metric
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [run_id, metric]

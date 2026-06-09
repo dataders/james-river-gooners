@@ -42,3 +42,5 @@ models:
       +materialized: table     # → my_db.gooners (target.schema, no suffix)
       operations:
         +schema: operations    # → my_db.gooners_operations (ops/SLA tables stay separate)
+      engineering:
+        +schema: engineering   # → my_db.gooners_engineering (repo/CI health from github_stats)
