@@ -21,7 +21,7 @@ select
     sum(total) over (
         partition by metric
         order by metric_date
-        rows between 6 preceding and current row
+        range between interval 6 days preceding and current row
     )                                               as rolling_7d_total
 from daily
 order by metric_date desc, metric

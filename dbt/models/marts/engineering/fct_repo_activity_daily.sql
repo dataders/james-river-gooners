@@ -72,11 +72,11 @@ select
 
     sum(coalesce(pm.prs_merged, 0)) over (
         order by s.activity_date
-        rows between 6 preceding and current row
+        range between interval 6 days preceding and current row
     )                                       as rolling_7d_prs_merged,
     sum(coalesce(c.commits, 0)) over (
         order by s.activity_date
-        rows between 6 preceding and current row
+        range between interval 6 days preceding and current row
     )                                       as rolling_7d_commits
 
 from spine s

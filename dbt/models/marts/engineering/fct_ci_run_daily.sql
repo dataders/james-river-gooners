@@ -26,12 +26,12 @@ select
     round(avg(failure_rate_pct) over (
         partition by workflow_name
         order by run_date
-        rows between 6 preceding and current row
+        range between interval 6 days preceding and current row
     ), 1)                                                        as rolling_7d_failure_rate_pct,
     sum(runs) over (
         partition by workflow_name
         order by run_date
-        rows between 6 preceding and current row
+        range between interval 6 days preceding and current row
     )                                                            as rolling_7d_runs
 from daily
 order by run_date desc, workflow_name

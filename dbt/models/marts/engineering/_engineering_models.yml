@@ -42,8 +42,9 @@ models:
         tests: [not_null]
       - name: rolling_7d_failure_rate_pct
         description: >
-          7-day trailing average of failure_rate_pct — the alerting metric;
-          set a threshold per workflow.
+          Trailing average of failure_rate_pct over the last 7 *calendar* days
+          (range-based window, so sparse/infrequent workflows aren't skewed by
+          counting rows instead of days) — the alerting metric; threshold per workflow.
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns: [run_date, workflow_name]
