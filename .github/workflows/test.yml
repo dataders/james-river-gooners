@@ -76,6 +76,24 @@ jobs:
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
             --with 'duckdb==1.5.2' --with numpy --with pytest python -m pytest -q
 
+  github-stats:
+    name: GitHub-stats tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Run github_stats unit tests
+        run: |
+          cd github_stats
+          uv run --with requests --with pytest python -m pytest -q
+
+      - name: Lint github_stats (ruff)
+        run: |
+          cd github_stats
+          uvx ruff@0.15.8 check .
+
   scraper-lint:
     name: Scraper lint (ruff)
     runs-on: ubuntu-latest

@@ -1,0 +1,60 @@
+name: GitHub Repo Stats
+
+# Loads this repo's GitHub activity (issues, PRs, commits, Actions workflow runs
+# + scraper "items processed" parsed from run logs) into Postgres via dlt. dlt
+# manages the `github_stats` schema and incremental state in the destination;
+# derived stats are SQL views (see github_stats/views.sql), re-applied each run.
+#
+# Requires the SUPABASE_DB_URL secret — the Supabase Postgres connection string
+# (postgresql://user:pass@host:5432/db). dlt needs a direct DB connection, not
+# the PostgREST endpoint the scrapers use. The job skips cleanly if it's unset.
+
+on:
+  schedule:
+    # Hourly, a few minutes past the hour so it trails the scrape/deploy runs.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: 'How far back to pull on first load / for new entities'
+        required: false
+        type: string
+        default: '180'
+      max_log_runs:
+        description: 'Cap on workflow-run logs downloaded this run'
+        required: false
+        type: string
+        default: '60'
+
+permissions:
+  contents: read
+  # Needed to download workflow-run logs (the items-processed source).
+  actions: read
+
+# Don't stack hourly runs if one is slow.
+concurrency:
+  group: github-stats
+  cancel-in-progress: false
+
+jobs:
+  github-stats:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Load GitHub stats to Postgres
+        run: |
+          cd github_stats
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "SUPABASE_DB_URL not set — skipping GitHub-stats load"
+            exit 0
+          fi
+          LOOKBACK="${{ inputs.lookback_days || '180' }}"
+          MAX_LOGS="${{ inputs.max_log_runs || '60' }}"
+          uv run --with "dlt[postgres]" --with requests \
+            python pipeline.py --lookback-days "$LOOKBACK" --max-log-runs "$MAX_LOGS"
