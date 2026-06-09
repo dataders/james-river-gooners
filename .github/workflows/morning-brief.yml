@@ -1,0 +1,49 @@
+name: Morning Briefing
+
+# Runs a scheduled Claude Code session on weekdays at 7 AM ET (11:00 UTC).
+# Pulls Gmail, Google Calendar, and Otter AI data, then emails the brief
+# to jay@pragmaticresource.com.
+#
+# SETUP REQUIRED before this schedule is active:
+#   Add the following secrets in GitHub → Settings → Secrets → Actions:
+#   - ANTHROPIC_API_KEY     (already set)
+#   - GMAIL_MCP_CREDENTIALS      (OAuth token for the Gmail MCP server)
+#   - GOOGLE_CALENDAR_MCP_CREDENTIALS  (OAuth token for the Calendar MCP server)
+#   - OTTER_AI_MCP_CREDENTIALS   (API credentials for the Otter AI MCP server)
+#
+# Until those MCP secrets are added, use workflow_dispatch to trigger manually
+# from the Actions tab — the brief will still generate from whatever data is
+# available in the session context.
+
+on:
+  schedule:
+    - cron: '0 11 * * 1-5'   # 11:00 UTC = 7:00 AM ET, Monday–Friday
+  workflow_dispatch:          # manual trigger from Actions tab or phone
+
+permissions:
+  contents: read
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Generate and send morning brief
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          direct_prompt: |
+            Run /morning to generate today's morning briefing.
+
+            When the brief is complete, send it as an email using mcp__Gmail__create_draft:
+            - to: ["jay@pragmaticresource.com"]
+            - subject: "Morning Brief — [today's date, e.g. Mon Jun 9]"
+            - body: the full brief in plain text
+
+            Then immediately send the draft (do not leave it as a draft — use
+            mcp__Gmail__send_message if available, otherwise note in the action
+            log that the draft is ready in Gmail).
+
+            Do not commit anything. Do not open a pull request.
