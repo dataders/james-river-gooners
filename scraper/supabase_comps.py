@@ -13,8 +13,10 @@ so no comp-fetch call sites change.
 
 import json
 import os
+import time
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from functools import partial
 
 COMP_SNAPSHOT_TABLE = "ebay_comp_snapshots"
 # Reconstruction views (migration 0005) the scraper reads as its ledger.
@@ -59,6 +61,42 @@ COMP_COLUMNS = (
 # PostgREST accepts large arrays, but keep batches bounded so a big backfill
 # doesn't build one giant request body.
 DEFAULT_BATCH_SIZE = 500
+
+# Retry transient failures (network errors, rate limits, 5xx) with exponential
+# backoff (2s, 4s, 8s, 16s) — the same convention as supabase_enrichment.py.
+# Supabase occasionally returns a brief 503 (PGRST002 "Could not query the
+# database for the schema cache") while PostgREST reconnects; without retries
+# one such blip fails the whole hourly scrape job.
+DEFAULT_MAX_RETRIES = 4
+
+
+def _is_transient(status_code: int) -> bool:
+    return status_code == 429 or status_code >= 500
+
+
+def _request_with_retry(send, describe: str, max_retries: int = DEFAULT_MAX_RETRIES):
+    """Call ``send()`` (a zero-arg request) and return the response, retrying
+    transient failures; raise RuntimeError on permanent failure."""
+    import requests
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = send()
+        except requests.exceptions.RequestException as exc:
+            if attempt >= max_retries:
+                raise RuntimeError(
+                    f"{describe} failed after {attempt + 1} attempt(s): {exc}"
+                ) from exc
+            time.sleep(2 ** (attempt + 1))
+            continue
+        if response.status_code < 400:
+            return response
+        if _is_transient(response.status_code) and attempt < max_retries:
+            time.sleep(2 ** (attempt + 1))
+            continue
+        raise RuntimeError(
+            f"{describe} failed ({response.status_code}): {response.text[:300]}"
+        )
 
 
 def json_safe(value):
@@ -123,14 +161,12 @@ def append_ebay_comp_snapshots(
     written = 0
     for start in range(0, len(rows), batch_size):
         batch = [row_payload(row) for row in rows[start : start + batch_size]]
-        response = session.post(
-            endpoint, headers=headers, data=json.dumps(batch), timeout=30
+        _request_with_retry(
+            partial(
+                session.post, endpoint, headers=headers, data=json.dumps(batch), timeout=30
+            ),
+            "Supabase comp insert",
         )
-        if response.status_code >= 400:
-            raise RuntimeError(
-                f"Supabase comp insert failed ({response.status_code}): "
-                f"{response.text[:300]}"
-            )
         written += len(batch)
     return written
 
@@ -193,14 +229,16 @@ class SupabaseCompLedger:
         session = self._session_obj()
         while True:
             page = {**params, "limit": str(READ_PAGE_SIZE), "offset": str(offset)}
-            response = session.get(
-                self._endpoint(view), headers=self._headers(), params=page, timeout=30
+            response = _request_with_retry(
+                partial(
+                    session.get,
+                    self._endpoint(view),
+                    headers=self._headers(),
+                    params=page,
+                    timeout=30,
+                ),
+                "Supabase ledger read",
             )
-            if response.status_code >= 400:
-                raise RuntimeError(
-                    f"Supabase ledger read failed ({response.status_code}): "
-                    f"{response.text[:300]}"
-                )
             batch = response.json() or []
             rows.extend(batch)
             if len(batch) < READ_PAGE_SIZE:
@@ -235,17 +273,16 @@ class SupabaseCompLedger:
             "fetched_at": f"gte.{start.astimezone(timezone.utc).isoformat()}",
             "limit": "1",
         }
-        response = self._session_obj().get(
-            self._endpoint(QUERY_ATTEMPTS_VIEW),
-            headers=self._headers(count=True),
-            params=params,
-            timeout=30,
+        response = _request_with_retry(
+            partial(
+                self._session_obj().get,
+                self._endpoint(QUERY_ATTEMPTS_VIEW),
+                headers=self._headers(count=True),
+                params=params,
+                timeout=30,
+            ),
+            "Supabase ledger count",
         )
-        if response.status_code >= 400:
-            raise RuntimeError(
-                f"Supabase ledger count failed ({response.status_code}): "
-                f"{response.text[:300]}"
-            )
         return content_range_total(response.headers.get("Content-Range"))
 
     def requests_used_in_month(self, now=None) -> int:
