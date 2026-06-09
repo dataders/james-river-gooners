@@ -1,8 +1,8 @@
-# GitHub repo-stats pipeline (dlt → Postgres)
+# GitHub repo-stats pipeline (dlt → MotherDuck)
 
 A [dlt](https://dlthub.com) pipeline that monitors this repo's GitHub activity
-and loads it into Postgres (the project's Supabase Postgres by default), so
-repo health can be tracked over time:
+and loads it straight into **MotherDuck** (`md:my_db`, schema `github_stats`),
+so repo health can be tracked over time:
 
 - **Issues** — every issue (open/closed), so open vs. closed counts and
   open-by-day trends.
@@ -22,53 +22,51 @@ repo health can be tracked over time:
 
 dlt loads **raw entity tables** (one row per issue / PR / commit / run /
 metric) incrementally with merge semantics into a dedicated **`github_stats`
-Postgres schema** — these are *not* the RLS-public app tables the browser
-reads; they're an analytics dataset dlt creates and schema-migrates itself.
-The "stats" (counts, failure rate, run-time percentiles, items-processed
-trends) are **SQL views** in [`views.sql`](./views.sql), which the pipeline
-re-applies (idempotent `CREATE OR REPLACE`) after every load:
+schema in MotherDuck** (`my_db`). This data is **analytics-only** — it is *not*
+read by the app/browser (unlike the RLS-public app tables in Supabase
+Postgres), and its sole consumer is the MotherDuck dashboard. So it lands
+directly in the warehouse the dashboard reads: **dlt writes the raw tables and
+dbt transforms them in the same place, with no cross-database hop.**
 
-| view | what |
+The "stats" (counts, failure rate, run-time percentiles, items-processed
+trends) are **dbt models** built on these raw tables — the `engineering` mart
+layer in [`dbt/models/marts/engineering/`](../dbt/models/marts/engineering/),
+materialized into `my_db.gooners_engineering`:
+
+| dbt model | what |
 | --- | --- |
-| `v_repo_overview` | single-row headline: open issues, merged PRs, avg hours-to-merge, … |
-| `v_workflow_run_stats` | per-workflow total/failed runs, **failure_rate**, avg + p50/p95 **duration** |
-| `v_workflow_daily` | per-day per-workflow runs/failures/failure_rate/avg duration |
-| `v_pull_request_daily` | PRs opened/merged/closed per day + avg hours-to-merge |
-| `v_issue_daily` | issues opened/closed per day |
-| `v_scraper_items_daily` | items processed per metric per day |
+| `fct_repo_overview` | single-row headline: open issues, merged PRs, avg hours-to-merge, … |
+| `fct_workflow_run_health` | per-workflow total/failed runs, **failure_rate**, avg + p50/p95 **duration** |
+| `fct_ci_run_daily` | per-day per-workflow runs/failures/failure_rate + 7d rolling rate |
+| `fct_pull_request_activity` | per-PR drill-down with merge-speed buckets |
+| `fct_repo_activity_daily` | PRs/issues/commits per day + rolling totals |
+| `fct_scraper_items_daily` | items processed per metric per day |
 
 ## Configuration (env)
 
 | var | purpose |
 | --- | --- |
-| `SUPABASE_POSTGRES_URL` (or `SUPABASE_DB_URL` / `DLT_PG_URL`) | **Required.** Postgres connection string `postgresql://user:pass@host:5432/db`. |
+| `MOTHERDUCK_TOKEN` | **Required.** A read/write MotherDuck PAT. Builds the `md:my_db?motherduck_token=…` connection. (The read-scaling `MOTHERDUCK_READ_TOKEN` can't write and is not used.) |
 | `GITHUB_TOKEN` / `GH_TOKEN` | Bumps the API rate limit and is **required to download workflow-run logs** (the items-processed source). Auto-set in GitHub Actions. |
 | `GITHUB_REPOSITORY` | `owner/name` to monitor. Defaults to `dataders/james-river-gooners`. Auto-set in Actions. |
 
-> The repo's other Supabase writes use the PostgREST REST API + the secret key.
-> dlt's Postgres destination instead needs a **direct DB connection string**.
->
-> **Use the session-pooler URL, not the direct host.** Supabase's direct host
-> (`db.<ref>.supabase.co`) is **IPv6-only**; GitHub-hosted runners (and many
-> sandboxes) are IPv4-only and can't reach it. The session pooler is IPv4:
-> `postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres`
-> (from *Project Settings → Database → Connection string → Session pooler*).
+> MotherDuck is reached over HTTPS, so any runner (or sandbox) can load — no
+> direct-DB / IPv6 / connection-pooler concerns.
 
 ## Run
 
 ```bash
 cd github_stats
 # Daily incremental (default 180-day lookback for first load / new entities):
-uv run --with "dlt[postgres]" --with requests python pipeline.py
+uv run --with "dlt[motherduck]" --with requests python pipeline.py
 
 # Wider backfill, more run-logs parsed:
-uv run --with "dlt[postgres]" --with requests python pipeline.py --lookback-days 365 --max-log-runs 200
+uv run --with "dlt[motherduck]" --with requests python pipeline.py --lookback-days 365 --max-log-runs 200
 
 # Other repo:
-uv run --with "dlt[postgres]" --with requests python pipeline.py --repo owner/name
+uv run --with "dlt[motherduck]" --with requests python pipeline.py --repo owner/name
 ```
 
-`--skip-views` loads the raw tables without (re)creating the views.
 The hourly schedule runs in [`.github/workflows/github-stats.yml`](../.github/workflows/github-stats.yml).
 
 ## Tests
@@ -78,9 +76,9 @@ cd github_stats
 uv run --with requests --with pytest python -m pytest -q
 ```
 
-Tests are hermetic (no network / dlt / Postgres): they cover the row transforms,
-log-metric parsing, and the API client's pagination + log-zip handling against a
-fake session.
+Tests are hermetic (no network / dlt / MotherDuck): they cover the row
+transforms, log-metric parsing, and the API client's pagination + log-zip
+handling against a fake session.
 
 ## Notes
 
@@ -89,5 +87,5 @@ fake session.
   up regardless.
 - **dlt state** lives in the destination (`_dlt_*` tables in the `github_stats`
   schema) — nothing is committed, so CI is stateless.
-- The pipeline raises if `SUPABASE_DB_URL`/`DLT_PG_URL` is unset; the workflow
-  skips cleanly when the secret is absent.
+- The pipeline raises if `MOTHERDUCK_TOKEN` is unset; the workflow skips cleanly
+  when the secret is absent.

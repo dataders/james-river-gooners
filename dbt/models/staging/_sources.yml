@@ -9,7 +9,7 @@ sources:
     schema: posthog_raw
     tables:
       - name: events_daily
-        description: Daily event counts per event type. Grain: (day, event).
+        description: "Daily event counts per event type. Grain: (day, event)."
         columns:
           - name: day
             tests: [not_null]
@@ -86,3 +86,57 @@ sources:
 
       - name: users
         description: One row per registered app user (backend-only, bypasses RLS via direct Postgres).
+
+  - name: github_stats
+    description: >
+      This repo's GitHub activity, loaded straight into MotherDuck (my_db,
+      schema github_stats) by the dlt pipeline in github_stats/. Analytics-only
+      (not read by the app), so it lives natively in the warehouse the dashboard
+      reads — no Postgres hop. Raw entity tables; dlt manages their schema and
+      loads them incrementally.
+    schema: github_stats   # native MotherDuck (my_db), like posthog_raw
+    tables:
+      - name: workflow_runs
+        description: >
+          One row per GitHub Actions workflow run. Carries computed
+          duration_seconds + boolean succeeded/failed derived from conclusion.
+        columns:
+          - name: id
+            tests: [not_null, unique]
+          - name: name
+            description: Workflow display name (e.g. "Test", "Scrape Auction Data").
+          - name: duration_seconds
+          - name: conclusion
+          - name: created_at
+      - name: pull_requests
+        description: One row per pull request. merged + hours_to_merge precomputed.
+        columns:
+          - name: id
+            tests: [not_null, unique]
+          - name: number
+            tests: [not_null]
+          - name: merged
+          - name: hours_to_merge
+      - name: issues
+        description: >
+          One row per issue. The GitHub issues endpoint also returns PRs, so
+          is_pull_request flags those (staging filters them out).
+        columns:
+          - name: id
+            tests: [not_null, unique]
+          - name: is_pull_request
+      - name: commits
+        description: One row per commit on the default branch.
+        columns:
+          - name: sha
+            tests: [not_null, unique]
+      - name: scraper_run_metrics
+        description: >
+          Items processed per scraper run, parsed from workflow-run logs.
+          Grain: (run_id, metric) — e.g. items_scraped, lots_upserted.
+        columns:
+          - name: run_id
+            tests: [not_null]
+          - name: metric
+            tests: [not_null]
+          - name: value

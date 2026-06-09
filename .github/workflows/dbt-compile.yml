@@ -1,0 +1,40 @@
+name: dbt compile
+
+# Validates the dbt project compiles: every model's Jinja, ref()/source()
+# wiring, macro use, and the schema YAML. Runs against a connectionless
+# in-memory DuckDB target (profiles.yml `ci`), so it needs no MotherDuck token
+# or Supabase access — compile resolves relation names from config without
+# touching the warehouse. Materializing (dbt build) still happens elsewhere.
+
+on:
+  pull_request:
+    paths:
+      - 'dbt/**'
+      - '.github/workflows/dbt-compile.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'dbt/**'
+      - '.github/workflows/dbt-compile.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: dbt compile
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dbt
+    env:
+      DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: dbt deps + compile
+        run: |
+          uv run --with dbt-core --with dbt-duckdb dbt deps
+          uv run --with dbt-core --with dbt-duckdb dbt compile --target ci

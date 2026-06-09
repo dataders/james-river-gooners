@@ -1,29 +1,28 @@
-"""GitHub repository-stats → Postgres, via dlt.
+"""GitHub repository-stats → MotherDuck, via dlt.
 
 Pulls issues, pull requests, commits, and Actions workflow runs from the GitHub
-REST API and loads them as raw rows into Postgres (the project's Supabase
-Postgres by default), plus a ``scraper_run_metrics`` table of "items processed"
+REST API and loads them as raw rows into MotherDuck (``md:my_db``, schema
+``github_stats``), plus a ``scraper_run_metrics`` table of "items processed"
 counts parsed from each scrape run's logs. dlt manages the schema and incremental
-state; the derived stats (open/merged counts, workflow failure rate + run-time
-percentiles, items-processed trends) live in the SQL views in ``views.sql``,
-which this pipeline (re)applies after every load.
+state. The derived stats (failure rate + run-time percentiles, throughput
+trends) are dbt models built on these raw tables (see dbt/models/marts/
+engineering/), so this pipeline only lands the raw entities.
 
-Why dlt + a direct Postgres connection (not the PostgREST upserts the scrapers
-use): these are raw entity tables dlt creates and schema-migrates itself, loaded
-incrementally with merge semantics — exactly dlt's job. They are NOT the
-RLS-public app tables; they live in their own ``github_stats`` schema.
+This data is analytics-only — it is NOT read by the app/browser (unlike the
+RLS-public app tables in Supabase Postgres). Its sole consumer is the MotherDuck
+dashboard, so it loads straight into MotherDuck: dlt writes the raw tables and
+dbt transforms them in the same warehouse, no cross-database hop.
 
 Config (all via env):
-- ``SUPABASE_POSTGRES_URL`` (or ``SUPABASE_DB_URL`` / ``DLT_PG_URL``) — the
-  Postgres connection string (``postgresql://user:pass@host:5432/db``).
-  Required to load.
+- ``MOTHERDUCK_TOKEN`` — a read/write MotherDuck PAT. Required to load.
+  (The read-scaling ``MOTHERDUCK_READ_TOKEN`` cannot write and is not used here.)
 - ``GITHUB_TOKEN`` / ``GH_TOKEN`` — bumps the API rate limit (and is required for
   log download); set automatically in GitHub Actions.
 - ``GITHUB_REPOSITORY`` — ``owner/name`` to monitor; defaults to the project repo.
 
 Run (see .github/workflows/github-stats.yml):
-    uv run --with "dlt[postgres]" --with requests python pipeline.py
-    uv run --with "dlt[postgres]" --with requests python pipeline.py --lookback-days 365
+    uv run --with "dlt[motherduck]" --with requests python pipeline.py
+    uv run --with "dlt[motherduck]" --with requests python pipeline.py --lookback-days 365
 """
 
 from __future__ import annotations
@@ -32,7 +31,6 @@ import argparse
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import dlt
 
@@ -48,10 +46,12 @@ from transforms import (
 
 DATASET_NAME = "github_stats"
 PIPELINE_NAME = "github_stats"
+# MotherDuck database the dbt project also targets (md:my_db). Raw tables land
+# in my_db.github_stats; dbt builds the engineering marts in the same database.
+MD_DATABASE = "my_db"
 DEFAULT_LOOKBACK_DAYS = 180
 # Bound how many run logs we download per invocation (each is a zip fetch).
 DEFAULT_MAX_LOG_RUNS = 60
-VIEWS_SQL_PATH = Path(__file__).resolve().parent / "views.sql"
 
 
 def _lookback_start(days: int) -> datetime:
@@ -155,70 +155,44 @@ def github_source(
     return issues, pull_requests, commits, workflow_runs, scraper_run_metrics
 
 
-def _resolve_pg_credentials() -> str | None:
-    # SUPABASE_POSTGRES_URL is the name the project's environment provides;
-    # SUPABASE_DB_URL / DLT_PG_URL are accepted aliases.
-    return (
-        os.environ.get("SUPABASE_POSTGRES_URL")
-        or os.environ.get("SUPABASE_DB_URL")
-        or os.environ.get("DLT_PG_URL")
-    )
-
-
-def _iter_sql_statements(sql: str):
-    """Yield executable statements from a .sql file: strip full-line ``--``
-    comments (each statement here is preceded by a comment block, so a naive
-    split would leave every statement starting with ``--``), then split on ``;``."""
-    no_comments = "\n".join(
-        line for line in sql.splitlines() if not line.lstrip().startswith("--")
-    )
-    for statement in no_comments.split(";"):
-        statement = statement.strip()
-        if statement:
-            yield statement
-
-
-def apply_views(pipeline: dlt.Pipeline, schema: str) -> None:
-    """(Re)create the derived views in the dataset schema (idempotent)."""
-    sql = VIEWS_SQL_PATH.read_text(encoding="utf-8").replace("{schema}", schema)
-    with pipeline.sql_client() as client:
-        for statement in _iter_sql_statements(sql):
-            client.execute_sql(statement)
+def _resolve_motherduck_credentials() -> str | None:
+    # Build the MotherDuck connection string for md:my_db from the write PAT.
+    # MOTHERDUCK_READ_TOKEN is read-scaling (read-only) and can't write, so it's
+    # intentionally not accepted here.
+    token = os.environ.get("MOTHERDUCK_TOKEN")
+    if not token:
+        return None
+    return f"md:{MD_DATABASE}?motherduck_token={token}"
 
 
 def run(
     repo: str | None = None,
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
     max_log_runs: int = DEFAULT_MAX_LOG_RUNS,
-    skip_views: bool = False,
 ):
-    creds = _resolve_pg_credentials()
+    creds = _resolve_motherduck_credentials()
     if not creds:
         raise RuntimeError(
-            "Set SUPABASE_POSTGRES_URL (or SUPABASE_DB_URL / DLT_PG_URL) to the Postgres connection string "
-            "(postgresql://user:pass@host:5432/db) to load GitHub stats."
+            "Set MOTHERDUCK_TOKEN (a read/write MotherDuck PAT) to load GitHub stats "
+            f"into MotherDuck ({MD_DATABASE}.{DATASET_NAME})."
         )
 
     repo = resolve_repo(repo)
-    print(f"Loading GitHub stats for {repo} (lookback {lookback_days}d) → Postgres.{DATASET_NAME}")
+    print(f"Loading GitHub stats for {repo} (lookback {lookback_days}d) → MotherDuck {MD_DATABASE}.{DATASET_NAME}")
 
     pipeline = dlt.pipeline(
         pipeline_name=PIPELINE_NAME,
-        destination=dlt.destinations.postgres(credentials=creds),
+        destination=dlt.destinations.motherduck(credentials=creds),
         dataset_name=DATASET_NAME,
     )
     source = github_source(repo=repo, lookback_days=lookback_days, max_log_runs=max_log_runs)
     info = pipeline.run(source)
     print(info)
-
-    if not skip_views:
-        apply_views(pipeline, DATASET_NAME)
-        print(f"Applied derived views to {DATASET_NAME}.")
     return info
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Load GitHub repo stats into Postgres via dlt")
+    parser = argparse.ArgumentParser(description="Load GitHub repo stats into MotherDuck via dlt")
     parser.add_argument("--repo", help="owner/name to monitor (default: GITHUB_REPOSITORY or project repo)")
     parser.add_argument(
         "--lookback-days",
@@ -232,9 +206,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=DEFAULT_MAX_LOG_RUNS,
         help=f"Cap on workflow-run logs downloaded per invocation (default {DEFAULT_MAX_LOG_RUNS})",
     )
-    parser.add_argument(
-        "--skip-views", action="store_true", help="Load raw tables but don't (re)create the views"
-    )
     return parser.parse_args(argv)
 
 
@@ -244,7 +215,6 @@ def main(argv: list[str] | None = None) -> int:
         repo=args.repo,
         lookback_days=args.lookback_days,
         max_log_runs=args.max_log_runs,
-        skip_views=args.skip_views,
     )
     return 0
 
