@@ -4,7 +4,10 @@ import { defineConfig, devices } from '@playwright/test'
 // so per-objective results accumulate into one scored report.
 export default defineConfig({
   testDir: './tests/usability',
-  timeout: 90_000,
+  // waitForLoad's worst case is ~140s (70s first attempt + reload + 70s
+  // retry); with retries: 0 a slow cold first-load on the opening objective
+  // would otherwise fail the whole benchmark at a 90s budget.
+  timeout: 150_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,

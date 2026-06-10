@@ -5,6 +5,14 @@ on:
   push:
     branches: [main]
 
+# One run per ref: a new push to a PR cancels the in-flight run for the old
+# commit. Stops stacked runs from compounding load on the free-tier Supabase
+# (every E2E/usability worker pulls the full ~6.5K-lot dataset) and kills
+# zombie pile-ups instead of letting them grind to their timeout ceilings.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Production build
