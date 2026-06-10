@@ -1,0 +1,61 @@
+name: Supabase Platform Stats
+
+# Scrapes the project's privileged Prometheus metrics endpoint (host load,
+# database internals, service layer) and loads one snapshot per run into
+# Postgres via dlt. dlt manages the `supabase_metrics` schema and merge state in
+# the destination; shaped reliability/load/performance views (see
+# supabase_stats/views.sql) are re-applied each run, and the dbt project models
+# the same table.
+#
+# Reads SUPABASE_POSTGRES_URL (the **session-pooler** connection string — see
+# github_stats workflow for the IPv4 caveat) and the metrics-endpoint creds.
+# The job skips cleanly if the Postgres secret is unset.
+
+on:
+  schedule:
+    # Hourly, a few minutes past the hour so it trails the scrape/deploy runs
+    # (and offset from github-stats at :07 to spread load).
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      all_metrics:
+        description: 'Capture every series (incl. uncurated service metrics)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Don't stack hourly runs if one is slow.
+concurrency:
+  group: supabase-stats
+  cancel-in-progress: false
+
+jobs:
+  supabase-stats:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_POSTGRES_URL: ${{ secrets.SUPABASE_POSTGRES_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_METRICS_URL: ${{ secrets.SUPABASE_METRICS_URL }}
+      SUPABASE_METRICS_PASSWORD: ${{ secrets.SUPABASE_METRICS_PASSWORD }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Load Supabase metrics to Postgres
+        run: |
+          cd supabase_stats
+          if [ -z "${SUPABASE_POSTGRES_URL:-}" ]; then
+            echo "SUPABASE_POSTGRES_URL not set — skipping Supabase-stats load"
+            exit 0
+          fi
+          ALL_FLAG=""
+          if [ "${{ inputs.all_metrics }}" = "true" ]; then
+            ALL_FLAG="--all"
+          fi
+          uv run --with "dlt[postgres]" --with requests \
+            python pipeline.py $ALL_FLAG

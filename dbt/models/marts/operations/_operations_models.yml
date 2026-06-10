@@ -44,6 +44,67 @@ models:
       - name: days_since_cannons_priors
         description: Days since Cannon's CLIP comps were last generated for this source.
 
+  - name: fct_supabase_host_load
+    description: >
+      Hourly host load & performance for the Supabase instance — load averages,
+      CPU busy %, memory & root-disk utilisation, and network throughput. CPU and
+      network derive from counter rates; the rest are hourly gauge means. Columns
+      are null for any hour the exporter didn't capture that metric.
+    columns:
+      - name: scraped_hour
+        tests: [not_null, unique]
+      - name: cpu_busy_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "cpu_busy_pct is not null"
+      - name: mem_used_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "mem_used_pct is not null"
+      - name: disk_used_pct
+        description: Root filesystem ('/') utilisation; null if not labelled.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "disk_used_pct is not null"
+
+  - name: fct_supabase_db_reliability
+    description: >
+      Hourly Postgres reliability / load / performance — connection saturation,
+      buffer-cache hit %, transaction throughput, rollback %, deadlocks/conflicts,
+      and database size. Counter-derived columns are hourly increases; connection
+      and size columns are gauge means. Use connection_used_pct and cache_hit_pct
+      as the headline SLA signals; alert on deadlocks > 0 or a rollback_pct spike.
+    columns:
+      - name: scraped_hour
+        tests: [not_null, unique]
+      - name: connection_used_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              where: "connection_used_pct is not null"
+      - name: cache_hit_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "cache_hit_pct is not null"
+      - name: rollback_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "rollback_pct is not null"
+      - name: deadlocks
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+
   - name: fct_api_spend
     description: >
       Daily API usage and estimated spend across eBay and Anthropic.
