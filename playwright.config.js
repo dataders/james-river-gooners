@@ -4,7 +4,10 @@ export default defineConfig({
   testDir: './tests/e2e',
   // The grid loads ~6.5K lots from a slow free-tier DB and each test's
   // beforeEach waits for the full set, so the per-test budget is generous.
-  timeout: 90_000,
+  // waitForLoad's worst case is ~140s (70s first attempt + reload + 70s
+  // retry), so the budget must clear that or a slow cold first-load fails
+  // the test before the helper's own reload fallback can rescue it.
+  timeout: 150_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
   // Cap CI parallelism: every worker loads the full dataset at once, and too
