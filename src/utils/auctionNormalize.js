@@ -49,6 +49,42 @@ export function normalizeRowsNdjson(results, entries, archived) {
   return { items, auctions: Object.values(auctionMap) }
 }
 
+// --- Combined CDN artifact path (#242) ---
+
+// Normalize the combined active-lots artifact: a flat list of item rows in the
+// same camelCase shape as the per-auction NDJSON sidecars, but with no separate
+// manifest. Auction-level records are derived from each row's stamped
+// `auction*` fields (the scraper writes them onto every lot), so — unlike the
+// per-file NDJSON path — there's no manifest to cross-reference and nothing to
+// warn about.
+export function normalizeRowsArtifact(rows, archived = false) {
+  const items = []
+  const auctionMap = {}
+  for (const row of rows) {
+    row.archived = archived
+    items.push(row)
+
+    const sid = row.auctionSafeId
+    if (!sid) continue
+
+    if (!auctionMap[sid]) {
+      auctionMap[sid] = {
+        safeId: sid,
+        id: row.auctionId,
+        title: row.auctionTitle,
+        endDate: row.auctionEndDate,
+        scrapedAt: row.scrapedAt,
+        source: row.source ?? 'cannons',
+        archived,
+        isLocal: isLocalAuction(row.auctionTitle),
+        totalItems: 0,
+      }
+    }
+    auctionMap[sid].totalItems++
+  }
+  return { items, auctions: Object.values(auctionMap) }
+}
+
 // --- Supabase path ---
 
 // Map a snake_case Supabase lots-view row to the shared Item shape.

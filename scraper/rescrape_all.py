@@ -213,6 +213,14 @@ def update_manifests() -> None:
     print(f"Active manifest: {len(active_manifest['auctions'])} auctions")
     print(f"Archive manifest: {len(archive_manifest['auctions'])} auctions")
 
+    # Publish the combined, gzipped active-lots artifact (#242 NOW #1) so the
+    # browser can read the active grid from one CDN file instead of the
+    # write-contended Supabase `lots` table. Built from the per-auction NDJSON
+    # sidecars of the same active set the manifest lists.
+    from persist import write_active_lots_artifact
+    active_ndjson_paths = [path.with_suffix(".ndjson") for path in active_paths]
+    write_active_lots_artifact(active_ndjson_paths)
+
 
 def _supabase_archive_file(path: Path) -> None:
     """Sync finalized lots to Supabase as archived before the files are moved."""

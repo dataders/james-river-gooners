@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   normalizeRowsNdjson,
+  normalizeRowsArtifact,
   normalizeLotRow,
   normalizeRowsSupabase,
 } from './auctionNormalize.js'
@@ -161,4 +162,35 @@ test('normalizeRowsSupabase builds auction records from lot rows', () => {
   assert.equal(auctions[0].title, 'Summer Sale')
   assert.equal(auctions[0].totalItems, 2)
   assert.equal(items.length, 2)
+})
+
+// ── normalizeRowsArtifact: combined CDN artifact (#242) ───────────────────────
+// (Flat list of camelCase item rows, no manifest; auctions derived from rows.)
+
+test('normalizeRowsArtifact builds items + auctions from a flat row list', () => {
+  const rows = [
+    { id: 'i1', auctionSafeId: 'a1', auctionId: 'A1', auctionTitle: 'Richmond Estate',
+      auctionEndDate: '2026-07-01', scrapedAt: '2026-06-01', source: 'cannons' },
+    { id: 'i2', auctionSafeId: 'a1', auctionId: 'A1', auctionTitle: 'Richmond Estate',
+      auctionEndDate: '2026-07-01', scrapedAt: '2026-06-01', source: 'cannons' },
+    { id: 'i3', auctionSafeId: 'a2', auctionId: 'A2', auctionTitle: 'HiBid Sale',
+      auctionEndDate: '2026-07-05', scrapedAt: '2026-06-02', source: 'hibid' },
+  ]
+  const { items, auctions } = normalizeRowsArtifact(rows, false)
+  assert.equal(items.length, 3)
+  assert.equal(auctions.length, 2)
+  const a1 = auctions.find(a => a.safeId === 'a1')
+  assert.equal(a1.title, 'Richmond Estate')
+  assert.equal(a1.totalItems, 2)
+  assert.equal(a1.source, 'cannons')
+  assert.equal(auctions.find(a => a.safeId === 'a2').source, 'hibid')
+  assert.equal(items.every(i => i.archived === false), true)
+})
+
+test('normalizeRowsArtifact defaults missing source to cannons', () => {
+  const { auctions } = normalizeRowsArtifact(
+    [{ id: 'i1', auctionSafeId: 'a1', auctionTitle: 'T' }],
+    false,
+  )
+  assert.equal(auctions[0].source, 'cannons')
 })

@@ -14,6 +14,7 @@ check (``load_existing_bids`` / ``has_bid_changes`` in ``scraper_common``). What
 varies per source is captured in :class:`WriteContext`.
 """
 
+import gzip
 import json
 import os
 from dataclasses import dataclass
@@ -23,6 +24,16 @@ import requests
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 ITEMS_DIR = DATA_DIR / "items"
+
+# One combined, gzipped artifact holding every active lot (#242 NOW #1). The
+# active-grid read was moved into Supabase Postgres (#98), which put end-user
+# reads on the same contended free-tier instance as the write-heavy scraper, so
+# page loads queue behind scraper writes. Publishing the active set the scraper
+# already writes as a single CDN-served static file lets the browser fetch +
+# gunzip one file instead of paginating Postgres — reads and the writer stop
+# sharing a box. The SPA prefers this artifact and falls back to Supabase when
+# it's missing (see src/hooks/useAuctionData.js).
+ACTIVE_LOTS_ARTIFACT = DATA_DIR / "active-lots.ndjson.gz"
 
 
 @dataclass
@@ -147,6 +158,44 @@ def _write_parquet(items: list[dict], items_path: Path) -> None:
     table = pa.Table.from_pylist(items)
     pq.write_table(table, items_path, compression="snappy")
     print(f"Wrote {len(items)} items to {items_path}")
+
+
+def write_active_lots_artifact(
+    ndjson_paths: list[Path],
+    artifact_path: Path = ACTIVE_LOTS_ARTIFACT,
+) -> int:
+    """Publish ONE combined, gzipped active-lots NDJSON artifact (#242 NOW #1).
+
+    Concatenates the per-auction NDJSON sidecars (which already hold the exact
+    item shape the SPA expects — ``images`` as real arrays, written by
+    :func:`_write_ndjson` before the Parquet step stringifies them) into a
+    single gzipped NDJSON file. The browser fetches + gunzips this one CDN file
+    for the active grid instead of paginating the Supabase ``lots`` table,
+    taking the default read path off the write-contended Postgres instance.
+
+    Returns the number of lots written. Called at the end of a scrape from
+    ``rescrape_all.update_manifests`` (the funnel that already rebuilds the
+    active manifest from the full active set).
+    """
+    lines: list[str] = []
+    for path in ndjson_paths:
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                lines.append(line)
+
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = ("\n".join(lines) + "\n").encode("utf-8") if lines else b""
+    # filename="" + mtime=0 keep the gzip header deterministic so an unchanged
+    # active set produces byte-identical output (stable git diffs / CDN cache
+    # validators). Without an explicit filename, GzipFile stamps the output
+    # file's own name into the header, breaking that determinism.
+    with open(artifact_path, "wb") as fh:
+        with gzip.GzipFile(filename="", fileobj=fh, mode="wb", mtime=0) as gz:
+            gz.write(payload)
+    print(f"Wrote {len(lines)} active lots to {artifact_path}")
+    return len(lines)
 
 
 def _snapshot_motherduck(items: list[dict], ctx: WriteContext) -> None:

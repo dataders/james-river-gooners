@@ -1,3 +1,4 @@
+import gzip
 import json
 import sys
 import unittest
@@ -6,7 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 import persist
-from persist import WriteContext, write_read_model
+from persist import WriteContext, write_active_lots_artifact, write_read_model
 
 
 def _ctx(tmp: Path, **over) -> WriteContext:
@@ -118,6 +119,68 @@ class WriteReadModelTest(unittest.TestCase):
         write_read_model(items, _ctx(Path(self._tmp.name)))
         self.enrich.assert_called_once()
         self.export_enrich.assert_called_once_with(items)
+
+
+class WriteActiveLotsArtifactTest(unittest.TestCase):
+    """The combined, gzipped active-lots CDN artifact (#242 NOW #1)."""
+
+    def _write_ndjson(self, path: Path, items: list[dict]) -> None:
+        path.write_text(
+            "\n".join(json.dumps(i, separators=(",", ":")) for i in items) + "\n",
+            encoding="utf-8",
+        )
+
+    def test_concatenates_sidecars_into_gzipped_ndjson(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            a = tmp / "a1.ndjson"
+            b = tmp / "a2.ndjson"
+            self._write_ndjson(a, [{"id": "i1", "images": ["x.jpg"]}, {"id": "i2", "images": []}])
+            self._write_ndjson(b, [{"id": "i3", "images": []}])
+            artifact = tmp / "active-lots.ndjson.gz"
+
+            count = write_active_lots_artifact([a, b], artifact_path=artifact)
+
+            self.assertEqual(count, 3)
+            self.assertTrue(artifact.exists())
+            text = gzip.decompress(artifact.read_bytes()).decode("utf-8")
+            rows = [json.loads(line) for line in text.splitlines() if line.strip()]
+            self.assertEqual([r["id"] for r in rows], ["i1", "i2", "i3"])
+            # Images stay real arrays (the shape the SPA expects), not stringified.
+            self.assertEqual(rows[0]["images"], ["x.jpg"])
+
+    def test_skips_missing_sidecars(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            present = tmp / "a1.ndjson"
+            self._write_ndjson(present, [{"id": "i1"}])
+            artifact = tmp / "active-lots.ndjson.gz"
+
+            count = write_active_lots_artifact(
+                [present, tmp / "missing.ndjson"], artifact_path=artifact
+            )
+
+            self.assertEqual(count, 1)
+
+    def test_empty_input_writes_valid_empty_gzip(self):
+        with TemporaryDirectory() as tmp:
+            artifact = Path(tmp) / "active-lots.ndjson.gz"
+            count = write_active_lots_artifact([], artifact_path=artifact)
+            self.assertEqual(count, 0)
+            self.assertTrue(artifact.exists())
+            self.assertEqual(gzip.decompress(artifact.read_bytes()), b"")
+
+    def test_output_is_deterministic_for_unchanged_input(self):
+        with TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / "a1.ndjson"
+            self._write_ndjson(src, [{"id": "i1"}])
+            first = tmp / "first.gz"
+            second = tmp / "second.gz"
+            write_active_lots_artifact([src], artifact_path=first)
+            write_active_lots_artifact([src], artifact_path=second)
+            # mtime=0 → byte-identical output, so unchanged data yields no git diff.
+            self.assertEqual(first.read_bytes(), second.read_bytes())
 
 
 if __name__ == "__main__":

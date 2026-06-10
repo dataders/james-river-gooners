@@ -16,3 +16,9 @@ public/data/items/
 public/data/archive/
 public/data/manifest.json
 public/data/archive-manifest.json
+
+# Exception (#242 NOW #1): the combined, gzipped active-lots artifact IS
+# committed — it's the CDN-served static read model for the active grid, built
+# into dist/ by `npm run build` and served from GitHub Pages so the browser
+# reads it instead of the write-contended Supabase `lots` table.
+!public/data/active-lots.ndjson.gz

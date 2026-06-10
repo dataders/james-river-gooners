@@ -3,10 +3,11 @@ import { itemKey } from '../utils/itemKey'
 import { normalizeManifest } from '../utils/manifest'
 import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam } from '../utils/urlState'
-import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
+import { fetchWithRetry, fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { captureEvent } from '../lib/telemetry'
 import {
+  normalizeRowsArtifact,
   normalizeRowsNdjson,
   normalizeRowsSupabase,
 } from '../utils/auctionNormalize'
@@ -35,6 +36,60 @@ async function fetchNdjson(url) {
     }
   }
   return rows
+}
+
+// --- Combined CDN artifact fetch (#242) ---
+
+// The active grid's default read path: one combined, gzipped NDJSON file served
+// from the CDN (GitHub Pages), published by the scraper at the end of each run.
+// This takes the active-grid read off the write-contended Supabase Postgres
+// instance (#98 had moved it there). Falls back to Supabase / NDJSON when the
+// artifact is missing or unreadable (see the loader below).
+const ACTIVE_LOTS_ARTIFACT = 'data/active-lots.ndjson.gz'
+
+// GitHub Pages serves `.gz` with Content-Type application/gzip and *no*
+// Content-Encoding header, so the bytes arrive still-compressed and we gunzip
+// them ourselves via the streaming DecompressionStream (supported across all
+// current evergreen browsers). If some transport *did* set
+// Content-Encoding: gzip, fetch would have already decompressed the body — in
+// which case the gzip attempt throws and we read the (already plain) text.
+async function gunzipText(response) {
+  if (typeof DecompressionStream === 'function' && response.body) {
+    try {
+      const stream = response.clone().body.pipeThrough(new DecompressionStream('gzip'))
+      return await new Response(stream).text()
+    } catch {
+      // Not raw-gzip bytes — fall through and read the original body as text.
+    }
+  }
+  return response.text()
+}
+
+async function fetchActiveLotsArtifact() {
+  const t0 = performance.now()
+  const resp = await fetchWithRetry(dataUrl(ACTIVE_LOTS_ARTIFACT))
+  // 4xx (e.g. 404 — artifact not published yet) is returned as-is by
+  // fetchWithRetry; treat anything non-OK as "fall back to the live read path".
+  if (!resp.ok) throw new Error(`active-lots artifact unavailable: ${resp.status}`)
+
+  const text = await gunzipText(resp)
+  const rows = []
+  for (const line of text.trim().split('\n')) {
+    if (!line) continue
+    try {
+      rows.push(JSON.parse(line))
+    } catch (err) {
+      // One malformed line shouldn't sink the whole grid — skip it.
+      console.warn('Skipping malformed active-lots artifact line:', err)
+    }
+  }
+  // Zero parseable rows means we didn't actually get the artifact (e.g. a dev
+  // server's SPA HTML fallback, or an empty file) — fall back rather than
+  // render an empty grid.
+  if (rows.length === 0) throw new Error('active-lots artifact empty or unparseable')
+
+  const { items, auctions } = normalizeRowsArtifact(rows, false)
+  return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 // --- Supabase dataset fetch ---
@@ -155,26 +210,39 @@ export function useAuctionData(archiveMode = 'active') {
 
   useEffect(() => {
     let cancelled = false
-    // Paint the first page the moment it lands (Supabase path only — the NDJSON
-    // path resolves its file fetches in one shot, so there's nothing partial to
-    // show). The final `.then` below replaces this with the complete set. This
-    // matters because the free-tier DB serves the full ~6.5K-row set slowly
-    // (~10-20s); progressive render shows lots in ~2s regardless.
-    const onPartial = isSupabaseConfigured
-      ? ({ items, auctions }) => {
-          if (cancelled) return
-          setActiveItems(items)
-          setActiveAuctions(auctions)
-          setLoading(false)
-        }
-      : undefined
-    const source = isSupabaseConfigured ? 'supabase' : 'ndjson'
-    const activeLoader = isSupabaseConfigured
-      ? () => fetchSupabaseDataset({ archived: false, onPartial })
-      : () => fetchDataset('data/manifest.json')
+    // Progressive render for the Supabase fallback only: paint the first page
+    // the moment it lands (the free-tier DB serves the full ~6.5K-row set
+    // slowly, ~10-20s; this shows lots in ~2s). The CDN artifact and the NDJSON
+    // path each resolve in one shot, so there's nothing partial to show.
+    const onPartial = ({ items, auctions }) => {
+      if (cancelled) return
+      setActiveItems(items)
+      setActiveAuctions(auctions)
+      setLoading(false)
+    }
     const startedAt = performance.now()
-    activeLoader()
-      .then(({ items, auctions, loadTimeMs }) => {
+    // `source` tracks the path we ultimately load from, for telemetry — the
+    // artifact failure is swallowed below, so a thrown error reflects whichever
+    // fallback was actually attempted.
+    let source = 'artifact'
+    const loadActive = async () => {
+      // Prefer the combined CDN artifact: off the write-contended Postgres
+      // instance entirely. Fall back to the live read path only if it's
+      // missing/unreadable.
+      try {
+        return { ...(await fetchActiveLotsArtifact()), source: 'artifact' }
+      } catch (err) {
+        console.warn('Active-lots artifact unavailable; falling back:', err)
+      }
+      if (isSupabaseConfigured) {
+        source = 'supabase'
+        return { ...(await fetchSupabaseDataset({ archived: false, onPartial })), source }
+      }
+      source = 'ndjson'
+      return { ...(await fetchDataset('data/manifest.json')), source }
+    }
+    loadActive()
+      .then(({ items, auctions, loadTimeMs, source: loadedSource }) => {
         if (cancelled) return
         setActiveItems(items)
         setActiveAuctions(auctions)
@@ -186,7 +254,7 @@ export function useAuctionData(archiveMode = 'active') {
         // analytics is unconfigured.
         captureEvent('dataset_loaded', {
           dataset: 'active',
-          source,
+          source: loadedSource,
           loadTimeMs,
           itemCount: items.length,
           auctionCount: auctions.length,
