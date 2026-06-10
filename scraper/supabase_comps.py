@@ -69,6 +69,16 @@ DEFAULT_BATCH_SIZE = 500
 # one such blip fails the whole hourly scrape job.
 DEFAULT_MAX_RETRIES = 4
 
+# Per-request timeouts as (connect, read) tuples. Connect stays short so a dead
+# host fails fast; the read ceiling is generous because the comp_item_freshness
+# view is a growing server-side aggregation that has begun taking >30s — a flat
+# 30s read timeout was firing on every retry and failing the whole hourly scrape
+# (ReadTimeout, not a transient the retry loop could absorb). Override the read
+# ceiling via GOONERS_SUPABASE_READ_TIMEOUT.
+_READ_TIMEOUT_SECONDS = int(os.environ.get("GOONERS_SUPABASE_READ_TIMEOUT", "90"))
+READ_TIMEOUT = (10, _READ_TIMEOUT_SECONDS)
+WRITE_TIMEOUT = (10, 60)
+
 
 def _is_transient(status_code: int) -> bool:
     return status_code == 429 or status_code >= 500
@@ -163,7 +173,7 @@ def append_ebay_comp_snapshots(
         batch = [row_payload(row) for row in rows[start : start + batch_size]]
         _request_with_retry(
             partial(
-                session.post, endpoint, headers=headers, data=json.dumps(batch), timeout=30
+                session.post, endpoint, headers=headers, data=json.dumps(batch), timeout=WRITE_TIMEOUT
             ),
             "Supabase comp insert",
         )
@@ -235,7 +245,7 @@ class SupabaseCompLedger:
                     self._endpoint(view),
                     headers=self._headers(),
                     params=page,
-                    timeout=30,
+                    timeout=READ_TIMEOUT,
                 ),
                 "Supabase ledger read",
             )
@@ -279,7 +289,7 @@ class SupabaseCompLedger:
                 self._endpoint(QUERY_ATTEMPTS_VIEW),
                 headers=self._headers(count=True),
                 params=params,
-                timeout=30,
+                timeout=READ_TIMEOUT,
             ),
             "Supabase ledger count",
         )
