@@ -157,6 +157,126 @@ class UpsertLotsTest(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# upsert_lots — skip-unchanged diff (#242)
+# ---------------------------------------------------------------------------
+
+def _session_with_existing(existing_rows, status=201):
+    """Mock session whose GET returns stored rows and whose POST succeeds."""
+    session = MagicMock()
+    get_resp = MagicMock(ok=True, status_code=200)
+    get_resp.json.return_value = existing_rows
+    session.get.return_value = get_resp
+    session.post.return_value = MagicMock(ok=True, status_code=status)
+    return session
+
+
+def _active_item(item_id, **over) -> dict:
+    item = {
+        "auctionSafeId": "s",
+        "id": item_id,
+        "currentBid": 10.0,
+        "totalBids": 2,
+        "uniqueBidders": 1,
+        "endDate": "2026-06-10 6:00:00 PM",
+    }
+    item.update(over)
+    return item
+
+
+def _existing_row(item_id, **over) -> dict:
+    # current_bid comes back from PostgREST as a numeric string ("10.00").
+    row = {
+        "item_id": item_id,
+        "current_bid": "10.00",
+        "total_bids": 2,
+        "unique_bidders": 1,
+        "end_date": "2026-06-10 6:00:00 PM",
+    }
+    row.update(over)
+    return row
+
+
+class SkipUnchangedTest(unittest.TestCase):
+    def _posted_item_ids(self, session) -> set:
+        ids: set = set()
+        for _, kwargs in session.post.call_args_list:
+            for row in kwargs["json"]:
+                ids.add(row["item_id"])
+        return ids
+
+    def test_all_unchanged_skips_upsert(self):
+        session = _session_with_existing([_existing_row("1"), _existing_row("2")])
+        written = supabase_lots.upsert_lots(
+            [_active_item("1"), _active_item("2")],
+            "s", url="https://x.sb.co", key="k", session=session,
+        )
+        self.assertEqual(written, 0)
+        session.post.assert_not_called()
+
+    def test_numeric_string_roundtrip_is_not_a_change(self):
+        # current_bid 10.0 vs stored "10.00" must not register as a change.
+        session = _session_with_existing([_existing_row("1", current_bid="10.00")])
+        written = supabase_lots.upsert_lots(
+            [_active_item("1", currentBid=10.0)],
+            "s", url="https://x.sb.co", key="k", session=session,
+        )
+        self.assertEqual(written, 0)
+        session.post.assert_not_called()
+
+    def test_changed_and_new_lots_are_upserted(self):
+        existing = [_existing_row("1"), _existing_row("2")]
+        session = _session_with_existing(existing)
+        items = [
+            _active_item("1"),                    # unchanged → skipped
+            _active_item("2", currentBid=25.0),   # bid changed → upserted
+            _active_item("3"),                    # brand new → upserted
+        ]
+        written = supabase_lots.upsert_lots(
+            items, "s", url="https://x.sb.co", key="k", session=session,
+        )
+        self.assertEqual(written, 2)
+        self.assertEqual(self._posted_item_ids(session), {"2", "3"})
+
+    def test_changed_total_bids_triggers_upsert(self):
+        session = _session_with_existing([_existing_row("1")])
+        written = supabase_lots.upsert_lots(
+            [_active_item("1", totalBids=9)],
+            "s", url="https://x.sb.co", key="k", session=session,
+        )
+        self.assertEqual(written, 1)
+        self.assertEqual(self._posted_item_ids(session), {"1"})
+
+    def test_changed_end_date_triggers_upsert(self):
+        # Soft-close extension moves end_date — must re-upsert.
+        session = _session_with_existing([_existing_row("1")])
+        written = supabase_lots.upsert_lots(
+            [_active_item("1", endDate="2026-06-10 6:05:00 PM")],
+            "s", url="https://x.sb.co", key="k", session=session,
+        )
+        self.assertEqual(written, 1)
+
+    def test_empty_existing_upserts_everything(self):
+        # First scrape of an auction: nothing stored yet → upsert all.
+        session = _session_with_existing([])
+        written = supabase_lots.upsert_lots(
+            [_active_item("1"), _active_item("2")],
+            "s", url="https://x.sb.co", key="k", session=session,
+        )
+        self.assertEqual(written, 2)
+        self.assertEqual(self._posted_item_ids(session), {"1", "2"})
+
+    def test_skip_unchanged_false_bypasses_diff(self):
+        session = _ok_session()
+        written = supabase_lots.upsert_lots(
+            [_active_item("1")],
+            "s", url="https://x.sb.co", key="k", session=session,
+            skip_unchanged=False,
+        )
+        self.assertEqual(written, 1)
+        session.get.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # archive_lots
 # ---------------------------------------------------------------------------
 

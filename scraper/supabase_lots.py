@@ -41,6 +41,28 @@ def _to_float(value) -> Optional[float]:
         return None
 
 
+def _to_int(value) -> Optional[int]:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+# Per-scrape mutable fields used to detect whether a stored lot actually changed
+# (#242). ``scrapedAt`` is deliberately excluded: it changes on every run, so
+# diffing on it would never let us skip anything. These four are what
+# legitimately change while an auction is live — bid state and (soft-close) end
+# date. Both sides are normalised so a numeric(12,2) round-trip ("42.50" vs
+# 42.5) doesn't read as a change.
+def _change_signature(current_bid, total_bids, unique_bidders, end_date) -> tuple:
+    return (
+        _to_float(current_bid),
+        _to_int(total_bids),
+        _to_int(unique_bidders),
+        end_date or None,
+    )
+
+
 def _lot_row(item: dict, archived: bool = False) -> dict:
     """Convert a camelCase NDJSON item dict to a snake_case Supabase row."""
     images = item.get("images", [])
@@ -90,6 +112,44 @@ def _post_batch(rows: list[dict], url: str, key: str, session) -> None:
         raise RuntimeError(f"lots upsert failed: {resp.status_code} {resp.text[:300]}")
 
 
+def _fetch_existing_signatures(safe_id: str, url: str, key: str, session) -> dict:
+    """Return ``{item_id: change_signature}`` for an auction's stored active lots.
+
+    Used to skip re-upserting unchanged lots (#242). Selects only the mutable
+    columns we diff on, not the whole row. Returns an empty dict on any failure
+    so the caller safely falls back to upserting everything (correct, just not
+    optimised).
+    """
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+    }
+    try:
+        rows = _get_paginated(
+            f"{url.rstrip('/')}/rest/v1/{LOTS_TABLE}",
+            headers,
+            {
+                "auction_safe_id": f"eq.{safe_id}",
+                "archived": "eq.false",
+                "select": "item_id,current_bid,total_bids,unique_bidders,end_date",
+            },
+            session,
+        )
+    except Exception:
+        return {}
+    return {
+        row["item_id"]: _change_signature(
+            row.get("current_bid"),
+            row.get("total_bids"),
+            row.get("unique_bidders"),
+            row.get("end_date"),
+        )
+        for row in rows
+        if row.get("item_id")
+    }
+
+
 def upsert_lots(
     items: list[dict],
     safe_id: str,
@@ -98,8 +158,15 @@ def upsert_lots(
     key: str = None,
     session=None,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    skip_unchanged: bool = True,
 ) -> int:
-    """Upsert active items for one auction into ``lots``. Returns row count."""
+    """Upsert active items for one auction into ``lots``. Returns row count.
+
+    When ``skip_unchanged`` is set (the default), the stored rows are diffed
+    against the incoming lots first and only new or genuinely-changed lots are
+    upserted — every scrape used to re-write every active lot even when nothing
+    changed, causing write amplification and reader/writer contention (#242).
+    """
     if not items:
         return 0
     url, key = resolve_credentials(url, key)
@@ -109,6 +176,28 @@ def upsert_lots(
     if session is None:
         import requests as _requests
         session = _requests.Session()
+
+    if skip_unchanged:
+        existing = _fetch_existing_signatures(safe_id, url, key, session)
+        if existing:
+            before = len(items)
+            items = [
+                item
+                for item in items
+                if existing.get(item.get("id"))
+                != _change_signature(
+                    item.get("currentBid"),
+                    item.get("totalBids"),
+                    item.get("uniqueBidders"),
+                    item.get("endDate"),
+                )
+            ]
+            skipped = before - len(items)
+            if skipped:
+                print(f"Skipped {skipped} unchanged lot(s) for {safe_id}")
+        if not items:
+            print(f"No changed lots for {safe_id}; skipping Supabase upsert")
+            return 0
 
     rows = [_lot_row(item) for item in items]
     for i in range(0, len(rows), batch_size):
@@ -293,7 +382,10 @@ def backfill(
         for ndjson_path in paths:
             items = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
             if items:
-                active_total += upsert_lots(items, ndjson_path.stem, url=url, key=key, session=session)
+                active_total += upsert_lots(
+                    items, ndjson_path.stem, url=url, key=key, session=session,
+                    skip_unchanged=False,
+                )
 
     archived_total = 0
     if do_archived and ARCHIVE_ITEMS_DIR.exists():
