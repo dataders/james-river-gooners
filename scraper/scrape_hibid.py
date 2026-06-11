@@ -103,18 +103,24 @@ def parse_relative_close_time(text: str, scraped_at: datetime) -> str:
 # ---------------------------------------------------------------------------
 
 def discover_company_catalogs(
-    session: requests.Session, company_id: int
+    session: requests.Session, company_id: int, html: str | None = None
 ) -> list[dict]:
-    """Return active catalog dicts for a HiBid company."""
-    url = f"{HIBID_BASE}/company/{company_id}/"
-    try:
-        resp = session.get(url, timeout=30)
-        resp.raise_for_status()
-    except Exception as exc:
-        print(f"  Warning: could not fetch company page {company_id}: {exc}")
-        return []
+    """Return active catalog dicts for a HiBid company.
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    Pass pre-fetched ``html`` to skip the internal request (e.g. when the
+    caller used Playwright to bypass bot protection).
+    """
+    if html is None:
+        url = f"{HIBID_BASE}/company/{company_id}/"
+        try:
+            resp = session.get(url, timeout=30)
+            resp.raise_for_status()
+        except Exception as exc:
+            print(f"  Warning: could not fetch company page {company_id}: {exc}")
+            return []
+        html = resp.text
+
+    soup = BeautifulSoup(html, "html.parser")
     catalogs: list[dict] = []
     seen_ids: set[str] = set()
 

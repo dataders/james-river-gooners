@@ -2,13 +2,13 @@
 """
 Discover new HiBid catalog IDs and update hibid_sources.yml.
 
-Designed to run from a non-blocked IP — e.g. a scheduled Claude Code session
-on Anthropic's cloud, where HiBid's company-page bot protection is not
-triggered. Adds new catalog IDs; existing ones are preserved so the scraper's
-hourly rescrape_all.py can pick them up automatically.
+Uses Playwright to fetch company pages so HiBid's bot protection is bypassed
+regardless of which infrastructure this runs on. Adds new catalog IDs;
+existing ones are preserved so the scraper's hourly rescrape_all.py can pick
+them up automatically.
 
 Usage:
-    uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml \\
+    uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml --with playwright \\
         python discover_hibid.py
 """
 
@@ -18,9 +18,25 @@ from pathlib import Path
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 
-from scrape_hibid import create_session, discover_company_catalogs, is_real_estate_auction
+from scrape_hibid import HIBID_BASE, create_session, discover_company_catalogs, is_real_estate_auction
 
 SOURCES_FILE = Path(__file__).resolve().parent / "hibid_sources.yml"
+
+
+def fetch_page_playwright(url: str) -> str | None:
+    """Fetch a page with a real Chromium browser to bypass bot protection."""
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.goto(url, wait_until="load", timeout=30000)
+            return page.content()
+        except Exception as exc:
+            print(f"  Warning: Playwright fetch failed for {url}: {exc}")
+            return None
+        finally:
+            browser.close()
 
 
 def main() -> int:
@@ -44,7 +60,9 @@ def main() -> int:
         known_ids = existing_ids | closed_ids
 
         print(f"Checking {name} (HiBid #{company_id})...")
-        catalogs = discover_company_catalogs(session, company_id)
+        url = f"{HIBID_BASE}/company/{company_id}/"
+        html = fetch_page_playwright(url)
+        catalogs = discover_company_catalogs(session, company_id, html=html)
 
         if not catalogs:
             print("  No catalogs found (company page unavailable or blocked)")

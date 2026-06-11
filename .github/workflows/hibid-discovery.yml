@@ -2,7 +2,8 @@ name: HiBid Daily Catalog Discovery
 
 # Discovers newly listed catalogs for each company in hibid_sources.yml and
 # commits any new catalog_ids so the hourly "Scrape Auction Data" workflow
-# picks them up automatically.
+# picks them up automatically. Uses Playwright to fetch HiBid company pages
+# so bot protection is bypassed regardless of runner IP.
 
 on:
   schedule:
@@ -20,9 +21,12 @@ jobs:
 
       - uses: astral-sh/setup-uv@v6
 
+      - name: Install Playwright Chromium
+        run: uv run --with playwright python -m playwright install --with-deps chromium
+
       - name: Discover new HiBid catalogs
         run: |
-          cd scraper && uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml python discover_hibid.py
+          cd scraper && uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml --with playwright python discover_hibid.py
 
       - name: Commit updated catalog IDs
         run: |
