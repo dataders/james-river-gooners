@@ -1,19 +1,16 @@
 name: HiBid Daily Catalog Discovery
 
-# Runs a scheduled Claude Code session (Anthropic's cloud infrastructure, not
-# GitHub-hosted runners) so HiBid's company-page bot protection is not
-# triggered.  Discovers newly listed catalogs for each company in
-# hibid_sources.yml and commits any new catalog_ids so the hourly
-# "Scrape Auction Data" workflow picks them up automatically.
+# Discovers newly listed catalogs for each company in hibid_sources.yml and
+# commits any new catalog_ids so the hourly "Scrape Auction Data" workflow
+# picks them up automatically.
 
 on:
   schedule:
     - cron: '0 10 * * *'   # 10:00 UTC (6 am ET) daily
-  workflow_dispatch:        # manual trigger from Actions tab or code.claude.com
+  workflow_dispatch:        # manual trigger from Actions tab
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   discover:
@@ -24,21 +21,12 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Discover new HiBid catalogs
-        uses: anthropics/claude-code-action@beta
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          mode: agent
-          direct_prompt: |
-            Check HiBid for new auction catalogs by running the discovery script:
+        run: |
+          cd scraper && uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml python discover_hibid.py
 
-              cd scraper && uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with ruamel.yaml python discover_hibid.py
-
-            If scraper/hibid_sources.yml was modified (new catalog_ids were added),
-            commit and push it to the current branch:
-
-              git add scraper/hibid_sources.yml
-              git diff --cached --quiet || git commit -m "chore: update HiBid catalog IDs (daily discovery)" && git push
-
-            Do not open a pull request — push directly to the branch that triggered
-            this workflow (main for the scheduled run).
+      - name: Commit updated catalog IDs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scraper/hibid_sources.yml
+          git diff --cached --quiet || git commit -m "chore: update HiBid catalog IDs (daily discovery)" && git push
