@@ -498,6 +498,116 @@ def tab_product():
         ], rows=items, search=True, paginated=True, page_size=8)
 
 
+# --------------------------------------------------------------------------- #
+# Pipeline health (the analytics pipeline monitoring itself)
+# --------------------------------------------------------------------------- #
+def tab_pipeline():
+    section("Last build", "Most recent dbt build (run_results) captured to MotherDuck after each refresh.")
+    latest = one("""
+        select invocation_id, max(captured_at)::varchar as captured_at
+        from meta.dbt_run_results
+        group by invocation_id order by max(captured_at) desc limit 1
+    """)
+    if not latest:
+        empty_note("No pipeline metrics yet — captured after the next dbt build.")
+    else:
+        inv = latest["invocation_id"]
+        s = one(f"""
+            select
+              count(*) filter (where resource_type='model' and status='success') as models_ok,
+              count(*) filter (where resource_type='model' and status='error')   as models_err,
+              count(*) filter (where resource_type='test'  and status='pass')    as tests_pass,
+              count(*) filter (where resource_type='test'  and status in ('fail','error')) as tests_fail,
+              count(*) filter (where status='skipped')                           as skipped,
+              round(sum(execution_time),1)                                       as runtime_s
+            from meta.dbt_run_results where invocation_id = '{inv}'
+        """)
+        tp, tf = s.get("tests_pass") or 0, s.get("tests_fail") or 0
+        pass_rate = f"{100.0*tp/(tp+tf):.0f}%" if (tp + tf) else "—"
+        with Grid(min_column_width="150px", gap=4, css_class="mb-4"):
+            metric_card("Models built", fmt_int(s.get("models_ok")),
+                        description=(f"{fmt_int(s.get('models_err'))} errored" if s.get("models_err") else "all green"))
+            metric_card("Tests passed", fmt_int(tp), description=f"{fmt_int(tf)} failed")
+            metric_card("Test pass rate", pass_rate)
+            metric_card("Skipped", fmt_int(s.get("skipped")))
+            metric_card("Build time", f"{s.get('runtime_s')}s" if s.get("runtime_s") is not None else "—")
+
+        # Anything not green in the latest build.
+        problems = q(f"""
+            select resource_type, name, status, message
+            from meta.dbt_run_results
+            where invocation_id = '{inv}' and status in ('error','fail','warn')
+            order by resource_type, name limit 30
+        """)
+        if problems:
+            section("Needs attention", "Models / tests not green in the last build.")
+            DataTable(columns=[
+                DataTableColumn(key="resource_type", header="Type", sortable=True),
+                DataTableColumn(key="name", header="Node", sortable=True),
+                DataTableColumn(key="status", header="Status", sortable=True),
+                DataTableColumn(key="message", header="Message"),
+            ], rows=problems, search=True, paginated=True, page_size=8)
+
+    # Test pass/fail trend
+    Separator(spacing=4)
+    section("dbt test results over time", "Passed vs failed dbt tests per build.")
+    trend = q("""
+        select captured_at::date::varchar as day,
+               count(*) filter (where resource_type='test' and status='pass') as passed,
+               count(*) filter (where resource_type='test' and status in ('fail','error')) as failed
+        from meta.dbt_run_results
+        where captured_at >= current_date - interval 60 day
+        group by 1 order by 1
+    """)
+    if not trend:
+        empty_note()
+    else:
+        with Card():
+            with CardContent():
+                BarChart(data=trend, x_axis="day", height=200, stacked=True,
+                         series=[ChartSeries(data_key="passed", label="Passed", color=GREEN),
+                                 ChartSeries(data_key="failed", label="Failed", color=RED)])
+
+    # Rows per source table (latest snapshot)
+    Separator(spacing=4)
+    section("Rows processed", "Row count per warehouse-native source table (latest snapshot).")
+    rows = q("""
+        select schema_name as schema, table_name as table, row_count
+        from meta.source_row_counts
+        where captured_at = (select max(captured_at) from meta.source_row_counts)
+        order by row_count desc limit 25
+    """)
+    if not rows:
+        empty_note()
+    else:
+        for r in rows:
+            r["row_count"] = fmt_int(r.get("row_count"))
+        DataTable(columns=[
+            DataTableColumn(key="schema", header="Schema", sortable=True),
+            DataTableColumn(key="table", header="Table", sortable=True),
+            DataTableColumn(key="row_count", header="Rows", align="right", sortable=True),
+        ], rows=rows, search=True, paginated=True, page_size=10)
+
+    # Slowest models
+    Separator(spacing=4)
+    section("Slowest models", "Longest-running models in the last build.")
+    if latest:
+        slow = q(f"""
+            select name, round(execution_time,2) as seconds, coalesce(rows_affected,0) as rows
+            from meta.dbt_run_results
+            where invocation_id = '{latest['invocation_id']}' and resource_type='model'
+            order by execution_time desc limit 12
+        """)
+        if slow:
+            DataTable(columns=[
+                DataTableColumn(key="name", header="Model", sortable=True),
+                DataTableColumn(key="seconds", header="Seconds", align="right", sortable=True),
+                DataTableColumn(key="rows", header="Rows", align="right", sortable=True),
+            ], rows=slow)
+        else:
+            empty_note()
+
+
 def render() -> str:
     generated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     with PrefabApp(title="Gooners · Admin", css_class="max-w-7xl mx-auto p-6 space-y-4") as app:
@@ -516,6 +626,8 @@ def render() -> str:
                 tab_resale()
             with Tab(title="Product & Users", value="product"):
                 tab_product()
+            with Tab(title="Pipeline Health", value="pipeline"):
+                tab_pipeline()
     return app.html()
 
 
