@@ -14,11 +14,6 @@ on:
         required: false
         type: boolean
         default: false
-      enrichment:
-        description: 'Enrich lots with Claude (brand/model/condition) before eBay comps'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -39,12 +34,14 @@ jobs:
       # when Supabase is configured; no-op when SUPABASE_SECRET_KEY is absent so
       # local/offline scrapes are unaffected.
       GOONERS_NOMIC_EMBEDDINGS: '1'
-      # LLM lot enrichment (#99/#104). Opt-in: scheduled runs leave it off
-      # (inputs.enrichment is unset → '0') so quality can be validated via a
-      # manual dispatch before it becomes a standing per-scrape cost. The
-      # enrich step is a no-op without both this flag and the key.
+      # LLM lot enrichment (#99/#104). Now ON for every run, including the hourly
+      # schedule — quality has been validated, so new/changed lots are enriched
+      # incrementally as they're scraped (reuse via input_hash means unchanged
+      # lots never re-call the API, keeping the per-scrape cost to just the deltas).
+      # The one-time historical catch-up is the separate `enrich-backfill.yml`.
+      # No-op without ANTHROPIC_API_KEY, so local/offline scrapes are unaffected.
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      GOONERS_ENRICHMENT: ${{ inputs.enrichment && '1' || '0' }}
+      GOONERS_ENRICHMENT: '1'
     steps:
       - uses: actions/checkout@v5
 
