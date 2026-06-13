@@ -53,10 +53,11 @@ export function ActiveFilters({
     chips.push({ label: `Bidders: ${minBidders ?? 0}–${maxBidders ?? '∞'}`, onRemove: onClearBidders })
   }
   if (minHours !== null || maxHours !== null) {
-    // The "Ends within" control is now presets (1 day / 1 week), so show those.
-    const endsLabel = minHours === null && maxHours === 24 ? 'Ends: ≤ 1 day'
-      : minHours === null && maxHours === 24 * 7 ? 'Ends: ≤ 1 week'
-        : `Ends: ${minHours ?? 0}–${maxHours ?? '∞'}h`
+    // The "Ends within" control is now presets (1 hour … 1 month), so show those.
+    const ENDS_LABELS = { 1: '1 hour', 24: '1 day', 168: '1 week', 720: '1 month' }
+    const endsLabel = minHours === null && ENDS_LABELS[maxHours]
+      ? `Ends: ≤ ${ENDS_LABELS[maxHours]}`
+      : `Ends: ${minHours ?? 0}–${maxHours ?? '∞'}h`
     chips.push({ label: endsLabel, onRemove: onClearHours })
   }
   if (hasComp) chips.push({ label: 'Has eBay comp', onRemove: onClearComp })

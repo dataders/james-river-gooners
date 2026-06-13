@@ -168,16 +168,16 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
 // upper hours bound and clears the lower one; "All" clears both (so lots with no
 // parseable end date — Infinity hours — aren't dropped).
 const ENDS_WITHIN_PRESETS = [
+  { key: 'hour', label: '1 hour', hours: 1 },
   { key: 'day', label: '1 day', hours: 24 },
   { key: 'week', label: '1 week', hours: 24 * 7 },
+  { key: 'month', label: '1 month', hours: 24 * 30 },
   { key: 'all', label: 'All', hours: null },
 ]
 
 function EndsWithinPresets({ maxHours, onMinHoursChange, onMaxHoursChange }) {
   const active = maxHours == null ? 'all'
-    : maxHours === 24 ? 'day'
-      : maxHours === 24 * 7 ? 'week'
-        : null
+    : ENDS_WITHIN_PRESETS.find(o => o.hours === maxHours)?.key ?? null
   const select = (hours) => {
     onMinHoursChange(null)
     onMaxHoursChange(hours)

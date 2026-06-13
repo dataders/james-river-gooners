@@ -7,7 +7,7 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 ## 2026-06-13 — Easier price & bidding filters
 
 - 🎚 **Easier sliders** — the Price, Bids and Bidders sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.
-- ⏰ **Ends within presets** — the "Ends within" filter is now simple quick buttons — 1 day, 1 week, or All — instead of a fiddly time slider.
+- ⏰ **Ends within presets** — the "Ends within" filter is now simple quick buttons — 1 hour, 1 day, 1 week, 1 month, or All — instead of a fiddly time slider.
 
 ## 2026-06-09 — Faster loading
 
