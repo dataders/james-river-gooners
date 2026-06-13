@@ -24,6 +24,7 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 - 🚗 **Vehicles filter fixed** — whole cars, trucks and motorcycles now land in the Vehicles category, so hiding Vehicles actually hides them — previously they slipped into "Other" and kept showing up.
 - 🗂️ **"Other" cleanup** — hundreds of lots that were dumped in "Other" — sports cards, coins, rugs, die-cast toys, cast-iron & enamelware, stamps, vintage advertising — now sort into their proper categories, so browsing and filtering by category is much more accurate.
 - 🐾 **Pet Adoption category** — added a dedicated Pet Adoption category for the live animals listed for adoption, so they're easy to find — or hide.
+- 🧹 **Closed lots hidden by default** — lots that have already closed are now hidden from the main grid by default — even when the rest of their auction is still live and staggering lots shut over several days. Flip on "All auctions" to bring ended lots (and their final prices) back into view.
 
 ## 2026-06-09 — Faster loading
 
