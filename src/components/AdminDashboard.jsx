@@ -1,4 +1,3 @@
-// @ts-check
 // Owner-only admin monitoring dashboard (mounted at /admin via src/admin-entry.jsx).
 //
 // The dashboard HTML is built hourly from the dbt marts in MotherDuck and
