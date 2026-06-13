@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-13',
+    title: 'More lots get identified',
+    changes: [
+      { id: 'enrich-detail-furniture-art', icon: '🪑', text: 'Antique furniture, paintings, and decorative pieces now get identified too — a mid-century walnut table or a signed watercolor now shows a product name and resale comps, not just the lots with an obvious brand.' },
+    ],
+  },
+  {
+    date: '2026-06-13',
     title: 'Snappier browsing',
     changes: [
       { id: 'perf-faster-first-load', icon: '⚡', text: 'The site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.' },

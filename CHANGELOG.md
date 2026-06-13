@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-13 — More lots get identified
+
+- 🪑 **More lots get identified** — antique furniture, paintings, and decorative pieces now get identified too — a mid-century walnut table or a signed watercolor now shows a product name and resale comps, not just the lots with an obvious brand.
+
 ## 2026-06-13 — Snappier browsing
 
 - ⚡ **Faster first load** — the site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.
