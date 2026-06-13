@@ -186,8 +186,8 @@ def upsert_lots(
         return 0
 
     if session is None:
-        import requests as _requests
-        session = _requests.Session()
+        from http_client import supabase_session
+        session = supabase_session("lots")
 
     if skip_unchanged:
         existing = _fetch_existing_signatures(safe_id, url, key, session)
@@ -236,8 +236,8 @@ def archive_lots(
         return 0
 
     if session is None:
-        import requests as _requests
-        session = _requests.Session()
+        from http_client import supabase_session
+        session = supabase_session("lots")
 
     rows = [_lot_row(item, archived=True) for item in final_items]
     for i in range(0, len(rows), batch_size):
@@ -317,8 +317,8 @@ def list_auction_safe_ids(
     """Return all distinct auction_safe_id values from the lots table."""
     url, key = resolve_credentials(url, key)
     if session is None:
-        import requests as _requests
-        session = _requests.Session()
+        from http_client import supabase_session
+        session = supabase_session("lots")
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
@@ -351,8 +351,8 @@ def fetch_lots_for_auction(
     """Fetch all lots for one auction from Supabase as camelCase item dicts."""
     url, key = resolve_credentials(url, key)
     if session is None:
-        import requests as _requests
-        session = _requests.Session()
+        from http_client import supabase_session
+        session = supabase_session("lots")
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
@@ -390,8 +390,8 @@ def backfill(
         raise RuntimeError("SUPABASE_SECRET_KEY is required for backfill")
 
     if session is None:
-        import requests as _requests
-        session = _requests.Session()
+        from http_client import supabase_session
+        session = supabase_session("lots")
 
     active_total = 0
     if do_active and ITEMS_DIR.exists():
