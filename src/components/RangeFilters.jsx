@@ -249,6 +249,11 @@ export function RangeFilters({
 
   return (
     <div className="range-filters">
+      <EndsWithinPresets
+        maxHours={maxHours}
+        onMinHoursChange={onMinHoursChange}
+        onMaxHoursChange={onMaxHoursChange}
+      />
       <DualSlider
         label="Price"
         min={0}
@@ -296,11 +301,6 @@ export function RangeFilters({
           logScale
         />
       )}
-      <EndsWithinPresets
-        maxHours={maxHours}
-        onMinHoursChange={onMinHoursChange}
-        onMaxHoursChange={onMaxHoursChange}
-      />
     </div>
   )
 }
