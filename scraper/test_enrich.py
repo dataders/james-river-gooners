@@ -576,6 +576,43 @@ class EbayQueryFromEnrichmentTests(unittest.TestCase):
         self.assertEqual(enriched_exact_phrase(item), '"DeWalt DCD771"')
 
 
+class EstimateCostTests(unittest.TestCase):
+    class _FakeClient:
+        def __init__(self, input_tokens):
+            self._n = input_tokens
+            self.messages = self
+
+        def count_tokens(self, **_kwargs):
+            return type("Ct", (), {"input_tokens": self._n})()
+
+    def test_zero_lots_is_free(self):
+        from enrich import estimate_enrichment_cost
+        out = estimate_enrichment_cost(self._FakeClient(999), [], batch=True)
+        self.assertEqual(out["lots"], 0)
+        self.assertEqual(out["est_cost_usd"], 0.0)
+
+    def test_extrapolates_from_sample(self):
+        from unittest import mock
+        import enrich
+        items = [{"id": i, "title": f"Item {i}", "description": "x"} for i in range(10)]
+        with mock.patch.object(enrich, "_fetch_chunk_images", return_value={}):
+            out = enrich.estimate_enrichment_cost(self._FakeClient(1000), items, batch=True)
+        self.assertEqual(out["lots"], 10)
+        self.assertEqual(out["avg_input_tokens"], 1000)
+        expected = (1000 * 10 / 1e6 * enrich.PRICE_IN_PER_MTOK * 0.5) + \
+                   (enrich.ESTIMATE_OUTPUT_TOKENS * 10 / 1e6 * enrich.PRICE_OUT_PER_MTOK * 0.5)
+        self.assertAlmostEqual(out["est_cost_usd"], round(expected, 2), places=2)
+
+    def test_batch_is_half_of_standard(self):
+        from unittest import mock
+        import enrich
+        items = [{"id": i, "title": f"Item {i}"} for i in range(6)]
+        with mock.patch.object(enrich, "_fetch_chunk_images", return_value={}):
+            batch = enrich.estimate_enrichment_cost(self._FakeClient(1000), items, batch=True)
+            std = enrich.estimate_enrichment_cost(self._FakeClient(1000), items, batch=False)
+        self.assertAlmostEqual(batch["est_cost_usd"], round(std["est_cost_usd"] / 2, 2), places=2)
+
+
 class EnrichmentSummaryTests(unittest.TestCase):
     def test_counts_identified_vs_processed(self):
         rows = [

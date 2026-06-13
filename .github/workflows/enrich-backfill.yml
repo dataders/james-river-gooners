@@ -18,6 +18,11 @@ on:
         description: 'Space-separated auction safeIds to enrich (blank = all active + archive)'
         required: false
         type: string
+      estimate_only:
+        description: 'Pre-flight only — count tokens on a sample and print the estimated cost, do not enrich'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -48,5 +53,9 @@ jobs:
             exit 1
           fi
           SAFE_IDS="${{ inputs.safe_ids }}"
+          ESTIMATE_FLAG=""
+          if [ "${{ inputs.estimate_only }}" = "true" ]; then
+            ESTIMATE_FLAG="--estimate-only"
+          fi
           uv run --with anthropic --with requests --with pillow \
-            python enrich.py --batch --from-supabase ${SAFE_IDS}
+            python enrich.py --batch --from-supabase ${ESTIMATE_FLAG} ${SAFE_IDS}

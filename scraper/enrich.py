@@ -100,6 +100,14 @@ IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16
 # shared knob (intended to also govern embeddings) keeps the passes in lockstep.
 MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
 
+# Pre-flight cost estimation (--estimate-only). Haiku 4.5 list price per million
+# tokens; the Batches API is 50% off. The output is small + bounded by
+# max_tokens, so a small constant covers it. All overridable for other models.
+PRICE_IN_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_IN", "1.0"))
+PRICE_OUT_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_OUT", "5.0"))
+ESTIMATE_SAMPLE = max(1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30")))
+ESTIMATE_OUTPUT_TOKENS = int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300"))
+
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
 # reusing a now-stale cached row (the fingerprint folds this in). v4: adds lot
 # economics + resale risk — quantity, isMixedLot, conditionFlags, keyAttributes.
@@ -972,7 +980,48 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     return 0
 
 
-def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False) -> int:
+def estimate_enrichment_cost(client, to_enrich: list[dict], *, batch: bool = True,
+                             sample_size: int = ESTIMATE_SAMPLE) -> dict:
+    """Pre-flight cost estimate for enriching ``to_enrich`` — counts input tokens
+    on a spread sample (real content incl. inlined images, via ``count_tokens``)
+    and extrapolates to the full set. Output tokens are a small bounded constant
+    (the v4 JSON). Prints a one-line summary; never spends on completions."""
+    n = len(to_enrich)
+    if n == 0 or client is None:
+        print("  enrich: cost estimate — 0 lots to enrich ($0.00)")
+        return {"lots": 0, "avg_input_tokens": 0, "est_cost_usd": 0.0}
+    step = max(1, n // sample_size)
+    sample = to_enrich[::step][:sample_size]
+    images = _fetch_chunk_images(sample)
+    counts = []
+    for item in sample:
+        try:
+            params = build_request_params(item, content=build_content_inline(item, images.get(id(item), [])))
+            ct = client.messages.count_tokens(
+                model=params["model"], system=params["system"], messages=params["messages"]
+            )
+            counts.append(int(ct.input_tokens))
+        except Exception as exc:  # noqa: BLE001 — estimate is best-effort
+            print(f"  enrich: token count failed for a sample lot ({exc})", file=sys.stderr)
+    if not counts:
+        print("  enrich: cost estimate unavailable (token counting failed)", file=sys.stderr)
+        return {"lots": n, "avg_input_tokens": 0, "est_cost_usd": 0.0}
+    avg_in = sum(counts) / len(counts)
+    discount = 0.5 if batch else 1.0
+    in_cost = avg_in * n / 1e6 * PRICE_IN_PER_MTOK * discount
+    out_cost = ESTIMATE_OUTPUT_TOKENS * n / 1e6 * PRICE_OUT_PER_MTOK * discount
+    total = in_cost + out_cost
+    rate = "batch (50% off)" if batch else "standard"
+    print(
+        f"  enrich: cost estimate — {n} lots to enrich, ~{avg_in:.0f} input tok/lot "
+        f"(sampled {len(counts)}); ~${total:.2f} at {rate} rate "
+        f"(input ${in_cost:.2f} + output ${out_cost:.2f}, {MODEL})"
+    )
+    return {"lots": n, "avg_input_tokens": round(avg_in), "est_cost_usd": round(total, 2)}
+
+
+def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
+                            estimate_only: bool = False) -> int:
     """Enrich lots fetched from the Supabase ``lots`` table (no NDJSON needed).
 
     Prior enrichment hashes are loaded from ``lot_enrichment`` so unchanged lots
@@ -1014,6 +1063,19 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False)
         print("No auctions found in Supabase lots table.")
         return 0
 
+    # Pre-flight: sum the lots that would actually hit the API (reuse-gated),
+    # estimate the cost once across the whole corpus, and exit without spending.
+    if estimate_only:
+        all_to_enrich: list[dict] = []
+        for safe_id, archived, prefetched in work:
+            rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
+            if not rows:
+                continue
+            to_enrich, _reused = _partition_for_enrichment(rows, load_prior_enrichment_from_supabase(safe_id))
+            all_to_enrich.extend(to_enrich)
+        estimate_enrichment_cost(client, all_to_enrich, batch=use_batch)
+        return 0
+
     all_rows = []
     for safe_id, archived, prefetched in work:
         rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
@@ -1038,9 +1100,10 @@ def main(argv: list[str] | None = None) -> int:
     use_batch = "--batch" in argv
     include_all = "--all" in argv
     from_supabase = "--from-supabase" in argv
-    argv = [arg for arg in argv if arg not in ("--batch", "--all", "--from-supabase")]
+    estimate_only = "--estimate-only" in argv
+    argv = [arg for arg in argv if arg not in ("--batch", "--all", "--from-supabase", "--estimate-only")]
     if from_supabase:
-        return _backfill_from_supabase(argv or None, use_batch=use_batch)
+        return _backfill_from_supabase(argv or None, use_batch=use_batch, estimate_only=estimate_only)
     if not argv and not include_all:
         print(__doc__)
         return 1
