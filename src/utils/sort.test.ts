@@ -70,8 +70,8 @@ test('ending sort handles ISO (HiBid) and Maxanet dates together', () => {
   )
 })
 
-test('SORT_OPTIONS leads with Featured then Best margin', () => {
-  assert.equal(SORT_OPTIONS[0].key, '')
+test('SORT_OPTIONS leads with For You then Best margin', () => {
+  assert.equal(SORT_OPTIONS[0].key, 'foryou')
   assert.equal(SORT_OPTIONS[1].key, 'margin')
   // every option has a non-empty label
   for (const o of SORT_OPTIONS) assert.ok(o.label.length > 0)
