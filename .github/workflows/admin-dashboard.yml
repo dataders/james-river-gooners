@@ -1,0 +1,118 @@
+name: Admin Dashboard
+
+# Builds the owner-only monitoring dashboard and publishes it to a PRIVATE
+# Supabase Storage bucket (admin-dashboard/latest.html, migration 0020). The
+# SPA's /admin route streams it back for the signed-in owner only.
+#
+# Pipeline (hourly):
+#   1. Copy Supabase app tables → MotherDuck my_db.supabase_app  (dlt)
+#   2. Refresh PostHog aggregates → MotherDuck posthog_raw       (best-effort)
+#   3. dbt build → MotherDuck gooners_* marts                    (MotherDuck-only)
+#   4. prefab render → dist/admin.html (data baked inline)
+#   5. upload → private Supabase Storage bucket
+#
+# Step 3 reads ONLY MotherDuck — every source (github_stats, posthog_raw,
+# supabase_app, supabase_metrics) is loaded natively into my_db by step 1/2 and
+# the sibling stats pipelines, so dbt no longer attaches Supabase Postgres
+# (keeping build-time read load off the live app database). Steps 1–2 are
+# best-effort: any domain whose marts aren't populated yet degrades to "awaiting
+# refresh" in the UI, so the build + upload always succeed and the engineering
+# data is always current.
+
+on:
+  schedule:
+    # Hourly at :27 — trails github-stats (:07) / supabase-stats (:17) so the
+    # marts it reads are freshly loaded, and offset so the jobs don't pile up.
+    - cron: '27 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-dashboard
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+      # The dlt copy (step 1) reads the app tables over PostgREST (HTTPS) with the
+      # service key — no separate Postgres URL needed; dbt then reads them
+      # natively from MotherDuck.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
+      DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+
+      - id: guard
+        run: |
+          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "MOTHERDUCK_TOKEN unset — nothing to build."
+          fi
+
+      - name: Copy Supabase app tables → MotherDuck (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: supabase_app
+        run: |
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
+            echo "SUPABASE_URL / SUPABASE_SECRET_KEY unset — skipping app-table copy."
+            exit 0
+          fi
+          uv run --with "dlt[motherduck]" --with requests python3 pipeline.py
+
+      - name: Refresh PostHog aggregates (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: scraper
+        run: |
+          if [ -z "${POSTHOG_PERSONAL_KEY:-}" ]; then
+            echo "POSTHOG_PERSONAL_KEY unset — skipping PostHog export."
+            exit 0
+          fi
+          uv run --with requests --with 'duckdb==1.5.2' python3 posthog_export.py
+
+      - name: Build dbt marts (MotherDuck-only, best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: dbt
+        run: |
+          uv run --with dbt-core --with dbt-duckdb dbt deps
+          # Reads only MotherDuck. Models whose upstream sources aren't populated
+          # yet (e.g. supabase_metrics until supabase-stats lands in MotherDuck)
+          # fail in isolation and surface as "awaiting refresh" in the dashboard.
+          uv run --with dbt-core --with dbt-duckdb dbt build --target prod
+
+      - name: Capture pipeline metrics (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: pipeline_meta
+        run: |
+          # Records the dbt build's run_results + a source row-count snapshot into
+          # my_db.meta, powering the dashboard's Pipeline Health tab over time.
+          uv run --with 'duckdb==1.5.2' python3 capture.py --target-dir ../dbt/target
+
+      - name: Render dashboard HTML
+        if: steps.guard.outputs.run == 'true'
+        working-directory: dashboard
+        run: |
+          uv run --with 'prefab-ui>=0.19.0' --with 'duckdb==1.5.2' --with pytz \
+            python3 app.py -o dist/admin.html
+
+      - name: Upload to private Supabase Storage
+        if: steps.guard.outputs.run == 'true'
+        working-directory: dashboard
+        run: |
+          if [ -z "${SUPABASE_SECRET_KEY:-}" ] || [ -z "${SUPABASE_URL:-}" ]; then
+            echo "SUPABASE_URL / SUPABASE_SECRET_KEY unset — skipping upload."
+            exit 0
+          fi
+          uv run --with requests python3 upload.py dist/admin.html

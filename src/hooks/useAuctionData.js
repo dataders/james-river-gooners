@@ -52,17 +52,17 @@ async function fetchPage(viewName, from) {
 
 // How many pages to fetch concurrently per wave. The old loop paged strictly
 // sequentially — with ~6.6K active lots that's 7 serial round-trips against a
-// slow free-tier instance, the bulk of the "Fetching auction data" wait.
-// Fetching a wave of pages at once collapses that to a couple of round-trips,
-// while the cap keeps it gentle: the E2E/usability suites open many pages at
-// once (Playwright workers), and N workers × unbounded pages saturated
-// free-tier Supabase's connections.
+// slow instance, the bulk of the "Fetching auction data" wait. Fetching a wave
+// of pages at once collapses that to a couple of round-trips, while the cap
+// keeps it gentle: the E2E/usability suites open many pages at once (Playwright
+// workers), and N workers × unbounded pages saturated the connection pool of
+// the default Micro compute instance (the Pro plan's smallest, shared-CPU size).
 const PAGE_CONCURRENCY = 4
 
 // Load every row from a paginated PostgREST view via adaptive parallel waves.
 //
 // We deliberately avoid a COUNT query: an exact COUNT over this view costs
-// several seconds on the cold free-tier instance (as much as the data itself),
+// several seconds on the cold Micro-compute instance (as much as the data itself),
 // and a planned/estimated count can be stale right after a scrape. Instead we
 // fetch page 0 first (so `onFirstPage` can paint it as soon as possible —
 // progressive render), then fetch the rest in PAGE_CONCURRENCY-wide waves,
@@ -158,7 +158,7 @@ export function useAuctionData(archiveMode = 'active') {
     // Paint the first page the moment it lands (Supabase path only — the NDJSON
     // path resolves its file fetches in one shot, so there's nothing partial to
     // show). The final `.then` below replaces this with the complete set. This
-    // matters because the free-tier DB serves the full ~6.5K-row set slowly
+    // matters because the Micro-compute DB serves the full ~6.5K-row set slowly
     // (~10-20s); progressive render shows lots in ~2s regardless.
     const onPartial = isSupabaseConfigured
       ? ({ items, auctions }) => {
@@ -263,16 +263,41 @@ export function useAuctionData(archiveMode = 'active') {
     [dynamicArchivedKey]
   )
 
+  // Beyond whole-auction expiry, *individual* lots can close early: HiBid and
+  // Rasmus stagger lot close times, sometimes across days, so a lot can be past
+  // its own deadline while its parent auction is still live. Treat any such lot
+  // exactly like a lot in a fully-closed auction — hidden from the active grid,
+  // surfaced under the archive toggle. Keyed on a stable joined string (same
+  // trick as dynamicArchivedKey) so the Set identity only changes when
+  // membership changes, not on every minute tick — otherwise `allItems` (and
+  // the heavy search/filter pipeline downstream) would rebuild each tick.
+  // Memoized off `now` so a lot that closes while the page is open drops out
+  // within one tick. Falls back to the auction deadline when a lot carries no
+  // per-lot date (closed Cannon's lots), matching itemTimeRemaining.
+  const dynamicEndedKey = useMemo(
+    () => activeItems
+      .filter(item => !item.archived && isPastDeadline(item.endDate || item.auctionEndDate, now))
+      .map(itemKey)
+      .sort()
+      .join('\n'),
+    [activeItems, now]
+  )
+
+  const dynamicEndedItemIds = useMemo(
+    () => new Set(dynamicEndedKey ? dynamicEndedKey.split('\n') : []),
+    [dynamicEndedKey]
+  )
+
   const allItems = useMemo(() => {
     let merged
     if (!includeArchived) {
-      merged = dynamicArchivedIds.size === 0
+      merged = dynamicEndedItemIds.size === 0
         ? activeItems
-        : activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+        : activeItems.filter(item => !dynamicEndedItemIds.has(itemKey(item)))
     } else {
-      const active = dynamicArchivedIds.size === 0
+      const active = dynamicEndedItemIds.size === 0
         ? activeItems
-        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+        : activeItems.map(item => dynamicEndedItemIds.has(itemKey(item))
             ? { ...item, archived: true }
             : item)
       // The same lot can appear in both the active and archive snapshots while
@@ -297,7 +322,7 @@ export function useAuctionData(archiveMode = 'active') {
       seen.add(k)
       return true
     })
-  }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicArchivedIds])
+  }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicEndedItemIds])
 
   const auctions = useMemo(() => {
     if (!includeArchived) {

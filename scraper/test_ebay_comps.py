@@ -15,6 +15,7 @@ from ebay_comps import (
     comp_rows_for_item,
     ensure_comp_tables,
     extract_ebay_item_id,
+    extract_usage_headers,
     fetch_direct,
     fetch_sold_matches,
     fresh_comp_keys_from_files,
@@ -25,6 +26,7 @@ from ebay_comps import (
     parse_sold_search_html,
     smoke,
     soldcomps_sold_matches,
+    usage_remaining,
     utc_now_text,
 )
 
@@ -87,6 +89,187 @@ class ExactPhraseSearchTests(unittest.TestCase):
             "enrichmentConfidence": "low",
         })
         self.assertEqual(searches[0]["query"], '"Pair of brass candlesticks"')
+
+
+class Phase1QueryFilterTests(unittest.TestCase):
+    """Phase 1 structured /v1/scrape filters attached to the search funnel."""
+
+    def test_ebay_item_condition_collapses_to_api_enum(self):
+        from ebay_query import ebay_item_condition
+
+        self.assertEqual(ebay_item_condition({"condition": "new"}), "new")
+        self.assertEqual(ebay_item_condition({"condition": "open box"}), "new")
+        self.assertEqual(ebay_item_condition({"condition": "used"}), "used")
+        self.assertEqual(ebay_item_condition({"condition": "for parts"}), "used")
+        self.assertEqual(ebay_item_condition({"condition": "unknown"}), "")
+        self.assertEqual(ebay_item_condition({"condition": ""}), "")
+        self.assertEqual(ebay_item_condition({}), "")
+
+    def test_ebay_category_id_maps_known_group_and_handles_unmapped(self):
+        from ebay_query import ebay_category_id
+
+        self.assertEqual(ebay_category_id({"category": "Art"}), "550")
+        # Guard the YAML keys that contain "&" — these are the groups most prone
+        # to a silent miss if the file ever gets HTML-escaped or mis-parsed.
+        self.assertEqual(ebay_category_id({"category": "China & Glass"}), "870")
+        self.assertEqual(ebay_category_id({"category": "Jewelry & Watches"}), "281")
+        # Mapped to a deliberate "0" (no filter) — returned verbatim.
+        self.assertEqual(ebay_category_id({"category": "Vehicles"}), "0")
+        # Unmapped / absent group -> "".
+        self.assertEqual(ebay_category_id({"category": "Nonexistent Group"}), "")
+        self.assertEqual(ebay_category_id({}), "")
+
+    def test_specific_tier_carries_category_and_condition_but_broad_does_not(self):
+        searches = build_ebay_sold_searches({
+            "title": "Fever Brand Brass Student Trumpet",
+            "description": "a really nice horn here",
+            "category": "Art",
+            "rawCategory": "Musical Instruments",
+            "condition": "used",
+        })
+        specific = next(s for s in searches if s["kind"] == "specific")
+        broad = next(s for s in searches if s["kind"] == "broad")
+
+        # Precise-only filters ride on `specific` alone.
+        self.assertEqual(specific["category_id"], "550")
+        self.assertEqual(specific["item_condition"], "used")
+        self.assertNotIn("category_id", broad)
+        self.assertNotIn("item_condition", broad)
+
+    def test_safe_constraints_attach_to_every_tier(self):
+        searches = build_ebay_sold_searches({
+            "title": "Fever Brand Brass Student Trumpet",
+            "description": "a really nice horn here for sale",
+            "category": "Art",
+            "rawCategory": "Musical Instruments",
+        })
+        self.assertTrue(len(searches) >= 2)
+        for search in searches:
+            self.assertEqual(search["min_price"], 5)
+            self.assertEqual(search["sort_order"], "endedRecently")
+            self.assertEqual(search["ebay_site"], "ebay.com")
+            self.assertEqual(search["item_location"], "domestic")
+            self.assertEqual(search["count"], 40)
+
+    def test_numeric_filter_defaults_are_env_overridable(self):
+        with patch.dict("os.environ", {
+            "GOONERS_EBAY_COMPS_MIN_PRICE": "12",
+            "GOONERS_EBAY_COMPS_COUNT": "120",
+        }):
+            searches = build_ebay_sold_searches({
+                "title": "Vintage Omega Seamaster Automatic Wristwatch",
+                "description": "",
+                "category": "Jewelry & Watches",
+                "rawCategory": "Jewelry & Watches",
+            })
+        self.assertEqual(searches[0]["min_price"], 12)
+        self.assertEqual(searches[0]["count"], 120)
+
+    def test_unmapped_category_omits_category_id_on_specific(self):
+        searches = build_ebay_sold_searches({
+            "title": "Distinctive Brass Telescope Antique Instrument",
+            "description": "",
+            "category": "Vehicles",  # mapped to "0" -> omitted
+            "rawCategory": "Vehicles",
+        })
+        specific = next(s for s in searches if s["kind"] == "specific")
+        self.assertNotIn("category_id", specific)
+
+    def test_soldcomps_forwards_structured_filters_into_params(self):
+        response = Mock(status_code=200)
+        response.headers = {"X-Usage-Remaining": "100"}
+        response.json.return_value = {"items": []}
+        session = Mock()
+        session.get.return_value = response
+
+        soldcomps_sold_matches(
+            session,
+            {
+                "kind": "specific",
+                "query": "Rosenthal vase",
+                "url": "https://example.test",
+                "category_id": "870",
+                "item_condition": "used",
+                "min_price": 5,
+                "count": 40,
+                "sort_order": "endedRecently",
+                "ebay_site": "ebay.com",
+                "item_location": "domestic",
+            },
+            api_key="test-key",
+        )
+
+        params = session.get.call_args.kwargs["params"]
+        self.assertEqual(params["keyword"], "Rosenthal vase")
+        self.assertEqual(params["categoryId"], "870")
+        self.assertEqual(params["itemCondition"], "used")
+        self.assertEqual(params["minPrice"], 5)
+        self.assertEqual(params["count"], 40)
+        self.assertEqual(params["sortOrder"], "endedRecently")
+        self.assertEqual(params["ebaySite"], "ebay.com")
+        self.assertEqual(params["itemLocation"], "domestic")
+
+    def test_soldcomps_omits_absent_filters(self):
+        # A bare search (broad tier, no category/condition) sends only the keys
+        # that are present — never categoryId=0 or an empty itemCondition.
+        response = Mock(status_code=200)
+        response.headers = {}
+        response.json.return_value = {"items": []}
+        session = Mock()
+        session.get.return_value = response
+
+        soldcomps_sold_matches(
+            session,
+            {"kind": "broad", "query": "brass vase", "url": "https://example.test"},
+            api_key="test-key",
+        )
+
+        params = session.get.call_args.kwargs["params"]
+        self.assertEqual(params, {"keyword": "brass vase"})
+
+
+class ProviderUsageHeaderTests(unittest.TestCase):
+    def test_extract_usage_headers_keeps_only_quota_headers_lowercased(self):
+        usage = extract_usage_headers({
+            "X-Usage-Limit": "5000",
+            "X-Usage-Remaining": "1625",
+            "Content-Type": "application/json",
+            "X-RateLimit-Reset": "1700000000",
+        })
+        self.assertEqual(
+            usage,
+            {
+                "x-usage-limit": "5000",
+                "x-usage-remaining": "1625",
+                "x-ratelimit-reset": "1700000000",
+            },
+        )
+
+    def test_extract_usage_headers_tolerates_non_mapping(self):
+        # A bare Mock (as older tests pass for response.headers) must not raise.
+        self.assertEqual(extract_usage_headers(Mock()), {})
+
+    def test_usage_remaining_parses_first_known_header(self):
+        self.assertEqual(usage_remaining({"x-usage-remaining": "42"}), 42)
+        self.assertEqual(usage_remaining({"x-ratelimit-remaining": "7.0"}), 7)
+        self.assertIsNone(usage_remaining({"x-usage-limit": "5000"}))
+        self.assertIsNone(usage_remaining({"x-usage-remaining": "n/a"}))
+
+    def test_soldcomps_result_carries_provider_remaining(self):
+        response = Mock(status_code=200)
+        response.headers = {"X-Usage-Remaining": "1624", "X-Usage-Limit": "5000"}
+        response.json.return_value = {"items": []}
+        session = Mock()
+        session.get.return_value = response
+
+        result = soldcomps_sold_matches(
+            session,
+            {"kind": "broad", "query": "vase", "url": "https://example.test"},
+            api_key="test-key",
+        )
+        self.assertEqual(result["status"], "no_results")
+        self.assertEqual(result["provider_remaining"], 1624)
+        self.assertEqual(result["usage"]["x-usage-limit"], "5000")
 
 
 _SOLD_ITEM_HTML = """
@@ -897,6 +1080,36 @@ class BackfillBudgetTest(unittest.TestCase):
             )
         self.assertEqual(called["n"], 0)  # stale, but already attempted -> skipped
         self.assertEqual(summary["items_attempted"], 0)
+
+    def test_provider_remaining_floor_stops_the_run(self):
+        # The provider reports remaining quota on each response; once it hits the
+        # floor the run stops, regardless of the ledger-based monthly budget.
+        items = [self._item(i) for i in range(10)]
+        calls = {"n": 0}
+
+        def fake(session, search, max_matches=3):
+            calls["n"] += 1
+            # Provider says one request left, then zero on the next call.
+            remaining = max(0, 2 - calls["n"])
+            return {
+                "status": "no_results",
+                "matches": [],
+                "warning": None,
+                "provider_remaining": remaining,
+            }
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.load_manifest_items", return_value=items), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+            summary = ebay_comps.fetch_direct(
+                output_dir=Path(tmp), limit=100, queries_per_item=1,
+                monthly_budget=0, stale_hours=0, sleep_seconds=0,
+                mirror_to_warehouse=False, provider_min_remaining=0,
+            )
+        # Second call returns remaining=0 → stop. No third request is made.
+        self.assertEqual(calls["n"], 2)
+        self.assertTrue(summary["provider_exhausted"])
+        self.assertEqual(summary["provider_remaining"], 0)
 
     def test_prioritizes_soonest_ending_auction(self):
         later = self._item("l", title="Distinctive Walnut Dresser Antique",

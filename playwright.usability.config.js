@@ -4,18 +4,16 @@ import { defineConfig, devices } from '@playwright/test'
 // so per-objective results accumulate into one scored report.
 export default defineConfig({
   testDir: './tests/usability',
-  // waitForLoad's worst case is ~140s (70s first attempt + reload + 70s
-  // retry); with retries: 0 a slow cold first-load on the opening objective
-  // would otherwise fail the whole benchmark at a 90s budget.
-  timeout: 150_000,
+  // Data is served from the in-process Supabase mock (tests/usability/fixtures.js
+  // → tests/e2e/_mock), so loads are fast and deterministic — no cold-DB window
+  // to budget for. Still serial/single-worker so per-objective results
+  // accumulate into one scored report.
+  timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  // A healthy benchmark run takes ~2 minutes; bound the whole run so a hung
-  // app load can't hold the CI job for hours (mirrors playwright.config.js).
-  globalTimeout: process.env.CI ? 10 * 60_000 : 0,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:5173',
@@ -29,12 +27,20 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // userAgent after the device spread (tags requests for Supabase log
+    // attribution; distinct from the E2E suite's `gooners-e2e`).
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], userAgent: 'gooners-usability' } },
   ],
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
+    // Pin a dead-end Supabase URL (defence-in-depth behind the request mock);
+    // CI no longer needs the real VITE_SUPABASE_* secrets for this job.
+    env: {
+      VITE_SUPABASE_URL: 'https://e2e.supabase.test',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_e2e_dummy',
+    },
   },
 })

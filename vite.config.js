@@ -1,16 +1,20 @@
 import { defineConfig } from 'vite'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
+
+const r = (p) => fileURLToPath(new URL(p, import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   base: '/',
   optimizeDeps: {
-    // Scan only the real app entry. Without this, Vite's dep scanner globs
+    // Scan only the real app entries. Without this, Vite's dep scanner globs
     // every *.html in the project — including the standalone Babel-in-browser
     // demo at public/dashboard.html, whose inline JSX isn't valid plain JS and
     // throws a PARSE_ERROR that can break dev-server pre-bundling (blank page).
-    entries: ['index.html'],
+    // The owner-only admin route (admin/index.html) is a real second entry.
+    entries: ['index.html', 'admin/index.html'],
     exclude: ['@huggingface/transformers'],
   },
   worker: {
@@ -18,6 +22,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      // Two HTML entries: the main app (/) and the owner-only admin dashboard
+      // (/admin → dist/admin/index.html, a real URL on GitHub Pages).
+      input: {
+        main: r('./index.html'),
+        admin: r('./admin/index.html'),
+      },
       output: {
         // Split rarely-changing vendor code into its own long-cached chunks so
         // a frequent app-only deploy doesn't invalidate the (large) framework +

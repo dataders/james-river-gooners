@@ -13,7 +13,7 @@
 // report. Objective assertions are recorded as data rather than hard failures,
 // so the report always generates even when a task surfaces a problem.
 
-import { test } from '@playwright/test'
+import { test } from './fixtures.js'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { objectives } from './objectives.js'

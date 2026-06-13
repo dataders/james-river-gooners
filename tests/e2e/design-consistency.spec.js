@@ -5,7 +5,7 @@
  * current bid is larger than the bid count") rather than exact pixel values
  * so that future theme tweaks don't require updating the suite.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures.js'
 import { waitForLoad, getItemCount, openRoiCard } from './helpers.js'
 
 // Helper: read one or more computed style properties from the first matching element
@@ -252,7 +252,8 @@ test.describe('Design consistency — range filter label hierarchy', () => {
   })
 
   test('range value font-size is at least as large as the label font-size', async ({ page }) => {
-    const [labelSize, valueSize] = await page.locator('.range-label').first().evaluate(el => [
+    // Use :has(.range-value) to skip EndsWithinPresets' label (no .range-value child)
+    const [labelSize, valueSize] = await page.locator('.range-label:has(.range-value)').first().evaluate(el => [
       parseFloat(getComputedStyle(el).fontSize),
       parseFloat(getComputedStyle(el.querySelector('.range-value')).fontSize),
     ])
@@ -260,7 +261,8 @@ test.describe('Design consistency — range filter label hierarchy', () => {
   })
 
   test('range label font-weight is lower than range value font-weight', async ({ page }) => {
-    const [labelWeight, valueWeight] = await page.locator('.range-label').first().evaluate(el => [
+    // Use :has(.range-value) to skip EndsWithinPresets' label (no .range-value child)
+    const [labelWeight, valueWeight] = await page.locator('.range-label:has(.range-value)').first().evaluate(el => [
       parseFloat(getComputedStyle(el).fontWeight),
       parseFloat(getComputedStyle(el.querySelector('.range-value')).fontWeight),
     ])
