@@ -190,9 +190,9 @@ def upsert_enrichment(
     if not key:
         raise RuntimeError("SUPABASE_SECRET_KEY is required to write enrichment to Supabase")
 
-    import requests
+    from http_client import supabase_session
 
-    session = session or requests.Session()
+    session = session or supabase_session("enrich")
     endpoint = f"{url.rstrip('/')}/rest/v1/{ENRICHMENT_TABLE}"
     headers = {
         "apikey": key,
@@ -262,9 +262,9 @@ def load_prior_enrichment_from_supabase(
     if not url or not key:
         return {}
 
-    import requests as _requests
+    from http_client import supabase_session
 
-    session = session or _requests.Session()
+    session = session or supabase_session("enrich")
     endpoint = f"{url.rstrip('/')}/rest/v1/{ENRICHMENT_TABLE}"
     headers = {
         "apikey": key,

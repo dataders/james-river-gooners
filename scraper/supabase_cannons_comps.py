@@ -100,9 +100,9 @@ def write_auction_comps(
         return 0
 
     if session is None:
-        import requests
+        from http_client import supabase_session
 
-        session = requests.Session()
+        session = supabase_session("cannons-comps")
     endpoint = f"{url.rstrip('/')}/rest/v1/{CANNONS_COMP_TABLE}"
 
     written = 0
