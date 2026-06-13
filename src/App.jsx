@@ -13,6 +13,7 @@ import { usePreferencesSync } from './hooks/usePreferencesSync'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { useItemPipeline } from './hooks/useItemPipeline'
+import { useFilterBounds } from './hooks/useFilterBounds'
 import { useForYou } from './hooks/useForYou'
 import { itemKey } from './utils/itemKey'
 import { overlayEnrichment } from './utils/enrichment'
@@ -78,6 +79,10 @@ export default function App() {
     () => overlayEnrichment(rawItems, enrichmentByAuction),
     [rawItems, enrichmentByAuction]
   )
+
+  // Global p99 slider bounds, fetched once up front so the price/bidding tracks
+  // are correct from first paint instead of jumping as lots stream in.
+  const filterBounds = useFilterBounds()
 
   const changeArchiveMode = useCallback((mode) => {
     setArchiveMode(mode)
@@ -301,6 +306,10 @@ export default function App() {
   // favoriteIds in deps ensures the memo updates when favorites change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const favoriteItems = useMemo(() => items.filter(isFavorite), [items, favoriteIds])
+  // Ignored items present in the currently-loaded set (active/archive scope).
+  // ignoredIds in deps ensures the memo updates when the ignore list changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const ignoredItems = useMemo(() => items.filter(isIgnored), [items, ignoredIds])
   const bidItems = useMemo(
     () => items.filter(i => cannonBids.bidItemIds.has(String(i.id))),
     [items, cannonBids.bidItemIds]
@@ -549,12 +558,13 @@ export default function App() {
           onMyBidsPanelOpen={() => setMyBidsPanelOpen(true)}
           bestDeals={bestDeals}
           onBestDealsToggle={handleBestDealsToggle}
-          favoriteCount={favoriteIds.length}
-          ignoredCount={ignoredIds.length}
+          favoriteCount={favoriteItems.length}
+          ignoredCount={ignoredItems.length}
           cannonBidsLinked={cannonBids.linked}
           cannonBidCount={cannonBidCount}
           cannonBidsLoading={cannonBids.bidsLoading}
           items={rangeFilterItems}
+          bounds={filterBounds}
           minPrice={minPrice} maxPrice={maxPrice}
           onMinPriceChange={setMinPrice} onMaxPriceChange={setMaxPrice}
           minBids={minBids} maxBids={maxBids}

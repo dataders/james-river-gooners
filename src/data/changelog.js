@@ -15,6 +15,26 @@ export const CHANGELOG = [
     ],
   },
   {
+    date: '2026-06-13',
+    title: 'Easier price & bidding filters',
+    changes: [
+      { id: 'range-sliders-touch', icon: '🎚', text: 'The Price, Bids and Bidders sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.' },
+      { id: 'ends-within-presets', icon: '⏰', text: 'The "Ends within" filter is now simple quick buttons — 1 hour, 1 day, 1 week, 1 month, or All — instead of a fiddly time slider.' },
+      { id: 'slider-bounds-stable', icon: '🎯', text: 'The price and bidding sliders now show their correct range right away instead of starting too small and shifting as more lots load in.' },
+    ],
+  },
+  {
+    date: '2026-06-13',
+    title: 'Snappier browsing',
+    changes: [
+      { id: 'perf-faster-first-load', icon: '⚡', text: 'The site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.' },
+      { id: 'perf-smoother-scrolling', icon: '🧈', text: 'Scrolling through thousands of lots is smoother now, and typing in search or dragging the filter sliders no longer makes the grid stutter.' },
+      { id: 'nav-back-closes-item', icon: '⬅️', text: 'Pressing your browser or phone Back button now closes an open item instead of leaving the site.' },
+      { id: 'filter-counts-match-archive', icon: '🔢', text: 'The Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.' },
+      { id: 'ended-shows-close-time', icon: '🕐', text: 'Lots that have closed now show when they ended (e.g. "Ended Jun 11, 7:56 PM") instead of just "Ended" — handy when a lot finishes early while the rest of its auction is still running.' },
+    ],
+  },
+  {
     date: '2026-06-09',
     title: 'Faster loading',
     changes: [

@@ -116,16 +116,27 @@ export const objectives = [
       }
 
       // Then cap the max-price slider to narrow to genuinely cheap lots.
+      // Radix Slider uses pointer events — drag the hi thumb to ~30% of the
+      // track (position 60 out of 200 steps on a log scale → a low price cap).
       tracker.step('Lower the max-price slider')
       const latency = await measureSettle(page, async () => {
-        await page.evaluate(() => {
-          const filter = document.querySelectorAll('.range-filter')[0]
-          const slider = filter?.querySelectorAll('input[type="range"]')[1]
-          if (!slider) throw new Error('price max slider not found')
-          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-          setter.call(slider, '60') // ~30% along a log scale → a low price cap
-          slider.dispatchEvent(new Event('input', { bubbles: true }))
-        })
+        const filter = page.locator('.range-filter').filter({ hasText: /^Price/ }).first()
+        const thumb = filter.locator('.range-slider-thumb-hi')
+        const track = filter.locator('.range-slider-track')
+
+        await thumb.scrollIntoViewIfNeeded()
+        const tb = await track.boundingBox()
+        const startBox = await thumb.boundingBox()
+        if (!tb || !startBox) throw new Error('price max slider not found')
+
+        const ratio = 60 / 200 // 30% along the track → a low price cap
+        const targetX = tb.x + ratio * tb.width
+        const cy = startBox.y + startBox.height / 2
+
+        await page.mouse.move(startBox.x + startBox.width / 2, cy)
+        await page.mouse.down()
+        await page.mouse.move(targetX, cy, { steps: 8 })
+        await page.mouse.up()
       })
       tracker.note(`Price filter settled in ${latency}ms`)
       const capped = await getItemCount(page)
