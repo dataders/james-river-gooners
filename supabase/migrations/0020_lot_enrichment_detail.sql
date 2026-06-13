@@ -19,10 +19,13 @@ alter table lot_enrichment
   add column if not exists details           text,
   add column if not exists detail_confidence text;
 
--- Recreate the public view to expose the v6 columns. Additive; security_invoker
--- keeps the 0008 auth gate (SELECT on lot_enrichment requires an authenticated
--- session).
-create or replace view public_lot_enrichment
+-- Recreate the public view to expose the v6 columns. The new columns slot in
+-- next to the other detail fields (before `notes`), which `create or replace`
+-- can't do — it only appends, never reorders existing view columns — so drop
+-- and recreate. security_invoker keeps the 0008 auth gate (SELECT on
+-- lot_enrichment requires an authenticated session).
+drop view if exists public_lot_enrichment;
+create view public_lot_enrichment
   with (security_invoker = on) as
 select
   auction_safe_id,
