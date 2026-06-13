@@ -93,6 +93,50 @@ test('getDisplayEnrichment drops a non-http productUrl', () => {
   assert.equal(out.productUrl, '')
 })
 
+test('getDisplayEnrichment parses the v4/v5 lot-economics fields', () => {
+  const out = getDisplayEnrichment({
+    enrichmentConfidence: 'high',
+    brand: 'DeWalt',
+    modelOrSku: 'DCD771',
+    productType: 'drill',
+    searchQuery: 'DeWalt DCD771 cordless drill',
+    quantity: '3',
+    isMixedLot: 'true',
+    conditionFlags: '["untested","missing parts"]',
+    keyAttributes: '["20V","brushless"]',
+    secondaryItems: '[{"brand":"Milwaukee","modelOrSku":"M18","productType":"impact driver","searchQuery":"Milwaukee M18 impact driver"}]',
+  })
+  assert.equal(out.productType, 'drill')
+  assert.equal(out.searchQuery, 'DeWalt DCD771 cordless drill')
+  assert.equal(out.quantity, '3')
+  assert.equal(out.isMixedLot, true)
+  assert.deepEqual(out.conditionFlags, ['untested', 'missing parts'])
+  assert.deepEqual(out.keyAttributes, ['20V', 'brushless'])
+  assert.equal(out.secondaryItems.length, 1)
+  assert.equal(out.secondaryItems[0].label, 'Milwaukee M18')
+  assert.equal(out.secondaryItems[0].searchQuery, 'Milwaukee M18 impact driver')
+})
+
+test('getDisplayEnrichment yields empty lists/false for absent v4/v5 fields', () => {
+  const out = getDisplayEnrichment({ enrichmentConfidence: 'high', brand: 'Dietz', modelOrSku: 'Lantern' })
+  assert.equal(out.isMixedLot, false)
+  assert.equal(out.quantity, '')
+  assert.deepEqual(out.conditionFlags, [])
+  assert.deepEqual(out.keyAttributes, [])
+  assert.deepEqual(out.secondaryItems, [])
+})
+
+test('secondaryItems falls back to productType label and drops empty entries', () => {
+  const out = getDisplayEnrichment({
+    enrichmentConfidence: 'high',
+    brand: 'Sony',
+    modelOrSku: 'WH-1000XM4',
+    secondaryItems: '[{"productType":"tripod","searchQuery":"camera tripod"},{"brand":"","modelOrSku":"","productType":""}]',
+  })
+  assert.equal(out.secondaryItems.length, 1)
+  assert.equal(out.secondaryItems[0].label, 'tripod')
+})
+
 test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
   const out = mapEnrichmentRow({
     item_id: '5',
@@ -106,8 +150,15 @@ test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
   assert.deepEqual(out, {
     brand: 'Delta',
     modelOrSku: '36-220C',
+    productType: '',
+    searchQuery: '',
     condition: 'used',
     productUrl: 'https://delta.com/36-220c',
+    quantity: '',
+    isMixedLot: '',
+    conditionFlags: '',
+    keyAttributes: '',
+    secondaryItems: '',
     detailCategory: '',
     details: '',
     detailConfidence: '',
@@ -120,10 +171,33 @@ test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
 
 test('mapEnrichmentRow fills missing columns with empty strings', () => {
   assert.deepEqual(mapEnrichmentRow({ item_id: '1', brand: 'Giant' }), {
-    brand: 'Giant', modelOrSku: '', condition: '', productUrl: '',
+    brand: 'Giant', modelOrSku: '', productType: '', searchQuery: '',
+    condition: '', productUrl: '', quantity: '', isMixedLot: '',
+    conditionFlags: '', keyAttributes: '', secondaryItems: '',
     detailCategory: '', details: '', detailConfidence: '',
     enrichmentConfidence: '', enrichmentModel: '',
   })
+})
+
+test('mapEnrichmentRow maps the v4/v5 lot-economics + resale-risk columns', () => {
+  const out = mapEnrichmentRow({
+    item_id: '7',
+    brand: 'DeWalt',
+    product_type: 'drill',
+    search_query: 'DeWalt DCD771 cordless drill',
+    quantity: '3',
+    is_mixed_lot: 'false',
+    condition_flags: '["untested"]',
+    key_attributes: '["20V","brushless"]',
+    secondary_items: '[{"brand":"Milwaukee","modelOrSku":"M18","productType":"impact driver","searchQuery":"Milwaukee M18 impact driver"}]',
+    confidence: 'high',
+  })
+  assert.equal(out.productType, 'drill')
+  assert.equal(out.searchQuery, 'DeWalt DCD771 cordless drill')
+  assert.equal(out.quantity, '3')
+  assert.equal(out.isMixedLot, 'false')
+  assert.equal(out.conditionFlags, '["untested"]')
+  assert.equal(out.keyAttributes, '["20V","brushless"]')
 })
 
 test('mapEnrichmentRow maps the v6 detail columns', () => {

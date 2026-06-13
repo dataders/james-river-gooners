@@ -1,3 +1,5 @@
+import { isDisplayConfidence } from './enrichment.js'
+
 const EBAY_SEARCH_URL = 'https://www.ebay.com/sch/i.html'
 
 const STOP_WORDS = new Set([
@@ -220,10 +222,13 @@ export function buildEbaySoldSearches(item) {
   const specificTokens = dedupeWords([...tokens.slice(0, 4), ...modelTokens]).slice(0, 8)
   const categoryTokens = meaningfulTokens(`${item.rawCategory || item.category || ''} ${text}`).slice(0, 7)
 
-  // Primary query is a quoted exact phrase (the lot's actual name) instead of
-  // an OR of its individual words; fall back to the token bag when there's no
-  // usable phrase. Broad/category recover recall when the phrase finds nothing.
-  const specificQuery = itemExactPhrase(item) || specificTokens.join(' ')
+  // Primary query prefers the Haiku-derived `searchQuery` (brand + model + type +
+  // a key attribute — the best eBay sold-listing phrase, mirroring the backend's
+  // ebay_query.enriched_exact_phrase) when the lot is confidently identified.
+  // It's unquoted so eBay AND-matches the terms. Falls back to the lot's quoted
+  // exact phrase, then the token bag, when there's no trustworthy enrichment.
+  const enrichedQuery = isDisplayConfidence(item) ? (item.searchQuery || '').trim() : ''
+  const specificQuery = enrichedQuery || itemExactPhrase(item) || specificTokens.join(' ')
 
   const candidates = [
     {

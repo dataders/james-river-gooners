@@ -5,6 +5,7 @@ import { CannonsComps } from './CannonsComps'
 import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
 import { getDisplayEnrichment } from '../utils/enrichment'
+import { buildEbaySoldSearchUrl } from '../utils/ebayComps'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
@@ -133,17 +134,65 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
           {enrichment && (
             <div className="detail-enrichment">
-              {!usedLabelAsTitle && <span className="detail-product-label">{enrichment.label}</span>}
-              {enrichment.condition && <span className="item-condition">{enrichment.condition}</span>}
-              {enrichment.productUrl && (
-                <a
-                  href={enrichment.productUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="detail-product-link"
-                >
-                  View product
-                </a>
+              <div className="detail-enrichment-row">
+                {!usedLabelAsTitle && <span className="detail-product-label">{enrichment.label}</span>}
+                {enrichment.condition && <span className="item-condition">{enrichment.condition}</span>}
+                {enrichment.isMixedLot && <span className="enrichment-badge enrichment-badge-mixed">Mixed lot</span>}
+                {(() => {
+                  const qty = parseInt(enrichment.quantity, 10)
+                  return Number.isFinite(qty) && qty > 1
+                    ? <span className="enrichment-badge enrichment-badge-qty">Qty {qty}</span>
+                    : null
+                })()}
+                {enrichment.productUrl && (
+                  <a
+                    href={enrichment.productUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="detail-product-link"
+                  >
+                    View product
+                  </a>
+                )}
+              </div>
+
+              {enrichment.conditionFlags.length > 0 && (
+                <div className="enrichment-flags">
+                  {enrichment.conditionFlags.map(flag => (
+                    <span key={flag} className="enrichment-flag" title="Resale-risk flag">⚠ {flag}</span>
+                  ))}
+                </div>
+              )}
+
+              {enrichment.keyAttributes.length > 0 && (
+                <div className="enrichment-chips">
+                  {enrichment.keyAttributes.map(attr => (
+                    <span key={attr} className="enrichment-chip">{attr}</span>
+                  ))}
+                </div>
+              )}
+
+              {enrichment.secondaryItems.length > 0 && (
+                <div className="enrichment-secondary">
+                  <div className="enrichment-secondary-label">Also in this lot</div>
+                  <ul className="enrichment-secondary-list">
+                    {enrichment.secondaryItems.map((sec, i) => (
+                      <li key={`${sec.label}:${i}`} className="enrichment-secondary-item">
+                        <span className="enrichment-secondary-name">{sec.label}</span>
+                        {sec.searchQuery && (
+                          <a
+                            href={buildEbaySoldSearchUrl(sec.searchQuery)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="enrichment-secondary-link"
+                          >
+                            Search eBay
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}

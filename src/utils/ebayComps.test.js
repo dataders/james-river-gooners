@@ -142,6 +142,33 @@ test('buildEbaySoldSearches uses a quoted exact phrase for the specific query', 
   assert.ok(searches.some(s => s.kind === 'broad' && !s.query.includes('"')))
 })
 
+test('buildEbaySoldSearches prefers the enriched searchQuery for confident lots', () => {
+  // A confidently-identified lot uses the Haiku searchQuery (unquoted, so eBay
+  // AND-matches the terms) instead of the lot's own title/description text.
+  const searches = buildEbaySoldSearches({
+    title: 'Lot - 42',
+    description: 'a box of power tools, dusty',
+    enrichmentConfidence: 'high',
+    brand: 'DeWalt',
+    modelOrSku: 'DCD771',
+    searchQuery: 'DeWalt DCD771 cordless drill',
+  })
+  assert.equal(searches[0].kind, 'specific')
+  assert.equal(searches[0].query, 'DeWalt DCD771 cordless drill')
+})
+
+test('buildEbaySoldSearches ignores searchQuery when confidence is low', () => {
+  // Low/absent enrichment confidence must never override the text-derived query,
+  // so junk enrichment never worsens the comp search.
+  const searches = buildEbaySoldSearches({
+    title: 'Pair of brass candlesticks',
+    description: '',
+    enrichmentConfidence: 'low',
+    searchQuery: 'totally wrong guess',
+  })
+  assert.equal(searches[0].query, '"Pair of brass candlesticks"')
+})
+
 test('itemExactPhrase caps length, falls back to description, and skips one-word lots', () => {
   // Real title wins, capped to six words.
   assert.equal(

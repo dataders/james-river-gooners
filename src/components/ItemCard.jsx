@@ -61,10 +61,11 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
       </div>
       <div className="item-info">
         <div className="item-title">{displayTitle}</div>
-        {enrichment && (!usedLabelAsTitle || enrichment.condition) && (
+        {enrichment && (!usedLabelAsTitle || enrichment.condition || enrichment.isMixedLot) && (
           <div className="item-product">
             {!usedLabelAsTitle && <span className="item-product-label">{enrichment.label}</span>}
             {enrichment.condition && <span className="item-condition">{enrichment.condition}</span>}
+            {enrichment.isMixedLot && <span className="enrichment-badge enrichment-badge-mixed">Mixed lot</span>}
           </div>
         )}
         <div className="item-category">

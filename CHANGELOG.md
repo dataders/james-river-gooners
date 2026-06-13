@@ -4,6 +4,12 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-13 — Richer lot details & sharper eBay searches
+
+- 🏷️ **More lot detail at a glance** — identified lots now show a "Mixed lot" tag and quantity when a lot is a box of varied items, plus condition warnings (untested, missing parts) and key specs (like "20V" or "brushless") right on the detail.
+- 🔎 **Every item in a mixed lot** — when a lot contains several different name-brand items, each one is now listed separately with its own eBay sold-price search, so you can value the whole box, not just the headline item.
+- 🎯 **Smarter eBay search link** — the "Search eBay" link now uses the lot's identified brand, model and type instead of its raw description, so it lands on the right sold listings far more often.
+
 ## 2026-06-13 — More lots get identified
 
 - 🪑 **More lots get identified** — antique furniture, paintings, and decorative pieces now get identified too — a mid-century walnut table or a signed watercolor now shows a product name and resale comps, not just the lots with an obvious brand.

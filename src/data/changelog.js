@@ -9,9 +9,11 @@
 export const CHANGELOG = [
   {
     date: '2026-06-13',
-    title: 'More lots get identified',
+    title: 'Richer lot details & sharper eBay searches',
     changes: [
-      { id: 'enrich-detail-furniture-art', icon: '🪑', text: 'Antique furniture, paintings, and decorative pieces now get identified too — a mid-century walnut table or a signed watercolor now shows a product name and resale comps, not just the lots with an obvious brand.' },
+      { id: 'enrich-lot-badges', icon: '🏷️', text: 'Identified lots now show more at a glance: a "Mixed lot" tag and quantity when a lot is a box of varied items, plus condition warnings (untested, missing parts) and key specs (like "20V" or "brushless") right on the detail.' },
+      { id: 'enrich-secondary-items', icon: '🔎', text: 'When a lot contains several different name-brand items, each one is now listed separately with its own eBay sold-price search — so you can value the whole box, not just the headline item.' },
+      { id: 'ebay-link-smart-query', icon: '🎯', text: 'The "Search eBay" link now uses the lot\'s identified brand, model and type instead of its raw description, so it lands on the right sold listings far more often.' },
     ],
   },
   {
