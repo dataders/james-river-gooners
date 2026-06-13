@@ -255,6 +255,35 @@ class ProviderUsageHeaderTests(unittest.TestCase):
         self.assertIsNone(usage_remaining({"x-usage-limit": "5000"}))
         self.assertIsNone(usage_remaining({"x-usage-remaining": "n/a"}))
 
+    def test_soldcomps_returns_full_candidates_beyond_max_matches(self):
+        # The corpus (#293) needs every paid-for listing, not just the kept comps.
+        items = [
+            {
+                "itemId": f"itm{n}",
+                "title": f"Rosenthal vase {n}",
+                "soldPrice": "99.00",
+                # eBay item URLs need a 9+ digit id to pass canonicalization.
+                "url": f"https://www.ebay.com/itm/17791790870{n}",
+            }
+            for n in range(5)
+        ]
+        response = Mock(status_code=200)
+        response.headers = {"X-Usage-Remaining": "1000"}
+        response.json.return_value = {"items": items}
+        session = Mock()
+        session.get.return_value = response
+
+        result = soldcomps_sold_matches(
+            session,
+            {"kind": "specific", "query": "rosenthal vase", "url": "https://example.test"},
+            api_key="test-key",
+            max_matches=3,
+        )
+        # Comps stay trimmed; the corpus gets the full candidate set.
+        self.assertEqual(len(result["matches"]), 3)
+        self.assertEqual(len(result["candidates"]), 5)
+        self.assertEqual(result["matches"], result["candidates"][:3])
+
     def test_soldcomps_result_carries_provider_remaining(self):
         response = Mock(status_code=200)
         response.headers = {"X-Usage-Remaining": "1624", "X-Usage-Limit": "5000"}

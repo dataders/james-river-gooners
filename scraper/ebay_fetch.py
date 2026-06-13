@@ -407,13 +407,18 @@ def soldcomps_sold_matches(
             "status": "error",
             "warning": f"SoldComps API returned HTTP {response.status_code}.",
             "matches": [],
+            "candidates": [],
             "usage": usage,
             "provider_remaining": remaining,
         }
 
     payload = response.json()
     raw_items = payload.get("items") or payload.get("results") or []
-    matches = []
+    # Build the FULL candidate set (deduped by listing URL), then trim to
+    # max_matches for the curated comps. The untrimmed `candidates` feed the raw
+    # sold-listings corpus (#293): Phase 1 requests up to count=40 but only ~3
+    # are kept as comps, so the rest would otherwise be paid-for and discarded.
+    candidates = []
     seen = set()
     for raw_item in raw_items:
         if not isinstance(raw_item, dict):
@@ -425,16 +430,16 @@ def soldcomps_sold_matches(
         if key in seen:
             continue
         seen.add(key)
-        matches.append(match)
-        if len(matches) >= max_matches:
-            break
+        candidates.append(match)
 
+    matches = candidates[:max_matches]
     status = "ok" if matches else "no_results"
     _emit(status, len(matches))
     return {
         "status": status,
         "warning": search.get("warning") or "",
         "matches": matches,
+        "candidates": candidates,
         "usage": usage,
         "provider_remaining": remaining,
     }

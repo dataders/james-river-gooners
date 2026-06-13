@@ -170,6 +170,7 @@ def fetch_direct(
         # we stop the run when it hits the floor, the authoritative meter.
         "provider_exhausted": False,
         "provider_remaining": None,
+        "sold_listings_written": 0,
     }
     if limit <= 0:
         return summary
@@ -209,6 +210,13 @@ def fetch_direct(
     generated_at = utc_now_text()
     all_rows: list[dict] = []
     attempts: dict[str, dict[str, dict]] = {}
+
+    # Raw sold-listings corpus (#293): when enabled, accumulate the FULL
+    # candidate set per query (not just the kept comps) for a one-shot upsert
+    # after the run. Opt-in + Supabase-only, so the default path is unchanged.
+    from supabase_sold_listings import sold_listings_corpus_enabled
+    corpus_enabled = use_supabase and not dry_run and sold_listings_corpus_enabled()
+    corpus_records: list[dict] = []
 
     candidates = sorted(
         load_manifest_items(
@@ -255,6 +263,17 @@ def fetch_direct(
             item_queries += 1
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
+            if corpus_enabled:
+                # Stamp each raw candidate with the lot context the corpus needs
+                # (the query that found it + the lot's category) for later
+                # same-category reuse and the visual re-rank.
+                for candidate in result.get("candidates") or []:
+                    corpus_records.append({
+                        **candidate,
+                        "query": text_value(search.get("query")),
+                        "category": text_value(item.get("category")),
+                        "last_seen_at": generated_at,
+                    })
             remaining = result.get("provider_remaining")
             if remaining is not None:
                 summary["provider_remaining"] = remaining
@@ -291,6 +310,11 @@ def fetch_direct(
             f"{summary['queries_attempted']} queries planned"
         )
         return summary
+
+    if corpus_enabled:
+        from supabase_sold_listings import maybe_export_sold_listings
+
+        summary["sold_listings_written"] = maybe_export_sold_listings(corpus_records)
 
     if use_supabase:
         mirror_rows_to_warehouse(all_rows)
