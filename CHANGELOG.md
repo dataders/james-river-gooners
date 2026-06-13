@@ -9,6 +9,13 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 - 🎚 **Easier sliders** — the Price, Bids and Bidders sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.
 - ⏰ **Ends within presets** — the "Ends within" filter is now simple quick buttons — 1 hour, 1 day, 1 week, 1 month, or All — instead of a fiddly time slider.
 
+## 2026-06-13 — Snappier browsing
+
+- ⚡ **Faster first load** — the site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.
+- 🧈 **Smoother scrolling** — scrolling through thousands of lots is smoother now, and typing in search or dragging the filter sliders no longer makes the grid stutter.
+- ⬅️ **Back closes an item** — pressing your browser or phone Back button now closes an open item instead of leaving the site.
+- 🔢 **Filter counts match the view** — the Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.
+
 ## 2026-06-09 — Faster loading
 
 - ⚡ **Faster loading** — the auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.

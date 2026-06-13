@@ -55,6 +55,24 @@ export async function openRoiCard(page) {
   return true
 }
 
+// Open the detail modal for the lot at logical grid index `i`. The grid is
+// window-virtualized (TanStack Virtual), so only a window of cells is in the
+// DOM at once — scroll the page until the cell with that data-index mounts,
+// then click its card. Returns false if the index never appears.
+export async function openCardByIndex(page, i) {
+  for (let tries = 0; tries < 40; tries++) {
+    const cell = page.locator(`.virtual-grid-cell[data-index="${i}"]`)
+    if (await cell.count()) {
+      await cell.scrollIntoViewIfNeeded()
+      await cell.locator('.item-card').click()
+      return true
+    }
+    await page.mouse.wheel(0, 1400)
+    await page.waitForTimeout(100)
+  }
+  return false
+}
+
 // Select a view from the segmented archive "Auctions" control (Active / All /
 // Archived). Replaced the old "Archived auctions" checkbox in the three-state
 // archive filter.

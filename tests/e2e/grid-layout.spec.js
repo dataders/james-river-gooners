@@ -21,12 +21,12 @@ test.describe('Grid layout — no horizontal overflow', () => {
       await page.goto('/')
       await waitForLoad(page)
 
-      // At least one column rendered, so we're actually measuring the grid.
-      await expect(page.locator('.masonry-column').first()).toBeVisible()
+      // At least one cell rendered, so we're actually measuring the grid.
+      await expect(page.locator('.virtual-grid-cell').first()).toBeVisible()
 
       const metrics = await page.evaluate(() => {
         const doc = document.documentElement
-        const grid = document.querySelector('.masonry-grid')
+        const grid = document.querySelector('.virtual-grid')
         return {
           scrollWidth: doc.scrollWidth,
           clientWidth: doc.clientWidth,

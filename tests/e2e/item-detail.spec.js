@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { waitForLoad, getItemCount } from './helpers.js'
+import { waitForLoad, getItemCount, openCardByIndex } from './helpers.js'
 
 async function waitForItems(page) {
   await waitForLoad(page)
@@ -96,7 +96,7 @@ test.describe('Item detail modal', () => {
     // Try up to 5 items to find one with a detailUrl (most will have one)
     let found = false
     for (let i = 0; i < Math.min(count, 5); i++) {
-      await page.locator('.item-card').nth(i).click()
+      if (!(await openCardByIndex(page, i))) break
       const link = page.locator('a.detail-link', { hasText: "Open on Cannon's" })
       if (await link.isVisible()) {
         await expect(link).toHaveAttribute('target', '_blank')
@@ -117,7 +117,7 @@ test.describe('Item detail modal', () => {
     // Try up to 10 items to find one where EbayComps renders something
     let found = false
     for (let i = 0; i < Math.min(count, 10); i++) {
-      await page.locator('.item-card').nth(i).click()
+      if (!(await openCardByIndex(page, i))) break
       if (await page.locator('.ebay-comps').isVisible()) {
         await expect(page.locator('.ebay-comps h3')).toContainText('eBay sold comps')
         // Either sold comp cards or a search link should be present
@@ -141,7 +141,7 @@ test.describe('Item detail modal', () => {
     // Try up to 20 items to find one with a multi-image carousel
     let found = false
     for (let i = 0; i < Math.min(count, 20); i++) {
-      await page.locator('.item-card').nth(i).click()
+      if (!(await openCardByIndex(page, i))) break
       if (await page.locator('.carousel-next').isVisible()) {
         // Both prev and next buttons are present
         await expect(page.locator('.carousel-prev')).toBeVisible()
