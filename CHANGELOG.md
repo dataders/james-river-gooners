@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-13 — Your filters follow your account
+
+- 🔒 **Filters sync to your account** — when you're signed in, your filters (hidden categories, price and bid ranges, sort and layout) now save to your account and follow you across devices. Hide Coins, Silver and Jewelry once and they stay hidden everywhere you log in.
+
 ## 2026-06-09 — Faster loading
 
 - ⚡ **Faster loading** — the auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.

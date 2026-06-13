@@ -3,6 +3,7 @@ import {
   loadPrefs,
   savePrefs,
   sanitizePrefs,
+  normalizePersistedPrefs,
   DEFAULT_PREFS,
   DEFAULT_EXCLUDED_GROUPS,
 } from '../utils/prefs'
@@ -82,6 +83,17 @@ export const usePreferencesStore = create((set, get) => {
     ...loadInitialPrefs(),
 
     setField,
+
+    // Bulk-apply a persisted prefs blob (used when a logged-in user's cloud
+    // `filter_preferences` row loads and takes over as authoritative). Replaces
+    // every persisted field in ONE set() — so any subscriber fires once — then
+    // mirrors to localStorage. Deliberately does NOT touch URL params: signing
+    // in shouldn't rewrite the shareable link. Unknown/missing keys are
+    // normalized to defaults.
+    applyPrefs: (incoming) => {
+      set(normalizePersistedPrefs(incoming))
+      savePrefs(get())
+    },
 
     // Named range/scalar setters — thin, stable wrappers over setField.
     setSearchQuery: (v) => setField('searchQuery', v),

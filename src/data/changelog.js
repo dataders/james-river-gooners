@@ -8,6 +8,13 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-13',
+    title: 'Your filters follow your account',
+    changes: [
+      { id: 'filter-account-sync', icon: '🔒', text: 'When you\'re signed in, your filters — hidden categories, price and bid ranges, sort and layout — now save to your account and follow you across devices. Hide Coins, Silver and Jewelry once and they stay hidden everywhere you log in.' },
+    ],
+  },
+  {
     date: '2026-06-09',
     title: 'Faster loading',
     changes: [
