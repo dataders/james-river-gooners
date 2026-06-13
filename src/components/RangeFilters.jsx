@@ -1,18 +1,6 @@
 import { useMemo, useRef, useState, useLayoutEffect } from 'react'
 import * as Slider from '@radix-ui/react-slider'
 
-function hoursUntil(endDate) {
-  if (!endDate) return Infinity
-  const end = new Date(endDate.replace(/-/g, '/'))
-  return Math.max(0, (end - new Date()) / 3600000)
-}
-
-function formatHours(h) {
-  if (h >= 24 * 7) return `${Math.round(h / 24 / 7)}w`
-  if (h >= 24) return `${Math.round(h / 24)}d`
-  return `${Math.round(h)}h`
-}
-
 function formatPrice(v) {
   if (v >= 1000) return `$${(v / 1000).toFixed(1)}k`
   return `$${Math.round(v)}`
@@ -174,22 +162,58 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
   )
 }
 
+// "Ends within" is multimodal (lots close in discrete auction-night bursts with
+// multi-day gaps), so a continuous slider + histogram is noise. A few presets
+// cover the only thing people actually want: "ending soon". Each preset sets the
+// upper hours bound and clears the lower one; "All" clears both (so lots with no
+// parseable end date — Infinity hours — aren't dropped).
+const ENDS_WITHIN_PRESETS = [
+  { key: 'day', label: '1 day', hours: 24 },
+  { key: 'week', label: '1 week', hours: 24 * 7 },
+  { key: 'all', label: 'All', hours: null },
+]
+
+function EndsWithinPresets({ maxHours, onMinHoursChange, onMaxHoursChange }) {
+  const active = maxHours == null ? 'all'
+    : maxHours === 24 ? 'day'
+      : maxHours === 24 * 7 ? 'week'
+        : null
+  const select = (hours) => {
+    onMinHoursChange(null)
+    onMaxHoursChange(hours)
+  }
+  return (
+    <div className="range-filter">
+      <label className="range-label">Ends within</label>
+      <div className="archive-segmented" role="group" aria-label="Ends within">
+        {ENDS_WITHIN_PRESETS.map(opt => (
+          <button
+            key={opt.key}
+            type="button"
+            className={`segmented-option${active === opt.key ? ' active' : ''}`}
+            aria-pressed={active === opt.key}
+            onClick={() => select(opt.hours)}
+          >{opt.label}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function RangeFilters({
   items,
   minPrice, maxPrice, onMinPriceChange, onMaxPriceChange,
-  minHours, maxHours, onMinHoursChange, onMaxHoursChange,
+  maxHours, onMinHoursChange, onMaxHoursChange,
   minBids, maxBids, onMinBidsChange, onMaxBidsChange,
   minBidders, maxBidders, onMinBiddersChange, onMaxBiddersChange,
 }) {
-  const { priceMax, hoursMax, bidsMax, biddersMax, priceHist, bidsHist, biddersHist, hoursHist } = useMemo(() => {
+  const { priceMax, bidsMax, biddersMax, priceHist, bidsHist, biddersHist } = useMemo(() => {
     let pMax = 0
-    let hMax = 0
     let bMax = 0
     let brMax = 0
     const prices = []
     const bidCounts = []
     const bidderCounts = []
-    const hours = []
     for (const item of items) {
       prices.push(item.currentBid)
       bidCounts.push(item.totalBids)
@@ -198,11 +222,6 @@ export function RangeFilters({
       if (item.totalBids > bMax) bMax = item.totalBids
       const br = item.uniqueBidders ?? 0
       if (br > brMax) brMax = br
-      const h = hoursUntil(item.endDate)
-      if (h !== Infinity) {
-        hours.push(h)
-        if (h > hMax) hMax = h
-      }
     }
     // Cap price/bids/bidders at the 99th percentile so a single outlier
     // (e.g. one $20k lot) doesn't compress everyone else into a sliver.
@@ -214,20 +233,17 @@ export function RangeFilters({
     pMax = Math.ceil(Math.max(p99(prices), 1))
     bMax = Math.ceil(Math.max(p99(bidCounts), 1))
     brMax = Math.ceil(Math.max(p99(bidderCounts), 1))
-    hMax = Math.ceil(hMax)
     return {
       priceMax: pMax,
-      hoursMax: hMax,
       bidsMax: bMax,
       biddersMax: brMax,
       priceHist: buildHistogram(prices, 0, pMax, true),
       bidsHist: buildHistogram(bidCounts, 0, bMax, true),
       biddersHist: buildHistogram(bidderCounts, 0, brMax, true),
-      hoursHist: buildHistogram(hours, 0, hMax, true),
     }
   }, [items])
 
-  if (!priceMax && !hoursMax && !bidsMax && !biddersMax) return null
+  if (!priceMax && !bidsMax && !biddersMax) return null
 
   const formatBids = (v) => `${Math.round(v)}`
 
@@ -280,20 +296,10 @@ export function RangeFilters({
           logScale
         />
       )}
-      <DualSlider
-        label="Ends within"
-        min={0}
-        max={hoursMax}
-        valueLo={minHours ?? 0}
-        valueHi={maxHours ?? hoursMax}
-        formatLo={formatHours}
-        formatHi={formatHours}
-        formatBoundLo="Now"
-        formatBoundHi={formatHours(hoursMax)}
-        onLoChange={onMinHoursChange}
-        onHiChange={onMaxHoursChange}
-        histogram={hoursHist}
-        logScale
+      <EndsWithinPresets
+        maxHours={maxHours}
+        onMinHoursChange={onMinHoursChange}
+        onMaxHoursChange={onMaxHoursChange}
       />
     </div>
   )

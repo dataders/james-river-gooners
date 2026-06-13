@@ -11,7 +11,8 @@ export const CHANGELOG = [
     date: '2026-06-13',
     title: 'Easier price & bidding filters',
     changes: [
-      { id: 'range-sliders-touch', icon: '🎚', text: 'The Price, Bids, Bidders and "Ends within" sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.' },
+      { id: 'range-sliders-touch', icon: '🎚', text: 'The Price, Bids and Bidders sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.' },
+      { id: 'ends-within-presets', icon: '⏰', text: 'The "Ends within" filter is now simple quick buttons — 1 day, 1 week, or All — instead of a fiddly time slider.' },
     ],
   },
   {

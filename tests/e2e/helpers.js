@@ -101,6 +101,14 @@ export async function setRangeValue(page, filterLabel, sliderClass, position) {
   await page.mouse.up()
 }
 
+// Click an "Ends within" preset (1 day / 1 week / All) — the segmented control
+// that replaced the hours slider.
+export async function selectEndsWithin(page, label) {
+  await page.getByRole('group', { name: 'Ends within' })
+    .getByRole('button', { name: label, exact: true })
+    .click()
+}
+
 // Read the "Any" / "≤ X" / "X – Y" summary text for a range filter, located by
 // its label text.
 export async function getRangeSummary(page, filterLabel) {

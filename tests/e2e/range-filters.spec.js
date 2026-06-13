@@ -1,15 +1,13 @@
 import { test, expect } from '@playwright/test'
-import { waitForLoad, getItemCount, setRangeValue, getRangeSummary } from './helpers.js'
+import { waitForLoad, getItemCount, setRangeValue, getRangeSummary, selectEndsWithin } from './helpers.js'
 
 // Range filters are located by label, not index: the Bidders slider renders
 // only when the visible lots carry bidder data, so positional indices shift.
 const PRICE = 'Price'
 const BIDS = 'Bids'
-const ENDS = 'Ends within'
 
 // Slider positions: 0 = minimum, 200 = maximum (SLIDER_STEPS constant in the component)
 const MIN_POS = 0
-const MAX_POS = 200
 
 test.describe('Range filters', () => {
   test.beforeEach(async ({ page }) => {
@@ -103,35 +101,32 @@ test.describe('Range filters', () => {
     expect(await getRangeSummary(page, 'Bidders')).toBe('Any')
   })
 
-  test('lowering maximum hours filter reduces visible item count', async ({ page }) => {
+  test('"Ends within: 1 week" reduces visible item count', async ({ page }) => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping count test')
 
-    // Restrict to items ending in the near term (hi slider at 50 out of 200)
-    await setRangeValue(page, ENDS, '.range-slider-hi', 50)
+    // Auctions span weeks, so a 1-week cap always excludes the far-future lots.
+    await selectEndsWithin(page, '1 week')
     await page.waitForTimeout(200)
-    expect(await getItemCount(page)).toBeLessThanOrEqual(totalBefore)
+    expect(await getItemCount(page)).toBeLessThan(totalBefore)
   })
 
-  test('resetting hours filter widens the results again', async ({ page }) => {
+  test('resetting "Ends within" to All restores the original count', async ({ page }) => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping count test')
 
-    await setRangeValue(page, ENDS, '.range-slider-hi', 50)
+    await selectEndsWithin(page, '1 week')
     await page.waitForTimeout(200)
     const countFiltered = await getItemCount(page)
 
-    await setRangeValue(page, ENDS, '.range-slider-hi', MAX_POS)
+    await selectEndsWithin(page, 'All')
     await page.waitForTimeout(200)
     const countReset = await getItemCount(page)
-    const summary = await getRangeSummary(page, ENDS)
 
-    // Regression guard for #65: at the max slider position the upper bound is
-    // cleared to null (not pinned to Math.round(hoursMax)), so lots with no
-    // parseable end date (Infinity hours) are NOT dropped. Resetting to max
-    // must restore the EXACT unfiltered count and the summary must read "Any".
+    // Regression guard for #65: "All" clears the upper bound to null (not a finite
+    // max), so lots with no parseable end date (Infinity hours) are NOT dropped.
+    // Narrowing then resetting must restore the EXACT unfiltered count.
     expect(countFiltered).toBeLessThan(totalBefore)
     expect(countReset).toBe(totalBefore)
-    expect(summary).toBe('Any')
   })
 })
