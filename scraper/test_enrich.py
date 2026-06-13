@@ -613,6 +613,28 @@ class EstimateCostTests(unittest.TestCase):
         self.assertAlmostEqual(batch["est_cost_usd"], round(std["est_cost_usd"] / 2, 2), places=2)
 
 
+class NotesAndTextOnlyTests(unittest.TestCase):
+    def test_notes_parsed(self):
+        out = parse_enrichment({"brand": "X", "notes": "maker's mark 'JD' stamped on base"})
+        self.assertEqual(out["notes"], "maker's mark 'JD' stamped on base")
+        self.assertIn("notes", out)
+
+    def test_text_only_drops_images_and_changes_fingerprint(self):
+        from unittest import mock
+        import enrich
+        item = {"id": "x", "title": "Drill", "description": "DeWalt cordless",
+                "images": ["http://e/1.jpg", "http://e/2.jpg"]}
+        urls_img = enrich.item_image_urls(item)
+        fp_img = enrich.enrichment_fingerprint(item)
+        with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT_TEXT_ONLY": "1"}):
+            self.assertEqual(enrich.item_image_urls(item), [])           # images dropped
+            fp_text = enrich.enrichment_fingerprint(item)
+            content = enrich.build_content(item)
+        self.assertTrue(urls_img)                                        # had images by default
+        self.assertNotEqual(fp_img, fp_text)                             # distinct cache key
+        self.assertTrue(all(b["type"] == "text" for b in content))      # no image blocks
+
+
 class EnrichmentSummaryTests(unittest.TestCase):
     def test_counts_identified_vs_processed(self):
         rows = [

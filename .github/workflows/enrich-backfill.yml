@@ -23,6 +23,11 @@ on:
         required: false
         type: boolean
         default: false
+      text_only:
+        description: 'Text-only — drop photos, enrich from the lot text alone (much cheaper; for text-derivable fields)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -53,9 +58,12 @@ jobs:
             exit 1
           fi
           SAFE_IDS="${{ inputs.safe_ids }}"
-          ESTIMATE_FLAG=""
+          FLAGS=""
           if [ "${{ inputs.estimate_only }}" = "true" ]; then
-            ESTIMATE_FLAG="--estimate-only"
+            FLAGS="${FLAGS} --estimate-only"
+          fi
+          if [ "${{ inputs.text_only }}" = "true" ]; then
+            FLAGS="${FLAGS} --text-only"
           fi
           uv run --with anthropic --with requests --with pillow \
-            python enrich.py --batch --from-supabase ${ESTIMATE_FLAG} ${SAFE_IDS}
+            python enrich.py --batch --from-supabase ${FLAGS} ${SAFE_IDS}

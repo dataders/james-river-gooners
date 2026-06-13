@@ -108,10 +108,19 @@ PRICE_OUT_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_OUT", "5.0")
 ESTIMATE_SAMPLE = max(1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30")))
 ESTIMATE_OUTPUT_TOKENS = int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300"))
 
+
+def _text_only() -> bool:
+    """Text-only mode (``--text-only`` / GOONERS_ENRICHMENT_TEXT_ONLY=1): drop the
+    photos and enrich from the lot's text alone — much cheaper, for backfilling a
+    text-derivable field across history without re-paying the image tokens. Read
+    at call time (not import) so the CLI flag can set it before any enrichment."""
+    return os.environ.get("GOONERS_ENRICHMENT_TEXT_ONLY") == "1"
+
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
-# reusing a now-stale cached row (the fingerprint folds this in). v4: adds lot
-# economics + resale risk — quantity, isMixedLot, conditionFlags, keyAttributes.
-ENRICHMENT_SCHEMA_VERSION = "4"
+# reusing a now-stale cached row (the fingerprint folds this in). v5: adds a
+# freeform `notes` catch-all (future text-derivable fields can be mined from it
+# cheaply via --text-only, without re-reading the photos).
+ENRICHMENT_SCHEMA_VERSION = "5"
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
@@ -134,6 +143,7 @@ ENRICHMENT_SCHEMA_VERSION = "4"
 ENRICHMENT_FIELDS = (
     "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
     "quantity", "isMixedLot", "conditionFlags", "keyAttributes", "secondaryItems",
+    "notes",
     "brandConfidence", "modelConfidence", "enrichmentConfidence",
     "enrichmentModel", "enrichmentInputHash",
 )
@@ -182,13 +192,14 @@ OUTPUT_SCHEMA = {
                 "additionalProperties": False,
             },
         },
+        "notes": {"type": "string"},
         "product_url": {"type": "string"},
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
     "required": ["brand", "model_name", "product_type", "search_query", "quantity",
                  "is_mixed_lot", "condition", "condition_flags", "key_attributes",
-                 "secondary_items", "product_url", "brand_confidence", "model_confidence"],
+                 "secondary_items", "notes", "product_url", "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
 
@@ -236,6 +247,11 @@ SYSTEM_PROMPT = (
     "- key_attributes: up to the few most search-identifying specs (size, "
     "capacity, material, color, dimensions, wattage, era) — e.g. [\"5 qt\", "
     "\"stainless steel\"]. Empty array if nothing distinctive.\n"
+    "- notes: a brief freeform line capturing any other identifying or "
+    "resale-relevant detail not already in the fields above — maker's marks, "
+    "signatures, stamps, hallmarks, serial/pattern numbers, provenance, era cues, "
+    "or notable flaws. This is a catch-all so later searches can mine it; keep it "
+    "to one sentence. Empty string if there's nothing to add.\n"
     "- product_url: a canonical manufacturer/major-retailer product page URL ONLY "
     "if you are certain it is real; otherwise an empty string (a hallucinated URL "
     "is worse than none).\n"
@@ -326,7 +342,11 @@ def item_prompt_text(item: dict) -> str:
 
 def item_image_urls(item: dict, limit: int = MAX_IMAGES) -> list[str]:
     """The first ``limit`` http(s) photo URLs (#152). Many lots put the model/SKU
-    plate on photo 2 or 3, so enrichment reads several, not just the first."""
+    plate on photo 2 or 3, so enrichment reads several, not just the first. Empty
+    in text-only mode — the single chokepoint that makes the sync path, batch
+    image-fetch, and fingerprint all drop images at once."""
+    if _text_only():
+        return []
     urls = []
     for raw in item_images(item):
         url = str(raw)
@@ -350,8 +370,11 @@ def enrichment_fingerprint(item: dict) -> str:
     result, so the prior one can be reused. Folding in the schema version + image
     set + size means a prompt/schema change, a new photo count, or a resolution
     change re-enriches everything once."""
+    # Mode marker keeps a text-only result distinct from an image result for the
+    # same lot, so a later with-images run re-enriches rather than reusing it.
+    mode = "text" if _text_only() else f"img{MAX_IMAGE_PX}"
     payload = "\x1f".join(
-        (ENRICHMENT_SCHEMA_VERSION, MODEL, str(MAX_IMAGE_PX), item_prompt_text(item), *item_image_urls(item))
+        (ENRICHMENT_SCHEMA_VERSION, MODEL, mode, item_prompt_text(item), *item_image_urls(item))
     )
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
@@ -513,6 +536,7 @@ def parse_enrichment(raw: dict) -> dict:
     out["conditionFlags"] = _parse_enum_list(raw.get("condition_flags"), CONDITION_FLAG_VALUES)
     out["keyAttributes"] = _parse_str_list(raw.get("key_attributes"), MAX_KEY_ATTRIBUTES)
     out["secondaryItems"] = _parse_secondary_items(raw.get("secondary_items"))
+    out["notes"] = str(raw.get("notes") or "").strip()
     out["condition"] = condition if condition in CONDITION_VALUES else ""
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
     out["brandConfidence"] = brand_conf
@@ -1101,7 +1125,10 @@ def main(argv: list[str] | None = None) -> int:
     include_all = "--all" in argv
     from_supabase = "--from-supabase" in argv
     estimate_only = "--estimate-only" in argv
-    argv = [arg for arg in argv if arg not in ("--batch", "--all", "--from-supabase", "--estimate-only")]
+    if "--text-only" in argv:
+        os.environ["GOONERS_ENRICHMENT_TEXT_ONLY"] = "1"
+    argv = [arg for arg in argv
+            if arg not in ("--batch", "--all", "--from-supabase", "--estimate-only", "--text-only")]
     if from_supabase:
         return _backfill_from_supabase(argv or None, use_batch=use_batch, estimate_only=estimate_only)
     if not argv and not include_all:
