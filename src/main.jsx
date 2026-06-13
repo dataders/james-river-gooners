@@ -6,7 +6,10 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { initAnalytics } from './lib/telemetry.js'
 
 // Anonymous, cookieless telemetry. No-ops when VITE_POSTHOG_KEY is unset.
-initAnalytics()
+// Deferred to idle time so the PostHog bundle never competes with the first
+// paint or the auction-data fetch on the critical path.
+const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1))
+idle(() => initAnalytics())
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
