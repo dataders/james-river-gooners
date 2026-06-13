@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { timeRemaining, itemTimeRemaining } from './time.js'
+import { timeRemaining, itemTimeRemaining, itemEnded } from './time.js'
 
 // ── missing / empty input ─────────────────────────────────────────────────────
 
@@ -18,12 +18,14 @@ test('timeRemaining returns empty string for empty string', () => {
 
 // ── ended dates ───────────────────────────────────────────────────────────────
 
-test('timeRemaining returns Ended for past Maxanet date', () => {
-  assert.equal(timeRemaining('2020-01-01 12:00:00 PM'), 'Ended')
+test('timeRemaining returns Ended with the close date for past Maxanet date', () => {
+  const result = timeRemaining('2020-01-01 12:00:00 PM')
+  assert.match(result, /^Ended Jan 1, /, `expected "Ended Jan 1, …", got "${result}"`)
 })
 
-test('timeRemaining returns Ended for past ISO date (HiBid format)', () => {
-  assert.equal(timeRemaining('2020-01-01T12:00:00+00:00'), 'Ended')
+test('timeRemaining returns Ended with the close date for past ISO date (HiBid format)', () => {
+  const result = timeRemaining('2020-01-01T12:00:00+00:00')
+  assert.match(result, /^Ended /, `expected "Ended …", got "${result}"`)
 })
 
 // ── future dates: correct parsing (regression for NaN bug) ───────────────────
@@ -66,13 +68,13 @@ test('timeRemaining uses Xh Ym format when less than 24 hours remain', () => {
 // ── itemTimeRemaining: auctionEndDate fallback (closed Cannon's lots) ─────────
 
 test('itemTimeRemaining uses endDate when present', () => {
-  assert.equal(itemTimeRemaining({ endDate: '2020-01-01 12:00:00 PM' }), 'Ended')
+  assert.match(itemTimeRemaining({ endDate: '2020-01-01 12:00:00 PM' }), /^Ended /)
 })
 
 test('itemTimeRemaining falls back to auctionEndDate when endDate is blank', () => {
-  assert.equal(
+  assert.match(
     itemTimeRemaining({ endDate: '', auctionEndDate: '2020-01-01 12:00:00 PM' }),
-    'Ended',
+    /^Ended /,
   )
 })
 
@@ -83,4 +85,23 @@ test('itemTimeRemaining returns empty string when both dates are missing', () =>
 test('itemTimeRemaining handles a null/undefined item', () => {
   assert.equal(itemTimeRemaining(null), '')
   assert.equal(itemTimeRemaining(undefined), '')
+})
+
+// ── itemEnded: boolean for bid eligibility (decoupled from display string) ────
+
+test('itemEnded is true for a past per-lot endDate', () => {
+  assert.equal(itemEnded({ endDate: '2020-01-01 12:00:00 PM' }), true)
+})
+
+test('itemEnded falls back to auctionEndDate when endDate is blank', () => {
+  assert.equal(itemEnded({ endDate: '', auctionEndDate: '2020-01-01 12:00:00 PM' }), true)
+})
+
+test('itemEnded is true when both dates are missing (no live deadline)', () => {
+  assert.equal(itemEnded({ endDate: '', auctionEndDate: '' }), true)
+  assert.equal(itemEnded(null), true)
+})
+
+test('itemEnded is false for a far-future endDate', () => {
+  assert.equal(itemEnded({ endDate: '2099-12-31T23:59:00+00:00' }), false)
 })
