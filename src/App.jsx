@@ -14,7 +14,7 @@ import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { useItemPipeline } from './hooks/useItemPipeline'
 import { itemKey } from './utils/itemKey'
 import { overlayEnrichment } from './utils/enrichment'
-import { syncUrlParam } from './utils/urlState'
+import { syncUrlParam, pushUrlParam, readParam, readBoolParam, URL_PARAMS, ITEM_PANEL_STATE } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
 import { ArsenalTrivia } from './components/ArsenalTrivia'
 import { SortBar } from './components/SortBar'
@@ -45,7 +45,7 @@ export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
   // (past auctions only). 'archive=1' is the legacy URL value for 'both'.
   const [archiveMode, setArchiveMode] = useState(() => {
-    const v = new URLSearchParams(window.location.search).get('archive')
+    const v = readParam(URL_PARAMS.archive)
     if (v === 'archived') return 'archived'
     if (v === 'both' || v === '1') return 'both'
     return 'active'
@@ -164,9 +164,7 @@ export default function App() {
     () => (selectedKey ? items.find(i => itemKey(i) === selectedKey) ?? null : null),
     [selectedKey, items]
   )
-  const [bestDeals, setBestDeals] = useState(
-    () => new URLSearchParams(window.location.search).get('bestDeals') === '1'
-  )
+  const [bestDeals, setBestDeals] = useState(() => readBoolParam(URL_PARAMS.bestDeals))
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [showIgnoredOnly, setShowIgnoredOnly] = useState(false)
   const [myBidsPanelOpen, setMyBidsPanelOpen] = useState(false)
@@ -210,7 +208,7 @@ export default function App() {
   }, [])
 
   // Deep-link: open item modal once data loads
-  const initialItemKey = useRef(new URLSearchParams(window.location.search).get('item'))
+  const initialItemKey = useRef(readParam(URL_PARAMS.item))
   const itemDeepLinked = useRef(false)
   useEffect(() => {
     if (!initialItemKey.current || itemDeepLinked.current) return
@@ -233,8 +231,11 @@ export default function App() {
   }, [loading, loadComplete, items])
 
   const handleItemClick = useCallback((item) => {
-    syncUrlParam('item', itemKey(item))
-    setSelectedKey(itemKey(item))
+    const key = itemKey(item)
+    // Push (not replace) a history entry so browser Back — and Android's system
+    // back gesture — dismiss the panel instead of leaving the site.
+    pushUrlParam(URL_PARAMS.item, key, ITEM_PANEL_STATE)
+    setSelectedKey(key)
     captureEvent('item_opened', {
       category: item.category ?? null,
       auction: item.auctionSafeId ?? null,
@@ -242,8 +243,23 @@ export default function App() {
   }, [])
 
   const handleItemClose = useCallback(() => {
-    syncUrlParam('item', null)
-    setSelectedKey(null)
+    // If we pushed an entry for this panel, pop it (so URL + history both
+    // unwind and the popstate handler clears the selection); a deep-linked open
+    // has no pushed entry, so just strip the param in place.
+    if (window.history.state?.goonersItemPanel) {
+      window.history.back()
+    } else {
+      syncUrlParam(URL_PARAMS.item, null)
+      setSelectedKey(null)
+    }
+  }, [])
+
+  // Browser Back/Forward is the source of truth for the panel: re-derive the
+  // selection from the `item` param whenever history moves.
+  useEffect(() => {
+    const onPop = () => setSelectedKey(readParam(URL_PARAMS.item) || null)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
   }, [])
 
   // Resale intelligence (eBay comps + Cannon's comps + sold history) is
