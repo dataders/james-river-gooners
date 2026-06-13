@@ -7,7 +7,7 @@ import { itemKey } from '../utils/itemKey.js'
 import { hasEbayComps } from '../utils/ebayComps.js'
 import { hasCannonsComps } from '../utils/cannonsComps.js'
 import { hasEnrichment } from '../utils/enrichment.js'
-import { sortItems, sortByMargin, sortByMaxBid } from '../utils/sort.ts'
+import { sortItems, sortByMargin, sortByMaxBid, sortByForYou } from '../utils/sort.ts'
 import { useSearch } from './useSearch.js'
 import { useSemanticSearch } from './useSemanticSearch.js'
 
@@ -48,6 +48,8 @@ export interface ItemPipelineInputs {
   categorySoldStats: Record<string, unknown>
   /** Cannon's bid item ids (string form) from useCannonBids. */
   bidItemIds: Set<string>
+  /** Per-item cosine similarity to the user's taste centroid (For You sort). */
+  forYouByKey: Map<string, number>
 }
 
 /**
@@ -83,6 +85,7 @@ export function useItemPipeline({
   allCannonsComps,
   categorySoldStats,
   bidItemIds,
+  forYouByKey,
 }: ItemPipelineInputs) {
   const localAuctionIds = useMemo(() => {
     const ids = new Set<string>()
@@ -235,8 +238,9 @@ export function useItemPipeline({
   const sortedItems = useMemo(() => {
     if (sort === 'margin') return sortByMargin(finalItems, marginByKey)
     if (sort === 'maxbid') return sortByMaxBid(finalItems, maxBidByKey)
+    if (sort === 'foryou') return sortByForYou(finalItems, forYouByKey)
     return sortItems(finalItems, sort)
-  }, [finalItems, sort, marginByKey, maxBidByKey])
+  }, [finalItems, sort, marginByKey, maxBidByKey, forYouByKey])
 
   return {
     visibleAuctions,
