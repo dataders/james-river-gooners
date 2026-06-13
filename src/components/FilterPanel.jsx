@@ -42,6 +42,7 @@ export function FilterPanel({
   cannonBidsLinked,
   // Range filters
   items,
+  bounds,
   minPrice, maxPrice, onMinPriceChange, onMaxPriceChange,
   minBids, maxBids, onMinBidsChange, onMaxBidsChange,
   minBidders, maxBidders, onMinBiddersChange, onMaxBiddersChange,
@@ -159,6 +160,7 @@ export function FilterPanel({
           <Accordion title="Price & Bidding" defaultOpen={true}>
             <RangeFilters
               items={items}
+              bounds={bounds}
               minPrice={minPrice} maxPrice={maxPrice}
               onMinPriceChange={onMinPriceChange} onMaxPriceChange={onMaxPriceChange}
               minBids={minBids} maxBids={maxBids}

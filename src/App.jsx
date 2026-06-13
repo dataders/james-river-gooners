@@ -9,9 +9,11 @@ import { useIgnored } from './hooks/useIgnored'
 import { useAuth } from './hooks/useAuth'
 import { useCannonBids } from './hooks/useCannonBids'
 import { usePreferences } from './hooks/usePreferences'
+import { usePreferencesSync } from './hooks/usePreferencesSync'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { useItemPipeline } from './hooks/useItemPipeline'
+import { useFilterBounds } from './hooks/useFilterBounds'
 import { useForYou } from './hooks/useForYou'
 import { itemKey } from './utils/itemKey'
 import { overlayEnrichment } from './utils/enrichment'
@@ -78,6 +80,10 @@ export default function App() {
     [rawItems, enrichmentByAuction]
   )
 
+  // Global p99 slider bounds, fetched once up front so the price/bidding tracks
+  // are correct from first paint instead of jumping as lots stream in.
+  const filterBounds = useFilterBounds()
+
   const changeArchiveMode = useCallback((mode) => {
     setArchiveMode(mode)
     syncUrlParam('archive', mode === 'active' ? '' : mode)
@@ -128,6 +134,10 @@ export default function App() {
   const { tutorialOpen, openTutorial, closeTutorial } = useTutorial()
   const { whatsNewOpen, hasUnseen, seenIds, openWhatsNew, closeWhatsNew } = useWhatsNew()
   const auth = useAuth()
+  // Sync the persisted filter config to the user's account (offline-first):
+  // logged in, filters follow them across devices; logged out, this is a no-op
+  // and localStorage stays the source of truth.
+  usePreferencesSync(auth.user)
   const [authOpen, setAuthOpen] = useState(false)
   const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
   const { favoriteIds, isFavorite, toggleFavorite, removeFavorite } = useFavorites(auth.user)
@@ -554,6 +564,7 @@ export default function App() {
           cannonBidCount={cannonBidCount}
           cannonBidsLoading={cannonBids.bidsLoading}
           items={rangeFilterItems}
+          bounds={filterBounds}
           minPrice={minPrice} maxPrice={maxPrice}
           onMinPriceChange={setMinPrice} onMaxPriceChange={setMaxPrice}
           minBids={minBids} maxBids={maxBids}
