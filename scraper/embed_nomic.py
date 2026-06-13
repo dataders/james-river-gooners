@@ -676,8 +676,27 @@ def backfill_from_supabase(
         n_enriched = overlay_enrichment(items, safe_id, session=session)
         if n_enriched:
             print(f"[nomic] {safe_id}: overlaid enrichment on {n_enriched}/{len(items)} lots")
+        targets = items
+        if force:
+            # Re-embed only what would actually change: lots whose text gained
+            # enrichment, plus any not-yet-embedded lots. Unenriched + already-
+            # embedded lots keep their (identical) vectors — avoids re-fetching
+            # their images and re-encoding for no change.
+            try:
+                already = existing_item_ids(safe_id, session=session)
+            except Exception:
+                already = set()
+            targets = [
+                it for it in items
+                if _enrichment_text(it) or str(it["id"]) not in already
+            ]
+            skipped = len(items) - len(targets)
+            if skipped:
+                print(f"[nomic] {safe_id}: {skipped} unenriched, already-embedded lots kept as-is")
+            if not targets:
+                continue
         try:
-            total += generate_and_upsert(items, safe_id, session=session, force=force)
+            total += generate_and_upsert(targets, safe_id, session=session, force=force)
         except Exception as exc:
             print(f"  [nomic] WARNING: backfill failed for {safe_id}: {exc}")
     print(f"\n[nomic] Supabase backfill complete: {total} embeddings upserted")
