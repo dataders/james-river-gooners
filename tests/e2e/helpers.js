@@ -89,24 +89,42 @@ export async function getItemCount(page) {
   return match ? parseInt(match[1], 10) : 0
 }
 
-// Set a range slider to a specific position (0–200) via native value setter so
-// React's synthetic onChange fires correctly on the input event. The filter is
-// located by its label text (e.g. "Bids", "Ends within") rather than a fixed
-// index, since the Bidders slider renders only when bidder data is present and
-// would otherwise shift positional indices.
+// Drag a range slider thumb to a specific position (0–200) with a real pointer
+// gesture — the Radix slider has no native <input>, so its thumbs only move on
+// pointer/keyboard events. `sliderClass` keeps the old `.range-slider-lo` /
+// `.range-slider-hi` call sites working by mapping to the lo/hi Radix thumb. The
+// filter is located by label text (e.g. "Bids", "Ends within") anchored at the
+// start so "Bids" never matches "Bidders"; the Bidders slider renders only when
+// bidder data is present, so positional indices would otherwise shift.
 export async function setRangeValue(page, filterLabel, sliderClass, position) {
-  await page.evaluate(({ label, cls, pos }) => {
-    const filters = [...document.querySelectorAll('.range-filter')]
-    const filter = filters.find(f =>
-      f.querySelector('.range-label')?.textContent?.trim().startsWith(label)
-    )
-    if (!filter) throw new Error(`Range filter labelled "${label}" not found`)
-    const slider = filter.querySelector(cls)
-    if (!slider) throw new Error(`Slider ${cls} not found in "${label}" filter`)
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-    setter.call(slider, String(pos))
-    slider.dispatchEvent(new Event('input', { bubbles: true }))
-  }, { label: filterLabel, cls: sliderClass, pos: position })
+  const isLo = sliderClass.includes('lo')
+  const labelRe = new RegExp('^' + filterLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const filter = page.locator('.range-filter').filter({ hasText: labelRe }).first()
+  const thumb = filter.locator(isLo ? '.range-slider-thumb-lo' : '.range-slider-thumb-hi')
+  const track = filter.locator('.range-slider-track')
+
+  await thumb.scrollIntoViewIfNeeded()
+  const tb = await track.boundingBox()
+  const startBox = await thumb.boundingBox()
+  if (!tb || !startBox) throw new Error(`Slider thumb for "${filterLabel}" not found`)
+
+  // Map slider position (0–200 = SLIDER_STEPS) to an x along the track.
+  const ratio = Math.max(0, Math.min(1, position / 200))
+  const targetX = tb.x + ratio * tb.width
+  const cy = startBox.y + startBox.height / 2
+
+  await page.mouse.move(startBox.x + startBox.width / 2, cy)
+  await page.mouse.down()
+  await page.mouse.move(targetX, cy, { steps: 8 })
+  await page.mouse.up()
+}
+
+// Click an "Ends within" preset (1 day / 1 week / All) — the segmented control
+// that replaced the hours slider.
+export async function selectEndsWithin(page, label) {
+  await page.getByRole('group', { name: 'Ends within' })
+    .getByRole('button', { name: label, exact: true })
+    .click()
 }
 
 // Read the "Any" / "≤ X" / "X – Y" summary text for a range filter, located by

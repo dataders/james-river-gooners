@@ -1,16 +1,5 @@
 import { useMemo, useRef, useState, useLayoutEffect } from 'react'
-
-function hoursUntil(endDate) {
-  if (!endDate) return Infinity
-  const end = new Date(endDate.replace(/-/g, '/'))
-  return Math.max(0, (end - new Date()) / 3600000)
-}
-
-function formatHours(h) {
-  if (h >= 24 * 7) return `${Math.round(h / 24 / 7)}w`
-  if (h >= 24) return `${Math.round(h / 24)}d`
-  return `${Math.round(h)}h`
-}
+import * as Slider from '@radix-ui/react-slider'
 
 function formatPrice(v) {
   if (v >= 1000) return `$${(v / 1000).toFixed(1)}k`
@@ -47,10 +36,12 @@ function buildHistogram(values, min, max, logScale) {
   return bins
 }
 
-// Thumb radius must match half the CSS width of ::-webkit-slider-thumb (16px → 8px).
-// We compute bar pixel positions using the same formula the browser uses for the thumb
-// center, so bins always align with the slider track across all browsers and screen sizes.
-const THUMB_RADIUS = 8
+// Thumb radius must match half the CSS width of .range-slider-thumb (20px → 10px).
+// Radix insets each thumb so it stays within the track bounds — the thumb *center*
+// travels from THUMB_RADIUS to (width − THUMB_RADIUS), exactly like a native range
+// input. We compute bar pixel positions with the same inset so bins stay aligned
+// with the slider track across browsers and screen sizes.
+const THUMB_RADIUS = 10
 
 function Histogram({ bins, valueLoPct, valueHiPct, containerWidth }) {
   if (!containerWidth) return null
@@ -117,38 +108,25 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
     ? Math.round(toLog(valueHi, min, max) * SLIDER_STEPS)
     : Math.round(((valueHi - min) / (max - min)) * SLIDER_STEPS)
 
-  const handleLo = (e) => {
-    const pos = Number(e.target.value)
-    // At the minimum position the bound is cleared (null = no lower limit) so
-    // it matches the "Any" summary instead of pinning to a finite value.
-    if (pos <= 0) { onLoChange(null); return }
+  const posToValue = (pos) => {
     const ratio = pos / SLIDER_STEPS
-    const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
-    const snapped = Math.round(real)
-    onLoChange(Math.min(snapped, valueHi))
+    return Math.round(logScale ? fromLog(ratio, min, max) : min + ratio * (max - min))
   }
 
-  const handleHi = (e) => {
-    const pos = Number(e.target.value)
-    // At the maximum position the bound is cleared (null = no upper limit).
-    // Pinning to a finite `max` would otherwise drop items whose value can't be
-    // compared — e.g. lots with no parseable end date filter to Infinity hours
-    // and would be excluded even though the slider reads as unbounded.
-    if (pos >= SLIDER_STEPS) { onHiChange(null); return }
-    const ratio = pos / SLIDER_STEPS
-    const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
-    const snapped = Math.round(real)
-    onHiChange(Math.max(snapped, valueLo))
+  // Radix reports both thumb positions on every drag. Map each back to a real
+  // value, clearing a bound to null at its extreme so the slider reads "Any":
+  //  - lo at 0 → no lower limit
+  //  - hi at max → no upper limit. Pinning to a finite `max` would drop items
+  //    whose value can't be compared — e.g. lots with no parseable end date
+  //    filter to Infinity hours and would be excluded though the slider is full.
+  const handleValueChange = ([loPos, hiPos]) => {
+    onLoChange(loPos <= 0 ? null : posToValue(loPos))
+    onHiChange(hiPos >= SLIDER_STEPS ? null : posToValue(hiPos))
   }
 
   // Percentage positions for histogram highlighting
   const valueLoPct = logScale ? toLog(valueLo, min, max) : (valueLo - min) / (max - min || 1)
   const valueHiPct = logScale ? toLog(valueHi, min, max) : (valueHi - min) / (max - min || 1)
-
-  // When both thumbs land on the same pixel the hi thumb (z-index:2) is always
-  // on top and the lo thumb becomes unreachable. Bring lo on top whenever it
-  // has caught up with hi so the user can drag it back left to un-stick.
-  const loOnTop = sliderLo >= sliderHi
 
   return (
     <div className="range-filter">
@@ -160,25 +138,21 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
         {histogram && (
           <Histogram bins={histogram} valueLoPct={valueLoPct} valueHiPct={valueHiPct} containerWidth={containerWidth} />
         )}
-        <input
-          type="range"
-          className="range-slider range-slider-lo"
-          style={loOnTop ? { zIndex: 3 } : undefined}
+        <Slider.Root
+          className="range-slider-root"
           min={0}
           max={SLIDER_STEPS}
           step={1}
-          value={sliderLo}
-          onChange={handleLo}
-        />
-        <input
-          type="range"
-          className="range-slider range-slider-hi"
-          min={0}
-          max={SLIDER_STEPS}
-          step={1}
-          value={sliderHi}
-          onChange={handleHi}
-        />
+          value={[sliderLo, sliderHi]}
+          onValueChange={handleValueChange}
+          minStepsBetweenThumbs={0}
+        >
+          <Slider.Track className="range-slider-track">
+            <Slider.Range className="range-slider-range" />
+          </Slider.Track>
+          <Slider.Thumb className="range-slider-thumb range-slider-thumb-lo" aria-label={`${label} minimum`} />
+          <Slider.Thumb className="range-slider-thumb range-slider-thumb-hi" aria-label={`${label} maximum`} />
+        </Slider.Root>
       </div>
       <div className="range-bounds">
         <span>{formatBoundLo}</span>
@@ -188,22 +162,58 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
   )
 }
 
+// "Ends within" is multimodal (lots close in discrete auction-night bursts with
+// multi-day gaps), so a continuous slider + histogram is noise. A few presets
+// cover the only thing people actually want: "ending soon". Each preset sets the
+// upper hours bound and clears the lower one; "All" clears both (so lots with no
+// parseable end date — Infinity hours — aren't dropped).
+const ENDS_WITHIN_PRESETS = [
+  { key: 'hour', label: '1 hour', hours: 1 },
+  { key: 'day', label: '1 day', hours: 24 },
+  { key: 'week', label: '1 week', hours: 24 * 7 },
+  { key: 'month', label: '1 month', hours: 24 * 30 },
+  { key: 'all', label: 'All', hours: null },
+]
+
+function EndsWithinPresets({ maxHours, onMinHoursChange, onMaxHoursChange }) {
+  const active = maxHours == null ? 'all'
+    : ENDS_WITHIN_PRESETS.find(o => o.hours === maxHours)?.key ?? null
+  const select = (hours) => {
+    onMinHoursChange(null)
+    onMaxHoursChange(hours)
+  }
+  return (
+    <div className="range-filter">
+      <label className="range-label">Ends within</label>
+      <div className="archive-segmented" role="group" aria-label="Ends within">
+        {ENDS_WITHIN_PRESETS.map(opt => (
+          <button
+            key={opt.key}
+            type="button"
+            className={`segmented-option${active === opt.key ? ' active' : ''}`}
+            aria-pressed={active === opt.key}
+            onClick={() => select(opt.hours)}
+          >{opt.label}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function RangeFilters({
   items,
   minPrice, maxPrice, onMinPriceChange, onMaxPriceChange,
-  minHours, maxHours, onMinHoursChange, onMaxHoursChange,
+  maxHours, onMinHoursChange, onMaxHoursChange,
   minBids, maxBids, onMinBidsChange, onMaxBidsChange,
   minBidders, maxBidders, onMinBiddersChange, onMaxBiddersChange,
 }) {
-  const { priceMax, hoursMax, bidsMax, biddersMax, priceHist, bidsHist, biddersHist, hoursHist } = useMemo(() => {
+  const { priceMax, bidsMax, biddersMax, priceHist, bidsHist, biddersHist } = useMemo(() => {
     let pMax = 0
-    let hMax = 0
     let bMax = 0
     let brMax = 0
     const prices = []
     const bidCounts = []
     const bidderCounts = []
-    const hours = []
     for (const item of items) {
       prices.push(item.currentBid)
       bidCounts.push(item.totalBids)
@@ -212,11 +222,6 @@ export function RangeFilters({
       if (item.totalBids > bMax) bMax = item.totalBids
       const br = item.uniqueBidders ?? 0
       if (br > brMax) brMax = br
-      const h = hoursUntil(item.endDate)
-      if (h !== Infinity) {
-        hours.push(h)
-        if (h > hMax) hMax = h
-      }
     }
     // Cap price/bids/bidders at the 99th percentile so a single outlier
     // (e.g. one $20k lot) doesn't compress everyone else into a sliver.
@@ -228,25 +233,27 @@ export function RangeFilters({
     pMax = Math.ceil(Math.max(p99(prices), 1))
     bMax = Math.ceil(Math.max(p99(bidCounts), 1))
     brMax = Math.ceil(Math.max(p99(bidderCounts), 1))
-    hMax = Math.ceil(hMax)
     return {
       priceMax: pMax,
-      hoursMax: hMax,
       bidsMax: bMax,
       biddersMax: brMax,
       priceHist: buildHistogram(prices, 0, pMax, true),
       bidsHist: buildHistogram(bidCounts, 0, bMax, true),
       biddersHist: buildHistogram(bidderCounts, 0, brMax, true),
-      hoursHist: buildHistogram(hours, 0, hMax, true),
     }
   }, [items])
 
-  if (!priceMax && !hoursMax && !bidsMax && !biddersMax) return null
+  if (!priceMax && !bidsMax && !biddersMax) return null
 
   const formatBids = (v) => `${Math.round(v)}`
 
   return (
     <div className="range-filters">
+      <EndsWithinPresets
+        maxHours={maxHours}
+        onMinHoursChange={onMinHoursChange}
+        onMaxHoursChange={onMaxHoursChange}
+      />
       <DualSlider
         label="Price"
         min={0}
@@ -294,21 +301,6 @@ export function RangeFilters({
           logScale
         />
       )}
-      <DualSlider
-        label="Ends within"
-        min={0}
-        max={hoursMax}
-        valueLo={minHours ?? 0}
-        valueHi={maxHours ?? hoursMax}
-        formatLo={formatHours}
-        formatHi={formatHours}
-        formatBoundLo="Now"
-        formatBoundHi={formatHours(hoursMax)}
-        onLoChange={onMinHoursChange}
-        onHiChange={onMaxHoursChange}
-        histogram={hoursHist}
-        logScale
-      />
     </div>
   )
 }
