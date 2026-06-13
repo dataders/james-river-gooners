@@ -202,6 +202,7 @@ function EndsWithinPresets({ maxHours, onMinHoursChange, onMaxHoursChange }) {
 
 export function RangeFilters({
   items,
+  bounds,
   minPrice, maxPrice, onMinPriceChange, onMaxPriceChange,
   maxHours, onMinHoursChange, onMaxHoursChange,
   minBids, maxBids, onMinBidsChange, onMaxBidsChange,
@@ -230,9 +231,12 @@ export function RangeFilters({
       const s = [...arr].sort((a, b) => a - b)
       return s[Math.floor(s.length * 0.99)]
     }
-    pMax = Math.ceil(Math.max(p99(prices), 1))
-    bMax = Math.ceil(Math.max(p99(bidCounts), 1))
-    brMax = Math.ceil(Math.max(p99(bidderCounts), 1))
+    // Prefer the global server-side p99 bounds (correct + stable from first
+    // paint) but take the max with the loaded-item p99 so the track still
+    // expands if the visible set (e.g. archived lots) runs higher than active.
+    pMax = Math.ceil(Math.max(bounds?.priceP99 ?? 0, p99(prices), 1))
+    bMax = Math.ceil(Math.max(bounds?.bidsP99 ?? 0, p99(bidCounts), 1))
+    brMax = Math.ceil(Math.max(bounds?.biddersP99 ?? 0, p99(bidderCounts), 1))
     return {
       priceMax: pMax,
       bidsMax: bMax,
@@ -241,7 +245,7 @@ export function RangeFilters({
       bidsHist: buildHistogram(bidCounts, 0, bMax, true),
       biddersHist: buildHistogram(bidderCounts, 0, brMax, true),
     }
-  }, [items])
+  }, [items, bounds])
 
   if (!priceMax && !bidsMax && !biddersMax) return null
 

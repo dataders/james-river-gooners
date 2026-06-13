@@ -12,6 +12,7 @@ import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { useItemPipeline } from './hooks/useItemPipeline'
+import { useFilterBounds } from './hooks/useFilterBounds'
 import { useForYou } from './hooks/useForYou'
 import { itemKey } from './utils/itemKey'
 import { overlayEnrichment } from './utils/enrichment'
@@ -77,6 +78,10 @@ export default function App() {
     () => overlayEnrichment(rawItems, enrichmentByAuction),
     [rawItems, enrichmentByAuction]
   )
+
+  // Global p99 slider bounds, fetched once up front so the price/bidding tracks
+  // are correct from first paint instead of jumping as lots stream in.
+  const filterBounds = useFilterBounds()
 
   const changeArchiveMode = useCallback((mode) => {
     setArchiveMode(mode)
@@ -554,6 +559,7 @@ export default function App() {
           cannonBidCount={cannonBidCount}
           cannonBidsLoading={cannonBids.bidsLoading}
           items={rangeFilterItems}
+          bounds={filterBounds}
           minPrice={minPrice} maxPrice={maxPrice}
           onMinPriceChange={setMinPrice} onMaxPriceChange={setMaxPrice}
           minBids={minBids} maxBids={maxBids}
