@@ -91,6 +91,15 @@ jobs:
           # fail in isolation and surface as "awaiting refresh" in the dashboard.
           uv run --with dbt-core --with dbt-duckdb dbt build --target prod
 
+      - name: Capture pipeline metrics (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: pipeline_meta
+        run: |
+          # Records the dbt build's run_results + a source row-count snapshot into
+          # my_db.meta, powering the dashboard's Pipeline Health tab over time.
+          uv run --with 'duckdb==1.5.2' python3 capture.py --target-dir ../dbt/target
+
       - name: Render dashboard HTML
         if: steps.guard.outputs.run == 'true'
         working-directory: dashboard
