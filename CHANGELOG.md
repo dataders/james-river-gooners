@@ -10,6 +10,8 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 - 🧈 **Smoother scrolling** — scrolling through thousands of lots is smoother now, and typing in search or dragging the filter sliders no longer makes the grid stutter.
 - ⬅️ **Back closes an item** — pressing your browser or phone Back button now closes an open item instead of leaving the site.
 - 🚗 **Vehicles filter fixed** — whole cars, trucks and motorcycles now land in the Vehicles category, so hiding Vehicles actually hides them — previously they slipped into "Other" and kept showing up.
+- 🗂️ **"Other" cleanup** — hundreds of lots that were dumped in "Other" — sports cards, coins, rugs, die-cast toys, cast-iron & enamelware, stamps, vintage advertising — now sort into their proper categories, so browsing and filtering by category is much more accurate.
+- 🐾 **Pet Adoption category** — added a dedicated Pet Adoption category for the live animals listed for adoption, so they're easy to find — or hide.
 
 ## 2026-06-09 — Faster loading
 
