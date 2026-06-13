@@ -1,0 +1,95 @@
+name: Admin Dashboard
+
+# Builds the owner-only monitoring dashboard and publishes it to a PRIVATE
+# Supabase Storage bucket (admin-dashboard/latest.html, migration 0020). The
+# SPA's /admin route streams it back for the signed-in owner only.
+#
+# Pipeline (hourly):
+#   1. Refresh PostHog aggregates  → MotherDuck posthog_raw   (best-effort)
+#   2. dbt build                   → MotherDuck gooners_* marts (best-effort)
+#   3. prefab render               → dist/admin.html (data baked inline)
+#   4. upload                      → private Supabase Storage bucket
+#
+# Steps 1–2 are best-effort: the dashboard's queries degrade to an "awaiting
+# refresh" note for any domain whose marts aren't populated yet (e.g. the
+# Supabase-platform metrics need the supabase-stats pipeline first), so the
+# build + upload always succeed and the engineering data is always current.
+
+on:
+  schedule:
+    # Hourly at :27 — trails github-stats (:07) / supabase-stats (:17) so the
+    # marts it reads are freshly loaded, and offset so the jobs don't pile up.
+    - cron: '27 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-dashboard
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      # Session-pooler Postgres URI (IPv4) — attached read-only by dbt so the
+      # resale/product/scrape marts can read the app tables. The dlt_writer role
+      # in this URL has SELECT on the public tables it needs.
+      SUPABASE_DB_ATTACH: ${{ secrets.SUPABASE_POSTGRES_URL }}
+      POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
+      DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+
+      - id: guard
+        run: |
+          if [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "MOTHERDUCK_TOKEN unset — nothing to build."
+          fi
+
+      - name: Refresh PostHog aggregates (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: scraper
+        run: |
+          if [ -z "${POSTHOG_PERSONAL_KEY:-}" ]; then
+            echo "POSTHOG_PERSONAL_KEY unset — skipping PostHog export."
+            exit 0
+          fi
+          uv run --with requests --with 'duckdb==1.5.2' python3 posthog_export.py
+
+      - name: Build dbt marts (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: dbt
+        run: |
+          uv run --with dbt-core --with dbt-duckdb dbt deps
+          # Build whatever is reachable; models whose upstream sources aren't
+          # populated yet fail in isolation (continue-on-error swallows the
+          # non-zero exit) and surface as "awaiting refresh" in the dashboard.
+          uv run --with dbt-core --with dbt-duckdb dbt build --target prod
+
+      - name: Render dashboard HTML
+        if: steps.guard.outputs.run == 'true'
+        working-directory: dashboard
+        run: |
+          uv run --with 'prefab-ui>=0.19.0' --with 'duckdb==1.5.2' --with pytz \
+            python3 app.py -o dist/admin.html
+
+      - name: Upload to private Supabase Storage
+        if: steps.guard.outputs.run == 'true'
+        working-directory: dashboard
+        run: |
+          if [ -z "${SUPABASE_SECRET_KEY:-}" ] || [ -z "${SUPABASE_URL:-}" ]; then
+            echo "SUPABASE_URL / SUPABASE_SECRET_KEY unset — skipping upload."
+            exit 0
+          fi
+          uv run --with requests python3 upload.py dist/admin.html

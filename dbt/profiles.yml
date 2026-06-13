@@ -7,7 +7,11 @@ gooners:
       path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
       schema: gooners          # mart tables → my_db.gooners.*
       attach:
-        - path: "host={{ env_var('SUPABASE_DB_HOST') }} user=postgres password={{ env_var('SUPABASE_DB_PASSWORD') }} dbname=postgres sslmode=require"
+        # SUPABASE_DB_ATTACH lets CI pass a complete connection string/URI
+        # (e.g. the session-pooler `postgresql://…` URL, IPv4 — required on
+        # GitHub runners). Falls back to the host/password (user=postgres) form
+        # for local dev, so existing setups are unchanged.
+        - path: "{{ env_var('SUPABASE_DB_ATTACH', 'host=' ~ env_var('SUPABASE_DB_HOST', '') ~ ' user=postgres password=' ~ env_var('SUPABASE_DB_PASSWORD', '') ~ ' dbname=postgres sslmode=require') }}"
           type: postgres
           alias: supabase
           read_only: true
@@ -18,7 +22,11 @@ gooners:
       path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
       schema: gooners
       attach:
-        - path: "host={{ env_var('SUPABASE_DB_HOST') }} user=postgres password={{ env_var('SUPABASE_DB_PASSWORD') }} dbname=postgres sslmode=require"
+        # SUPABASE_DB_ATTACH lets CI pass a complete connection string/URI
+        # (e.g. the session-pooler `postgresql://…` URL, IPv4 — required on
+        # GitHub runners). Falls back to the host/password (user=postgres) form
+        # for local dev, so existing setups are unchanged.
+        - path: "{{ env_var('SUPABASE_DB_ATTACH', 'host=' ~ env_var('SUPABASE_DB_HOST', '') ~ ' user=postgres password=' ~ env_var('SUPABASE_DB_PASSWORD', '') ~ ' dbname=postgres sslmode=require') }}"
           type: postgres
           alias: supabase
           read_only: true
