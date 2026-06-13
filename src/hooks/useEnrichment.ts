@@ -29,5 +29,5 @@ async function fetchOne(id: string) {
 // static/offline build falls back to the NDJSON-baked enrichment fields.
 // Returns `{ [auctionSafeId]: { [itemId]: enrichmentFields } }`.
 export function useEnrichment(auctionSafeIds: string | string[] | null | undefined) {
-  return useByAuctionResource(auctionSafeIds, fetchOne)
+  return useByAuctionResource('enrichment', auctionSafeIds, fetchOne)
 }
