@@ -17,6 +17,9 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 - ⬅️ **Back closes an item** — pressing your browser or phone Back button now closes an open item instead of leaving the site.
 - 🔢 **Filter counts match the view** — the Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.
 - 🕐 **Ended lots show when they closed** — lots that have closed now show when they ended (e.g. "Ended Jun 11, 7:56 PM") instead of just "Ended" — handy when a lot finishes early while the rest of its auction is still running.
+- 🚗 **Vehicles filter fixed** — whole cars, trucks and motorcycles now land in the Vehicles category, so hiding Vehicles actually hides them — previously they slipped into "Other" and kept showing up.
+- 🗂️ **"Other" cleanup** — hundreds of lots that were dumped in "Other" — sports cards, coins, rugs, die-cast toys, cast-iron & enamelware, stamps, vintage advertising — now sort into their proper categories, so browsing and filtering by category is much more accurate.
+- 🐾 **Pet Adoption category** — added a dedicated Pet Adoption category for the live animals listed for adoption, so they're easy to find — or hide.
 
 ## 2026-06-09 — Faster loading
 

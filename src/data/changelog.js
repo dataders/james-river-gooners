@@ -25,6 +25,9 @@ export const CHANGELOG = [
       { id: 'nav-back-closes-item', icon: '⬅️', text: 'Pressing your browser or phone Back button now closes an open item instead of leaving the site.' },
       { id: 'filter-counts-match-archive', icon: '🔢', text: 'The Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.' },
       { id: 'ended-shows-close-time', icon: '🕐', text: 'Lots that have closed now show when they ended (e.g. "Ended Jun 11, 7:56 PM") instead of just "Ended" — handy when a lot finishes early while the rest of its auction is still running.' },
+      { id: 'cat-whole-vehicles', icon: '🚗', text: 'Whole cars, trucks and motorcycles now land in the Vehicles category, so hiding Vehicles actually hides them — previously they slipped into "Other" and kept showing up.' },
+      { id: 'cat-other-cleanup', icon: '🗂️', text: 'Hundreds of lots that were dumped in "Other" — sports cards, coins, rugs, die-cast toys, cast-iron & enamelware, stamps, vintage advertising — now sort into their proper categories, so browsing and filtering by category is much more accurate.' },
+      { id: 'cat-pet-adoption', icon: '🐾', text: 'Added a dedicated Pet Adoption category for the live animals listed for adoption, so they\'re easy to find — or hide.' },
     ],
   },
   {
