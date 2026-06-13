@@ -38,6 +38,8 @@ import random
 import sys
 from pathlib import Path
 
+import telemetry
+
 # ── Re-export the public API so external callers keep working ─────────────────
 from ebay_export import (
     DATA_DIR,
@@ -63,12 +65,14 @@ from ebay_fetch import (
     agent_browser_html,
     browser_sold_matches,
     extract_ebay_item_id,
+    extract_usage_headers,
     fetch_sold_matches,
     html_from_browser_output,
     is_ebay_item_url,
     parse_sold_search_html,
     run_agent_browser,
     soldcomps_sold_matches,
+    usage_remaining,
 )
 from ebay_ledger import (
     CompLedger,
@@ -143,6 +147,7 @@ def fetch_direct(
     dry_run: bool = False,
     sleep_seconds: float = 1.0,
     mirror_to_warehouse: bool | None = None,
+    provider_min_remaining: int | None = None,
     request_session=None,
     _rand=random.uniform,
 ) -> dict:
@@ -161,9 +166,18 @@ def fetch_direct(
         "matches": 0,
         "blocked": False,
         "files_written": 0,
+        # The provider reports remaining quota on every response (X-Usage-*);
+        # we stop the run when it hits the floor, the authoritative meter.
+        "provider_exhausted": False,
+        "provider_remaining": None,
     }
     if limit <= 0:
         return summary
+
+    if provider_min_remaining is None:
+        provider_min_remaining = int(
+            os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"
+        )
 
     if mirror_to_warehouse is None:
         from warehouse import should_mirror
@@ -241,6 +255,16 @@ def fetch_direct(
             item_queries += 1
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
+            remaining = result.get("provider_remaining")
+            if remaining is not None:
+                summary["provider_remaining"] = remaining
+                if remaining <= provider_min_remaining:
+                    summary["provider_exhausted"] = True
+                    print(
+                        "SoldComps provider quota reached "
+                        f"(remaining={remaining}); stopping run."
+                    )
+                    break
             if result["status"] == "ok":
                 item_status = "ok"
                 break
@@ -258,7 +282,7 @@ def fetch_direct(
                 "queries": item_queries,
             }
 
-        if summary["blocked"]:
+        if summary["blocked"] or summary["provider_exhausted"]:
             break
 
     if dry_run:
@@ -294,6 +318,10 @@ def fetch_direct(
             f"Monthly request budget: {used}/{monthly_budget} used "
             f"({max(0, monthly_budget - used)} remaining)"
         )
+    if summary["provider_remaining"] is not None:
+        print(f"SoldComps provider quota remaining: {summary['provider_remaining']}")
+    # Flush any queued telemetry before this (often short-lived) process exits.
+    telemetry.flush()
     return summary
 
 
@@ -359,6 +387,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--no-mirror",
         action="store_true",
         help="Do not mirror snapshots to the warehouse even when a token is present",
+    )
+    fetch_parser.add_argument(
+        "--provider-min-remaining",
+        type=int,
+        default=int(os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"),
+        help="Stop the run when the SoldComps provider's reported remaining "
+        "quota (its X-Usage-* response header) reaches this floor. The "
+        "authoritative meter, independent of the comp ledger.",
     )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
 
@@ -483,6 +519,7 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             sleep_seconds=args.sleep_seconds,
             mirror_to_warehouse=False if args.no_mirror else None,
+            provider_min_remaining=args.provider_min_remaining,
         )
     elif args.command == "fetch-apify":
         skip_categories = (

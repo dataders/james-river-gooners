@@ -1,0 +1,39 @@
+# eBay L1 (top-level) category IDs, keyed by our broad category GROUP
+# (an item's normalized `category`). Used by ebay_query.py to scope the precise
+# /v1/scrape comp query to the right marketplace category — a category-matched
+# search keeps a "Rosenthal vase" comp out of, say, Auto Parts.
+#
+# Values are eBay L1 category IDs (strings); `"0"` means NO category filter
+# (used for groups whose right L1 is ambiguous or spans several — better an
+# unfiltered query than a wrong-category one that returns junk). Only attached
+# to the precise/specific tier, so an over-narrow category never starves the
+# broad/category fallbacks of recall.
+#
+# Refine / verify against https://sold-comps.com/ebay-categories .
+
+Art: "550"
+China & Glass: "870"
+Collectibles: "1"
+Coins & Currency: "11116"
+Jewelry & Watches: "281"
+Silver & Metal: "20081"
+Furniture: "11700"
+Home & Kitchen: "11700"
+Lawn & Garden: "11700"
+Fashion: "11450"
+Toys & Games: "220"
+Books & Media: "267"
+Sporting Goods: "888"
+Electronics: "293"
+Industrial & Equipment: "12576"
+Stamps: "260"
+Trading Cards: "0"
+Rugs & Textiles: "0"
+Hobbies: "0"
+Seasonal: "0"
+Vehicles: "0"
+Firearms: "0"
+Ammunition: "0"
+Science & Nature: "0"
+Pets & Kids: "0"
+Pet Adoption: "0"
