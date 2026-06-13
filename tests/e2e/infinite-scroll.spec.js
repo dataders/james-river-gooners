@@ -44,13 +44,15 @@ test.describe('Grid virtualization', () => {
     test.skip(total <= 60, `Only ${total} items — no scrolling needed`)
     test.skip(total > 2000, 'Too many items to scroll through in a single test')
 
-    // Step down so each wave of measurements settles before the next.
-    for (let i = 0; i < 60; i++) {
-      const max = await maxMountedIndex(page)
+    // Repeatedly jump to the current document bottom; the total height grows as
+    // real heights replace estimates, so a few passes converge on the last row.
+    let max = -1
+    for (let i = 0; i < 40; i++) {
+      max = await maxMountedIndex(page)
       if (max >= total - 1) break
-      await page.mouse.wheel(0, 2000)
-      await page.waitForTimeout(120)
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+      await page.waitForTimeout(150)
     }
-    expect(await maxMountedIndex(page)).toBeGreaterThanOrEqual(total - 2)
+    expect(max).toBeGreaterThanOrEqual(total - 2)
   })
 })
