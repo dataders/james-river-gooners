@@ -157,9 +157,9 @@ def append_ebay_comp_snapshots(
     if not key:
         raise RuntimeError("SUPABASE_SECRET_KEY is required to write comps to Supabase")
 
-    import requests
+    from http_client import supabase_session
 
-    session = session or requests.Session()
+    session = session or supabase_session("comps")
     endpoint = f"{url.rstrip('/')}/rest/v1/{COMP_SNAPSHOT_TABLE}"
     headers = {
         "apikey": key,
@@ -217,9 +217,9 @@ class SupabaseCompLedger:
 
     def _session_obj(self):
         if self._session is None:
-            import requests
+            from http_client import supabase_session
 
-            self._session = requests.Session()
+            self._session = supabase_session("comps")
         return self._session
 
     def _headers(self, count: bool = False) -> dict:

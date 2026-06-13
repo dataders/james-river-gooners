@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures.js'
 import { waitForLoad, getItemCount, setRangeValue, getRangeSummary, selectEndsWithin } from './helpers.js'
 
 // Range filters are located by label, not index: the Bidders slider renders
@@ -106,7 +106,7 @@ test.describe('Range filters', () => {
     test.skip(totalBefore === 0, 'No items loaded — skipping count test')
 
     // Auctions span weeks, so a 1-week cap always excludes the far-future lots.
-    await selectEndsWithin(page, '1 week')
+    await selectEndsWithin(page, 'Week')
     await page.waitForTimeout(200)
     expect(await getItemCount(page)).toBeLessThan(totalBefore)
   })
@@ -115,7 +115,7 @@ test.describe('Range filters', () => {
     const totalBefore = await getItemCount(page)
     test.skip(totalBefore === 0, 'No items loaded — skipping count test')
 
-    await selectEndsWithin(page, '1 week')
+    await selectEndsWithin(page, 'Week')
     await page.waitForTimeout(200)
     const countFiltered = await getItemCount(page)
 
