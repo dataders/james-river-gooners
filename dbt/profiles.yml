@@ -1,43 +1,41 @@
 gooners:
   target: dev
   outputs:
+    # Every analytics source now lives natively in MotherDuck — github_stats,
+    # posthog_raw, supabase_app (the RLS-public app tables) and supabase_metrics
+    # are all copied into my_db by the dlt pipelines. So dbt reads AND writes a
+    # single database (my_db) with NO Postgres attach. This removed the live
+    # read-only attach that pulled the Supabase app tables across the wire on
+    # every `dbt build`, keeping build-time read load off the live app database.
     dev:
       type: duckdb
-      # MotherDuck writes land in my_db; Supabase Postgres is attached read-only.
+      # Isolated from prod by schema: local `dbt build` writes to my_db.gooners_dev*
+      # so it never clobbers the prod marts (my_db.gooners*) the dashboard reads.
       path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
-      schema: gooners          # mart tables → my_db.gooners.*
-      attach:
-        # SUPABASE_DB_ATTACH lets CI pass a complete connection string/URI
-        # (e.g. the session-pooler `postgresql://…` URL, IPv4 — required on
-        # GitHub runners). Falls back to the host/password (user=postgres) form
-        # for local dev, so existing setups are unchanged.
-        - path: "{{ env_var('SUPABASE_DB_ATTACH', 'host=' ~ env_var('SUPABASE_DB_HOST', '') ~ ' user=postgres password=' ~ env_var('SUPABASE_DB_PASSWORD', '') ~ ' dbname=postgres sslmode=require') }}"
-          type: postgres
-          alias: supabase
-          read_only: true
+      schema: gooners_dev      # mart tables → my_db.gooners_dev.*
       threads: 4
 
     prod:
       type: duckdb
       path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
-      schema: gooners
-      attach:
-        # SUPABASE_DB_ATTACH lets CI pass a complete connection string/URI
-        # (e.g. the session-pooler `postgresql://…` URL, IPv4 — required on
-        # GitHub runners). Falls back to the host/password (user=postgres) form
-        # for local dev, so existing setups are unchanged.
-        - path: "{{ env_var('SUPABASE_DB_ATTACH', 'host=' ~ env_var('SUPABASE_DB_HOST', '') ~ ' user=postgres password=' ~ env_var('SUPABASE_DB_PASSWORD', '') ~ ' dbname=postgres sslmode=require') }}"
-          type: postgres
-          alias: supabase
-          read_only: true
+      schema: gooners          # mart tables → my_db.gooners.* (dashboard source)
       threads: 8
 
     # Connectionless target for `dbt compile` in CI. An in-memory DuckDB with no
-    # MotherDuck token and no Supabase attach — compile only resolves ref()/
-    # source() names from config, so the real warehouse isn't needed and CI
-    # stays secret-free. (`dbt build`/`run` still use dev/prod.)
+    # MotherDuck token — compile only resolves ref()/source() names from config,
+    # so the real warehouse isn't needed and CI stays secret-free.
     ci:
       type: duckdb
       path: ":memory:"
       schema: gooners
+      threads: 4
+
+    # Real `dbt build` for CI. Targets MotherDuck but writes marts to an ISOLATED
+    # per-run schema (DBT_CI_SCHEMA, default gooners_ci) so a CI build never
+    # touches the prod marts; the CI job drops the schema on teardown. Reads
+    # MotherDuck only — no Supabase attach.
+    ci_build:
+      type: duckdb
+      path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      schema: "{{ env_var('DBT_CI_SCHEMA', 'gooners_ci') }}"
       threads: 4

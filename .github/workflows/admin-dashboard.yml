@@ -5,15 +5,19 @@ name: Admin Dashboard
 # SPA's /admin route streams it back for the signed-in owner only.
 #
 # Pipeline (hourly):
-#   1. Refresh PostHog aggregates  → MotherDuck posthog_raw   (best-effort)
-#   2. dbt build                   → MotherDuck gooners_* marts (best-effort)
-#   3. prefab render               → dist/admin.html (data baked inline)
-#   4. upload                      → private Supabase Storage bucket
+#   1. Copy Supabase app tables → MotherDuck my_db.supabase_app  (dlt)
+#   2. Refresh PostHog aggregates → MotherDuck posthog_raw       (best-effort)
+#   3. dbt build → MotherDuck gooners_* marts                    (MotherDuck-only)
+#   4. prefab render → dist/admin.html (data baked inline)
+#   5. upload → private Supabase Storage bucket
 #
-# Steps 1–2 are best-effort: the dashboard's queries degrade to an "awaiting
-# refresh" note for any domain whose marts aren't populated yet (e.g. the
-# Supabase-platform metrics need the supabase-stats pipeline first), so the
-# build + upload always succeed and the engineering data is always current.
+# Step 3 reads ONLY MotherDuck — every source (github_stats, posthog_raw,
+# supabase_app, supabase_metrics) is loaded natively into my_db by step 1/2 and
+# the sibling stats pipelines, so dbt no longer attaches Supabase Postgres
+# (keeping build-time read load off the live app database). Steps 1–2 are
+# best-effort: any domain whose marts aren't populated yet degrades to "awaiting
+# refresh" in the UI, so the build + upload always succeed and the engineering
+# data is always current.
 
 on:
   schedule:
@@ -36,10 +40,10 @@ jobs:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      # Session-pooler Postgres URI (IPv4) — attached read-only by dbt so the
-      # resale/product/scrape marts can read the app tables. The dlt_writer role
-      # in this URL has SELECT on the public tables it needs.
-      SUPABASE_DB_ATTACH: ${{ secrets.SUPABASE_POSTGRES_URL }}
+      # IPv4 session-pooler Postgres URL. Read ONCE per run by the dlt copy
+      # (step 1) to snapshot the app tables into MotherDuck; dbt then reads them
+      # natively from the warehouse.
+      SUPABASE_POSTGRES_URL: ${{ secrets.SUPABASE_POSTGRES_URL }}
       POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
     steps:
@@ -55,6 +59,17 @@ jobs:
             echo "MOTHERDUCK_TOKEN unset — nothing to build."
           fi
 
+      - name: Copy Supabase app tables → MotherDuck (best-effort)
+        if: steps.guard.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: supabase_app
+        run: |
+          if [ -z "${SUPABASE_POSTGRES_URL:-}" ]; then
+            echo "SUPABASE_POSTGRES_URL unset — skipping app-table copy."
+            exit 0
+          fi
+          uv run --with "dlt[motherduck,sql_database]" --with psycopg2-binary python3 pipeline.py
+
       - name: Refresh PostHog aggregates (best-effort)
         if: steps.guard.outputs.run == 'true'
         continue-on-error: true
@@ -66,15 +81,15 @@ jobs:
           fi
           uv run --with requests --with 'duckdb==1.5.2' python3 posthog_export.py
 
-      - name: Build dbt marts (best-effort)
+      - name: Build dbt marts (MotherDuck-only, best-effort)
         if: steps.guard.outputs.run == 'true'
         continue-on-error: true
         working-directory: dbt
         run: |
           uv run --with dbt-core --with dbt-duckdb dbt deps
-          # Build whatever is reachable; models whose upstream sources aren't
-          # populated yet fail in isolation (continue-on-error swallows the
-          # non-zero exit) and surface as "awaiting refresh" in the dashboard.
+          # Reads only MotherDuck. Models whose upstream sources aren't populated
+          # yet (e.g. supabase_metrics until supabase-stats lands in MotherDuck)
+          # fail in isolation and surface as "awaiting refresh" in the dashboard.
           uv run --with dbt-core --with dbt-duckdb dbt build --target prod
 
       - name: Render dashboard HTML
