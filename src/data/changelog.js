@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-13',
+    title: 'Your filters follow your account',
+    changes: [
+      { id: 'filter-account-sync', icon: '🔒', text: 'When you\'re signed in, your filters — hidden categories, price and bid ranges, sort and layout — now save to your account and follow you across devices. Hide Coins, Silver and Jewelry once and they stay hidden everywhere you log in.' },
+    ],
+  },
+  {
+    date: '2026-06-13',
     title: 'Easier price & bidding filters',
     changes: [
       { id: 'range-sliders-touch', icon: '🎚', text: 'The Price, Bids and Bidders sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.' },

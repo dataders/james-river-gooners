@@ -34,6 +34,8 @@ Note: `0008_gate_...` and `0009_lot_enrichment.sql` were applied in reverse nume
 
 Note: `0017_lots_card_views.sql` was applied while still named `0010_lots_card_views` (the remote name is frozen at that value), then the local file was renamed to `0017_` to clear the prefix collision with `0010_nomic_embeddings.sql`.
 
+Note: `0021_filter_preferences.sql` was applied while named `0019_filter_preferences` (the remote name is frozen at that value), then the local file was renamed to `0021_` to clear the prefix collision with `0019_active_lot_filter_bounds.sql` (`0020_` is reserved for the admin dashboard migration).
+
 ## Adding a new migration
 
 1. Write your SQL as `supabase/migrations/<next>_<name>.sql`.
