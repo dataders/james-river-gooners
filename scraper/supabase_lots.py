@@ -21,6 +21,7 @@ CLI usage (one-time backfill of existing NDJSON files):
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -33,6 +34,12 @@ from supabase_comps import (
 
 LOTS_TABLE = "lots"
 DEFAULT_BATCH_SIZE = 500
+
+# Read pagination page size. Smaller pages keep each request cheap so a read can
+# ride under the timeout even when the shared compute is busy serving the SPA's
+# heavy full-dataset reads (the dominant DB load). Tunable via env for a backfill
+# against a saturated instance; the default keeps prior behaviour.
+READ_PAGE_SIZE = int(os.environ.get("GOONERS_SUPABASE_PAGE", "1000"))
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 ITEMS_DIR = _REPO_ROOT / "public" / "data" / "items"
@@ -281,7 +288,7 @@ def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[
     not abort the whole ``--from-supabase`` backfill — the same reason
     ``comp_item_freshness`` needed it (a flat 30s read fired as an unretryable
     ReadTimeout)."""
-    PAGE = 1000
+    PAGE = READ_PAGE_SIZE
     rows = []
     offset = 0
     while True:
