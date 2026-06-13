@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures.js'
 import { waitForLoad, getItemCount, openCardByIndex } from './helpers.js'
 
 async function waitForItems(page) {

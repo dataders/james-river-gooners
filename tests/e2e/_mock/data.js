@@ -13,13 +13,21 @@
 const IMG =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'
 
-const FUTURE = '2099-12-31T23:59:59Z' // keeps active lots from passing their deadline
 const PAST = '2020-01-15T18:00:00Z' // archived lots are already closed
 const SCRAPED = '2026-06-13T12:00:00Z'
 
+// End dates are computed relative to *now* (test run time) so the "Ends within"
+// presets (Hour/Day/Week/Month) have a real spread to filter on. Default is far
+// out (~45 days); lots pass `endHours` to land inside a tighter window.
+const future = hours => new Date(Date.now() + hours * 3600 * 1000).toISOString()
+const DEFAULT_END_HOURS = 24 * 45
+
 // Build one active-card row. `images[1:1]` is already applied server-side, so a
-// single-element array matches what the real _card view returns.
-function lot(auction, n, over) {
+// single-element array matches what the real _card view returns. `endHours`
+// (consumed here, not emitted) sets how far out the lot's deadline is.
+function lot(auction, n, over = {}) {
+  const { endHours = DEFAULT_END_HOURS, ...rest } = over
+  const end = future(endHours)
   return {
     auction_safe_id: auction.safe_id,
     item_id: `${auction.safe_id}-${n}`,
@@ -29,17 +37,17 @@ function lot(auction, n, over) {
     current_bid: 10,
     total_bids: 3,
     unique_bidders: 2,
-    end_date: FUTURE,
+    end_date: end,
     images: [IMG],
     category: 'Collectibles',
     raw_category: 'Collectibles',
     detail_url: `https://example.test/${auction.safe_id}/${n}`,
     auction_id: auction.auction_id,
     auction_title: auction.title,
-    auction_end_date: FUTURE,
+    auction_end_date: end,
     scraped_at: SCRAPED,
     source: auction.source,
-    ...over,
+    ...rest,
   }
 }
 
@@ -56,8 +64,8 @@ const ARCHIVED = { safe_id: 'richmond-closed', auction_id: 'A4', title: 'Richmon
 
 export const activeLots = [
   // Richmond — varied categories + price spread + the "antique chair" matches.
-  lot(RICHMOND, 1, { title: 'Antique Oak Dining Chair', description: 'Solid antique chair, late 1800s', category: 'Furniture', raw_category: 'Furniture', current_bid: 45, total_bids: 8, unique_bidders: 5 }),
-  lot(RICHMOND, 2, { title: 'Pair of Antique Chairs', description: 'Matching antique chair set', category: 'Furniture', raw_category: 'Furniture', current_bid: 120, total_bids: 14, unique_bidders: 9 }),
+  lot(RICHMOND, 1, { title: 'Antique Oak Dining Chair', description: 'Solid antique chair, late 1800s', category: 'Furniture', raw_category: 'Furniture', current_bid: 45, total_bids: 8, unique_bidders: 5, endHours: 6 }),
+  lot(RICHMOND, 2, { title: 'Pair of Antique Chairs', description: 'Matching antique chair set', category: 'Furniture', raw_category: 'Furniture', current_bid: 120, total_bids: 14, unique_bidders: 9, endHours: 30 }),
   lot(RICHMOND, 3, { title: 'Mahogany Dresser', category: 'Furniture', raw_category: 'Furniture', current_bid: 250, total_bids: 6, unique_bidders: 4 }),
   lot(RICHMOND, 4, { title: '14k Gold Ring', category: 'Jewelry', raw_category: 'Jewelry', current_bid: 800, total_bids: 22, unique_bidders: 12 }),
   lot(RICHMOND, 5, { title: 'Diamond Pendant Necklace', category: 'Jewelry', raw_category: 'Jewelry', current_bid: 1950, total_bids: 31, unique_bidders: 18 }),
@@ -68,7 +76,7 @@ export const activeLots = [
   lot(RICHMOND, 10, { title: 'Oil Painting, Landscape', category: 'Art', raw_category: 'Art', current_bid: 600, total_bids: 7, unique_bidders: 5 }),
 
   // Henrico — tools + electronics, lower prices.
-  lot(HENRICO, 1, { title: 'DeWalt Cordless Drill', category: 'Tools', raw_category: 'Tools', current_bid: 65, total_bids: 12, unique_bidders: 8 }),
+  lot(HENRICO, 1, { title: 'DeWalt Cordless Drill', category: 'Tools', raw_category: 'Tools', current_bid: 65, total_bids: 12, unique_bidders: 8, endHours: 100 }),
   lot(HENRICO, 2, { title: 'Milwaukee Impact Driver', category: 'Tools', raw_category: 'Tools', current_bid: 90, total_bids: 15, unique_bidders: 10 }),
   lot(HENRICO, 3, { title: 'Table Saw', category: 'Tools', raw_category: 'Tools', current_bid: 180, total_bids: 5, unique_bidders: 4 }),
   lot(HENRICO, 4, { title: 'Socket Wrench Set', category: 'Tools', raw_category: 'Tools', current_bid: 25, total_bids: 3, unique_bidders: 2 }),

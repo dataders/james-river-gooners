@@ -193,11 +193,10 @@ jobs:
   e2e:
     name: E2E tests (Playwright)
     runs-on: ubuntu-latest
-    # Hard ceiling: a healthy run takes ~8 minutes end to end and Playwright's
-    # globalTimeout aborts a wedged run at 15 — if the job is still going at 20
-    # something is hung outside the test runner. Without this, GitHub's 6-hour
-    # default applies (a backend outage once ran this job for 2h42m).
-    timeout-minutes: 20
+    # Hard ceiling backstop. The suite runs against the in-process Supabase mock
+    # (no slow prod DB), so a healthy run is ~1-2 minutes; anything past 10 means
+    # the runner is wedged, not slow.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -211,20 +210,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
-      - name: Warm up Supabase database
-        run: |
-          curl -sf -o /dev/null \
-            "$VITE_SUPABASE_URL/rest/v1/public_active_lots?select=count&limit=1" \
-            -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" || true
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-
+      # No Supabase secrets / warm-up: the E2E suite serves all data from the
+      # in-process mock (tests/e2e/_mock) and the dev server is pinned to a
+      # dead-end Supabase URL (playwright.config webServer.env), so this job
+      # never touches the production database.
       - name: Run E2E tests
         run: npm run test:e2e
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Upload Playwright report
         if: always()

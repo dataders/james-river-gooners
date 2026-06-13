@@ -5,7 +5,7 @@
  * current bid is larger than the bid count") rather than exact pixel values
  * so that future theme tweaks don't require updating the suite.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures.js'
 import { waitForLoad, getItemCount, openRoiCard } from './helpers.js'
 
 // Helper: read one or more computed style properties from the first matching element
