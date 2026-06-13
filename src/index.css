@@ -1372,6 +1372,12 @@ body {
   min-width: 0;
 }
 
+/* Virtualized grid (TanStack Virtual window virtualizer): each lot sits in an
+   absolutely-positioned cell; the card fills the cell's content box. */
+.virtual-grid-cell > .item-card {
+  width: 100%;
+}
+
 /* Compact list view — single column of thumbnail + details rows */
 .compact-list {
   display: flex;

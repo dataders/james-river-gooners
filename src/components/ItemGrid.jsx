@@ -1,12 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import Masonry from 'react-masonry-css'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { ItemCard } from './ItemCard'
-
-const BATCH_SIZE = 50
-// Keep at most this many cards in the DOM at once. When the user scrolls forward
-// past the cap, we drop the oldest items and add a top spacer so the scroll
-// position remains correct.
-const MAX_DOM_ITEMS = 300
 
 // Column count is derived from the grid's *actual* container width (via a
 // ResizeObserver) rather than window.innerWidth. Keying off the window was the
@@ -24,118 +18,103 @@ function colsForWidth(width) {
   return Math.max(1, Math.min(MAX_COLS, n))
 }
 
-// Rough per-item height estimate used for the top spacer. Auction cards are
-// typically 300-450 px tall; 380 px splits the difference. We divide by column
-// count because masonry stacks items vertically within each column.
+// Initial per-item height guess for the virtualizer before real heights are
+// measured. Auction cards run 300-450 px; compact rows are a short fixed list.
 const ITEM_HEIGHT_ESTIMATE = 380
-// Compact rows are a single fixed-height list, so they estimate much shorter.
 const COMPACT_ITEM_HEIGHT = 132
 
-function estimateColumnHeight(itemCount, numCols, itemHeight = ITEM_HEIGHT_ESTIMATE) {
-  const itemsPerCol = Math.ceil(itemCount / numCols)
-  return itemsPerCol > 0 ? itemsPerCol * (itemHeight + ITEM_GAP) - ITEM_GAP : 0
-}
-
 export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses }) {
-  // Pair `items` with its loaded count so we can reset loaded when items changes.
-  const [loadState, setLoadState] = useState({ items, loaded: BATCH_SIZE })
-  const sentinelRef = useRef(null)
   const wrapperRef = useRef(null)
   const [numCols, setNumCols] = useState(3)
+  // The page (window) is the scroll container, so the virtual list must offset
+  // by how far the grid sits below the top of the document.
+  const [scrollMargin, setScrollMargin] = useState(0)
 
   // Track the grid's actual width so the column count never overruns the
-  // available space (the sidebar makes window.innerWidth unreliable here).
+  // available space (the sidebar makes window.innerWidth unreliable here), and
+  // its document offset so the window-virtualizer positions rows correctly.
   useEffect(() => {
     const wrapper = wrapperRef.current
     if (!wrapper) return
-    const update = () => setNumCols(colsForWidth(wrapper.clientWidth))
+    const update = () => {
+      setNumCols(colsForWidth(wrapper.clientWidth))
+      setScrollMargin(wrapper.offsetTop)
+    }
     update()
     const observer = new ResizeObserver(update)
     observer.observe(wrapper)
     return () => observer.disconnect()
   }, [])
 
-  // When items[0] is the same item as before, the list head is stable — a single
-  // item was removed from the middle or end (e.g. the user ignored it). Clamp
-  // the old loaded count rather than resetting to BATCH_SIZE so scroll is
-  // preserved. Reset fully only when the head changes (new search, filter, sort).
-  const sameHead = loadState.items[0]?.auctionSafeId === items[0]?.auctionSafeId &&
-    loadState.items[0]?.id === items[0]?.id
-  const loaded = loadState.items === items ? loadState.loaded
-    : sameHead ? Math.min(loadState.loaded, items.length) : BATCH_SIZE
+  const lanes = compact ? 1 : numCols
+  const estimate = compact ? COMPACT_ITEM_HEIGHT : ITEM_HEIGHT_ESTIMATE
 
-  const observerCallback = useCallback((entries) => {
-    if (entries[0].isIntersecting) {
-      setLoadState(prev => {
-        const sh = prev.items[0]?.auctionSafeId === items[0]?.auctionSafeId &&
-          prev.items[0]?.id === items[0]?.id
-        const current = prev.items === items ? prev.loaded
-          : sh ? Math.min(prev.loaded, items.length) : BATCH_SIZE
-        return { items, loaded: Math.min(current + BATCH_SIZE, items.length) }
-      })
-    }
+  // The active-filters bar above the grid appears/disappears as filters change,
+  // shifting the grid's document offset; re-measure when the item set changes.
+  useLayoutEffect(() => {
+    if (wrapperRef.current) setScrollMargin(wrapperRef.current.offsetTop)
   }, [items])
 
+  const virtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => estimate,
+    overscan: 6,
+    lanes,
+    gap: ITEM_GAP,
+    scrollMargin,
+    // Key by the globally-unique composite id so measured heights follow a lot
+    // across filter/sort changes instead of being pinned to a list position.
+    getItemKey: (index) => `${items[index].auctionSafeId}:${items[index].id}`,
+  })
+
+  // Re-pack when the column count flips (resize) or the layout mode changes.
   useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(observerCallback, {
-      rootMargin: '200px',
-    })
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [observerCallback])
+    virtualizer.measure()
+  }, [lanes, virtualizer])
 
-  const clampedLoaded = Math.min(loaded, items.length)
-  const windowStart = Math.max(0, clampedLoaded - MAX_DOM_ITEMS)
-  const visibleItems = items.slice(windowStart, clampedLoaded)
-
-  // Compact mode is a single-column list; the masonry grid uses its derived
-  // column count. The top spacer estimate follows the active layout.
-  const effectiveCols = compact ? 1 : numCols
-
-  // Compensate for items dropped from the top of the DOM window.
-  const topSpacerHeight = windowStart > 0
-    ? estimateColumnHeight(windowStart, effectiveCols, compact ? COMPACT_ITEM_HEIGHT : ITEM_HEIGHT_ESTIMATE)
-    : 0
-
-  const cards = visibleItems.map(item => (
-    <ItemCard
-      key={`${item.auctionSafeId}:${item.id}`}
-      item={item}
-      compact={compact}
-      itemComps={allComps[item.auctionSafeId]?.[item.id]}
-      isFavorite={isFavorite(item)}
-      onToggleFavorite={onToggleFavorite}
-      isIgnored={isIgnored(item)}
-      onToggleIgnored={onToggleIgnored}
-      onItemClick={onItemClick}
-      bidStatus={bidStatuses?.get(String(item.id))}
-    />
-  ))
+  const virtualItems = virtualizer.getVirtualItems()
 
   return (
     <div className="item-grid-wrapper" ref={wrapperRef}>
-      <div className="item-count">
-        {items.length} items{clampedLoaded < items.length ? ` (showing ${clampedLoaded})` : ''}
+      <div className="item-count">{items.length} items</div>
+      <div
+        className="virtual-grid"
+        style={{ position: 'relative', width: '100%', height: virtualizer.getTotalSize(), marginInline: -ITEM_GAP / 2 }}
+      >
+        {virtualItems.map(vi => {
+          const item = items[vi.index]
+          if (!item) return null
+          return (
+            <div
+              key={vi.key}
+              data-index={vi.index}
+              ref={virtualizer.measureElement}
+              className="virtual-grid-cell"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: `${(vi.lane / lanes) * 100}%`,
+                width: `${100 / lanes}%`,
+                paddingInline: ITEM_GAP / 2,
+                boxSizing: 'border-box',
+                transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
+              }}
+            >
+              <ItemCard
+                item={item}
+                compact={compact}
+                itemComps={allComps[item.auctionSafeId]?.[item.id]}
+                isFavorite={isFavorite(item)}
+                onToggleFavorite={onToggleFavorite}
+                isIgnored={isIgnored(item)}
+                onToggleIgnored={onToggleIgnored}
+                onItemClick={onItemClick}
+                bidStatus={bidStatuses?.get(String(item.id))}
+              />
+            </div>
+          )
+        })}
       </div>
-      {topSpacerHeight > 0 && (
-        <div className="scroll-top-spacer" style={{ height: topSpacerHeight }} />
-      )}
-      {compact ? (
-        <div className="compact-list">{cards}</div>
-      ) : (
-        <Masonry
-          breakpointCols={numCols}
-          className="masonry-grid"
-          columnClassName="masonry-column"
-        >
-          {cards}
-        </Masonry>
-      )}
-      {clampedLoaded < items.length && (
-        <div ref={sentinelRef} className="scroll-sentinel" />
-      )}
     </div>
   )
 }
