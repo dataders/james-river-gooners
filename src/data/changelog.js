@@ -14,6 +14,7 @@ export const CHANGELOG = [
       { id: 'perf-faster-first-load', icon: '⚡', text: 'The site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.' },
       { id: 'perf-smoother-scrolling', icon: '🧈', text: 'Scrolling through thousands of lots is smoother now, and typing in search or dragging the filter sliders no longer makes the grid stutter.' },
       { id: 'nav-back-closes-item', icon: '⬅️', text: 'Pressing your browser or phone Back button now closes an open item instead of leaving the site.' },
+      { id: 'cat-whole-vehicles', icon: '🚗', text: 'Whole cars, trucks and motorcycles now land in the Vehicles category, so hiding Vehicles actually hides them — previously they slipped into "Other" and kept showing up.' },
     ],
   },
   {

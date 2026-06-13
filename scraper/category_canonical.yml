@@ -686,6 +686,23 @@ mappings:
 # specific terms first. Each entry maps a keyword -> subcategory.
 # -----------------------------------------------------------------------------
 inference:
+  # --- Vehicles (whole cars / trucks / motorcycles).
+  # Cannon's files each whole vehicle under an ad-hoc raw category ("95 Nissan",
+  # "Automobile", or bare "Other"), so none of them land in the Vehicles group on
+  # raw category alone — they fall here to description inference. These phrases
+  # are deliberately high-precision: bare "motorcycle"/"convertible"/"truck" also
+  # match helmets, jackets, toys, books, sewing machines, so they are NOT used;
+  # auto *parts* keep mapping to Auto Parts & Accessories via their raw category.
+  pickup truck: Vehicles
+  door sedan: Vehicles
+  door hatchback: Vehicles
+  hatchback with: Vehicles
+  hard top convertible: Vehicles
+  hardtop convertible: Vehicles
+  passenger van: Vehicles
+  cargo van: Vehicles
+  sport utility: Vehicles
+  warranty on this vehicle: Vehicles
   rifle: Firearms
   pistol: Firearms
   shotgun: Firearms

@@ -565,6 +565,16 @@
     }
   },
   "inference": {
+    "pickup truck": "Vehicles",
+    "door sedan": "Vehicles",
+    "door hatchback": "Vehicles",
+    "hatchback with": "Vehicles",
+    "hard top convertible": "Vehicles",
+    "hardtop convertible": "Vehicles",
+    "passenger van": "Vehicles",
+    "cargo van": "Vehicles",
+    "sport utility": "Vehicles",
+    "warranty on this vehicle": "Vehicles",
     "rifle": "Firearms",
     "pistol": "Firearms",
     "shotgun": "Firearms",

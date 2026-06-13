@@ -506,6 +506,21 @@ groups:
 description_keywords:
   # keyword -> [canonical raw category, broad group]
   # More specific terms first
+  # Whole vehicles (cars/trucks/motorcycles). Cannon's files each one under an
+  # ad-hoc raw category ("95 Nissan", "Automobile", bare "Other"), so they only
+  # get into Vehicles via these description phrases. Kept high-precision on
+  # purpose — bare "motorcycle"/"convertible"/"truck" also match helmets,
+  # jackets, toys, books, so they're excluded; auto parts map via raw category.
+  pickup truck: [Vehicles, Vehicles]
+  door sedan: [Vehicles, Vehicles]
+  door hatchback: [Vehicles, Vehicles]
+  hatchback with: [Vehicles, Vehicles]
+  hard top convertible: [Vehicles, Vehicles]
+  hardtop convertible: [Vehicles, Vehicles]
+  passenger van: [Vehicles, Vehicles]
+  cargo van: [Vehicles, Vehicles]
+  sport utility: [Vehicles, Vehicles]
+  warranty on this vehicle: [Vehicles, Vehicles]
   rifle: [Firearms, Firearms]
   pistol: [Firearms, Firearms]
   shotgun: [Firearms, Firearms]
