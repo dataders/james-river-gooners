@@ -48,24 +48,18 @@ export async function gotoApp(page, query = '') {
   return Date.now() - start
 }
 
-// Wait until the Supabase data load finishes and the grid is populated.
+// Wait until the data load finishes and the grid is populated.
 // Mirrors tests/e2e/helpers.js waitForLoad.
 //
-// The grid renders progressively: `.loading` hides at first paint while the
-// rest of the set streams in, so objectives that measure counts or look for a
-// specific lot must wait for the FULL set — `main[data-load-complete="true"]`
-// (useAuctionData's loadComplete flag) — not just the spinner going away. The
-// usability suite runs single-worker (no contention), so the load is reliably
-// well within the window; reload once if it stalls or errors.
+// Data is served by the in-process Supabase mock (tests/e2e/_mock), so the full
+// set lands in milliseconds. Wait for the FULL set — `main[data-load-complete="true"]`
+// (useAuctionData's loadComplete flag) — so count/lot-lookup objectives are
+// stable, then assert no error banner and that the grid header rendered. No
+// reload fallback / generous window needed without a slow cold DB.
 export async function waitForLoad(page) {
-  const ready = await page.locator('main[data-load-complete="true"]')
-    .waitFor({ state: 'visible', timeout: 70_000 }).then(() => true).catch(() => false)
-  if (!ready || await page.locator('.error').isVisible()) {
-    await page.reload()
-    await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 70_000 })
-  }
+  await expect(page.locator('main[data-load-complete="true"]')).toBeVisible({ timeout: 10_000 })
   await expect(page.locator('.error')).toBeHidden()
-  await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.item-count').first()).toBeVisible({ timeout: 10_000 })
 }
 
 // Read the "<n> items" count from the grid header.

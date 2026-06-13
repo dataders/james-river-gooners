@@ -228,9 +228,9 @@ jobs:
   usability:
     name: Usability benchmark
     runs-on: ubuntu-latest
-    # Hard ceiling mirroring the e2e job: healthy run ~4 minutes, Playwright
-    # globalTimeout aborts at 10 — past 15 the job is hung, not slow.
-    timeout-minutes: 15
+    # Hard ceiling backstop. Against the in-process mock (no live DB) a healthy
+    # benchmark is ~1-2 minutes; past 10 the runner is wedged, not slow.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -244,20 +244,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
-      - name: Warm up Supabase database
-        run: |
-          curl -sf -o /dev/null \
-            "$VITE_SUPABASE_URL/rest/v1/public_active_lots?select=count&limit=1" \
-            -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" || true
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-
+      # No Supabase secrets / warm-up: the benchmark serves all data from the
+      # in-process mock (tests/e2e/_mock) and the dev server is pinned to a
+      # dead-end Supabase URL (playwright.usability.config webServer.env), so
+      # this job never touches the production database.
       - name: Run usability benchmark
         run: npm run test:usability
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Check usability score gate
         run: node tests/usability/check-score.js
