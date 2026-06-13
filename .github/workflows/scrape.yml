@@ -47,8 +47,11 @@ jobs:
       GOONERS_ENRICHMENT: ${{ inputs.enrichment && '1' || '0' }}
       # Server-side telemetry (scraper/telemetry.py): records the metered
       # SoldComps API calls + the provider's reported remaining quota to PostHog.
-      # No-op when the key is absent. The write-only ingestion key, not VITE_.
-      GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
+      # No-op when the key is absent. Reuses the existing VITE_POSTHOG_KEY secret
+      # (same browser-safe, write-only ingestion key) — referencing a secret in a
+      # run step does not put it in the frontend bundle, so there's no need for a
+      # duplicate GOONERS_POSTHOG_KEY secret.
+      GOONERS_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
     steps:
       - uses: actions/checkout@v5
 
