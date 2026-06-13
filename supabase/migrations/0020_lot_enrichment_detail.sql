@@ -22,8 +22,11 @@ alter table lot_enrichment
 -- Recreate the public view to expose the v6 columns. The new columns slot in
 -- next to the other detail fields (before `notes`), which `create or replace`
 -- can't do — it only appends, never reorders existing view columns — so drop
--- and recreate. security_invoker keeps the 0008 auth gate (SELECT on
--- lot_enrichment requires an authenticated session).
+-- and recreate. security_invoker runs the view with the querying role's
+-- privileges. NOTE: unlike the members-only comps/sold tables (gated by 0008),
+-- lot_enrichment is intentionally PUBLIC-read — 0009 gave it a `using (true)`
+-- SELECT policy because the brand/model/detail labels are a public browsing
+-- aid (the ✨ Identified grid works logged-out). Anon reads these rows by design.
 drop view if exists public_lot_enrichment;
 create view public_lot_enrichment
   with (security_invoker = on) as
