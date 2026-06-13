@@ -15,7 +15,7 @@ function makeLocalStorage() {
 globalThis.localStorage = makeLocalStorage()
 
 // Import after setting up the mock so module-level code sees it
-const { DEFAULT_PREFS, STORAGE_KEY, loadPrefs, savePrefs, sanitizePrefs } = await import('./prefs.js')
+const { DEFAULT_PREFS, STORAGE_KEY, PERSISTED_KEYS, loadPrefs, savePrefs, sanitizePrefs, pickPersistedPrefs, normalizePersistedPrefs } = await import('./prefs.js')
 
 test('loadPrefs returns defaults when nothing is stored', () => {
   localStorage.clear()
@@ -95,6 +95,41 @@ test('sanitizePrefs clears non-positive maxHours but keeps valid bounds', () => 
   assert.equal(sanitizePrefs({ maxHours: NaN }).maxHours, null)
   assert.equal(sanitizePrefs({ maxHours: 48 }).maxHours, 48)
   assert.equal(sanitizePrefs({ maxHours: null }).maxHours, null)
+})
+
+test('pickPersistedPrefs keeps only persisted keys and drops searchQuery', () => {
+  const slice = pickPersistedPrefs({ ...DEFAULT_PREFS, searchQuery: 'antique', bogus: 1 })
+  assert.ok(!('searchQuery' in slice), 'searchQuery must not be in the persisted slice')
+  assert.ok(!('bogus' in slice), 'unknown keys must not be in the persisted slice')
+  assert.deepEqual(Object.keys(slice).sort(), [...PERSISTED_KEYS].sort())
+})
+
+test('pickPersistedPrefs serializes identically regardless of input key order', () => {
+  // The cloud-sync subscriber compares JSON of the slice, so order must be
+  // stable (driven by PERSISTED_KEYS) no matter how the source object is built.
+  const a = pickPersistedPrefs({ minPrice: 5, maxPrice: 50, ...DEFAULT_PREFS, sort: 'price' })
+  const b = pickPersistedPrefs({ sort: 'price', maxPrice: 50, minPrice: 5, ...DEFAULT_PREFS })
+  // Re-apply the two distinguishing values so both objects carry the same data
+  // through different insertion orders.
+  const slice1 = pickPersistedPrefs({ ...a, minPrice: 5, maxPrice: 50, sort: 'price' })
+  const slice2 = pickPersistedPrefs({ ...b, sort: 'price', maxPrice: 50, minPrice: 5 })
+  assert.equal(JSON.stringify(slice1), JSON.stringify(slice2))
+})
+
+test('normalizePersistedPrefs fills new/missing keys from defaults', () => {
+  // A cloud row written before `margin` existed should come back with the
+  // default margin, not undefined.
+  const withoutMargin = pickPersistedPrefs(DEFAULT_PREFS)
+  delete withoutMargin.margin
+  const normalized = normalizePersistedPrefs({ ...withoutMargin, excludedGroups: ['Coins'] })
+  assert.equal(normalized.margin, DEFAULT_PREFS.margin)
+  assert.deepEqual(normalized.excludedGroups, ['Coins'])
+})
+
+test('normalizePersistedPrefs drops unknown keys and sanitizes maxHours', () => {
+  const normalized = normalizePersistedPrefs({ maxHours: 0, junk: 'nope' })
+  assert.equal(normalized.maxHours, null)
+  assert.ok(!('junk' in normalized))
 })
 
 test('loadPrefs handles corrupt storage gracefully', () => {

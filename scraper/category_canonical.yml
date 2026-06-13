@@ -73,6 +73,7 @@ groups:
   - Vehicles
   - Science & Nature
   - Pets & Kids
+  - Pet Adoption
   - Other
 
 # -----------------------------------------------------------------------------
@@ -96,6 +97,7 @@ subcategories:
   Pewter: Silver & Metal
   Cast Iron: Silver & Metal
   Brassware & Copper: Silver & Metal
+  Metalware: Silver & Metal
   # Furniture
   Furniture: Furniture
   Mirrors: Furniture
@@ -201,6 +203,9 @@ subcategories:
   # Pets & Kids
   Pet Accessories: Pets & Kids
   Child Care: Pets & Kids
+  # Pet Adoption — live animals listed for adoption (not auction inventory),
+  # kept in their own top-level group so they're easy to find or filter out.
+  Pet Adoption: Pet Adoption
   # sentinel
   __unknown__: Other
 
@@ -686,6 +691,23 @@ mappings:
 # specific terms first. Each entry maps a keyword -> subcategory.
 # -----------------------------------------------------------------------------
 inference:
+  # --- Vehicles (whole cars / trucks / motorcycles).
+  # Cannon's files each whole vehicle under an ad-hoc raw category ("95 Nissan",
+  # "Automobile", or bare "Other"), so none of them land in the Vehicles group on
+  # raw category alone — they fall here to description inference. These phrases
+  # are deliberately high-precision: bare "motorcycle"/"convertible"/"truck" also
+  # match helmets, jackets, toys, books, sewing machines, so they are NOT used;
+  # auto *parts* keep mapping to Auto Parts & Accessories via their raw category.
+  pickup truck: Vehicles
+  door sedan: Vehicles
+  door hatchback: Vehicles
+  hatchback with: Vehicles
+  hard top convertible: Vehicles
+  hardtop convertible: Vehicles
+  passenger van: Vehicles
+  cargo van: Vehicles
+  sport utility: Vehicles
+  warranty on this vehicle: Vehicles
   rifle: Firearms
   pistol: Firearms
   shotgun: Firearms
@@ -763,4 +785,134 @@ inference:
   board game: Board Games
   vinyl record: Vinyl & CDs
   stamp: Stamps
+
+  # --- "Other"-bucket recovery (description-driven). Cannon's/HiBid file many
+  # lots under an ad-hoc or missing raw category, so they only get a real home
+  # via these phrases. Validated high-precision against the live corpus; order
+  # matters (first match wins) — Cards before Coins (both say "graded"), Toys
+  # before Metalware (cast-iron toys carry a toy brand).
+  # Sports cards (HiBid files them under the player's name; warehouse codes
+  # BL-Box/FT-Box are unique to these lots):
+  "bl-box-": Trading Cards
+  "ft-box-": Trading Cards
+  hockey card: Trading Cards
+  boxing card: Trading Cards
+  bowman: Trading Cards
+  upper deck: Trading Cards
+  donruss: Trading Cards
+  " fleer": Trading Cards
+  stadium club: Trading Cards
+  " tcg": Trading Cards
+  pokemon: Trading Cards
+  sealed pack: Trading Cards
+  # Stamps:
+  postal stationery: Stamps
+  postal card: Stamps
+  philatel: Stamps
+  cut squares: Stamps
+  first day cover: Stamps
+  mint sheet: Stamps
+  souvenir sheet: Stamps
+  # Coins & currency (compounds only — bare "cent"/"dime" hit century/recent):
+  lincoln cent: Coins & Currency
+  indian head cent: Coins & Currency
+  wheat cent: Coins & Currency
+  large cent: Coins & Currency
+  flying eagle cent: Coins & Currency
+  buffalo nickel: Coins & Currency
+  liberty nickel: Coins & Currency
+  jefferson nickel: Coins & Currency
+  shield nickel: Coins & Currency
+  mercury dime: Coins & Currency
+  roosevelt dime: Coins & Currency
+  barber dime: Coins & Currency
+  seated liberty: Coins & Currency
+  morgan dollar: Coins & Currency
+  peace dollar: Coins & Currency
+  half dollar: Coins & Currency
+  walking liberty: Coins & Currency
+  standing liberty: Coins & Currency
+  washington quarter: Coins & Currency
+  state quarter: Coins & Currency
+  double die: Coins & Currency
+  " vdb": Coins & Currency
+  proof set: Coins & Currency
+  paper money: Coins & Currency
+  legal tender: Coins & Currency
+  federal reserve note: Coins & Currency
+  graded ms: Coins & Currency
+  graded au: Coins & Currency
+  graded vf: Coins & Currency
+  graded xf: Coins & Currency
+  graded ef: Coins & Currency
+  graded ag: Coins & Currency
+  graded vg: Coins & Currency
+  # Rugs (rug-specific compounds + weave regions; bare "handwoven" hit baskets):
+  hand-knotted: Rugs
+  hand knotted: Rugs
+  area rug: Rugs
+  runner rug: Rugs
+  wool rug: Rugs
+  rug with: Rugs
+  machine-made rug: Rugs
+  machine made rug: Rugs
+  machine-woven rug: Rugs
+  hand-tufted: Rugs
+  tufted rug: Rugs
+  power loomed: Rugs
+  power-loomed: Rugs
+  kashan: Rugs
+  tabriz: Rugs
+  hamadan: Rugs
+  heriz: Rugs
+  sarouk: Rugs
+  bokhara: Rugs
+  oushak: Rugs
+  bidjar: Rugs
+  kilim: Rugs
+  najafabad: Rugs
+  isfahan: Rugs
+  aubusson: Rugs
+  safavieh: Rugs
+  oriental weavers: Rugs
+  karastan: Rugs
+  nourison: Rugs
+  momeni: Rugs
+  # Die-cast / pressed-steel toys (toy brands; not real vehicles):
+  die-cast: Toys & Games
+  diecast: Toys & Games
+  matchbox: Toys & Games
+  hot wheels: Toys & Games
+  tonka: Toys & Games
+  " ertl": Toys & Games
+  nylint: Toys & Games
+  "buddy l ": Toys & Games
+  hubley: Toys & Games
+  lesney: Toys & Games
+  tootsietoy: Toys & Games
+  " corgi": Toys & Games
+  pressed steel: Toys & Games
+  tomica: Toys & Games
+  wyandotte: Toys & Games
+  midgetoy: Toys & Games
+  winross: Toys & Games
+  # Metalware → Silver & Metal:
+  cast iron: Cast Iron
+  cast-iron: Cast Iron
+  sad iron: Cast Iron
+  enamelware: Metalware
+  tinware: Metalware
+  graniteware: Metalware
+  metalware: Metalware
+  # Advertising collectibles:
+  coca-cola: Collectibles
+  coca cola: Collectibles
+  advertising sign: Collectibles
+  porcelain sign: Collectibles
+  tin sign: Collectibles
+  soda sign: Collectibles
+  # Live-animal adoption listings → their own group:
+  available for adoption: Pet Adoption
+  this pet is: Pet Adoption
+  " for adoption": Pet Adoption
   postal history: Stamps
