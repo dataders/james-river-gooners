@@ -123,7 +123,7 @@ class NomicBackfillTest(unittest.TestCase):
 
             calls = []
 
-            def _fake_gen(items, safe_id, session=None):
+            def _fake_gen(items, safe_id, session=None, force=False):
                 calls.append((safe_id, [it["id"] for it in items]))
                 return len(items)
 
