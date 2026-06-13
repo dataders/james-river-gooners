@@ -79,7 +79,7 @@ export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, on
       <div className="item-count">{items.length} items</div>
       <div
         className="virtual-grid"
-        style={{ position: 'relative', width: '100%', height: virtualizer.getTotalSize(), marginInline: -ITEM_GAP / 2 }}
+        style={{ position: 'relative', width: '100%', height: virtualizer.getTotalSize() }}
       >
         {virtualItems.map(vi => {
           const item = items[vi.index]

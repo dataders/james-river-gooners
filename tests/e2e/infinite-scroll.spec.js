@@ -1,53 +1,56 @@
 import { test, expect } from '@playwright/test'
 import { waitForLoad, getItemCount } from './helpers.js'
 
-// ItemGrid's initial batch size — must match BATCH_SIZE in ItemGrid.jsx
-const BATCH_SIZE = 50
+// The grid is window-virtualized (TanStack Virtual): only a window of cells is
+// mounted at once and more mount as you scroll, replacing the old fixed-batch
+// "(showing N)" + IntersectionObserver sentinel mechanism.
 
-test.describe('Infinite scroll', () => {
+// Largest data-index currently mounted in the grid.
+async function maxMountedIndex(page) {
+  return page.locator('.virtual-grid-cell').evaluateAll(
+    els => els.reduce((m, el) => Math.max(m, Number(el.dataset.index)), -1)
+  )
+}
+
+test.describe('Grid virtualization', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await waitForLoad(page)
   })
 
-  test('shows "(showing 50)" when total exceeds the batch size', async ({ page }) => {
+  test('mounts only a window of cells, not the whole list', async ({ page }) => {
     const total = await getItemCount(page)
-    test.skip(total <= BATCH_SIZE, `Only ${total} items — all fit in first batch`)
+    test.skip(total <= 60, `Only ${total} items — list fits without virtualizing`)
 
-    await expect(page.locator('.item-count')).toContainText(`showing ${BATCH_SIZE}`)
+    const mounted = await page.locator('.virtual-grid-cell').count()
+    // Far fewer nodes than the logical total — that's the point of virtualizing.
+    expect(mounted).toBeGreaterThan(0)
+    expect(mounted).toBeLessThan(total)
   })
 
-  test('scrolling to the sentinel loads the next batch', async ({ page }) => {
+  test('scrolling mounts later items', async ({ page }) => {
     const total = await getItemCount(page)
-    test.skip(total <= BATCH_SIZE, `Only ${total} items — no infinite scroll needed`)
+    test.skip(total <= 60, `Only ${total} items — no scrolling needed`)
 
-    // Confirm we start with one batch
-    await expect(page.locator('.item-count')).toContainText(`showing ${BATCH_SIZE}`)
-
-    // Scroll the intersection sentinel into view to trigger the observer
-    await page.locator('.scroll-sentinel').scrollIntoViewIfNeeded()
-
-    // Wait for the next batch to render
-    await expect(page.locator('.item-count')).not.toContainText(`showing ${BATCH_SIZE}`, { timeout: 5_000 })
-    const newCountText = await page.locator('.item-count').textContent()
-    // Either "showing 100" or all items displayed (no parenthetical)
-    expect(newCountText).toMatch(/showing \d+|^\d+ items$/)
+    const before = await maxMountedIndex(page)
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2))
+    await page.waitForTimeout(500)
+    const after = await maxMountedIndex(page)
+    expect(after).toBeGreaterThan(before)
   })
 
-  test('repeated scrolling eventually renders all items', async ({ page }) => {
+  test('scrolling to the bottom reaches the last item', async ({ page }) => {
     const total = await getItemCount(page)
-    test.skip(total <= BATCH_SIZE, `Only ${total} items — no infinite scroll needed`)
-    test.skip(total > 500, 'Too many items to scroll through in a single test')
+    test.skip(total <= 60, `Only ${total} items — no scrolling needed`)
+    test.skip(total > 2000, 'Too many items to scroll through in a single test')
 
-    // Keep scrolling until "(showing X)" is gone
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const text = await page.locator('.item-count').textContent()
-      if (!text.includes('showing')) break
-      await page.locator('.scroll-sentinel').scrollIntoViewIfNeeded()
-      await page.waitForTimeout(300)
+    // Step down so each wave of measurements settles before the next.
+    for (let i = 0; i < 60; i++) {
+      const max = await maxMountedIndex(page)
+      if (max >= total - 1) break
+      await page.mouse.wheel(0, 2000)
+      await page.waitForTimeout(120)
     }
-
-    const finalText = await page.locator('.item-count').textContent()
-    expect(finalText).toMatch(/^\d+ items$/)
+    expect(await maxMountedIndex(page)).toBeGreaterThanOrEqual(total - 2)
   })
 })
