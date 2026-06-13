@@ -16,6 +16,7 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 - ⬅️ **Back closes an item** — pressing your browser or phone Back button now closes an open item instead of leaving the site.
 - 🔢 **Filter counts match the view** — the Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.
 - 🕐 **Ended lots show when they closed** — lots that have closed now show when they ended (e.g. "Ended Jun 11, 7:56 PM") instead of just "Ended" — handy when a lot finishes early while the rest of its auction is still running.
+- 🧹 **Closed lots hidden by default** — lots that have already closed are now hidden from the main grid by default — even when the rest of their auction is still live and staggering lots shut over several days. Flip on "All auctions" to bring ended lots (and their final prices) back into view.
 
 ## 2026-06-09 — Faster loading
 

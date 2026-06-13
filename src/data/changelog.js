@@ -24,6 +24,7 @@ export const CHANGELOG = [
       { id: 'nav-back-closes-item', icon: '⬅️', text: 'Pressing your browser or phone Back button now closes an open item instead of leaving the site.' },
       { id: 'filter-counts-match-archive', icon: '🔢', text: 'The Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.' },
       { id: 'ended-shows-close-time', icon: '🕐', text: 'Lots that have closed now show when they ended (e.g. "Ended Jun 11, 7:56 PM") instead of just "Ended" — handy when a lot finishes early while the rest of its auction is still running.' },
+      { id: 'ended-lots-hidden', icon: '🧹', text: 'Lots that have already closed are now hidden from the main grid by default — even when the rest of their auction is still live and staggering lots shut over several days. Flip on "All auctions" to bring ended lots (and their final prices) back into view.' },
     ],
   },
   {
