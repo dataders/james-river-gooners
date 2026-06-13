@@ -159,7 +159,13 @@ export function AdminDashboard() {
       let res = await get(`${OBJECT}?t=${Date.now()}`)
       if (res.error || !res.data) res = await get(OBJECT)
       if (res.error || !res.data) throw new Error(res.error?.message || 'Dashboard not available yet.')
-      return URL.createObjectURL(res.data)
+      // Supabase Storage serves this object as text/plain regardless of the
+      // Content-Type we upload with, so res.data is a text/plain Blob. Handing
+      // that straight to the iframe makes the browser render the HTML as literal
+      // text instead of a page. Re-wrap the bytes as a text/html blob so the
+      // iframe parses and renders them (an iframe trusts the blob's MIME type).
+      const html = await res.data.text()
+      return URL.createObjectURL(new Blob([html], { type: 'text/html' }))
     },
   })
 
