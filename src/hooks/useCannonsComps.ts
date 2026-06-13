@@ -28,5 +28,5 @@ export function useCannonsComps(
   auctionSafeIds: string | string[] | null | undefined,
   enabled = true,
 ) {
-  return useByAuctionResource(auctionSafeIds, fetchOne, enabled)
+  return useByAuctionResource('cannons-comps', auctionSafeIds, fetchOne, enabled)
 }

@@ -25,6 +25,7 @@ export default defineConfig({
         // Function form (rolldown rejects the object shorthand).
         manualChunks(id) {
           if (!id.includes('node_modules')) return
+          if (id.includes('/@tanstack/')) return 'vendor-tanstack'
           if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) return 'vendor-react'
           if (id.includes('/@supabase/')) return 'vendor-supabase'
           if (id.includes('/posthog-js/')) return 'vendor-posthog'

@@ -17,5 +17,5 @@ export function useEbayComps(
   auctionSafeIds: string | string[] | null | undefined,
   enabled = true,
 ) {
-  return useByAuctionResource(auctionSafeIds, fetchOne, enabled)
+  return useByAuctionResource('ebay-comps', auctionSafeIds, fetchOne, enabled)
 }

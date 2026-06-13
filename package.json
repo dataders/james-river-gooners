@@ -11,23 +11,29 @@
     "preview": "vite preview",
     "test:unit": "node --test src/utils/*.test.js src/utils/*.test.ts",
     "test:unit:coverage": "node --test --experimental-test-coverage src/utils/*.test.js src/utils/*.test.ts",
+    "test:vitest": "vitest run",
     "test:e2e": "playwright test",
     "test:usability": "playwright test --config playwright.usability.config.js",
-    "test": "npm run test:unit && npm run test:e2e",
+    "test": "npm run test:unit && npm run test:vitest && npm run test:e2e",
     "prepare": "git rev-parse --is-inside-work-tree 2>/dev/null && git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "@supabase/supabase-js": "^2.107.0",
+    "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-virtual": "^3.14.2",
     "minisearch": "^7.2.0",
     "posthog-js": "^1.380.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-masonry-css": "^1.0.16"
+    "react-masonry-css": "^1.0.16",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.0",
@@ -35,8 +41,10 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   }
 }
