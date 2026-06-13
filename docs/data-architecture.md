@@ -254,6 +254,32 @@ provider's reported remaining hits the floor** (`--provider-min-remaining`, env
 meter, independent of the ledger. The ledger `--monthly-budget` stays as a coarse
 secondary cap.
 
+### Query filters sent to `/v1/scrape` (Phase 1)
+
+Each comp query carries structured `/v1/scrape` filters, not just a `keyword`.
+`ebay_query.build_ebay_sold_searches` attaches them to the search dicts and
+`ebay_fetch.soldcomps_sold_matches` forwards the present, non-empty ones as
+camelCase params (`categoryId`/`itemCondition`/`minPrice`/`count`/`sortOrder`/
+`ebaySite`/`itemLocation`). Two bands, riding the existing specific→broad→category
+funnel for graceful degradation:
+
+- **Always-safe (every tier):** US marketplace (`ebaySite=ebay.com`), US-only
+  sellers (`itemLocation=domestic`), most-recently-sold first
+  (`sortOrder=endedRecently`), a sub-$5 junk floor (`minPrice`, default 5), and a
+  wide candidate set (`count`, default 40, for a future visual re-rank). These
+  never empty a tier, so they apply uniformly. Both numeric defaults are
+  env-overridable (`GOONERS_EBAY_COMPS_MIN_PRICE`, `GOONERS_EBAY_COMPS_COUNT`).
+- **Precise-only (`specific` tier alone):** `categoryId` (from
+  `ebay_category_ids.yml`, our broad GROUP → eBay L1 id; `"0"`/unmapped → omitted)
+  and `itemCondition` (the enrichment `condition` collapsed to the `any|new|used`
+  enum — there is no granular `conditionId` query param). When the tightly-scoped
+  specific query returns nothing, the loop already falls through to broad/category,
+  which carry only the safe constraints — degradation for free, no new retry logic.
+
+**Phase 2 (planned):** persist a raw sold-listings corpus, batch-Nomic-visual
+re-rank candidates against each lot's photos, and reuse that corpus
+corpus-first to amortize the metered API spend across runs.
+
 The same call site emits a `soldcomps_api_request` PostHog event per provider
 call (`scraper/telemetry.py`), carrying `status`, `provider_remaining`, and the
 raw `X-Usage-*` values — so the real billed count and live remaining quota are

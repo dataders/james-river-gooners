@@ -91,6 +91,143 @@ class ExactPhraseSearchTests(unittest.TestCase):
         self.assertEqual(searches[0]["query"], '"Pair of brass candlesticks"')
 
 
+class Phase1QueryFilterTests(unittest.TestCase):
+    """Phase 1 structured /v1/scrape filters attached to the search funnel."""
+
+    def test_ebay_item_condition_collapses_to_api_enum(self):
+        from ebay_query import ebay_item_condition
+
+        self.assertEqual(ebay_item_condition({"condition": "new"}), "new")
+        self.assertEqual(ebay_item_condition({"condition": "open box"}), "new")
+        self.assertEqual(ebay_item_condition({"condition": "used"}), "used")
+        self.assertEqual(ebay_item_condition({"condition": "for parts"}), "used")
+        self.assertEqual(ebay_item_condition({"condition": "unknown"}), "")
+        self.assertEqual(ebay_item_condition({"condition": ""}), "")
+        self.assertEqual(ebay_item_condition({}), "")
+
+    def test_ebay_category_id_maps_known_group_and_handles_unmapped(self):
+        from ebay_query import ebay_category_id
+
+        self.assertEqual(ebay_category_id({"category": "Art"}), "550")
+        # Guard the YAML keys that contain "&" — these are the groups most prone
+        # to a silent miss if the file ever gets HTML-escaped or mis-parsed.
+        self.assertEqual(ebay_category_id({"category": "China & Glass"}), "870")
+        self.assertEqual(ebay_category_id({"category": "Jewelry & Watches"}), "281")
+        # Mapped to a deliberate "0" (no filter) — returned verbatim.
+        self.assertEqual(ebay_category_id({"category": "Vehicles"}), "0")
+        # Unmapped / absent group -> "".
+        self.assertEqual(ebay_category_id({"category": "Nonexistent Group"}), "")
+        self.assertEqual(ebay_category_id({}), "")
+
+    def test_specific_tier_carries_category_and_condition_but_broad_does_not(self):
+        searches = build_ebay_sold_searches({
+            "title": "Fever Brand Brass Student Trumpet",
+            "description": "a really nice horn here",
+            "category": "Art",
+            "rawCategory": "Musical Instruments",
+            "condition": "used",
+        })
+        specific = next(s for s in searches if s["kind"] == "specific")
+        broad = next(s for s in searches if s["kind"] == "broad")
+
+        # Precise-only filters ride on `specific` alone.
+        self.assertEqual(specific["category_id"], "550")
+        self.assertEqual(specific["item_condition"], "used")
+        self.assertNotIn("category_id", broad)
+        self.assertNotIn("item_condition", broad)
+
+    def test_safe_constraints_attach_to_every_tier(self):
+        searches = build_ebay_sold_searches({
+            "title": "Fever Brand Brass Student Trumpet",
+            "description": "a really nice horn here for sale",
+            "category": "Art",
+            "rawCategory": "Musical Instruments",
+        })
+        self.assertTrue(len(searches) >= 2)
+        for search in searches:
+            self.assertEqual(search["min_price"], 5)
+            self.assertEqual(search["sort_order"], "endedRecently")
+            self.assertEqual(search["ebay_site"], "ebay.com")
+            self.assertEqual(search["item_location"], "domestic")
+            self.assertEqual(search["count"], 40)
+
+    def test_numeric_filter_defaults_are_env_overridable(self):
+        with patch.dict("os.environ", {
+            "GOONERS_EBAY_COMPS_MIN_PRICE": "12",
+            "GOONERS_EBAY_COMPS_COUNT": "120",
+        }):
+            searches = build_ebay_sold_searches({
+                "title": "Vintage Omega Seamaster Automatic Wristwatch",
+                "description": "",
+                "category": "Jewelry & Watches",
+                "rawCategory": "Jewelry & Watches",
+            })
+        self.assertEqual(searches[0]["min_price"], 12)
+        self.assertEqual(searches[0]["count"], 120)
+
+    def test_unmapped_category_omits_category_id_on_specific(self):
+        searches = build_ebay_sold_searches({
+            "title": "Distinctive Brass Telescope Antique Instrument",
+            "description": "",
+            "category": "Vehicles",  # mapped to "0" -> omitted
+            "rawCategory": "Vehicles",
+        })
+        specific = next(s for s in searches if s["kind"] == "specific")
+        self.assertNotIn("category_id", specific)
+
+    def test_soldcomps_forwards_structured_filters_into_params(self):
+        response = Mock(status_code=200)
+        response.headers = {"X-Usage-Remaining": "100"}
+        response.json.return_value = {"items": []}
+        session = Mock()
+        session.get.return_value = response
+
+        soldcomps_sold_matches(
+            session,
+            {
+                "kind": "specific",
+                "query": "Rosenthal vase",
+                "url": "https://example.test",
+                "category_id": "870",
+                "item_condition": "used",
+                "min_price": 5,
+                "count": 40,
+                "sort_order": "endedRecently",
+                "ebay_site": "ebay.com",
+                "item_location": "domestic",
+            },
+            api_key="test-key",
+        )
+
+        params = session.get.call_args.kwargs["params"]
+        self.assertEqual(params["keyword"], "Rosenthal vase")
+        self.assertEqual(params["categoryId"], "870")
+        self.assertEqual(params["itemCondition"], "used")
+        self.assertEqual(params["minPrice"], 5)
+        self.assertEqual(params["count"], 40)
+        self.assertEqual(params["sortOrder"], "endedRecently")
+        self.assertEqual(params["ebaySite"], "ebay.com")
+        self.assertEqual(params["itemLocation"], "domestic")
+
+    def test_soldcomps_omits_absent_filters(self):
+        # A bare search (broad tier, no category/condition) sends only the keys
+        # that are present — never categoryId=0 or an empty itemCondition.
+        response = Mock(status_code=200)
+        response.headers = {}
+        response.json.return_value = {"items": []}
+        session = Mock()
+        session.get.return_value = response
+
+        soldcomps_sold_matches(
+            session,
+            {"kind": "broad", "query": "brass vase", "url": "https://example.test"},
+            api_key="test-key",
+        )
+
+        params = session.get.call_args.kwargs["params"]
+        self.assertEqual(params, {"keyword": "brass vase"})
+
+
 class ProviderUsageHeaderTests(unittest.TestCase):
     def test_extract_usage_headers_keeps_only_quota_headers_lowercased(self):
         usage = extract_usage_headers({

@@ -338,10 +338,28 @@ def soldcomps_sold_matches(
 
     query_kind = search.get("kind", "")
     started = monotonic()
+
+    # Map the search dict's snake_case filter fields (set by build_ebay_sold_searches)
+    # onto the provider's camelCase /v1/scrape query params. Only present, non-empty
+    # values are forwarded — omit a key entirely rather than send categoryId=0 etc.
+    params = {"keyword": search["query"]}
+    for search_key, param_key in (
+        ("category_id", "categoryId"),
+        ("item_condition", "itemCondition"),
+        ("min_price", "minPrice"),
+        ("count", "count"),
+        ("sort_order", "sortOrder"),
+        ("ebay_site", "ebaySite"),
+        ("item_location", "itemLocation"),
+    ):
+        value = search.get(search_key)
+        if value not in (None, ""):
+            params[param_key] = value
+
     try:
         response = session.get(
             os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
-            params={"keyword": search["query"]},
+            params=params,
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json",
