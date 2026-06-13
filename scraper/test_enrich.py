@@ -162,6 +162,34 @@ class ParseEnrichmentTests(unittest.TestCase):
         self.assertEqual(out["searchQuery"], "KitchenAid Artisan 5 qt stand mixer")
         self.assertEqual(out["enrichmentConfidence"], "high")
 
+    def test_v4_lot_fields_map(self):
+        out = parse_enrichment({
+            "brand": "Pyrex", "model_name": "", "product_type": "mixing bowl",
+            "search_query": "Pyrex glass mixing bowl",
+            "quantity": 12, "is_mixed_lot": False,
+            "condition": "used", "condition_flags": ["damaged", "untested", "bogus"],
+            "key_attributes": ["glass", "3 qt", "", "vintage", "a", "b", "c", "d"],
+            "product_url": "", "brand_confidence": "high", "model_confidence": "low",
+        })
+        self.assertEqual(out["quantity"], "12")
+        self.assertEqual(out["isMixedLot"], "false")
+        # invalid flag dropped, order + dedup preserved
+        self.assertEqual(json.loads(out["conditionFlags"]), ["damaged", "untested"])
+        # capped at MAX_KEY_ATTRIBUTES, empties removed
+        self.assertEqual(len(json.loads(out["keyAttributes"])), 6)
+
+    def test_v4_mixed_lot_and_indeterminate_quantity(self):
+        out = parse_enrichment({
+            "brand": "", "product_type": "assorted items", "search_query": "",
+            "quantity": 0, "is_mixed_lot": True,
+            "condition": "used", "condition_flags": [], "key_attributes": [],
+            "brand_confidence": "low", "model_confidence": "low",
+        })
+        self.assertEqual(out["quantity"], "")          # 0 -> indeterminate
+        self.assertEqual(out["isMixedLot"], "true")
+        self.assertEqual(out["conditionFlags"], "")    # empty list -> ""
+        self.assertEqual(out["keyAttributes"], "")
+
     def test_legacy_single_confidence_still_parsed(self):
         # Older cached rows carried one `confidence`; it backfills both fields.
         out = parse_enrichment({"brand": "X", "model_or_sku": "Y", "confidence": "medium"})

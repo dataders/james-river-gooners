@@ -101,9 +101,9 @@ IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16
 MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
 
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
-# reusing a now-stale cached row (the fingerprint folds this in). v3: search-
-# oriented — product identity + a model-composed eBay query, not strict SKU.
-ENRICHMENT_SCHEMA_VERSION = "3"
+# reusing a now-stale cached row (the fingerprint folds this in). v4: adds lot
+# economics + resale risk — quantity, isMixedLot, conditionFlags, keyAttributes.
+ENRICHMENT_SCHEMA_VERSION = "4"
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
@@ -115,20 +115,30 @@ ENRICHMENT_SCHEMA_VERSION = "3"
 # than a SKU), `productType` the noun, and `searchQuery` the model's best eBay
 # sold-comp phrase. `brandConfidence`/`modelConfidence` are scored separately (a
 # confident brand is useful even without a model); `enrichmentConfidence` is their
-# max, the overall bar the Supabase mirror + UI use.
+# max, the overall bar the Supabase mirror + UI use. Lot economics + resale risk
+# (v4): `quantity` (item count as a digit string, "" if indeterminate),
+# `isMixedLot` ("true"/"false" — a box of *different* items vs many identical),
+# `conditionFlags` + `keyAttributes` (JSON-encoded string lists, "" when empty, so
+# the Parquet column stays a uniform string like `images`).
 ENRICHMENT_FIELDS = (
     "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
+    "quantity", "isMixedLot", "conditionFlags", "keyAttributes",
     "brandConfidence", "modelConfidence", "enrichmentConfidence",
     "enrichmentModel", "enrichmentInputHash",
 )
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
+# Closed set of resale-risk flags the model may tag a lot with (any subset).
+CONDITION_FLAG_VALUES = ("untested", "damaged", "missing parts", "repaired", "incomplete")
+# Cap on stored key attributes (the model is asked for the few most identifying).
+MAX_KEY_ATTRIBUTES = 6
 # Rank for taking the max of the per-field confidences.
 _CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
 # Structured-output schema (json_schema). Haiku 4.5 supports structured outputs;
-# enums keep condition/confidences on the closed value sets above. Every field is
-# required and additionalProperties is false, so the response is always parseable.
+# enums keep condition/confidences/flags on the closed value sets above. Every
+# field is required and additionalProperties is false, so the response is always
+# parseable.
 OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -136,12 +146,17 @@ OUTPUT_SCHEMA = {
         "model_name": {"type": "string"},
         "product_type": {"type": "string"},
         "search_query": {"type": "string"},
+        "quantity": {"type": "integer"},
+        "is_mixed_lot": {"type": "boolean"},
         "condition": {"type": "string", "enum": list(CONDITION_VALUES)},
+        "condition_flags": {"type": "array", "items": {"type": "string", "enum": list(CONDITION_FLAG_VALUES)}},
+        "key_attributes": {"type": "array", "items": {"type": "string"}},
         "product_url": {"type": "string"},
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
-    "required": ["brand", "model_name", "product_type", "search_query", "condition",
+    "required": ["brand", "model_name", "product_type", "search_query", "quantity",
+                 "is_mixed_lot", "condition", "condition_flags", "key_attributes",
                  "product_url", "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
@@ -165,7 +180,23 @@ SYSTEM_PROMPT = (
     "mixer\", \"Craftsman 20V cordless drill\". Keep it short (3-7 words), no lot "
     "numbers or filler. If the lot is generic/mixed (e.g. \"box of assorted "
     "hardware\"), return an empty string.\n"
+    "- quantity: how many items the lot contains, as a whole number. A single "
+    "photo often shows several items — count them. Use the count when the lot is "
+    "multiple of the *same* item (e.g. 12 identical mugs -> 12) or a stated set "
+    "(\"set of 4\" -> 4). Use 1 for a single item. Use 0 only when the count truly "
+    "can't be determined.\n"
+    "- is_mixed_lot: true when the lot is an assortment of *different* items (a "
+    "junk drawer, a box of unrelated goods) rather than one item or many identical "
+    "ones. For a mixed lot, set brand/model_name/search_query empty and "
+    "model_confidence low — there is no single product to comp.\n"
     "- condition: one of new, open box, used, for parts, unknown.\n"
+    "- condition_flags: any of untested, damaged, missing parts, repaired, "
+    "incomplete that the listing states or the photos clearly show (e.g. \"AS-IS, "
+    "untested\", a visible crack). Empty array if none are indicated — do not "
+    "guess.\n"
+    "- key_attributes: up to the few most search-identifying specs (size, "
+    "capacity, material, color, dimensions, wattage, era) — e.g. [\"5 qt\", "
+    "\"stainless steel\"]. Empty array if nothing distinctive.\n"
     "- product_url: a canonical manufacturer/major-retailer product page URL ONLY "
     "if you are certain it is real; otherwise an empty string (a hallucinated URL "
     "is worse than none).\n"
@@ -339,7 +370,10 @@ def build_request_params(item: dict, content: list | None = None) -> dict:
     content. Everything else is identical so both transports score the same."""
     return {
         "model": MODEL,
-        "max_tokens": 256,
+        # Room for the v4 fields (arrays + url); output tokens are tiny regardless.
+        "max_tokens": 512,
+        # Deterministic extraction — we want the same lot to score the same way.
+        "temperature": 0,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": content if content is not None else build_content(item)}],
         "output_config": {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
@@ -354,6 +388,39 @@ def _response_text(content) -> str:
 def _valid_confidence(raw_value) -> str:
     value = str(raw_value or "").strip().lower()
     return value if value in CONFIDENCE_VALUES else ""
+
+
+def _parse_quantity(raw_value) -> str:
+    """Item count as a digit string ("" when indeterminate). Stored as a string
+    so the Parquet column stays uniform with the rest of the enrichment fields."""
+    try:
+        n = int(raw_value)
+    except (TypeError, ValueError):
+        return ""
+    return str(n) if n >= 1 else ""
+
+
+def _parse_enum_list(raw_value, allowed) -> str:
+    """JSON-encoded list of the values from ``raw_value`` that are in ``allowed``
+    (de-duplicated, order-preserving). "" when empty — kept off-row like an empty
+    string so the read-model column is a uniform string (mirrors ``images``)."""
+    if not isinstance(raw_value, list):
+        return ""
+    seen, out = set(), []
+    for v in raw_value:
+        s = str(v or "").strip().lower()
+        if s in allowed and s not in seen:
+            seen.add(s)
+            out.append(s)
+    return json.dumps(out) if out else ""
+
+
+def _parse_str_list(raw_value, limit) -> str:
+    """JSON-encoded list of the first ``limit`` non-empty trimmed strings, or ""."""
+    if not isinstance(raw_value, list):
+        return ""
+    out = [s for v in raw_value if (s := str(v or "").strip())][:limit]
+    return json.dumps(out) if out else ""
 
 
 def parse_enrichment(raw: dict) -> dict:
@@ -377,6 +444,10 @@ def parse_enrichment(raw: dict) -> dict:
     out["modelOrSku"] = str(raw.get("model_name") or raw.get("model_or_sku") or "").strip()
     out["productType"] = str(raw.get("product_type") or "").strip()
     out["searchQuery"] = str(raw.get("search_query") or "").strip()
+    out["quantity"] = _parse_quantity(raw.get("quantity"))
+    out["isMixedLot"] = "true" if bool(raw.get("is_mixed_lot")) else "false"
+    out["conditionFlags"] = _parse_enum_list(raw.get("condition_flags"), CONDITION_FLAG_VALUES)
+    out["keyAttributes"] = _parse_str_list(raw.get("key_attributes"), MAX_KEY_ATTRIBUTES)
     out["condition"] = condition if condition in CONDITION_VALUES else ""
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
     out["brandConfidence"] = brand_conf
