@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue, lazy, Suspense } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'
 import { useCannonsComps } from './hooks/useCannonsComps'
@@ -24,16 +24,22 @@ import { ActiveFilters } from './components/ActiveFilters'
 import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
-import { SwipeDeck } from './components/SwipeDeck'
-import { TutorialModal } from './components/TutorialModal'
-import { WhatsNewModal } from './components/WhatsNewModal'
-import { AuthModal } from './components/AuthModal'
-import { CannonLinkModal } from './components/CannonLinkModal'
-import { MyBidsPanel } from './components/MyBidsPanel'
-import { ImageSearchModal } from './components/ImageSearchModal'
 import { AccountButton } from './components/AccountButton'
 import { useTutorial } from './hooks/useTutorial'
 import { useWhatsNew } from './hooks/useWhatsNew'
+
+// Overlays that only mount behind a boolean toggle are code-split out of the
+// main bundle and loaded on first open. They render as a no-op until then, so
+// `<Suspense fallback={null}>` (the chunk arrives within a frame on open) keeps
+// the JSX below unchanged in behaviour.
+const lazyDefault = (loader, name) => lazy(() => loader().then(m => ({ default: m[name] })))
+const SwipeDeck = lazyDefault(() => import('./components/SwipeDeck'), 'SwipeDeck')
+const TutorialModal = lazyDefault(() => import('./components/TutorialModal'), 'TutorialModal')
+const WhatsNewModal = lazyDefault(() => import('./components/WhatsNewModal'), 'WhatsNewModal')
+const AuthModal = lazyDefault(() => import('./components/AuthModal'), 'AuthModal')
+const CannonLinkModal = lazyDefault(() => import('./components/CannonLinkModal'), 'CannonLinkModal')
+const MyBidsPanel = lazyDefault(() => import('./components/MyBidsPanel'), 'MyBidsPanel')
+const ImageSearchModal = lazyDefault(() => import('./components/ImageSearchModal'), 'ImageSearchModal')
 
 export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
@@ -150,7 +156,14 @@ export default function App() {
 
   const headerVisible = useHeaderVisible(headerHeight)
 
-  const [selectedItem, setSelectedItem] = useState(null)
+  // Store the selected item's stable key, not the object, so the open detail
+  // panel always reflects the latest `items` (enrichment overlaying in, a
+  // deadline tick re-deriving the list) instead of a frozen snapshot.
+  const [selectedKey, setSelectedKey] = useState(null)
+  const selectedItem = useMemo(
+    () => (selectedKey ? items.find(i => itemKey(i) === selectedKey) ?? null : null),
+    [selectedKey, items]
+  )
   const [bestDeals, setBestDeals] = useState(
     () => new URLSearchParams(window.location.search).get('bestDeals') === '1'
   )
@@ -212,7 +225,7 @@ export default function App() {
     const itemId = key.slice(colonIdx + 1)
     const found = items.find(i => i.auctionSafeId === safeId && String(i.id) === itemId)
     if (found) {
-      setSelectedItem(found)
+      setSelectedKey(itemKey(found))
       itemDeepLinked.current = true
     } else if (loadComplete) {
       itemDeepLinked.current = true
@@ -221,7 +234,7 @@ export default function App() {
 
   const handleItemClick = useCallback((item) => {
     syncUrlParam('item', itemKey(item))
-    setSelectedItem(item)
+    setSelectedKey(itemKey(item))
     captureEvent('item_opened', {
       category: item.category ?? null,
       auction: item.auctionSafeId ?? null,
@@ -230,7 +243,7 @@ export default function App() {
 
   const handleItemClose = useCallback(() => {
     syncUrlParam('item', null)
-    setSelectedItem(null)
+    setSelectedKey(null)
   }, [])
 
   // Resale intelligence (eBay comps + Cannon's comps + sold history) is
@@ -246,6 +259,21 @@ export default function App() {
   // Per-category Cannon's sold-price baseline (#95): feeds the "Best margin"
   // sort (#97) and the detail panel's category history (#96).
   const categorySoldStats = useCategorySoldStats(Boolean(auth.user))
+
+  // Keep typing and slider-dragging at native speed: the heavy
+  // locality→search→filter→sort pipeline consumes *deferred* copies of the
+  // fast-changing inputs, so React 19 keeps the controls interactive and
+  // recomputes the grid in a background render that the latest input can
+  // interrupt. The filter chips and sliders still bind to the immediate values.
+  const deferredSearchQuery = useDeferredValue(searchQuery)
+  const deferredMinPrice = useDeferredValue(minPrice)
+  const deferredMaxPrice = useDeferredValue(maxPrice)
+  const deferredMinBids = useDeferredValue(minBids)
+  const deferredMaxBids = useDeferredValue(maxBids)
+  const deferredMinBidders = useDeferredValue(minBidders)
+  const deferredMaxBidders = useDeferredValue(maxBidders)
+  const deferredMinHours = useDeferredValue(minHours)
+  const deferredMaxHours = useDeferredValue(maxHours)
 
   // The whole locality → search → filter → sort chain lives in useItemPipeline
   // (extracted verbatim from here — see that hook for the per-stage comments).
@@ -264,13 +292,13 @@ export default function App() {
     items,
     auctions,
     localOnly,
-    searchQuery,
+    searchQuery: deferredSearchQuery,
     excludedCategories,
     excludedGroups,
-    minPrice, maxPrice,
-    minBids, maxBids,
-    minBidders, maxBidders,
-    minHours, maxHours,
+    minPrice: deferredMinPrice, maxPrice: deferredMaxPrice,
+    minBids: deferredMinBids, maxBids: deferredMaxBids,
+    minBidders: deferredMinBidders, maxBidders: deferredMaxBidders,
+    minHours: deferredMinHours, maxHours: deferredMaxHours,
     hasComp,
     hasCannonsComp,
     bestDeals,
@@ -610,6 +638,7 @@ export default function App() {
         </main>
       </div>
 
+      <Suspense fallback={null}>
       {tutorialOpen && <TutorialModal onClose={closeTutorial} />}
 
       {whatsNewOpen && <WhatsNewModal onClose={closeWhatsNew} seenIds={seenIds} />}
@@ -669,6 +698,7 @@ export default function App() {
           onClose={() => setSwipeOpen(false)}
         />
       )}
+      </Suspense>
     </div>
   )
 }

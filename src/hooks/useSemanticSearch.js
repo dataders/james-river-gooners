@@ -58,19 +58,32 @@ async function embedViaHF(query) {
  * When Supabase is unconfigured the hook reports 'error' and stays inert.
  */
 export function useSemanticSearch(query) {
+  // Lazy activation: the desktop worker pulls ~23 MB of WASM + ~40 MB of model
+  // weights from the HF Hub, which used to download on every page load (mount).
+  // We now latch `activated` on the first non-empty query, so that cost is paid
+  // only when someone actually searches — keeping it off the critical path for
+  // the majority of visits that never use semantic search.
+  const [activated, setActivated] = useState(Boolean(query))
   const [semanticStatus, setSemanticStatus] = useState(() => {
     if (!isSupabaseConfigured) return 'error'
     // iOS uses the HF API — no Worker warm-up, always ready.
     if (isIOS) return 'ready'
-    return 'loading'
+    // 'idle' until the first search; SearchBar shows no AI badge in this state.
+    return query ? 'loading' : 'idle'
   })
   const [lastSemanticIds, setLastSemanticIds] = useState(null)
   const workerRef = useRef(null)
   const queryIdRef = useRef(0)
 
-  // Desktop: spin up the Worker once on mount; clean up on unmount.
+  // Flip activation on the first non-empty query (one-way latch).
   useEffect(() => {
-    if (!isSupabaseConfigured || isIOS) return
+    if (query) setActivated(true)
+  }, [query])
+
+  // Desktop: spin up the Worker once the user first searches; clean up on unmount.
+  useEffect(() => {
+    if (!isSupabaseConfigured || isIOS || !activated) return
+    setSemanticStatus(prev => (prev === 'idle' ? 'loading' : prev))
     const worker = new Worker(
       new URL('../workers/nomicEncoder.js', import.meta.url),
       { type: 'module' }
@@ -112,7 +125,7 @@ export function useSemanticSearch(query) {
       worker.terminate()
       workerRef.current = null
     }
-  }, [])
+  }, [activated])
 
   // Desktop: re-encode whenever the query changes (or when model finishes loading).
   useEffect(() => {
