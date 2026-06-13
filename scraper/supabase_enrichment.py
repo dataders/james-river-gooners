@@ -33,7 +33,7 @@ import sys
 import time
 from pathlib import Path
 
-from supabase_comps import json_safe, resolve_credentials
+from supabase_comps import READ_TIMEOUT, json_safe, resolve_credentials
 
 ENRICHMENT_TABLE = "lot_enrichment"
 
@@ -92,7 +92,7 @@ def _post_batch_with_retry(session, endpoint, headers, batch, max_retries, sleep
     body = json.dumps(batch)
     for attempt in range(max_retries + 1):
         try:
-            response = session.post(endpoint, headers=headers, data=body, timeout=30)
+            response = session.post(endpoint, headers=headers, data=body, timeout=READ_TIMEOUT)
         except requests.exceptions.RequestException as exc:
             if attempt >= max_retries:
                 raise RuntimeError(
@@ -295,7 +295,7 @@ def load_prior_enrichment_from_supabase(
             endpoint,
             headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
             params={"auction_safe_id": f"eq.{safe_id}", "select": "*"},
-            timeout=30,
+            timeout=READ_TIMEOUT,
         )
         if not resp.ok:
             return {}
