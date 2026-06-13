@@ -1045,7 +1045,7 @@ def estimate_enrichment_cost(client, to_enrich: list[dict], *, batch: bool = Tru
 
 
 def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
-                            estimate_only: bool = False) -> int:
+                            estimate_only: bool = False, limit: int | None = None) -> int:
     """Enrich lots fetched from the Supabase ``lots`` table (no NDJSON needed).
 
     Prior enrichment hashes are loaded from ``lot_enrichment`` so unchanged lots
@@ -1100,11 +1100,14 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
         estimate_enrichment_cost(client, all_to_enrich, batch=use_batch)
         return 0
 
+    remaining = limit  # None = no cap; otherwise stop once this many lots enriched
     all_rows = []
     for safe_id, archived, prefetched in work:
         rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
         if not rows:
             continue
+        if remaining is not None:
+            rows = rows[:remaining]  # --limit: validate on a small slice
         prior_by_id = load_prior_enrichment_from_supabase(safe_id)
         if use_batch:
             enrich_items_batch(rows, client=client, prior_by_id=prior_by_id)
@@ -1114,6 +1117,10 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
         print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
         maybe_export_enrichment(rows)
         all_rows.extend(rows)
+        if remaining is not None:
+            remaining -= len(rows)
+            if remaining <= 0:
+                break
 
     print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
     return 0
@@ -1127,10 +1134,21 @@ def main(argv: list[str] | None = None) -> int:
     estimate_only = "--estimate-only" in argv
     if "--text-only" in argv:
         os.environ["GOONERS_ENRICHMENT_TEXT_ONLY"] = "1"
+    # --limit N caps how many lots are enriched (a small validation slice).
+    limit = None
+    if "--limit" in argv:
+        i = argv.index("--limit")
+        if i + 1 < len(argv) and argv[i + 1].isdigit():
+            limit = int(argv[i + 1])
+            argv = argv[:i] + argv[i + 2:]
+        else:
+            print("error: --limit requires a positive integer", file=sys.stderr)
+            return 1
     argv = [arg for arg in argv
             if arg not in ("--batch", "--all", "--from-supabase", "--estimate-only", "--text-only")]
     if from_supabase:
-        return _backfill_from_supabase(argv or None, use_batch=use_batch, estimate_only=estimate_only)
+        return _backfill_from_supabase(argv or None, use_batch=use_batch,
+                                       estimate_only=estimate_only, limit=limit)
     if not argv and not include_all:
         print(__doc__)
         return 1

@@ -1,11 +1,14 @@
--- v4 enrichment fields — lot economics + resale risk, and multi-brand lots
--- (PR: enrich v4 + Option B). Extends lot_enrichment with:
+-- v4/v5 enrichment fields — lot economics, resale risk, multi-brand lots, and a
+-- freeform notes catch-all (PR: enrich v4 + Option B + notes). Extends
+-- lot_enrichment with:
 --   quantity        — item count as a digit string ("" when indeterminate)
 --   is_mixed_lot    — "true"/"false": a box of *different* items vs many identical
 --   condition_flags — JSON array of resale-risk flags (untested/damaged/…), "" empty
 --   key_attributes  — JSON array of search-identifying specs (size/material/…), "" empty
 --   secondary_items — JSON array of the other identifiable products in a multi-brand
 --                     lot ({brand, model_or_sku, product_type, search_query} each)
+--   notes           — freeform observations (marks/stamps/flaws/provenance) for
+--                     mining future text-derivable fields cheaply (v5)
 -- Stored as text (JSON-encoded for the arrays), mirroring how the read model keeps
 -- them so the browser parses client-side — consistent with the existing text columns.
 
@@ -14,9 +17,10 @@ alter table lot_enrichment
   add column if not exists is_mixed_lot    text,
   add column if not exists condition_flags text,
   add column if not exists key_attributes  text,
-  add column if not exists secondary_items text;
+  add column if not exists secondary_items text,
+  add column if not exists notes           text;
 
--- Recreate the public view to expose the v4 columns AND the v3 columns that
+-- Recreate the public view to expose the v4/v5 columns AND the v3 columns that
 -- 0016 added to the table but were never surfaced (product_type, search_query,
 -- brand_confidence, model_confidence). Additive; security_invoker keeps the
 -- 0008 auth gate (SELECT on lot_enrichment requires an authenticated session).
@@ -44,6 +48,7 @@ select
   condition_flags,
   key_attributes,
   secondary_items,
+  notes,
   confidence,
   model,
   image_url,

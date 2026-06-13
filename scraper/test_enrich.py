@@ -635,6 +635,19 @@ class NotesAndTextOnlyTests(unittest.TestCase):
         self.assertTrue(all(b["type"] == "text" for b in content))      # no image blocks
 
 
+class LimitFlagTests(unittest.TestCase):
+    def test_limit_parsed_and_passed(self):
+        from unittest import mock
+        import enrich
+        with mock.patch.object(enrich, "_backfill_from_supabase", return_value=0) as m:
+            enrich.main(["--batch", "--from-supabase", "--limit", "20"])
+        self.assertEqual(m.call_args.kwargs.get("limit"), 20)
+
+    def test_limit_requires_integer(self):
+        import enrich
+        self.assertEqual(enrich.main(["--from-supabase", "--limit", "oops"]), 1)
+
+
 class EnrichmentSummaryTests(unittest.TestCase):
     def test_counts_identified_vs_processed(self):
         rows = [
