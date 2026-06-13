@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures.js'
 import { waitForLoad } from './helpers.js'
 
 // Regression guard for the masonry grid overflowing the viewport on laptop /
