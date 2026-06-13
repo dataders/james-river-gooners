@@ -41,6 +41,7 @@ companies:
     catalog_ids:
       - 744897   # Vintage Galore! Gaming, Disney, Music, Cards, Action Figures
 
+      - 750993   # Sports, Trading & Collector Cards Auction
   - id: 78672
     slug: peoples_auction
     name: "Peoples Auction"
