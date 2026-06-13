@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { itemTimeRemaining } from '../utils/time'
+import { itemEnded } from '../utils/time'
 
 // In-app bidding for Cannon's lots. Only Cannon's (Maxanet) lots can be bid on
 // through the cannon-proxy Edge Function, and only while the lot is still live.
@@ -11,8 +11,7 @@ export function BidPanel({ item, cannonBids, bidStatus, user, onSignInClick, onC
   const [result, setResult] = useState(null)
 
   if (item.source !== 'cannons') return null
-  const remaining = itemTimeRemaining(item)
-  const ended = item.closed || item.archived || !remaining || remaining === 'Ended'
+  const ended = item.closed || item.archived || itemEnded(item)
   if (ended) return null
 
   const minNext = bidStatus?.minimumNextBid ?? item.currentBid + 1
