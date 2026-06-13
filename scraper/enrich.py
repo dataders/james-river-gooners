@@ -120,7 +120,7 @@ def _text_only() -> bool:
 # reusing a now-stale cached row (the fingerprint folds this in). v5: adds a
 # freeform `notes` catch-all (future text-derivable fields can be mined from it
 # cheaply via --text-only, without re-reading the photos).
-ENRICHMENT_SCHEMA_VERSION = "5"
+ENRICHMENT_SCHEMA_VERSION = "6"
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
@@ -140,11 +140,20 @@ ENRICHMENT_SCHEMA_VERSION = "5"
 # (Option B): `secondaryItems` — a JSON-encoded list of the *other* identifiable
 # products beyond the primary one ({brand, modelOrSku, productType, searchQuery}
 # each), "" when none, so a junk-drawer lot yields a comp per distinct product.
+# Category-aware details (v6): `detailCategory` is the lot's kind (furniture/art/
+# ceramics_glass/other) and `details` is a JSON-encoded object of the *resale-
+# identifying* keys for that category — furniture: style/material/form; art:
+# artist/medium/subject; ceramics_glass: maker/pattern/material — for unbranded
+# lots whose identity is descriptive rather than brand+model (an antique table, a
+# signed painting). `detailConfidence` is scored separately and folds into
+# `enrichmentConfidence` (= max of brand/model/detail), so a confident
+# style/artist clears the display+comp bar even with no brand. The model composes
+# `searchQuery` from these keys when brand is empty. "" / "{}" when not applicable.
 ENRICHMENT_FIELDS = (
     "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
     "quantity", "isMixedLot", "conditionFlags", "keyAttributes", "secondaryItems",
-    "notes",
-    "brandConfidence", "modelConfidence", "enrichmentConfidence",
+    "notes", "detailCategory", "details",
+    "brandConfidence", "modelConfidence", "detailConfidence", "enrichmentConfidence",
     "enrichmentModel", "enrichmentInputHash",
 )
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
@@ -157,6 +166,20 @@ MAX_KEY_ATTRIBUTES = 6
 MAX_SECONDARY_ITEMS = 4
 # The per-product sub-fields stored for each secondary item (camelCase read model).
 SECONDARY_ITEM_FIELDS = ("brand", "modelOrSku", "productType", "searchQuery")
+# Category-aware detail keys (v6). The model picks one detailCategory and fills the
+# keys that carry resale identity for it (the value driver for unbranded lots).
+# `other` fills nothing — those lots rely on the brand/model path or stay generic.
+DETAIL_CATEGORY_VALUES = ("furniture", "art", "ceramics_glass", "other")
+DETAIL_KEYS_BY_CATEGORY = {
+    "furniture": ("style", "material", "form"),
+    "art": ("artist", "medium", "subject"),
+    "ceramics_glass": ("maker", "pattern", "material"),
+    "other": (),
+}
+# Superset of every detail key, in stable order — the `details` schema object
+# carries all of them (so json_schema stays additionalProperties:false with every
+# key required); parsing prunes to the chosen category's keys and drops empties.
+DETAIL_SUPERSET_KEYS = ("style", "material", "form", "artist", "medium", "subject", "maker", "pattern")
 # Rank for taking the max of the per-field confidences.
 _CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
@@ -193,13 +216,25 @@ OUTPUT_SCHEMA = {
             },
         },
         "notes": {"type": "string"},
+        # Category-aware detail (v6). `detail_category` selects the kind of lot;
+        # `details` carries the superset of keys (fill only the chosen category's),
+        # so unbranded furniture/art/ceramics get a resale identity.
+        "detail_category": {"type": "string", "enum": list(DETAIL_CATEGORY_VALUES)},
+        "details": {
+            "type": "object",
+            "properties": {key: {"type": "string"} for key in DETAIL_SUPERSET_KEYS},
+            "required": list(DETAIL_SUPERSET_KEYS),
+            "additionalProperties": False,
+        },
+        "detail_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "product_url": {"type": "string"},
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
     "required": ["brand", "model_name", "product_type", "search_query", "quantity",
                  "is_mixed_lot", "condition", "condition_flags", "key_attributes",
-                 "secondary_items", "notes", "product_url", "brand_confidence", "model_confidence"],
+                 "secondary_items", "notes", "detail_category", "details", "detail_confidence",
+                 "product_url", "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
 
@@ -252,6 +287,27 @@ SYSTEM_PROMPT = (
     "signatures, stamps, hallmarks, serial/pattern numbers, provenance, era cues, "
     "or notable flaws. This is a catch-all so later searches can mine it; keep it "
     "to one sentence. Empty string if there's nothing to add.\n"
+    "- detail_category: the lot's kind, one of: furniture, art, ceramics_glass, "
+    "other. Pick the one whose descriptive identity (not its brand) is what a "
+    "resale buyer would search on. Use \"other\" for branded consumer goods, "
+    "tools, electronics, jewelry, collectibles, or anything that doesn't fit.\n"
+    "- details: an object. Fill ONLY the keys for the detail_category you chose, "
+    "leave the rest empty strings. furniture -> style (e.g. \"mid-century "
+    "modern\", \"Victorian\", \"Art Deco\"), material (e.g. \"walnut\", "
+    "\"brass\"), form (the piece, e.g. \"credenza\", \"side chair\"). art -> "
+    "artist (the signed/attributed name if legible, else empty), medium (e.g. "
+    "\"oil on canvas\", \"watercolor\"), subject (e.g. \"winter landscape\"). "
+    "ceramics_glass -> maker (e.g. \"Lladro\", \"Delft\"), pattern (e.g. \"Olde "
+    "England\"), material (e.g. \"transferware\", \"cut crystal\"). other -> "
+    "leave all keys empty. Only fill a key from what the text/photos actually "
+    "show — do NOT guess an artist, an era, or a maker.\n"
+    "- detail_confidence: high when the detail keys clearly capture the lot's "
+    "identity, medium when reasonably sure, low for vague/generic. Score "
+    "independently of brand/model. For an unbranded furniture/art/ceramics lot "
+    "this is what carries the identification, so when you fill details "
+    "confidently, also compose search_query from those keys (e.g. \"mid-century "
+    "walnut credenza\", \"Helen Lord watercolor winter landscape\", \"Delft blue "
+    "transferware plate\") even though brand/model are empty.\n"
     "- product_url: a canonical manufacturer/major-retailer product page URL ONLY "
     "if you are certain it is real; otherwise an empty string (a hallucinated URL "
     "is worse than none).\n"
@@ -510,6 +566,30 @@ def _parse_secondary_items(raw_value) -> str:
     return json.dumps(out) if out else ""
 
 
+def _parse_details(raw_category, raw_details, confidence: str) -> tuple[str, str]:
+    """Validate the v6 category-aware detail bag → ``(detailCategory, detailsJson)``.
+
+    Returns ``("", "")`` unless the category is a known value, ``details`` is a
+    dict, and ``confidence`` is medium/high (only confident detail is saved — the
+    display bar). The stored bag is pruned to the category's keys with empty
+    values dropped, so a furniture row is ``{"style": …}`` and an art row is
+    ``{"artist": …}`` rather than the full schema superset."""
+    category = str(raw_category or "").strip().lower()
+    if category not in DETAIL_CATEGORY_VALUES or confidence not in ("medium", "high"):
+        return "", ""
+    keys = DETAIL_KEYS_BY_CATEGORY.get(category, ())
+    if not keys or not isinstance(raw_details, dict):
+        return "", ""
+    bag = {}
+    for key in keys:
+        value = str(raw_details.get(key) or "").strip()
+        if value:
+            bag[key] = value
+    if not bag:
+        return "", ""
+    return category, json.dumps(bag)
+
+
 def parse_enrichment(raw: dict) -> dict:
     """Map the model's JSON to the camelCase fields, validating the closed sets.
     An invalid condition/confidence or a non-http product_url is dropped to ""
@@ -541,7 +621,16 @@ def parse_enrichment(raw: dict) -> dict:
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
     out["brandConfidence"] = brand_conf
     out["modelConfidence"] = model_conf
-    out["enrichmentConfidence"] = max((brand_conf, model_conf), key=lambda c: _CONFIDENCE_RANK[c])
+    # Category-aware detail (v6): only kept at medium/high, which clears the bag +
+    # category to "" when low — so the saved detail is always display-confident.
+    detail_conf = _valid_confidence(raw.get("detail_confidence"))
+    out["detailCategory"], out["details"] = _parse_details(
+        raw.get("detail_category"), raw.get("details"), detail_conf)
+    out["detailConfidence"] = detail_conf if out["detailCategory"] else ""
+    # The overall bar is the max of brand/model/detail — a confident style or
+    # artist surfaces an unbranded antique just as a confident brand surfaces a tool.
+    out["enrichmentConfidence"] = max(
+        (brand_conf, model_conf, out["detailConfidence"]), key=lambda c: _CONFIDENCE_RANK[c])
     return out
 
 

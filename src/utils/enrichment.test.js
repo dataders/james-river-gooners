@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   getDisplayEnrichment,
+  detailLabel,
   isHighConfidence,
   hasEnrichment,
   mapEnrichmentRow,
@@ -59,8 +60,32 @@ test('getDisplayEnrichment is null below the display bar (low/absent)', () => {
   assert.equal(getDisplayEnrichment({}), null)
 })
 
-test('getDisplayEnrichment is null when high confidence but no brand/model', () => {
+test('getDisplayEnrichment is null when high confidence but no brand/model and no detail', () => {
   assert.equal(getDisplayEnrichment({ enrichmentConfidence: 'high', brand: '', modelOrSku: '', condition: 'used' }), null)
+})
+
+test('detailLabel composes the bag values in order, capitalized', () => {
+  assert.equal(
+    detailLabel({ details: '{"style":"mid-century modern","material":"walnut","form":"credenza"}' }),
+    'Mid-century modern walnut credenza',
+  )
+  assert.equal(detailLabel({ details: '' }), '')
+  assert.equal(detailLabel({ details: 'not json' }), '')
+  assert.equal(detailLabel({}), '')
+})
+
+test('getDisplayEnrichment falls back to the detail descriptor for unbranded lots', () => {
+  // An antique with no brand/model but a confident detail bag is now surfaced.
+  const out = getDisplayEnrichment({
+    enrichmentConfidence: 'high', brand: '', modelOrSku: '',
+    detailCategory: 'art',
+    details: '{"artist":"Helen Lord","medium":"watercolor","subject":"winter landscape"}',
+  })
+  assert.equal(out.label, 'Helen Lord watercolor winter landscape')
+  assert.equal(hasEnrichment({
+    enrichmentConfidence: 'high', brand: '', modelOrSku: '',
+    details: '{"style":"mid-century modern","material":"walnut"}',
+  }), true)
 })
 
 test('getDisplayEnrichment drops a non-http productUrl', () => {
@@ -83,6 +108,9 @@ test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
     modelOrSku: '36-220C',
     condition: 'used',
     productUrl: 'https://delta.com/36-220c',
+    detailCategory: '',
+    details: '',
+    detailConfidence: '',
     enrichmentConfidence: 'high',
     enrichmentModel: 'claude-haiku-4-5',
   })
@@ -93,8 +121,22 @@ test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
 test('mapEnrichmentRow fills missing columns with empty strings', () => {
   assert.deepEqual(mapEnrichmentRow({ item_id: '1', brand: 'Giant' }), {
     brand: 'Giant', modelOrSku: '', condition: '', productUrl: '',
+    detailCategory: '', details: '', detailConfidence: '',
     enrichmentConfidence: '', enrichmentModel: '',
   })
+})
+
+test('mapEnrichmentRow maps the v6 detail columns', () => {
+  const out = mapEnrichmentRow({
+    item_id: '9',
+    detail_category: 'art',
+    details: '{"artist":"Helen Lord","medium":"watercolor"}',
+    detail_confidence: 'high',
+    confidence: 'high',
+  })
+  assert.equal(out.detailCategory, 'art')
+  assert.equal(out.details, '{"artist":"Helen Lord","medium":"watercolor"}')
+  assert.equal(out.detailConfidence, 'high')
 })
 
 test('groupEnrichmentRows keys by stringified item id and skips id-less rows', () => {
