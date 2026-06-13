@@ -29,20 +29,31 @@ deletes:
 > loaded by [`supabase_stats/`](../supabase_stats); point that pipeline at
 > MotherDuck too and the `supabase_metrics` dbt source resolves natively there.
 
+## How it reads — PostgREST (HTTPS), not Postgres :5432
+
+The copy reads each table through Supabase's **PostgREST** API over HTTPS, paging
+with `Range` headers and following the `Content-Range` total. The service key
+bypasses RLS to read every row. This uses the secrets the project already has
+(`SUPABASE_URL` + `SUPABASE_SECRET_KEY`) — no separate Postgres connection
+string / session-pooler URL — and works anywhere HTTPS does (CI, IPv4-only or
+HTTPS-only sandboxes), sidestepping the IPv6/pooler quirks of a direct Postgres
+connection.
+
 ## Configuration (env)
 
 | var | purpose |
 | --- | --- |
 | `MOTHERDUCK_TOKEN` | **Required.** Read/write MotherDuck PAT (destination). |
-| `SUPABASE_POSTGRES_URL_IP4` (preferred) / `SUPABASE_POSTGRES_URL` | **Required.** Postgres source URL. Use the **IPv4 session-pooler** URL in CI — GitHub runners have no IPv6, and the direct `db.<ref>.supabase.co` host is IPv6-only. (Reached on port 5432, so this needs Postgres egress — it runs in GitHub Actions, not in HTTPS-only sandboxes.) |
+| `SUPABASE_URL` | **Required.** Project URL (`https://<ref>.supabase.co`); REST base is `<url>/rest/v1`. |
+| `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) | **Required.** Service key — reads all rows (bypasses RLS). Backend-only; never in a `VITE_` var or the bundle. |
 
 ## Run
 
 ```bash
 cd supabase_app
-uv run --with "dlt[motherduck,sql_database]" --with psycopg2-binary python pipeline.py
+uv run --with "dlt[motherduck]" --with requests python pipeline.py
 # subset:
-uv run --with "dlt[motherduck,sql_database]" --with psycopg2-binary python pipeline.py --tables lots users
+uv run --with "dlt[motherduck]" --with requests python pipeline.py --tables lots users
 ```
 
 Runs hourly as step 1 of [`.github/workflows/admin-dashboard.yml`](../.github/workflows/admin-dashboard.yml)

@@ -38,12 +38,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+      # The dlt copy (step 1) reads the app tables over PostgREST (HTTPS) with the
+      # service key — no separate Postgres URL needed; dbt then reads them
+      # natively from MotherDuck.
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      # IPv4 session-pooler Postgres URL. Read ONCE per run by the dlt copy
-      # (step 1) to snapshot the app tables into MotherDuck; dbt then reads them
-      # natively from the warehouse.
-      SUPABASE_POSTGRES_URL: ${{ secrets.SUPABASE_POSTGRES_URL }}
       POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
     steps:
@@ -64,11 +63,11 @@ jobs:
         continue-on-error: true
         working-directory: supabase_app
         run: |
-          if [ -z "${SUPABASE_POSTGRES_URL:-}" ]; then
-            echo "SUPABASE_POSTGRES_URL unset — skipping app-table copy."
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
+            echo "SUPABASE_URL / SUPABASE_SECRET_KEY unset — skipping app-table copy."
             exit 0
           fi
-          uv run --with "dlt[motherduck,sql_database]" --with psycopg2-binary python3 pipeline.py
+          uv run --with "dlt[motherduck]" --with requests python3 pipeline.py
 
       - name: Refresh PostHog aggregates (best-effort)
         if: steps.guard.outputs.run == 'true'

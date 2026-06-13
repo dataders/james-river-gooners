@@ -18,8 +18,9 @@ cleaned as (
         raw_category,
         source,
         detail_url,
-        -- DuckDB: cardinality() works on lists; coalesce to empty list not '{}' literal
-        cardinality(coalesce(images, []))    as image_count,
+        -- images is copied as a json array (supabase_app/pipeline.py column hint);
+        -- json_array_length gives the count, 0 when null.
+        coalesce(json_array_length(images), 0) as image_count,
 
         -- Status
         archived,

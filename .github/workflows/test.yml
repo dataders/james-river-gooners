@@ -131,7 +131,7 @@ jobs:
       - name: Run supabase_app unit tests
         run: |
           cd supabase_app
-          uv run --with pytest python -m pytest -q
+          uv run --with requests --with pytest python -m pytest -q
 
       - name: Lint supabase_app (ruff)
         run: |

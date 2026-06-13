@@ -67,6 +67,10 @@ select
     cc.cannons_top_sold_price,
     cc.cannons_top_similarity,
     cc.cannons_top_match_title,
+    case
+        when cc.cannons_top_sold_price > 0
+        then round(((s.final_bid - cc.cannons_top_sold_price) / cc.cannons_top_sold_price * 100), 1)
+    end                                     as pct_vs_cannons_comp,
     cc.item_id is not null                  as has_cannons_comp
 
 from sold s
