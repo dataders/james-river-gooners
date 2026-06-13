@@ -38,8 +38,9 @@ cleaned as (
 
         ingested_at,
 
-        -- Derived: days between eBay sale and Supabase ingestion (comp freshness)
-        (ingested_at::date - sold_date)::int    as comp_age_days
+        -- Derived: days between eBay sale and Supabase ingestion (comp freshness).
+        -- sold_date arrives as an ISO date string over PostgREST, so cast it.
+        (ingested_at::date - sold_date::date)::int    as comp_age_days
 
     from source
     where item_web_url is not null           -- exclude "no result" rows
