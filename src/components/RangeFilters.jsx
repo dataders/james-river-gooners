@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useLayoutEffect } from 'react'
+import * as Slider from '@radix-ui/react-slider'
 
 function hoursUntil(endDate) {
   if (!endDate) return Infinity
@@ -47,10 +48,12 @@ function buildHistogram(values, min, max, logScale) {
   return bins
 }
 
-// Thumb radius must match half the CSS width of ::-webkit-slider-thumb (16px → 8px).
-// We compute bar pixel positions using the same formula the browser uses for the thumb
-// center, so bins always align with the slider track across all browsers and screen sizes.
-const THUMB_RADIUS = 8
+// Thumb radius must match half the CSS width of .range-slider-thumb (20px → 10px).
+// Radix insets each thumb so it stays within the track bounds — the thumb *center*
+// travels from THUMB_RADIUS to (width − THUMB_RADIUS), exactly like a native range
+// input. We compute bar pixel positions with the same inset so bins stay aligned
+// with the slider track across browsers and screen sizes.
+const THUMB_RADIUS = 10
 
 function Histogram({ bins, valueLoPct, valueHiPct, containerWidth }) {
   if (!containerWidth) return null
@@ -117,38 +120,25 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
     ? Math.round(toLog(valueHi, min, max) * SLIDER_STEPS)
     : Math.round(((valueHi - min) / (max - min)) * SLIDER_STEPS)
 
-  const handleLo = (e) => {
-    const pos = Number(e.target.value)
-    // At the minimum position the bound is cleared (null = no lower limit) so
-    // it matches the "Any" summary instead of pinning to a finite value.
-    if (pos <= 0) { onLoChange(null); return }
+  const posToValue = (pos) => {
     const ratio = pos / SLIDER_STEPS
-    const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
-    const snapped = Math.round(real)
-    onLoChange(Math.min(snapped, valueHi))
+    return Math.round(logScale ? fromLog(ratio, min, max) : min + ratio * (max - min))
   }
 
-  const handleHi = (e) => {
-    const pos = Number(e.target.value)
-    // At the maximum position the bound is cleared (null = no upper limit).
-    // Pinning to a finite `max` would otherwise drop items whose value can't be
-    // compared — e.g. lots with no parseable end date filter to Infinity hours
-    // and would be excluded even though the slider reads as unbounded.
-    if (pos >= SLIDER_STEPS) { onHiChange(null); return }
-    const ratio = pos / SLIDER_STEPS
-    const real = logScale ? fromLog(ratio, min, max) : min + ratio * (max - min)
-    const snapped = Math.round(real)
-    onHiChange(Math.max(snapped, valueLo))
+  // Radix reports both thumb positions on every drag. Map each back to a real
+  // value, clearing a bound to null at its extreme so the slider reads "Any":
+  //  - lo at 0 → no lower limit
+  //  - hi at max → no upper limit. Pinning to a finite `max` would drop items
+  //    whose value can't be compared — e.g. lots with no parseable end date
+  //    filter to Infinity hours and would be excluded though the slider is full.
+  const handleValueChange = ([loPos, hiPos]) => {
+    onLoChange(loPos <= 0 ? null : posToValue(loPos))
+    onHiChange(hiPos >= SLIDER_STEPS ? null : posToValue(hiPos))
   }
 
   // Percentage positions for histogram highlighting
   const valueLoPct = logScale ? toLog(valueLo, min, max) : (valueLo - min) / (max - min || 1)
   const valueHiPct = logScale ? toLog(valueHi, min, max) : (valueHi - min) / (max - min || 1)
-
-  // When both thumbs land on the same pixel the hi thumb (z-index:2) is always
-  // on top and the lo thumb becomes unreachable. Bring lo on top whenever it
-  // has caught up with hi so the user can drag it back left to un-stick.
-  const loOnTop = sliderLo >= sliderHi
 
   return (
     <div className="range-filter">
@@ -160,25 +150,21 @@ function DualSlider({ label, min, max, valueLo, valueHi, formatLo, formatHi, for
         {histogram && (
           <Histogram bins={histogram} valueLoPct={valueLoPct} valueHiPct={valueHiPct} containerWidth={containerWidth} />
         )}
-        <input
-          type="range"
-          className="range-slider range-slider-lo"
-          style={loOnTop ? { zIndex: 3 } : undefined}
+        <Slider.Root
+          className="range-slider-root"
           min={0}
           max={SLIDER_STEPS}
           step={1}
-          value={sliderLo}
-          onChange={handleLo}
-        />
-        <input
-          type="range"
-          className="range-slider range-slider-hi"
-          min={0}
-          max={SLIDER_STEPS}
-          step={1}
-          value={sliderHi}
-          onChange={handleHi}
-        />
+          value={[sliderLo, sliderHi]}
+          onValueChange={handleValueChange}
+          minStepsBetweenThumbs={0}
+        >
+          <Slider.Track className="range-slider-track">
+            <Slider.Range className="range-slider-range" />
+          </Slider.Track>
+          <Slider.Thumb className="range-slider-thumb range-slider-thumb-lo" aria-label={`${label} minimum`} />
+          <Slider.Thumb className="range-slider-thumb range-slider-thumb-hi" aria-label={`${label} maximum`} />
+        </Slider.Root>
       </div>
       <div className="range-bounds">
         <span>{formatBoundLo}</span>

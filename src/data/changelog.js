@@ -8,6 +8,13 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-13',
+    title: 'Easier price & bidding filters',
+    changes: [
+      { id: 'range-sliders-touch', icon: '🎚', text: 'The Price, Bids, Bidders and "Ends within" sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.' },
+    ],
+  },
+  {
     date: '2026-06-09',
     title: 'Faster loading',
     changes: [

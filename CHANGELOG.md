@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-13 — Easier price & bidding filters
+
+- 🎚 **Easier sliders** — the Price, Bids, Bidders and "Ends within" sliders are much easier to grab and drag now — especially on a phone, where the handles were fiddly to hit before.
+
 ## 2026-06-09 — Faster loading
 
 - ⚡ **Faster loading** — the auction grid now appears in a couple of seconds and fills in the rest of the lots as they load, instead of sitting on a "Fetching auction data" spinner until everything is ready.
