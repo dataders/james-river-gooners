@@ -37,6 +37,10 @@ validated before it becomes a standing cost on every scheduled scrape.
         A batch can take up to 24h, so the live scrape path stays synchronous.
     python enrich.py --batch --all                        # every auction across the
         active AND archive read models. Named ids also resolve in either dir.
+    python enrich.py --enrich 1 <safe_id>                 # set the GOONERS_ENRICHMENT
+        gate via flag instead of exporting the env var (running the backfill *is*
+        the intent to enrich). Bare ``--enrich`` means 1; ``--enrich 0`` forces the
+        no-op path. ``ANTHROPIC_API_KEY`` is still required.
 
 Backfill spans active + archive, rewrites the NDJSON/Parquet read model, then
 mirrors the identified lots into the Supabase ``lot_enrichment`` table (a no-op
@@ -1223,6 +1227,19 @@ def main(argv: list[str] | None = None) -> int:
     estimate_only = "--estimate-only" in argv
     if "--text-only" in argv:
         os.environ["GOONERS_ENRICHMENT_TEXT_ONLY"] = "1"
+    # --enrich [0|1] sets the GOONERS_ENRICHMENT gate in-process so a backfill
+    # doesn't require exporting the env var first (running enrich.py *is* the
+    # intent to enrich). Bare --enrich means 1; --enrich 0 forces the no-op path.
+    # ANTHROPIC_API_KEY is still required (see is_enrichment_enabled). Safe ids are
+    # never "0"/"1", so the value is unambiguous to consume.
+    if "--enrich" in argv:
+        i = argv.index("--enrich")
+        if i + 1 < len(argv) and argv[i + 1] in ("0", "1"):
+            os.environ["GOONERS_ENRICHMENT"] = argv[i + 1]
+            argv = argv[:i] + argv[i + 2:]
+        else:
+            os.environ["GOONERS_ENRICHMENT"] = "1"
+            argv = argv[:i] + argv[i + 1:]
     # --limit N caps how many lots are enriched (a small validation slice).
     limit = None
     if "--limit" in argv:

@@ -48,6 +48,7 @@ GOONERS_NOMIC_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with p
 # Optional LLM enrichment (brand/model/condition; needs ANTHROPIC_API_KEY)
 GOONERS_ENRICHMENT=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with anthropic python3 scrape.py "<full_auction_url>"
 GOONERS_ENRICHMENT=1 uv run --with pyarrow --with anthropic python3 enrich.py "<safeId>"   # backfill existing read model
+uv run --with pyarrow --with anthropic python3 enrich.py --enrich 1 "<safeId>"   # same, gate via flag instead of env var (bare --enrich = 1; --enrich 0 = off)
 ```
 
 ## UI Changes — Screenshot Before Merging
