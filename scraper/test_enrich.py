@@ -162,6 +162,62 @@ class ParseEnrichmentTests(unittest.TestCase):
         self.assertEqual(out["searchQuery"], "KitchenAid Artisan 5 qt stand mixer")
         self.assertEqual(out["enrichmentConfidence"], "high")
 
+    def test_v4_lot_fields_map(self):
+        out = parse_enrichment({
+            "brand": "Pyrex", "model_name": "", "product_type": "mixing bowl",
+            "search_query": "Pyrex glass mixing bowl",
+            "quantity": 12, "is_mixed_lot": False,
+            "condition": "used", "condition_flags": ["damaged", "untested", "bogus"],
+            "key_attributes": ["glass", "3 qt", "", "vintage", "a", "b", "c", "d"],
+            "product_url": "", "brand_confidence": "high", "model_confidence": "low",
+        })
+        self.assertEqual(out["quantity"], "12")
+        self.assertEqual(out["isMixedLot"], "false")
+        # invalid flag dropped, order + dedup preserved
+        self.assertEqual(json.loads(out["conditionFlags"]), ["damaged", "untested"])
+        # capped at MAX_KEY_ATTRIBUTES, empties removed
+        self.assertEqual(len(json.loads(out["keyAttributes"])), 6)
+
+    def test_secondary_items_multi_brand_lot(self):
+        out = parse_enrichment({
+            "brand": "DeWalt", "model_name": "DCD771", "product_type": "drill",
+            "search_query": "DeWalt DCD771 cordless drill",
+            "is_mixed_lot": True, "quantity": 3,
+            "secondary_items": [
+                {"brand": "Milwaukee", "model_name": "M18", "product_type": "circular saw",
+                 "search_query": "Milwaukee M18 circular saw"},
+                {"brand": "", "model_name": "", "product_type": "", "search_query": ""},  # dropped
+                {"brand": "Ryobi", "model_name": "", "product_type": "sander",
+                 "search_query": "Ryobi orbital sander"},
+            ],
+            "condition": "used", "condition_flags": [], "key_attributes": [],
+            "brand_confidence": "high", "model_confidence": "high",
+        })
+        items = json.loads(out["secondaryItems"])
+        self.assertEqual([i["brand"] for i in items], ["Milwaukee", "Ryobi"])  # empty dropped
+        self.assertEqual(items[0]["modelOrSku"], "M18")  # model_name -> modelOrSku
+        self.assertEqual(items[1]["searchQuery"], "Ryobi orbital sander")
+
+    def test_secondary_items_empty_when_single_product(self):
+        out = parse_enrichment({
+            "brand": "Pyrex", "product_type": "bowl", "search_query": "Pyrex bowl",
+            "secondary_items": [], "condition": "used",
+            "brand_confidence": "high", "model_confidence": "low",
+        })
+        self.assertEqual(out["secondaryItems"], "")
+
+    def test_v4_mixed_lot_and_indeterminate_quantity(self):
+        out = parse_enrichment({
+            "brand": "", "product_type": "assorted items", "search_query": "",
+            "quantity": 0, "is_mixed_lot": True,
+            "condition": "used", "condition_flags": [], "key_attributes": [],
+            "brand_confidence": "low", "model_confidence": "low",
+        })
+        self.assertEqual(out["quantity"], "")          # 0 -> indeterminate
+        self.assertEqual(out["isMixedLot"], "true")
+        self.assertEqual(out["conditionFlags"], "")    # empty list -> ""
+        self.assertEqual(out["keyAttributes"], "")
+
     def test_legacy_single_confidence_still_parsed(self):
         # Older cached rows carried one `confidence`; it backfills both fields.
         out = parse_enrichment({"brand": "X", "model_or_sku": "Y", "confidence": "medium"})
@@ -518,6 +574,78 @@ class EbayQueryFromEnrichmentTests(unittest.TestCase):
         from ebay_query import enriched_exact_phrase
         item = {"enrichmentConfidence": "high", "brand": "DeWalt", "modelOrSku": "DCD771"}
         self.assertEqual(enriched_exact_phrase(item), '"DeWalt DCD771"')
+
+
+class EstimateCostTests(unittest.TestCase):
+    class _FakeClient:
+        def __init__(self, input_tokens):
+            self._n = input_tokens
+            self.messages = self
+
+        def count_tokens(self, **_kwargs):
+            return type("Ct", (), {"input_tokens": self._n})()
+
+    def test_zero_lots_is_free(self):
+        from enrich import estimate_enrichment_cost
+        out = estimate_enrichment_cost(self._FakeClient(999), [], batch=True)
+        self.assertEqual(out["lots"], 0)
+        self.assertEqual(out["est_cost_usd"], 0.0)
+
+    def test_extrapolates_from_sample(self):
+        from unittest import mock
+        import enrich
+        items = [{"id": i, "title": f"Item {i}", "description": "x"} for i in range(10)]
+        with mock.patch.object(enrich, "_fetch_chunk_images", return_value={}):
+            out = enrich.estimate_enrichment_cost(self._FakeClient(1000), items, batch=True)
+        self.assertEqual(out["lots"], 10)
+        self.assertEqual(out["avg_input_tokens"], 1000)
+        expected = (1000 * 10 / 1e6 * enrich.PRICE_IN_PER_MTOK * 0.5) + \
+                   (enrich.ESTIMATE_OUTPUT_TOKENS * 10 / 1e6 * enrich.PRICE_OUT_PER_MTOK * 0.5)
+        self.assertAlmostEqual(out["est_cost_usd"], round(expected, 2), places=2)
+
+    def test_batch_is_half_of_standard(self):
+        from unittest import mock
+        import enrich
+        items = [{"id": i, "title": f"Item {i}"} for i in range(6)]
+        with mock.patch.object(enrich, "_fetch_chunk_images", return_value={}):
+            batch = enrich.estimate_enrichment_cost(self._FakeClient(1000), items, batch=True)
+            std = enrich.estimate_enrichment_cost(self._FakeClient(1000), items, batch=False)
+        self.assertAlmostEqual(batch["est_cost_usd"], round(std["est_cost_usd"] / 2, 2), places=2)
+
+
+class NotesAndTextOnlyTests(unittest.TestCase):
+    def test_notes_parsed(self):
+        out = parse_enrichment({"brand": "X", "notes": "maker's mark 'JD' stamped on base"})
+        self.assertEqual(out["notes"], "maker's mark 'JD' stamped on base")
+        self.assertIn("notes", out)
+
+    def test_text_only_drops_images_and_changes_fingerprint(self):
+        from unittest import mock
+        import enrich
+        item = {"id": "x", "title": "Drill", "description": "DeWalt cordless",
+                "images": ["http://e/1.jpg", "http://e/2.jpg"]}
+        urls_img = enrich.item_image_urls(item)
+        fp_img = enrich.enrichment_fingerprint(item)
+        with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT_TEXT_ONLY": "1"}):
+            self.assertEqual(enrich.item_image_urls(item), [])           # images dropped
+            fp_text = enrich.enrichment_fingerprint(item)
+            content = enrich.build_content(item)
+        self.assertTrue(urls_img)                                        # had images by default
+        self.assertNotEqual(fp_img, fp_text)                             # distinct cache key
+        self.assertTrue(all(b["type"] == "text" for b in content))      # no image blocks
+
+
+class LimitFlagTests(unittest.TestCase):
+    def test_limit_parsed_and_passed(self):
+        from unittest import mock
+        import enrich
+        with mock.patch.object(enrich, "_backfill_from_supabase", return_value=0) as m:
+            enrich.main(["--batch", "--from-supabase", "--limit", "20"])
+        self.assertEqual(m.call_args.kwargs.get("limit"), 20)
+
+    def test_limit_requires_integer(self):
+        import enrich
+        self.assertEqual(enrich.main(["--from-supabase", "--limit", "oops"]), 1)
 
 
 class EnrichmentSummaryTests(unittest.TestCase):

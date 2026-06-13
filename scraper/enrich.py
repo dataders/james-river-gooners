@@ -100,10 +100,27 @@ IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16
 # shared knob (intended to also govern embeddings) keeps the passes in lockstep.
 MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
 
+# Pre-flight cost estimation (--estimate-only). Haiku 4.5 list price per million
+# tokens; the Batches API is 50% off. The output is small + bounded by
+# max_tokens, so a small constant covers it. All overridable for other models.
+PRICE_IN_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_IN", "1.0"))
+PRICE_OUT_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_OUT", "5.0"))
+ESTIMATE_SAMPLE = max(1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30")))
+ESTIMATE_OUTPUT_TOKENS = int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300"))
+
+
+def _text_only() -> bool:
+    """Text-only mode (``--text-only`` / GOONERS_ENRICHMENT_TEXT_ONLY=1): drop the
+    photos and enrich from the lot's text alone — much cheaper, for backfilling a
+    text-derivable field across history without re-paying the image tokens. Read
+    at call time (not import) so the CLI flag can set it before any enrichment."""
+    return os.environ.get("GOONERS_ENRICHMENT_TEXT_ONLY") == "1"
+
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
-# reusing a now-stale cached row (the fingerprint folds this in). v3: search-
-# oriented — product identity + a model-composed eBay query, not strict SKU.
-ENRICHMENT_SCHEMA_VERSION = "3"
+# reusing a now-stale cached row (the fingerprint folds this in). v5: adds a
+# freeform `notes` catch-all (future text-derivable fields can be mined from it
+# cheaply via --text-only, without re-reading the photos).
+ENRICHMENT_SCHEMA_VERSION = "5"
 
 # Fields written onto each item, camelCase to match the rest of the read model
 # (lotNumber, currentBid, rawCategory, …). `enrichmentModel` records which model
@@ -115,20 +132,38 @@ ENRICHMENT_SCHEMA_VERSION = "3"
 # than a SKU), `productType` the noun, and `searchQuery` the model's best eBay
 # sold-comp phrase. `brandConfidence`/`modelConfidence` are scored separately (a
 # confident brand is useful even without a model); `enrichmentConfidence` is their
-# max, the overall bar the Supabase mirror + UI use.
+# max, the overall bar the Supabase mirror + UI use. Lot economics + resale risk
+# (v4): `quantity` (item count as a digit string, "" if indeterminate),
+# `isMixedLot` ("true"/"false" — a box of *different* items vs many identical),
+# `conditionFlags` + `keyAttributes` (JSON-encoded string lists, "" when empty, so
+# the Parquet column stays a uniform string like `images`). Multi-brand lots
+# (Option B): `secondaryItems` — a JSON-encoded list of the *other* identifiable
+# products beyond the primary one ({brand, modelOrSku, productType, searchQuery}
+# each), "" when none, so a junk-drawer lot yields a comp per distinct product.
 ENRICHMENT_FIELDS = (
     "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
+    "quantity", "isMixedLot", "conditionFlags", "keyAttributes", "secondaryItems",
+    "notes",
     "brandConfidence", "modelConfidence", "enrichmentConfidence",
     "enrichmentModel", "enrichmentInputHash",
 )
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
+# Closed set of resale-risk flags the model may tag a lot with (any subset).
+CONDITION_FLAG_VALUES = ("untested", "damaged", "missing parts", "repaired", "incomplete")
+# Cap on stored key attributes (the model is asked for the few most identifying).
+MAX_KEY_ATTRIBUTES = 6
+# Cap on stored secondary products (multi-brand lots — the rest beyond the primary).
+MAX_SECONDARY_ITEMS = 4
+# The per-product sub-fields stored for each secondary item (camelCase read model).
+SECONDARY_ITEM_FIELDS = ("brand", "modelOrSku", "productType", "searchQuery")
 # Rank for taking the max of the per-field confidences.
 _CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
 # Structured-output schema (json_schema). Haiku 4.5 supports structured outputs;
-# enums keep condition/confidences on the closed value sets above. Every field is
-# required and additionalProperties is false, so the response is always parseable.
+# enums keep condition/confidences/flags on the closed value sets above. Every
+# field is required and additionalProperties is false, so the response is always
+# parseable.
 OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -136,13 +171,35 @@ OUTPUT_SCHEMA = {
         "model_name": {"type": "string"},
         "product_type": {"type": "string"},
         "search_query": {"type": "string"},
+        "quantity": {"type": "integer"},
+        "is_mixed_lot": {"type": "boolean"},
         "condition": {"type": "string", "enum": list(CONDITION_VALUES)},
+        "condition_flags": {"type": "array", "items": {"type": "string", "enum": list(CONDITION_FLAG_VALUES)}},
+        "key_attributes": {"type": "array", "items": {"type": "string"}},
+        # Other identifiable products in a multi-brand lot (the primary fields
+        # above describe the single most prominent/valuable item).
+        "secondary_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "brand": {"type": "string"},
+                    "model_name": {"type": "string"},
+                    "product_type": {"type": "string"},
+                    "search_query": {"type": "string"},
+                },
+                "required": ["brand", "model_name", "product_type", "search_query"],
+                "additionalProperties": False,
+            },
+        },
+        "notes": {"type": "string"},
         "product_url": {"type": "string"},
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
-    "required": ["brand", "model_name", "product_type", "search_query", "condition",
-                 "product_url", "brand_confidence", "model_confidence"],
+    "required": ["brand", "model_name", "product_type", "search_query", "quantity",
+                 "is_mixed_lot", "condition", "condition_flags", "key_attributes",
+                 "secondary_items", "notes", "product_url", "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
 
@@ -165,7 +222,36 @@ SYSTEM_PROMPT = (
     "mixer\", \"Craftsman 20V cordless drill\". Keep it short (3-7 words), no lot "
     "numbers or filler. If the lot is generic/mixed (e.g. \"box of assorted "
     "hardware\"), return an empty string.\n"
+    "- quantity: how many items the lot contains, as a whole number. A single "
+    "photo often shows several items — count them. Use the count when the lot is "
+    "multiple of the *same* item (e.g. 12 identical mugs -> 12) or a stated set "
+    "(\"set of 4\" -> 4). Use 1 for a single item. Use 0 only when the count truly "
+    "can't be determined.\n"
+    "- is_mixed_lot: true when the lot is an assortment of *different* items (a "
+    "junk drawer, a box of unrelated goods) rather than one item or many identical "
+    "ones. For a mixed lot, set the primary brand/model_name/product_type/"
+    "search_query to the single most prominent or valuable identifiable item and "
+    "list the OTHER identifiable products in secondary_items. If nothing in the "
+    "lot is identifiable (generic junk), leave the primary fields empty and score "
+    "low.\n"
+    "- secondary_items: the other distinct, identifiable products in a multi-brand "
+    "lot beyond the primary one above — each with its own brand, model_name, "
+    "product_type, and search_query (same rules as the primary fields). Empty "
+    "array for a single product or many identical items. Include only items worth "
+    "comping on their own; skip filler.\n"
     "- condition: one of new, open box, used, for parts, unknown.\n"
+    "- condition_flags: any of untested, damaged, missing parts, repaired, "
+    "incomplete that the listing states or the photos clearly show (e.g. \"AS-IS, "
+    "untested\", a visible crack). Empty array if none are indicated — do not "
+    "guess.\n"
+    "- key_attributes: up to the few most search-identifying specs (size, "
+    "capacity, material, color, dimensions, wattage, era) — e.g. [\"5 qt\", "
+    "\"stainless steel\"]. Empty array if nothing distinctive.\n"
+    "- notes: a brief freeform line capturing any other identifying or "
+    "resale-relevant detail not already in the fields above — maker's marks, "
+    "signatures, stamps, hallmarks, serial/pattern numbers, provenance, era cues, "
+    "or notable flaws. This is a catch-all so later searches can mine it; keep it "
+    "to one sentence. Empty string if there's nothing to add.\n"
     "- product_url: a canonical manufacturer/major-retailer product page URL ONLY "
     "if you are certain it is real; otherwise an empty string (a hallucinated URL "
     "is worse than none).\n"
@@ -256,7 +342,11 @@ def item_prompt_text(item: dict) -> str:
 
 def item_image_urls(item: dict, limit: int = MAX_IMAGES) -> list[str]:
     """The first ``limit`` http(s) photo URLs (#152). Many lots put the model/SKU
-    plate on photo 2 or 3, so enrichment reads several, not just the first."""
+    plate on photo 2 or 3, so enrichment reads several, not just the first. Empty
+    in text-only mode — the single chokepoint that makes the sync path, batch
+    image-fetch, and fingerprint all drop images at once."""
+    if _text_only():
+        return []
     urls = []
     for raw in item_images(item):
         url = str(raw)
@@ -280,8 +370,11 @@ def enrichment_fingerprint(item: dict) -> str:
     result, so the prior one can be reused. Folding in the schema version + image
     set + size means a prompt/schema change, a new photo count, or a resolution
     change re-enriches everything once."""
+    # Mode marker keeps a text-only result distinct from an image result for the
+    # same lot, so a later with-images run re-enriches rather than reusing it.
+    mode = "text" if _text_only() else f"img{MAX_IMAGE_PX}"
     payload = "\x1f".join(
-        (ENRICHMENT_SCHEMA_VERSION, MODEL, str(MAX_IMAGE_PX), item_prompt_text(item), *item_image_urls(item))
+        (ENRICHMENT_SCHEMA_VERSION, MODEL, mode, item_prompt_text(item), *item_image_urls(item))
     )
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
@@ -339,7 +432,10 @@ def build_request_params(item: dict, content: list | None = None) -> dict:
     content. Everything else is identical so both transports score the same."""
     return {
         "model": MODEL,
-        "max_tokens": 256,
+        # Room for the v4 fields (arrays + url); output tokens are tiny regardless.
+        "max_tokens": 512,
+        # Deterministic extraction — we want the same lot to score the same way.
+        "temperature": 0,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": content if content is not None else build_content(item)}],
         "output_config": {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
@@ -354,6 +450,64 @@ def _response_text(content) -> str:
 def _valid_confidence(raw_value) -> str:
     value = str(raw_value or "").strip().lower()
     return value if value in CONFIDENCE_VALUES else ""
+
+
+def _parse_quantity(raw_value) -> str:
+    """Item count as a digit string ("" when indeterminate). Stored as a string
+    so the Parquet column stays uniform with the rest of the enrichment fields."""
+    try:
+        n = int(raw_value)
+    except (TypeError, ValueError):
+        return ""
+    return str(n) if n >= 1 else ""
+
+
+def _parse_enum_list(raw_value, allowed) -> str:
+    """JSON-encoded list of the values from ``raw_value`` that are in ``allowed``
+    (de-duplicated, order-preserving). "" when empty — kept off-row like an empty
+    string so the read-model column is a uniform string (mirrors ``images``)."""
+    if not isinstance(raw_value, list):
+        return ""
+    seen, out = set(), []
+    for v in raw_value:
+        s = str(v or "").strip().lower()
+        if s in allowed and s not in seen:
+            seen.add(s)
+            out.append(s)
+    return json.dumps(out) if out else ""
+
+
+def _parse_str_list(raw_value, limit) -> str:
+    """JSON-encoded list of the first ``limit`` non-empty trimmed strings, or ""."""
+    if not isinstance(raw_value, list):
+        return ""
+    out = [s for v in raw_value if (s := str(v or "").strip())][:limit]
+    return json.dumps(out) if out else ""
+
+
+def _parse_secondary_items(raw_value) -> str:
+    """JSON-encoded list of the other identifiable products in a multi-brand lot
+    (Option B). Each is {brand, modelOrSku, productType, searchQuery}; ``model_name``
+    is accepted as the source key (matching the primary). An entry with no brand,
+    model, or search_query is dropped (nothing to comp). Capped at
+    ``MAX_SECONDARY_ITEMS``. "" when none, mirroring the other list fields."""
+    if not isinstance(raw_value, list):
+        return ""
+    out = []
+    for entry in raw_value:
+        if not isinstance(entry, dict):
+            continue
+        item = {
+            "brand": str(entry.get("brand") or "").strip(),
+            "modelOrSku": str(entry.get("model_name") or entry.get("model_or_sku") or "").strip(),
+            "productType": str(entry.get("product_type") or "").strip(),
+            "searchQuery": str(entry.get("search_query") or "").strip(),
+        }
+        if item["brand"] or item["modelOrSku"] or item["searchQuery"]:
+            out.append(item)
+        if len(out) >= MAX_SECONDARY_ITEMS:
+            break
+    return json.dumps(out) if out else ""
 
 
 def parse_enrichment(raw: dict) -> dict:
@@ -377,6 +531,12 @@ def parse_enrichment(raw: dict) -> dict:
     out["modelOrSku"] = str(raw.get("model_name") or raw.get("model_or_sku") or "").strip()
     out["productType"] = str(raw.get("product_type") or "").strip()
     out["searchQuery"] = str(raw.get("search_query") or "").strip()
+    out["quantity"] = _parse_quantity(raw.get("quantity"))
+    out["isMixedLot"] = "true" if bool(raw.get("is_mixed_lot")) else "false"
+    out["conditionFlags"] = _parse_enum_list(raw.get("condition_flags"), CONDITION_FLAG_VALUES)
+    out["keyAttributes"] = _parse_str_list(raw.get("key_attributes"), MAX_KEY_ATTRIBUTES)
+    out["secondaryItems"] = _parse_secondary_items(raw.get("secondary_items"))
+    out["notes"] = str(raw.get("notes") or "").strip()
     out["condition"] = condition if condition in CONDITION_VALUES else ""
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
     out["brandConfidence"] = brand_conf
@@ -844,7 +1004,48 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     return 0
 
 
-def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False) -> int:
+def estimate_enrichment_cost(client, to_enrich: list[dict], *, batch: bool = True,
+                             sample_size: int = ESTIMATE_SAMPLE) -> dict:
+    """Pre-flight cost estimate for enriching ``to_enrich`` — counts input tokens
+    on a spread sample (real content incl. inlined images, via ``count_tokens``)
+    and extrapolates to the full set. Output tokens are a small bounded constant
+    (the v4 JSON). Prints a one-line summary; never spends on completions."""
+    n = len(to_enrich)
+    if n == 0 or client is None:
+        print("  enrich: cost estimate — 0 lots to enrich ($0.00)")
+        return {"lots": 0, "avg_input_tokens": 0, "est_cost_usd": 0.0}
+    step = max(1, n // sample_size)
+    sample = to_enrich[::step][:sample_size]
+    images = _fetch_chunk_images(sample)
+    counts = []
+    for item in sample:
+        try:
+            params = build_request_params(item, content=build_content_inline(item, images.get(id(item), [])))
+            ct = client.messages.count_tokens(
+                model=params["model"], system=params["system"], messages=params["messages"]
+            )
+            counts.append(int(ct.input_tokens))
+        except Exception as exc:  # noqa: BLE001 — estimate is best-effort
+            print(f"  enrich: token count failed for a sample lot ({exc})", file=sys.stderr)
+    if not counts:
+        print("  enrich: cost estimate unavailable (token counting failed)", file=sys.stderr)
+        return {"lots": n, "avg_input_tokens": 0, "est_cost_usd": 0.0}
+    avg_in = sum(counts) / len(counts)
+    discount = 0.5 if batch else 1.0
+    in_cost = avg_in * n / 1e6 * PRICE_IN_PER_MTOK * discount
+    out_cost = ESTIMATE_OUTPUT_TOKENS * n / 1e6 * PRICE_OUT_PER_MTOK * discount
+    total = in_cost + out_cost
+    rate = "batch (50% off)" if batch else "standard"
+    print(
+        f"  enrich: cost estimate — {n} lots to enrich, ~{avg_in:.0f} input tok/lot "
+        f"(sampled {len(counts)}); ~${total:.2f} at {rate} rate "
+        f"(input ${in_cost:.2f} + output ${out_cost:.2f}, {MODEL})"
+    )
+    return {"lots": n, "avg_input_tokens": round(avg_in), "est_cost_usd": round(total, 2)}
+
+
+def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
+                            estimate_only: bool = False, limit: int | None = None) -> int:
     """Enrich lots fetched from the Supabase ``lots`` table (no NDJSON needed).
 
     Prior enrichment hashes are loaded from ``lot_enrichment`` so unchanged lots
@@ -886,11 +1087,27 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False)
         print("No auctions found in Supabase lots table.")
         return 0
 
+    # Pre-flight: sum the lots that would actually hit the API (reuse-gated),
+    # estimate the cost once across the whole corpus, and exit without spending.
+    if estimate_only:
+        all_to_enrich: list[dict] = []
+        for safe_id, archived, prefetched in work:
+            rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
+            if not rows:
+                continue
+            to_enrich, _reused = _partition_for_enrichment(rows, load_prior_enrichment_from_supabase(safe_id))
+            all_to_enrich.extend(to_enrich)
+        estimate_enrichment_cost(client, all_to_enrich, batch=use_batch)
+        return 0
+
+    remaining = limit  # None = no cap; otherwise stop once this many lots enriched
     all_rows = []
     for safe_id, archived, prefetched in work:
         rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
         if not rows:
             continue
+        if remaining is not None:
+            rows = rows[:remaining]  # --limit: validate on a small slice
         prior_by_id = load_prior_enrichment_from_supabase(safe_id)
         if use_batch:
             enrich_items_batch(rows, client=client, prior_by_id=prior_by_id)
@@ -900,6 +1117,10 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False)
         print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
         maybe_export_enrichment(rows)
         all_rows.extend(rows)
+        if remaining is not None:
+            remaining -= len(rows)
+            if remaining <= 0:
+                break
 
     print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
     return 0
@@ -910,9 +1131,24 @@ def main(argv: list[str] | None = None) -> int:
     use_batch = "--batch" in argv
     include_all = "--all" in argv
     from_supabase = "--from-supabase" in argv
-    argv = [arg for arg in argv if arg not in ("--batch", "--all", "--from-supabase")]
+    estimate_only = "--estimate-only" in argv
+    if "--text-only" in argv:
+        os.environ["GOONERS_ENRICHMENT_TEXT_ONLY"] = "1"
+    # --limit N caps how many lots are enriched (a small validation slice).
+    limit = None
+    if "--limit" in argv:
+        i = argv.index("--limit")
+        if i + 1 < len(argv) and argv[i + 1].isdigit():
+            limit = int(argv[i + 1])
+            argv = argv[:i] + argv[i + 2:]
+        else:
+            print("error: --limit requires a positive integer", file=sys.stderr)
+            return 1
+    argv = [arg for arg in argv
+            if arg not in ("--batch", "--all", "--from-supabase", "--estimate-only", "--text-only")]
     if from_supabase:
-        return _backfill_from_supabase(argv or None, use_batch=use_batch)
+        return _backfill_from_supabase(argv or None, use_batch=use_batch,
+                                       estimate_only=estimate_only, limit=limit)
     if not argv and not include_all:
         print(__doc__)
         return 1
