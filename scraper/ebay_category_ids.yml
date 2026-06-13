@@ -1,39 +1,44 @@
-# eBay L1 (top-level) category IDs, keyed by our broad category GROUP
-# (an item's normalized `category`). Used by ebay_query.py to scope the precise
-# /v1/scrape comp query to the right marketplace category — a category-matched
-# search keeps a "Rosenthal vase" comp out of, say, Auto Parts.
+# eBay L1 (top-level) category IDs, keyed by our broad category GROUP (an item's
+# normalized `category`). ebay_query.py attaches the mapped id as the `categoryId`
+# param on the PRECISE comp query, scoping it to the right marketplace department
+# so a "Rosenthal vase" comp can't drift into, say, Auto Parts. Only the specific
+# tier carries it, so an over-narrow category falls through to the broad/category
+# tiers (graceful degradation) rather than starving recall.
 #
-# Values are eBay L1 category IDs (strings); `"0"` means NO category filter
-# (used for groups whose right L1 is ambiguous or spans several — better an
-# unfiltered query than a wrong-category one that returns junk). Only attached
-# to the precise/specific tier, so an over-narrow category never starves the
-# broad/category fallbacks of recall.
-#
-# Refine / verify against https://sold-comps.com/ebay-categories .
+# Values verified against eBay's published top-level (L1) category set. (The live
+# eBay site and the sold-comps category browser are both bot-blocked / JS-only, so
+# these are the stable canonical L1 IDs, not scraped.) `"0"` = NO category filter,
+# used only where a group has no single correct L1 — see the unfiltered block.
 
-Art: "550"
-China & Glass: "870"
-Collectibles: "1"
-Coins & Currency: "11116"
-Jewelry & Watches: "281"
-Silver & Metal: "20081"
-Furniture: "11700"
-Home & Kitchen: "11700"
-Lawn & Garden: "11700"
-Fashion: "11450"
-Toys & Games: "220"
-Books & Media: "267"
-Sporting Goods: "888"
-Electronics: "293"
-Industrial & Equipment: "12576"
-Stamps: "260"
-Trading Cards: "0"
-Rugs & Textiles: "0"
-Hobbies: "0"
-Seasonal: "0"
-Vehicles: "0"
-Firearms: "0"
-Ammunition: "0"
-Science & Nature: "0"
-Pets & Kids: "0"
-Pet Adoption: "0"
+# ── Mapped to a single, unambiguous eBay L1 department ───────────────────────────
+Art: "550"                      # Art
+China & Glass: "870"            # Pottery & Glass
+Collectibles: "1"               # Collectibles
+Coins & Currency: "11116"       # Coins & Paper Money
+Jewelry & Watches: "281"        # Jewelry & Watches
+Silver & Metal: "20081"         # Antiques (estate sterling/metalware lives here)
+Furniture: "11700"              # Home & Garden (eBay's Furniture department)
+Home & Kitchen: "11700"         # Home & Garden
+Lawn & Garden: "11700"          # Home & Garden (Yard, Garden & Outdoor Living)
+Fashion: "11450"                # Clothing, Shoes & Accessories
+Toys & Games: "220"             # Toys & Hobbies
+Books & Media: "267"            # Books & Magazines
+Sporting Goods: "888"           # Sporting Goods
+Electronics: "293"              # Consumer Electronics
+Industrial & Equipment: "12576" # Business & Industrial
+Stamps: "260"                   # Stamps
+
+# ── Intentionally unfiltered ("0") ───────────────────────────────────────────────
+# No single correct L1, a separate vertical, or prohibited on eBay — a keyword-only
+# search is safer than forcing a wrong category. Revisit if/when Phase 2 maps lots
+# to leaf categories (then most of these can resolve to a specific leaf id).
+Trading Cards: "0"    # split: sports cards (64482) vs CCG/TCG (under Toys & Hobbies)
+Rugs & Textiles: "0"  # split: antique/oriental rugs (Antiques) vs H&G rugs + linens
+Hobbies: "0"          # spans crafts, drones, aviation, musical instruments
+Seasonal: "0"         # split: vintage holiday collectibles vs modern decor
+Vehicles: "0"         # eBay Motors is a separate vertical with its own comp dynamics
+Firearms: "0"         # firearms are prohibited on eBay — no valid category
+Ammunition: "0"       # prohibited on eBay
+Science & Nature: "0" # split: rocks/minerals (Collectibles) vs lab gear (B&I) vs taxidermy
+Pets & Kids: "0"      # split: pet supplies, baby goods, exercise equipment
+Pet Adoption: "0"     # adoption listings — not a sellable eBay category
