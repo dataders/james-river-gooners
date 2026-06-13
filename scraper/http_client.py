@@ -20,6 +20,20 @@ BROWSER_USER_AGENT = (
 )
 
 
+def supabase_session(job: str = "scraper") -> requests.Session:
+    """Return a ``requests.Session`` for Supabase/PostgREST calls.
+
+    Stamps a ``gooners-scraper/<job>`` User-Agent so the Supabase API logs can
+    attribute compute by job (vs the web app's browser UA and the E2E suite's
+    ``gooners-e2e``). These sessions only ever talk to PostgREST, so the UA is
+    safe to set at the session level — unlike :func:`make_session`, whose
+    browser UA the auction platforms gate on.
+    """
+    session = requests.Session()
+    session.headers["User-Agent"] = f"gooners-scraper/{job}"
+    return session
+
+
 def make_session(*, verify: bool = True) -> requests.Session:
     """Return a configured ``requests.Session``.
 

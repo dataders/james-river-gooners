@@ -32,12 +32,12 @@ sources:
   - name: supabase_metrics
     description: >
       Supabase platform telemetry (host load, database internals, service layer)
-      scraped from the project's privileged Prometheus endpoint and loaded by
-      supabase_stats/pipeline.py (dlt). Lives in the dedicated supabase_metrics
-      schema of the attached Supabase Postgres — NOT an RLS-public app table.
-      Long-format: one row per (scraped_at, metric, label set).
-    database: supabase   # alias set in profiles.yml attach config
-    schema: supabase_metrics
+      scraped from the project's privileged Prometheus endpoint by
+      supabase_stats/pipeline.py (dlt) and loaded into MotherDuck (my_db,
+      schema supabase_metrics) — native to the warehouse, like github_stats, so
+      dbt reads it with no Postgres hop. Long-format: one row per
+      (scraped_at, metric, label set).
+    schema: supabase_metrics   # native MotherDuck (my_db.supabase_metrics)
     tables:
       - name: metric_samples
         description: >
@@ -65,9 +65,12 @@ sources:
             tests: [not_null]
 
   - name: gooners
-    description: Supabase Postgres tables, attached to DuckDB read-only as the "supabase" database.
-    database: supabase   # alias set in profiles.yml attach config
-    schema: public
+    description: >
+      The RLS-public Supabase app tables, copied into MotherDuck (my_db, schema
+      supabase_app) each refresh by supabase_app/pipeline.py (dlt). dbt reads
+      them natively from the warehouse — no live Postgres attach during build
+      (which used to hammer the shared Supabase instance).
+    schema: supabase_app   # native MotherDuck (my_db.supabase_app)
     tables:
       - name: sold_lots
         description: >

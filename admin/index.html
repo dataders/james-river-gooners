@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Gooners · Admin</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- The dashboard iframe renders via the prefab runtime on jsDelivr; warm the
+         DNS/TLS connection early so the post-login render isn't waiting on it. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/admin-entry.jsx"></script>
+  </body>
+</html>

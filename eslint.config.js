@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '.vite', 'node_modules']),
+  // `.claude` holds nested git worktrees (agent workspaces) — full repo
+  // checkouts that must never be linted as part of this tree's `eslint .`.
+  globalIgnores(['dist', '.vite', 'node_modules', '.claude']),
   // TypeScript files (the migration is incremental — most of the tree is still
   // .js/.jsx; see tsconfig.json). Lint-only recommended rules, no type-aware
   // project parsing, so this stays fast and doesn't duplicate `npm run type-check`.

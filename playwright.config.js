@@ -2,30 +2,17 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
-  // The grid loads ~6.5K lots from a slow free-tier DB and each test's
-  // beforeEach waits for the full set, so the per-test budget is generous.
-  // waitForLoad's worst case is ~140s (70s first attempt + reload + 70s
-  // retry), so the budget must clear that or a slow cold first-load fails
-  // the test before the helper's own reload fallback can rescue it.
-  timeout: 150_000,
+  // Data is served from the in-process Supabase mock (tests/e2e/_mock), so the
+  // grid loads in milliseconds and counts are deterministic — none of the
+  // free-tier-contention band-aids this config used to carry are needed. The
+  // budget is comfortable for a fully-parallel run on a controlled fixture.
+  timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
-  // Cap CI parallelism: every worker loads the full dataset at once, and too
-  // many simultaneous loads saturate free-tier Supabase's connections and stall
-  // the load past the timeout. Two workers keeps contention low while still
-  // parallelising vs serial.
-  workers: process.env.CI ? 2 : undefined,
   forbidOnly: !!process.env.CI,
+  // Deterministic mock → no flaky cold-DB loads to paper over. One retry in CI
+  // stays as cheap insurance against the occasional rendering/timing blip.
   retries: process.env.CI ? 1 : 0,
-  // Fail fast in CI when the environment is wedged: if the backend is down,
-  // every test fails the same way in beforeEach — stop after 10 definitive
-  // failures (flaky-then-pass doesn't count) instead of grinding all 116
-  // tests through the 90s timeout twice, which once held the job for 2h42m.
-  maxFailures: process.env.CI ? 10 : 0,
-  // A healthy CI run takes ~6 minutes; anything past 15 means the environment
-  // is hung, not slow. Aborting here still writes the report/artifact, unlike
-  // the workflow-level timeout-minutes backstop that kills the job outright.
-  globalTimeout: process.env.CI ? 15 * 60_000 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: 'http://localhost:5173',
@@ -39,12 +26,24 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // userAgent after the device spread so it overrides Desktop Chrome's UA:
+    // tags every request (incl. Supabase PostgREST) as the E2E suite so the
+    // Supabase API logs can attribute compute to tests vs the web app vs the
+    // scraper pipelines (`gooners-scraper/<job>`).
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], userAgent: 'gooners-e2e' } },
   ],
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
+    // Pin a dead-end Supabase URL so the app's Supabase code path is active
+    // (isSupabaseConfigured === true) but the base host resolves nowhere — a
+    // second layer of defence behind the path-based request mock. CI no longer
+    // needs to pass the real VITE_SUPABASE_* secrets to the test job.
+    env: {
+      VITE_SUPABASE_URL: 'https://e2e.supabase.test',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_e2e_dummy',
+    },
   },
 })

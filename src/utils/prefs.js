@@ -34,7 +34,7 @@ export const DEFAULT_PREFS = {
   margin: 30,
 }
 
-const PERSISTED_KEYS = [
+export const PERSISTED_KEYS = [
   'includedCategories',
   'excludedCategories',
   'excludedGroups',
@@ -65,6 +65,30 @@ export function sanitizePrefs(prefs) {
     return { ...prefs, maxHours: null }
   }
   return prefs
+}
+
+// Project a full prefs object down to just the persisted slice — the exact
+// shape that round-trips through localStorage and the cloud `filter_preferences`
+// row. searchQuery and other non-persisted fields are dropped.
+export function pickPersistedPrefs(prefs) {
+  const out = {}
+  for (const key of PERSISTED_KEYS) {
+    out[key] = prefs[key]
+  }
+  return out
+}
+
+// Normalize an arbitrary (e.g. cloud-loaded, possibly stale-schema) prefs blob
+// into a clean persisted slice: defaults fill missing/legacy keys, unknown keys
+// are dropped, and sanitizePrefs strips a stuck maxHours. Used when applying a
+// cloud preferences row so a new field added since the row was written takes
+// its default rather than going undefined.
+export function normalizePersistedPrefs(incoming) {
+  const merged = { ...DEFAULT_PREFS }
+  for (const key of PERSISTED_KEYS) {
+    if (incoming && incoming[key] !== undefined) merged[key] = incoming[key]
+  }
+  return pickPersistedPrefs(sanitizePrefs(merged))
 }
 
 export function loadPrefs() {

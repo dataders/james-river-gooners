@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures.js'
 import { waitForLoad, getItemCount } from './helpers.js'
 
 // The grid is window-virtualized (TanStack Virtual): only a window of cells is

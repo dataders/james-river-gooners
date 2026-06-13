@@ -174,9 +174,9 @@ def upsert_sold_lots(
     if not key:
         raise RuntimeError("SUPABASE_SECRET_KEY is required to write sold history to Supabase")
 
-    import requests
+    from http_client import supabase_session
 
-    session = session or requests.Session()
+    session = session or supabase_session("sold-history")
     endpoint = f"{url.rstrip('/')}/rest/v1/{SOLD_LOTS_TABLE}"
     headers = {
         "apikey": key,
@@ -209,7 +209,8 @@ def iter_lots_from_supabase(session=None):
     """Yield archived lot dicts from the Supabase ``lots`` table."""
     from supabase_lots import list_auction_safe_ids, fetch_lots_for_auction
 
-    session = session or __import__("requests").Session()
+    from http_client import supabase_session
+    session = session or supabase_session("sold-history")
     safe_ids = list_auction_safe_ids(archived=True, session=session)
     print(f"Found {len(safe_ids)} archived auction(s) in Supabase")
     for safe_id in safe_ids:
