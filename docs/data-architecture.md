@@ -195,7 +195,9 @@ the `CompLedger` seam (`scraper/ebay_comps.py`):
 
 `ebay_comps.py fetch-direct` knobs that govern this:
 
-- `--monthly-budget N` (default 2000) — hard stop once the month's requests reach `N`. `0` disables.
+- `--monthly-budget N` (default 5000, matching the SoldComps plan) — a *ledger-derived*
+  hard stop once the month's counted attempts reach `N`. `0` disables. This is a
+  **secondary, coarse** cap (see "The provider meter is the source of truth" below).
 - daily pacing (on by default; `--no-daily-pacing` to disable) — spreads the remaining
   budget evenly across the remaining days of the month, so a churning catalog gets
   coverage all month instead of exhausting the budget in the first few days.
@@ -227,3 +229,35 @@ means each comp request buys a good query the first time.
 pre-enrichment query will *not* re-fetch until it goes stale, so an improved
 `searchQuery` only takes effect on the next eligible (stale or never-attempted)
 fetch — not immediately when enrichment lands.
+
+### The provider meter is the source of truth (not the ledger)
+
+The comp ledger (`comp_query_attempts` / the file ledger) counts **query
+attempts**, which is *not* the same as **billed SoldComps requests**, so the two
+diverge and the ledger-based `--monthly-budget` cannot track the real meter on
+its own:
+
+- A ledger row is written for **every** attempt, including the ~90% that return
+  `no_results` and any that fall through to the **free** direct-eBay HTML scraper
+  / agent-browser fallback (`ebay_fetch.fetch_sold_matches`) when no
+  `SOLDCOMPS_API_KEY` is set — none of those are billed.
+- Billed requests also come from runs that **don't write to this ledger** (manual
+  `ebay_comps.py` runs, the file-ledger backend, local dev) — invisible to the
+  ledger but real spend.
+
+The fix uses what the provider already hands back: `GET /v1/scrape` returns the
+remaining monthly quota in **`X-Usage-*` response headers** on every call (there
+is no separate usage endpoint). `soldcomps_sold_matches` parses those
+(`extract_usage_headers` / `usage_remaining`) and the fetch loop **stops when the
+provider's reported remaining hits the floor** (`--provider-min-remaining`, env
+`GOONERS_SOLDCOMPS_MIN_REMAINING`, default 0) — the authoritative, intra-run
+meter, independent of the ledger. The ledger `--monthly-budget` stays as a coarse
+secondary cap.
+
+The same call site emits a `soldcomps_api_request` PostHog event per provider
+call (`scraper/telemetry.py`), carrying `status`, `provider_remaining`, and the
+raw `X-Usage-*` values — so the real billed count and live remaining quota are
+queryable across **every** run (CI, manual, local), the one chokepoint they all
+share. Telemetry is gated like the rest of the optional stack: a silent no-op
+unless `GOONERS_POSTHOG_KEY` (the write-only ingestion key, never `VITE_`) is set
+and the `posthog` SDK imports.

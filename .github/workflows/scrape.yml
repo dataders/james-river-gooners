@@ -45,6 +45,10 @@ jobs:
       # enrich step is a no-op without both this flag and the key.
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GOONERS_ENRICHMENT: ${{ inputs.enrichment && '1' || '0' }}
+      # Server-side telemetry (scraper/telemetry.py): records the metered
+      # SoldComps API calls + the provider's reported remaining quota to PostHog.
+      # No-op when the key is absent. The write-only ingestion key, not VITE_.
+      GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
     steps:
       - uses: actions/checkout@v5
 
@@ -140,11 +144,11 @@ jobs:
             # Every run — hourly or the manual "Refresh eBay Comps" workflow —
             # draws from the same pool, derived from the read model itself, so
             # the pipeline never exceeds the SoldComps quota.
-            uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+            uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
               python ebay_comps.py fetch-direct \
                 --skip-attempted \
                 --queries-per-item 2 \
-                --monthly-budget "${GOONERS_EBAY_COMPS_MONTHLY_BUDGET:-10000}" \
+                --monthly-budget "${GOONERS_EBAY_COMPS_MONTHLY_BUDGET:-5000}" \
                 --limit "${GOONERS_EBAY_COMPS_LIMIT:-2000}"
           fi
 

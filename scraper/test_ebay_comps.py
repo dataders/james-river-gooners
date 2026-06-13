@@ -15,6 +15,7 @@ from ebay_comps import (
     comp_rows_for_item,
     ensure_comp_tables,
     extract_ebay_item_id,
+    extract_usage_headers,
     fetch_direct,
     fetch_sold_matches,
     fresh_comp_keys_from_files,
@@ -25,6 +26,7 @@ from ebay_comps import (
     parse_sold_search_html,
     smoke,
     soldcomps_sold_matches,
+    usage_remaining,
     utc_now_text,
 )
 
@@ -87,6 +89,50 @@ class ExactPhraseSearchTests(unittest.TestCase):
             "enrichmentConfidence": "low",
         })
         self.assertEqual(searches[0]["query"], '"Pair of brass candlesticks"')
+
+
+class ProviderUsageHeaderTests(unittest.TestCase):
+    def test_extract_usage_headers_keeps_only_quota_headers_lowercased(self):
+        usage = extract_usage_headers({
+            "X-Usage-Limit": "5000",
+            "X-Usage-Remaining": "1625",
+            "Content-Type": "application/json",
+            "X-RateLimit-Reset": "1700000000",
+        })
+        self.assertEqual(
+            usage,
+            {
+                "x-usage-limit": "5000",
+                "x-usage-remaining": "1625",
+                "x-ratelimit-reset": "1700000000",
+            },
+        )
+
+    def test_extract_usage_headers_tolerates_non_mapping(self):
+        # A bare Mock (as older tests pass for response.headers) must not raise.
+        self.assertEqual(extract_usage_headers(Mock()), {})
+
+    def test_usage_remaining_parses_first_known_header(self):
+        self.assertEqual(usage_remaining({"x-usage-remaining": "42"}), 42)
+        self.assertEqual(usage_remaining({"x-ratelimit-remaining": "7.0"}), 7)
+        self.assertIsNone(usage_remaining({"x-usage-limit": "5000"}))
+        self.assertIsNone(usage_remaining({"x-usage-remaining": "n/a"}))
+
+    def test_soldcomps_result_carries_provider_remaining(self):
+        response = Mock(status_code=200)
+        response.headers = {"X-Usage-Remaining": "1624", "X-Usage-Limit": "5000"}
+        response.json.return_value = {"items": []}
+        session = Mock()
+        session.get.return_value = response
+
+        result = soldcomps_sold_matches(
+            session,
+            {"kind": "broad", "query": "vase", "url": "https://example.test"},
+            api_key="test-key",
+        )
+        self.assertEqual(result["status"], "no_results")
+        self.assertEqual(result["provider_remaining"], 1624)
+        self.assertEqual(result["usage"]["x-usage-limit"], "5000")
 
 
 _SOLD_ITEM_HTML = """
@@ -897,6 +943,36 @@ class BackfillBudgetTest(unittest.TestCase):
             )
         self.assertEqual(called["n"], 0)  # stale, but already attempted -> skipped
         self.assertEqual(summary["items_attempted"], 0)
+
+    def test_provider_remaining_floor_stops_the_run(self):
+        # The provider reports remaining quota on each response; once it hits the
+        # floor the run stops, regardless of the ledger-based monthly budget.
+        items = [self._item(i) for i in range(10)]
+        calls = {"n": 0}
+
+        def fake(session, search, max_matches=3):
+            calls["n"] += 1
+            # Provider says one request left, then zero on the next call.
+            remaining = max(0, 2 - calls["n"])
+            return {
+                "status": "no_results",
+                "matches": [],
+                "warning": None,
+                "provider_remaining": remaining,
+            }
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch("ebay_comps.load_manifest_items", return_value=items), \
+                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+            summary = ebay_comps.fetch_direct(
+                output_dir=Path(tmp), limit=100, queries_per_item=1,
+                monthly_budget=0, stale_hours=0, sleep_seconds=0,
+                mirror_to_warehouse=False, provider_min_remaining=0,
+            )
+        # Second call returns remaining=0 → stop. No third request is made.
+        self.assertEqual(calls["n"], 2)
+        self.assertTrue(summary["provider_exhausted"])
+        self.assertEqual(summary["provider_remaining"], 0)
 
     def test_prioritizes_soonest_ending_auction(self):
         later = self._item("l", title="Distinctive Walnut Dresser Antique",

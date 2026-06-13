@@ -13,9 +13,10 @@ import subprocess
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from time import sleep
+from time import monotonic, sleep
 from urllib.parse import parse_qs, urlparse
 
+import telemetry
 from ebay_util import normalize_spaces, text_value
 
 DEFAULT_USER_AGENT = (
@@ -38,6 +39,49 @@ USER_AGENTS = [
 
 def random_user_agent(_choice=random.choice) -> str:
     return _choice(USER_AGENTS)
+
+
+# sold-comps.com reports remaining monthly quota on every /v1/scrape response
+# (X-Usage-* / X-RateLimit-* headers) rather than via a separate endpoint, so
+# these headers — not the comp ledger — are the authoritative meter.
+USAGE_HEADER_PREFIXES = ("x-usage-", "x-ratelimit-", "x-rate-limit-")
+
+# Candidate header names carrying the "requests remaining this period" count,
+# most specific first. NOTE: the provider's exact spelling needs confirming
+# against a live response (we can't authenticate from CI/tests); once the real
+# header name is known, make sure it's listed here.
+_REMAINING_HEADER_NAMES = (
+    "x-usage-remaining",
+    "x-usage-requests-remaining",
+    "x-ratelimit-remaining",
+    "x-rate-limit-remaining",
+)
+
+
+def extract_usage_headers(headers) -> dict:
+    """Pull the provider's quota headers, lowercased, values kept as strings."""
+    usage: dict[str, str] = {}
+    try:
+        items = list(headers.items())
+    except (AttributeError, TypeError):
+        # Missing/odd headers object (e.g. a bare test Mock) — no usage to read.
+        return usage
+    for name, value in items:
+        low = str(name).lower()
+        if low.startswith(USAGE_HEADER_PREFIXES):
+            usage[low] = str(value)
+    return usage
+
+
+def usage_remaining(usage: dict) -> int | None:
+    """Best-effort parse of the provider's remaining-quota header, or None."""
+    for name in _REMAINING_HEADER_NAMES:
+        if name in usage:
+            try:
+                return int(float(usage[name]))
+            except (TypeError, ValueError):
+                return None
+    return None
 
 
 def is_ebay_item_url(value: str) -> bool:
@@ -292,6 +336,8 @@ def soldcomps_sold_matches(
     if not api_key:
         return None
 
+    query_kind = search.get("kind", "")
+    started = monotonic()
     try:
         response = session.get(
             os.environ.get("SOLDCOMPS_API_URL", SOLDCOMPS_API_URL),
@@ -303,13 +349,48 @@ def soldcomps_sold_matches(
             },
             timeout=timeout,
         )
-    except OSError:
+    except OSError as exc:
+        # A request that never reached the provider isn't billed, but record it
+        # so transport failures are visible in telemetry alongside billed calls.
+        telemetry.capture(
+            "soldcomps_api_request",
+            {
+                "status": "exception",
+                "query_kind": query_kind,
+                "error": type(exc).__name__,
+                "latency_ms": round((monotonic() - started) * 1000),
+            },
+        )
         return None
+
+    usage = extract_usage_headers(response.headers)
+    remaining = usage_remaining(usage)
+    latency_ms = round((monotonic() - started) * 1000)
+
+    def _emit(status: str, matched: int) -> None:
+        telemetry.capture(
+            "soldcomps_api_request",
+            {
+                "status": status,
+                "http_status": response.status_code,
+                "query_kind": query_kind,
+                "matched_count": matched,
+                "latency_ms": latency_ms,
+                "provider_remaining": remaining,
+                # Forward the raw quota headers (x-usage-* → x_usage_*) so the
+                # provider's exact accounting is queryable in PostHog.
+                **{key.replace("-", "_"): value for key, value in usage.items()},
+            },
+        )
+
     if response.status_code >= 400:
+        _emit("error", 0)
         return {
             "status": "error",
             "warning": f"SoldComps API returned HTTP {response.status_code}.",
             "matches": [],
+            "usage": usage,
+            "provider_remaining": remaining,
         }
 
     payload = response.json()
@@ -330,10 +411,14 @@ def soldcomps_sold_matches(
         if len(matches) >= max_matches:
             break
 
+    status = "ok" if matches else "no_results"
+    _emit(status, len(matches))
     return {
-        "status": "ok" if matches else "no_results",
+        "status": status,
         "warning": search.get("warning") or "",
         "matches": matches,
+        "usage": usage,
+        "provider_remaining": remaining,
     }
 
 
