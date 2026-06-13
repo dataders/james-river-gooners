@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { itemKey } from '../utils/itemKey'
 import { normalizeManifest } from '../utils/manifest'
 import { isPastDeadline } from '../utils/dates'
-import { syncUrlParam } from '../utils/urlState'
+import { syncUrlParam, readListParam, URL_PARAMS } from '../utils/urlState'
 import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { captureEvent } from '../lib/telemetry'
@@ -133,7 +133,7 @@ export function useAuctionData(archiveMode = 'active') {
   const [archiveLoaded, setArchiveLoaded] = useState(false)
   const archiveLoadingRef = useRef(false)
   const [excludedAuctions, setExcludedAuctions] = useState(() =>
-    new URLSearchParams(window.location.search).getAll('hideAuction')
+    readListParam(URL_PARAMS.hideAuction)
   )
   const [loading, setLoading] = useState(true)
   // `loading` flips false as soon as the first page paints (progressive render);
@@ -323,20 +323,20 @@ export function useAuctionData(archiveMode = 'active') {
     setExcludedAuctions(prev => {
       const idx = prev.indexOf(safeId)
       const next = idx >= 0 ? prev.filter(id => id !== safeId) : [...prev, safeId]
-      syncUrlParam('hideAuction', next)
+      syncUrlParam(URL_PARAMS.hideAuction, next)
       return next
     })
   }
 
   const showAllAuctions = () => {
     setExcludedAuctions([])
-    syncUrlParam('hideAuction', [])
+    syncUrlParam(URL_PARAMS.hideAuction, [])
   }
 
   const showOnlyAuction = (safeId, allSafeIds) => {
     const excluded = allSafeIds.filter(id => id !== safeId)
     setExcludedAuctions(excluded)
-    syncUrlParam('hideAuction', excluded)
+    syncUrlParam(URL_PARAMS.hideAuction, excluded)
   }
 
   const hideSource = (source, allAuctions) => {
@@ -345,7 +345,7 @@ export function useAuctionData(archiveMode = 'active') {
         .filter(a => a.source === source && !prev.includes(a.safeId))
         .map(a => a.safeId)
       const next = [...prev, ...toAdd]
-      syncUrlParam('hideAuction', next)
+      syncUrlParam(URL_PARAMS.hideAuction, next)
       return next
     })
   }
@@ -356,7 +356,7 @@ export function useAuctionData(archiveMode = 'active') {
         allAuctions.filter(a => a.source === source).map(a => a.safeId)
       )
       const next = prev.filter(id => !sourceIds.has(id))
-      syncUrlParam('hideAuction', next)
+      syncUrlParam(URL_PARAMS.hideAuction, next)
       return next
     })
   }

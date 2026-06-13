@@ -1,0 +1,185 @@
+import { create } from 'zustand'
+import {
+  loadPrefs,
+  savePrefs,
+  sanitizePrefs,
+  DEFAULT_PREFS,
+  DEFAULT_EXCLUDED_GROUPS,
+} from '../utils/prefs'
+import {
+  syncUrlParam,
+  readParam,
+  readListParam,
+  URL_PARAMS,
+} from '../utils/urlState'
+
+// Single source of truth for filter/layout preferences. Replaces the per-field
+// useState soup in the old usePreferences: state lives here, persistence
+// (localStorage) and URL sync run through ONE generic `setField` instead of 25
+// near-identical setters, and components can subscribe to just the slices they
+// render. `usePreferences` is now a thin selector shim over this store, so its
+// public API (and every consumer) is unchanged.
+
+// Per-field config: which URL param mirrors it (if any) and whether it persists
+// to localStorage. This is the one place a field's wiring is declared.
+const FIELD_CONFIG = {
+  // searchQuery is URL-only (shareable), never persisted to localStorage.
+  searchQuery: { url: URL_PARAMS.search, persist: false },
+  minPrice: { url: URL_PARAMS.minPrice },
+  maxPrice: { url: URL_PARAMS.maxPrice },
+  minBids: { url: URL_PARAMS.minBids },
+  maxBids: { url: URL_PARAMS.maxBids },
+  minBidders: { url: URL_PARAMS.minBidders },
+  maxBidders: { url: URL_PARAMS.maxBidders },
+  minHours: { url: URL_PARAMS.minHours },
+  maxHours: { url: URL_PARAMS.maxHours },
+  minProfit: { url: URL_PARAMS.minProfit },
+  localOnly: { url: URL_PARAMS.localOnly },
+  hasComp: { url: URL_PARAMS.hasComp },
+  hasCannonsComp: { url: URL_PARAMS.hasCannonsComp },
+  sort: { url: URL_PARAMS.sort },
+  // Personal layout/margin prefs: persisted, but not shareable filters.
+  margin: {},
+  viewMode: {},
+}
+
+// Merge persisted prefs with any URL overrides (a shared link wins on load).
+function loadInitialPrefs() {
+  const saved = loadPrefs()
+  const merged = { ...saved }
+  const num = (p) => Number(readParam(p))
+  if (readParam(URL_PARAMS.search) !== null) merged.searchQuery = readParam(URL_PARAMS.search) || ''
+  if (readParam(URL_PARAMS.minPrice) !== null) merged.minPrice = num(URL_PARAMS.minPrice)
+  if (readParam(URL_PARAMS.maxPrice) !== null) merged.maxPrice = num(URL_PARAMS.maxPrice)
+  if (readParam(URL_PARAMS.minBids) !== null) merged.minBids = num(URL_PARAMS.minBids)
+  if (readParam(URL_PARAMS.maxBids) !== null) merged.maxBids = num(URL_PARAMS.maxBids)
+  if (readParam(URL_PARAMS.minBidders) !== null) merged.minBidders = num(URL_PARAMS.minBidders)
+  if (readParam(URL_PARAMS.maxBidders) !== null) merged.maxBidders = num(URL_PARAMS.maxBidders)
+  if (readParam(URL_PARAMS.minHours) !== null) merged.minHours = num(URL_PARAMS.minHours)
+  if (readParam(URL_PARAMS.maxHours) !== null) merged.maxHours = num(URL_PARAMS.maxHours)
+  if (readParam(URL_PARAMS.minProfit) !== null) merged.minProfit = num(URL_PARAMS.minProfit)
+  if (readListParam(URL_PARAMS.excludedCategories).length) merged.excludedCategories = readListParam(URL_PARAMS.excludedCategories)
+  if (readListParam(URL_PARAMS.excludedGroups).length) merged.excludedGroups = readListParam(URL_PARAMS.excludedGroups)
+  if (readParam(URL_PARAMS.localOnly) !== null) merged.localOnly = readParam(URL_PARAMS.localOnly) === '1'
+  if (readParam(URL_PARAMS.hasComp) !== null) merged.hasComp = readParam(URL_PARAMS.hasComp) === '1'
+  if (readParam(URL_PARAMS.hasCannonsComp) !== null) merged.hasCannonsComp = readParam(URL_PARAMS.hasCannonsComp) === '1'
+  if (readParam(URL_PARAMS.sort) !== null) merged.sort = readParam(URL_PARAMS.sort) || ''
+  // Re-sanitize after the URL merge so a stray ?maxHrs=0 can't blank the grid.
+  return sanitizePrefs(merged)
+}
+
+export const usePreferencesStore = create((set, get) => {
+  // The one place a single field changes: update state, persist, mirror to URL.
+  const setField = (key, value) => {
+    set({ [key]: value })
+    const cfg = FIELD_CONFIG[key] || {}
+    if (cfg.persist !== false) savePrefs(get())
+    if (cfg.url) syncUrlParam(cfg.url, value)
+  }
+
+  return {
+    ...DEFAULT_PREFS,
+    ...loadInitialPrefs(),
+
+    setField,
+
+    // Named range/scalar setters — thin, stable wrappers over setField.
+    setSearchQuery: (v) => setField('searchQuery', v),
+    setMinPrice: (v) => setField('minPrice', v),
+    setMaxPrice: (v) => setField('maxPrice', v),
+    setMinBids: (v) => setField('minBids', v),
+    setMaxBids: (v) => setField('maxBids', v),
+    setMinBidders: (v) => setField('minBidders', v),
+    setMaxBidders: (v) => setField('maxBidders', v),
+    setMinHours: (v) => setField('minHours', v),
+    setMaxHours: (v) => setField('maxHours', v),
+    setMinProfit: (v) => setField('minProfit', v),
+    setLocalOnly: (v) => setField('localOnly', v),
+    setHasComp: (v) => setField('hasComp', v),
+    setHasCannonsComp: (v) => setField('hasCannonsComp', v),
+    setSort: (v) => setField('sort', v),
+    setMargin: (v) => setField('margin', v),
+    setViewMode: (v) => setField('viewMode', v),
+
+    // --- Category include/exclude actions (ported verbatim in behaviour) ---
+    toggleIncluded: (category) => {
+      const included = [...get().includedCategories]
+      const idx = included.indexOf(category)
+      if (idx >= 0) included.splice(idx, 1)
+      else included.push(category)
+      set({ includedCategories: included })
+      savePrefs(get())
+    },
+
+    toggleExcluded: (category) => {
+      const excluded = [...get().excludedCategories]
+      const idx = excluded.indexOf(category)
+      if (idx >= 0) excluded.splice(idx, 1)
+      else excluded.push(category)
+      set({ excludedCategories: excluded })
+      savePrefs(get())
+      syncUrlParam(URL_PARAMS.excludedCategories, excluded)
+    },
+
+    clearIncluded: () => {
+      set({ includedCategories: [] })
+      savePrefs(get())
+    },
+
+    // Hide an entire normalized group (coarse switch — also catches future raw
+    // categories that normalize into the group, unlike toggling each chip).
+    hideGroup: (group) => {
+      if (get().excludedGroups.includes(group)) return
+      const excludedGroups = [...get().excludedGroups, group]
+      syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
+      set({ excludedGroups })
+      savePrefs(get())
+    },
+
+    // Fully reveal a group: drop it from the group exclusions and un-hide any of
+    // its individual raw chips that were excluded.
+    showGroup: (group, rawNames = []) => {
+      const excludedGroups = get().excludedGroups.filter(g => g !== group)
+      const rawSet = new Set(rawNames)
+      const excludedCategories = get().excludedCategories.filter(c => !rawSet.has(c))
+      syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
+      syncUrlParam(URL_PARAMS.excludedCategories, excludedCategories)
+      set({ excludedGroups, excludedCategories })
+      savePrefs(get())
+    },
+
+    // Hide everything: exclude every group (covers all raw categories too).
+    hideAll: (allGroups) => {
+      syncUrlParam(URL_PARAMS.excludedGroups, allGroups)
+      set({ excludedGroups: [...allGroups] })
+      savePrefs(get())
+    },
+
+    // Bulk "show all" reveals every normally-browsable category but keeps the
+    // standing default-hidden groups (Firearms/Vehicles) hidden.
+    showAll: () => {
+      const excludedGroups = [...DEFAULT_EXCLUDED_GROUPS]
+      syncUrlParam(URL_PARAMS.excludedCategories, [])
+      syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
+      set({ excludedCategories: [], excludedGroups })
+      savePrefs(get())
+    },
+
+    // Isolate a single raw category: exclude everything else (coarse group
+    // exclusions for other groups, fine raw exclusions for siblings in `keep`'s
+    // own group — so a 100-coin auction yields a few grp= params, not 100 cat=).
+    showOnly: (keep, groupedCategories) => {
+      const keepGroup = groupedCategories.find(g => g.rawCategories.some(c => c.name === keep))
+      const excludedGroups = groupedCategories
+        .filter(g => g !== keepGroup)
+        .map(g => g.group)
+      const excludedCategories = keepGroup
+        ? keepGroup.rawCategories.map(c => c.name).filter(n => n !== keep)
+        : []
+      syncUrlParam(URL_PARAMS.excludedCategories, excludedCategories)
+      syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
+      set({ excludedCategories, excludedGroups })
+      savePrefs(get())
+    },
+  }
+})
