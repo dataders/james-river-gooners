@@ -6,7 +6,7 @@ import { parseAuctionDate } from './dates.js'
 import { itemKey } from './itemKey.js'
 
 export const SORT_OPTIONS = [
-  { key: '', label: 'Featured' },
+  { key: 'foryou', label: 'For You' },
   { key: 'margin', label: 'Best margin' },
   { key: 'maxbid', label: 'Max bid' },
   { key: 'ending', label: 'Ending soonest' },
@@ -87,6 +87,17 @@ function sortByScoreMap(
  * maps an item's composite key to its estimated profit in dollars, or null when
  * there's no resale signal; unscored lots sort last.
  */
+/**
+ * Order items by personalized "For You" score, highest first. `forYouByKey`
+ * maps an item's composite key to its affinity score; unscored lots sort last.
+ */
+export function sortByForYou(
+  items: Item[],
+  forYouByKey: Map<string, number | null>,
+): Item[] {
+  return sortByScoreMap(items, forYouByKey)
+}
+
 export function sortByMargin(
   items: Item[],
   marginByKey: Map<string, number | null>,

@@ -12,6 +12,7 @@ import { usePreferences } from './hooks/usePreferences'
 import { useTheme } from './hooks/useTheme'
 import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { useItemPipeline } from './hooks/useItemPipeline'
+import { useForYou } from './hooks/useForYou'
 import { itemKey } from './utils/itemKey'
 import { overlayEnrichment } from './utils/enrichment'
 import { syncUrlParam, pushUrlParam, readParam, readBoolParam, URL_PARAMS, ITEM_PANEL_STATE } from './utils/urlState'
@@ -291,6 +292,28 @@ export default function App() {
   const deferredMinHours = useDeferredValue(minHours)
   const deferredMaxHours = useDeferredValue(maxHours)
 
+  // Items the user has signalled interest in — drives the For You sort.
+  // favoriteIds in deps ensures the memo updates when favorites change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const favoriteItems = useMemo(() => items.filter(isFavorite), [items, favoriteIds])
+  const bidItems = useMemo(
+    () => items.filter(i => cannonBids.bidItemIds.has(String(i.id))),
+    [items, cannonBids.bidItemIds]
+  )
+  const hasForYouSignal = favoriteItems.length > 0 || bidItems.length > 0
+
+  const { scoreByKey: forYouScores } = useForYou(
+    favoriteItems,
+    bidItems,
+    auctions,
+    sort === 'foryou' && hasForYouSignal,
+  )
+
+  // If the user's history disappears (logout / clears all favorites), fall back.
+  useEffect(() => {
+    if (sort === 'foryou' && !hasForYouSignal) setSort('')
+  }, [sort, hasForYouSignal, setSort])
+
   // The whole locality → search → filter → sort chain lives in useItemPipeline
   // (extracted verbatim from here — see that hook for the per-stage comments).
   const {
@@ -329,6 +352,7 @@ export default function App() {
     allCannonsComps,
     categorySoldStats,
     bidItemIds: cannonBids.bidItemIds,
+    forYouByKey: forYouScores,
   })
 
   // Search telemetry — debounced so it fires once the query settles, not on
@@ -467,7 +491,7 @@ export default function App() {
               ))}
             </div>
 
-            <SortBar value={sort} onChange={setSort} />
+            <SortBar value={sort} onChange={setSort} showForYou={hasForYouSignal} />
           </div>
 
           <div className="header-actions">
