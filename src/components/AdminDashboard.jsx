@@ -4,7 +4,8 @@
 // uploaded to a PRIVATE Supabase Storage bucket (`admin-dashboard/latest.html`,
 // migration 0020). Only the owner's email can read it (Storage RLS) — the data
 // never ships in the public bundle. This component:
-//   1. resolves the Supabase session (reusing the app's useAuth),
+//   1. resolves the Supabase session (a local telemetry-free hook, so the admin
+//      bundle stays lean),
 //   2. shows a login gate when signed out / a "not authorized" notice for any
 //      other user,
 //   3. for the owner, downloads the object with the authenticated client and
@@ -14,14 +15,52 @@
 // The Storage RLS policy is the real gate; the email check here is only UX
 // (a non-owner's download returns nothing regardless).
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { useAuth } from '../hooks/useAuth'
 
 const OWNER_EMAIL = 'swanson.anders@gmail.com'
 const BUCKET = 'admin-dashboard'
 const OBJECT = 'latest.html'
+
+// Minimal Supabase-only session hook for the admin route. Deliberately does NOT
+// reuse the app's useAuth — that pulls in the telemetry module (and the ~60 KB
+// posthog-js bundle), which this owner-only page has no use for. Keeping the
+// admin bundle lean is a real load-time win on the sign-in gate.
+function useOwnerSession() {
+  const [session, setSession] = useState(/** @type {any} */ (null))
+  const [loading, setLoading] = useState(() => Boolean(supabase))
+
+  useEffect(() => {
+    if (!supabase) return  // no setState here → effect-safe
+    let active = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) { setSession(data.session ?? null); setLoading(false) }
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next ?? null); setLoading(false)
+    })
+    return () => { active = false; sub.subscription.unsubscribe() }
+  }, [])
+
+  const signIn = useCallback(async (email, password) => {
+    if (!supabase) return { error: 'Sign-in is not available right now.' }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    return error ? { error: error.message } : {}
+  }, [])
+
+  const signInWithGoogle = useCallback(async () => {
+    if (!supabase) return
+    // Return to /admin after the OAuth round-trip, not the main site root.
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } })
+  }, [])
+
+  const signOut = useCallback(async () => {
+    if (supabase) await supabase.auth.signOut()
+  }, [])
+
+  return { user: session?.user ?? null, loading, signIn, signInWithGoogle, signOut }
+}
 
 const shell = {
   minHeight: '100vh',
@@ -101,7 +140,7 @@ const ghostBtn = {
 }
 
 export function AdminDashboard() {
-  const auth = useAuth()
+  const auth = useOwnerSession()
   const isOwner = auth.user?.email === OWNER_EMAIL
 
   // Download the private HTML and hand back a blob URL. The Storage RLS policy
