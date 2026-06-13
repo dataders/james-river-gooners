@@ -204,3 +204,26 @@ the `CompLedger` seam (`scraper/ebay_comps.py`):
   items refresh once they pass `--stale-hours`.
 - Candidates are processed **soonest-ending auction first**, so budget lands on lots
   that are still biddable.
+
+### Enrichment must run before comps
+
+LLM enrichment (`scraper/enrich.py`) and the comps fetch share an **ordering
+dependency**: enrichment should run/finish *before* the sold-comps fetch, because
+the comp query builder consumes enrichment output. `enrich.py` extracts per-lot
+`brand`, `modelOrSku`, and a model-composed `searchQuery`; `ebay_query.py`'s
+`enriched_exact_phrase` uses that `searchQuery` as the **primary** eBay
+sold-listing query (falling back to a quoted `brand model` phrase), and
+`ebay_comps.py` `build_ebay_sold_searches` only reaches for the enriched phrase
+when `brandConfidence`/`modelConfidence` is medium/high — low/absent confidence
+falls through to the cruder description/token query.
+
+Because the API is metered (one request == one search query against the shared
+monthly budget above), running comps *before* enrichment spends budget on weak
+queries and then re-spends to refresh once enrichment lands. Enrichment-first
+means each comp request buys a good query the first time.
+
+**Caveat:** comps freshness keys on `--stale-hours` (and `--skip-attempted`),
+**not** on whether a lot was enriched. A lot that already got a comp fetch with a
+pre-enrichment query will *not* re-fetch until it goes stale, so an improved
+`searchQuery` only takes effect on the next eligible (stale or never-attempted)
+fetch — not immediately when enrichment lands.
