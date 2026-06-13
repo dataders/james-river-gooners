@@ -14,6 +14,7 @@ export const CHANGELOG = [
       { id: 'perf-faster-first-load', icon: '⚡', text: 'The site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.' },
       { id: 'perf-smoother-scrolling', icon: '🧈', text: 'Scrolling through thousands of lots is smoother now, and typing in search or dragging the filter sliders no longer makes the grid stutter.' },
       { id: 'nav-back-closes-item', icon: '⬅️', text: 'Pressing your browser or phone Back button now closes an open item instead of leaving the site.' },
+      { id: 'filter-counts-match-archive', icon: '🔢', text: 'The Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.' },
     ],
   },
   {

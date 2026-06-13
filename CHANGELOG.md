@@ -9,6 +9,7 @@ list in `src/data/changelog.js`, so update that file when you add an entry.
 - ⚡ **Faster first load** — the site now loads noticeably faster the first time you open it — the heavy AI-search model only downloads once you actually use search, instead of on every visit.
 - 🧈 **Smoother scrolling** — scrolling through thousands of lots is smoother now, and typing in search or dragging the filter sliders no longer makes the grid stutter.
 - ⬅️ **Back closes an item** — pressing your browser or phone Back button now closes an open item instead of leaving the site.
+- 🔢 **Filter counts match the view** — the Favorites and Ignored counts in the filter menu now match what you actually see — they reflect the active/archived auctions currently loaded, instead of always showing your all-time total.
 
 ## 2026-06-09 — Faster loading
 

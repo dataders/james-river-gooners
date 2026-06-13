@@ -296,6 +296,10 @@ export default function App() {
   // favoriteIds in deps ensures the memo updates when favorites change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const favoriteItems = useMemo(() => items.filter(isFavorite), [items, favoriteIds])
+  // Ignored items present in the currently-loaded set (active/archive scope).
+  // ignoredIds in deps ensures the memo updates when the ignore list changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const ignoredItems = useMemo(() => items.filter(isIgnored), [items, ignoredIds])
   const bidItems = useMemo(
     () => items.filter(i => cannonBids.bidItemIds.has(String(i.id))),
     [items, cannonBids.bidItemIds]
@@ -544,8 +548,8 @@ export default function App() {
           onMyBidsPanelOpen={() => setMyBidsPanelOpen(true)}
           bestDeals={bestDeals}
           onBestDealsToggle={handleBestDealsToggle}
-          favoriteCount={favoriteIds.length}
-          ignoredCount={ignoredIds.length}
+          favoriteCount={favoriteItems.length}
+          ignoredCount={ignoredItems.length}
           cannonBidsLinked={cannonBids.linked}
           cannonBidCount={cannonBidCount}
           cannonBidsLoading={cannonBids.bidsLoading}
