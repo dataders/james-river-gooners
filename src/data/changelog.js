@@ -35,6 +35,7 @@ export const CHANGELOG = [
       { id: 'cat-whole-vehicles', icon: '🚗', text: 'Whole cars, trucks and motorcycles now land in the Vehicles category, so hiding Vehicles actually hides them — previously they slipped into "Other" and kept showing up.' },
       { id: 'cat-other-cleanup', icon: '🗂️', text: 'Hundreds of lots that were dumped in "Other" — sports cards, coins, rugs, die-cast toys, cast-iron & enamelware, stamps, vintage advertising — now sort into their proper categories, so browsing and filtering by category is much more accurate.' },
       { id: 'cat-pet-adoption', icon: '🐾', text: 'Added a dedicated Pet Adoption category for the live animals listed for adoption, so they\'re easy to find — or hide.' },
+      { id: 'ended-lots-hidden', icon: '🧹', text: 'Lots that have already closed are now hidden from the main grid by default — even when the rest of their auction is still live and staggering lots shut over several days. Flip on "All auctions" to bring ended lots (and their final prices) back into view.' },
     ],
   },
   {

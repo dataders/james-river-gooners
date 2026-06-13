@@ -263,16 +263,41 @@ export function useAuctionData(archiveMode = 'active') {
     [dynamicArchivedKey]
   )
 
+  // Beyond whole-auction expiry, *individual* lots can close early: HiBid and
+  // Rasmus stagger lot close times, sometimes across days, so a lot can be past
+  // its own deadline while its parent auction is still live. Treat any such lot
+  // exactly like a lot in a fully-closed auction — hidden from the active grid,
+  // surfaced under the archive toggle. Keyed on a stable joined string (same
+  // trick as dynamicArchivedKey) so the Set identity only changes when
+  // membership changes, not on every minute tick — otherwise `allItems` (and
+  // the heavy search/filter pipeline downstream) would rebuild each tick.
+  // Memoized off `now` so a lot that closes while the page is open drops out
+  // within one tick. Falls back to the auction deadline when a lot carries no
+  // per-lot date (closed Cannon's lots), matching itemTimeRemaining.
+  const dynamicEndedKey = useMemo(
+    () => activeItems
+      .filter(item => !item.archived && isPastDeadline(item.endDate || item.auctionEndDate, now))
+      .map(itemKey)
+      .sort()
+      .join('\n'),
+    [activeItems, now]
+  )
+
+  const dynamicEndedItemIds = useMemo(
+    () => new Set(dynamicEndedKey ? dynamicEndedKey.split('\n') : []),
+    [dynamicEndedKey]
+  )
+
   const allItems = useMemo(() => {
     let merged
     if (!includeArchived) {
-      merged = dynamicArchivedIds.size === 0
+      merged = dynamicEndedItemIds.size === 0
         ? activeItems
-        : activeItems.filter(item => !dynamicArchivedIds.has(item.auctionSafeId))
+        : activeItems.filter(item => !dynamicEndedItemIds.has(itemKey(item)))
     } else {
-      const active = dynamicArchivedIds.size === 0
+      const active = dynamicEndedItemIds.size === 0
         ? activeItems
-        : activeItems.map(item => dynamicArchivedIds.has(item.auctionSafeId)
+        : activeItems.map(item => dynamicEndedItemIds.has(itemKey(item))
             ? { ...item, archived: true }
             : item)
       // The same lot can appear in both the active and archive snapshots while
@@ -297,7 +322,7 @@ export function useAuctionData(archiveMode = 'active') {
       seen.add(k)
       return true
     })
-  }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicArchivedIds])
+  }, [activeItems, archiveItems, includeArchived, archiveMode, dynamicEndedItemIds])
 
   const auctions = useMemo(() => {
     if (!includeArchived) {

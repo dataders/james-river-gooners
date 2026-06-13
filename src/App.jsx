@@ -236,10 +236,19 @@ export default function App() {
     if (found) {
       setSelectedKey(itemKey(found))
       itemDeepLinked.current = true
-    } else if (loadComplete) {
-      itemDeepLinked.current = true
+      return
     }
-  }, [loading, loadComplete, items])
+    if (!loadComplete) return
+    // Not in the active set. The lot may be archived — or a live-auction lot
+    // that closed early and is now hidden from the active grid (per-lot expiry).
+    // Pull in the archive so the shared link still resolves, then retry as the
+    // larger set loads; only give up once the archive has finished loading too.
+    if (archiveMode === 'active') {
+      changeArchiveMode('both')
+      return
+    }
+    if (!archiveLoading) itemDeepLinked.current = true
+  }, [loading, loadComplete, items, archiveMode, archiveLoading, changeArchiveMode])
 
   const handleItemClick = useCallback((item) => {
     const key = itemKey(item)
