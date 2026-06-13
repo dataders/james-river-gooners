@@ -2710,10 +2710,17 @@ body {
 /* LLM enrichment block in the detail view (#99/#104). */
 .detail-enrichment {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detail-enrichment-row {
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .detail-product-label {
@@ -2724,6 +2731,100 @@ body {
 
 .detail-product-link {
   font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+/* v4/v5 enrichment metadata: lot economics, resale-risk flags, key specs, and
+   the other identifiable products in a multi-brand lot (#269). */
+.enrichment-badge {
+  flex: none;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-radius: 3px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+}
+
+.enrichment-badge-mixed {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 50%, var(--border));
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+}
+
+.enrichment-badge-qty {
+  color: var(--text-muted);
+}
+
+.enrichment-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.enrichment-flag {
+  font-size: 0.68rem;
+  color: #c9822a;
+  background: color-mix(in srgb, #c9822a 12%, transparent);
+  border: 1px solid color-mix(in srgb, #c9822a 40%, transparent);
+  border-radius: 3px;
+  padding: 1px 6px;
+  text-transform: capitalize;
+}
+
+.enrichment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.enrichment-chip {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--chip-bg);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+.enrichment-secondary {
+  width: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.enrichment-secondary-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.enrichment-secondary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.enrichment-secondary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.enrichment-secondary-name {
+  color: var(--text);
+}
+
+.enrichment-secondary-link {
+  flex: none;
+  font-size: 0.72rem;
   color: var(--text-muted);
   text-decoration: underline;
 }

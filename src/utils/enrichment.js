@@ -44,6 +44,52 @@ export function detailLabel(item) {
   return phrase.charAt(0).toUpperCase() + phrase.slice(1)
 }
 
+// Parse a JSON-encoded string list (conditionFlags/keyAttributes) into a clean
+// array of non-empty strings. The scraper stores these as a JSON string ("" when
+// empty) so the Parquet column stays a uniform string; the browser parses them
+// here. Returns [] on anything unparseable.
+export function parseStringList(raw) {
+  const s = (raw || '').trim()
+  if (!s) return []
+  let parsed
+  try {
+    parsed = JSON.parse(s)
+  } catch {
+    return []
+  }
+  if (!Array.isArray(parsed)) return []
+  return parsed.map(v => (v == null ? '' : String(v).trim())).filter(Boolean)
+}
+
+// Parse the JSON-encoded `secondaryItems` list — the *other* identifiable
+// products in a multi-brand lot — into display-ready entries. Each carries its
+// own {brand, modelOrSku, productType, searchQuery}; we derive a `label`
+// ("Brand Model" or the product type) and keep `searchQuery` so the UI can offer
+// a per-product eBay search. Entries with nothing identifiable are dropped.
+export function parseSecondaryItems(raw) {
+  const s = (raw || '').trim()
+  if (!s) return []
+  let parsed
+  try {
+    parsed = JSON.parse(s)
+  } catch {
+    return []
+  }
+  if (!Array.isArray(parsed)) return []
+  return parsed
+    .map(entry => {
+      if (!entry || typeof entry !== 'object') return null
+      const brand = String(entry.brand || '').trim()
+      const model = String(entry.modelOrSku || '').trim()
+      const productType = String(entry.productType || '').trim()
+      const searchQuery = String(entry.searchQuery || '').trim()
+      const label = [brand, model].filter(Boolean).join(' ') || productType
+      if (!label) return null
+      return { brand, model, productType, searchQuery, label }
+    })
+    .filter(Boolean)
+}
+
 // Returns a display-ready enrichment object for confident lots, or null when
 // there's nothing trustworthy to show. `label` is the "Brand Model" product name
 // (the most useful field for the "Lot - N" placeholder lots whose own title
@@ -60,7 +106,30 @@ export function getDisplayEnrichment(item) {
   const condition = (item?.condition || '').trim()
   const rawUrl = (item?.productUrl || '').trim()
   const productUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : ''
-  return { brand, model, label, condition, productUrl, confidence: confidenceOf(item) }
+  // v4/v5 lot economics + resale risk (#269). `isMixedLot` arrives as the string
+  // "true"/"false" (or a bool from the NDJSON), `quantity` as a digit string, and
+  // the two flag lists / secondary products as JSON strings — parsed once here so
+  // every consumer gets ready-to-render values.
+  const isMixedLot = String(item?.isMixedLot ?? '').toLowerCase() === 'true'
+  const quantity = (item?.quantity || '').trim()
+  const conditionFlags = parseStringList(item?.conditionFlags)
+  const keyAttributes = parseStringList(item?.keyAttributes)
+  const secondaryItems = parseSecondaryItems(item?.secondaryItems)
+  return {
+    brand,
+    model,
+    label,
+    condition,
+    productUrl,
+    confidence: confidenceOf(item),
+    productType: (item?.productType || '').trim(),
+    searchQuery: (item?.searchQuery || '').trim(),
+    isMixedLot,
+    quantity,
+    conditionFlags,
+    keyAttributes,
+    secondaryItems,
+  }
 }
 
 // True when the lot has a trustworthy, display-ready identification (a confident
@@ -84,8 +153,15 @@ export function mapEnrichmentRow(row) {
   return {
     brand: row?.brand || '',
     modelOrSku: row?.model_or_sku || '',
+    productType: row?.product_type || '',
+    searchQuery: row?.search_query || '',
     condition: row?.condition || '',
     productUrl: row?.product_url || '',
+    quantity: row?.quantity || '',
+    isMixedLot: row?.is_mixed_lot || '',
+    conditionFlags: row?.condition_flags || '',
+    keyAttributes: row?.key_attributes || '',
+    secondaryItems: row?.secondary_items || '',
     detailCategory: row?.detail_category || '',
     details: row?.details || '',
     detailConfidence: row?.detail_confidence || '',

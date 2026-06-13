@@ -14,7 +14,7 @@ async function fetchOne(id: string) {
     const rows = await fetchAllRows((from, to) =>
       client
         .from('public_lot_enrichment')
-        .select('item_id,brand,model_or_sku,condition,product_url,confidence,model')
+        .select('item_id,brand,model_or_sku,product_type,search_query,condition,product_url,quantity,is_mixed_lot,condition_flags,key_attributes,secondary_items,detail_category,details,detail_confidence,confidence,model')
         .eq('auction_safe_id', id)
         .range(from, to))
     return { id, items: groupEnrichmentRows(rows) }
