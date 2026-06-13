@@ -24,7 +24,12 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from supabase_comps import json_safe, resolve_credentials
+from supabase_comps import (
+    READ_TIMEOUT,
+    _request_with_retry,
+    json_safe,
+    resolve_credentials,
+)
 
 LOTS_TABLE = "lots"
 DEFAULT_BATCH_SIZE = 500
@@ -268,19 +273,25 @@ def _row_to_item(row: dict) -> dict:
 
 
 def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[dict]:
-    """Paginate through a PostgREST endpoint and return all rows."""
+    """Paginate through a PostgREST endpoint and return all rows.
+
+    Each page GET retries transient failures (network/timeout/429/5xx) with
+    backoff via the shared helper, and uses the generous shared read timeout.
+    A full-table scan here is dozens of sequential requests, so one blip must
+    not abort the whole ``--from-supabase`` backfill — the same reason
+    ``comp_item_freshness`` needed it (a flat 30s read fired as an unretryable
+    ReadTimeout)."""
     PAGE = 1000
     rows = []
     offset = 0
     while True:
-        resp = session.get(
-            endpoint,
-            headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
-            params=params,
-            timeout=30,
+        page_headers = {**headers, "Range": f"{offset}-{offset + PAGE - 1}"}
+        resp = _request_with_retry(
+            lambda h=page_headers: session.get(
+                endpoint, headers=h, params=params, timeout=READ_TIMEOUT,
+            ),
+            f"Supabase GET {endpoint}",
         )
-        if not resp.ok:
-            raise RuntimeError(f"Supabase GET failed: {resp.status_code} {resp.text[:300]}")
         batch = resp.json()
         rows.extend(batch)
         if len(batch) < PAGE:
