@@ -119,10 +119,13 @@ ENRICHMENT_SCHEMA_VERSION = "4"
 # (v4): `quantity` (item count as a digit string, "" if indeterminate),
 # `isMixedLot` ("true"/"false" — a box of *different* items vs many identical),
 # `conditionFlags` + `keyAttributes` (JSON-encoded string lists, "" when empty, so
-# the Parquet column stays a uniform string like `images`).
+# the Parquet column stays a uniform string like `images`). Multi-brand lots
+# (Option B): `secondaryItems` — a JSON-encoded list of the *other* identifiable
+# products beyond the primary one ({brand, modelOrSku, productType, searchQuery}
+# each), "" when none, so a junk-drawer lot yields a comp per distinct product.
 ENRICHMENT_FIELDS = (
     "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
-    "quantity", "isMixedLot", "conditionFlags", "keyAttributes",
+    "quantity", "isMixedLot", "conditionFlags", "keyAttributes", "secondaryItems",
     "brandConfidence", "modelConfidence", "enrichmentConfidence",
     "enrichmentModel", "enrichmentInputHash",
 )
@@ -132,6 +135,10 @@ CONFIDENCE_VALUES = ("low", "medium", "high")
 CONDITION_FLAG_VALUES = ("untested", "damaged", "missing parts", "repaired", "incomplete")
 # Cap on stored key attributes (the model is asked for the few most identifying).
 MAX_KEY_ATTRIBUTES = 6
+# Cap on stored secondary products (multi-brand lots — the rest beyond the primary).
+MAX_SECONDARY_ITEMS = 4
+# The per-product sub-fields stored for each secondary item (camelCase read model).
+SECONDARY_ITEM_FIELDS = ("brand", "modelOrSku", "productType", "searchQuery")
 # Rank for taking the max of the per-field confidences.
 _CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
@@ -151,13 +158,29 @@ OUTPUT_SCHEMA = {
         "condition": {"type": "string", "enum": list(CONDITION_VALUES)},
         "condition_flags": {"type": "array", "items": {"type": "string", "enum": list(CONDITION_FLAG_VALUES)}},
         "key_attributes": {"type": "array", "items": {"type": "string"}},
+        # Other identifiable products in a multi-brand lot (the primary fields
+        # above describe the single most prominent/valuable item).
+        "secondary_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "brand": {"type": "string"},
+                    "model_name": {"type": "string"},
+                    "product_type": {"type": "string"},
+                    "search_query": {"type": "string"},
+                },
+                "required": ["brand", "model_name", "product_type", "search_query"],
+                "additionalProperties": False,
+            },
+        },
         "product_url": {"type": "string"},
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
     "required": ["brand", "model_name", "product_type", "search_query", "quantity",
                  "is_mixed_lot", "condition", "condition_flags", "key_attributes",
-                 "product_url", "brand_confidence", "model_confidence"],
+                 "secondary_items", "product_url", "brand_confidence", "model_confidence"],
     "additionalProperties": False,
 }
 
@@ -187,8 +210,16 @@ SYSTEM_PROMPT = (
     "can't be determined.\n"
     "- is_mixed_lot: true when the lot is an assortment of *different* items (a "
     "junk drawer, a box of unrelated goods) rather than one item or many identical "
-    "ones. For a mixed lot, set brand/model_name/search_query empty and "
-    "model_confidence low — there is no single product to comp.\n"
+    "ones. For a mixed lot, set the primary brand/model_name/product_type/"
+    "search_query to the single most prominent or valuable identifiable item and "
+    "list the OTHER identifiable products in secondary_items. If nothing in the "
+    "lot is identifiable (generic junk), leave the primary fields empty and score "
+    "low.\n"
+    "- secondary_items: the other distinct, identifiable products in a multi-brand "
+    "lot beyond the primary one above — each with its own brand, model_name, "
+    "product_type, and search_query (same rules as the primary fields). Empty "
+    "array for a single product or many identical items. Include only items worth "
+    "comping on their own; skip filler.\n"
     "- condition: one of new, open box, used, for parts, unknown.\n"
     "- condition_flags: any of untested, damaged, missing parts, repaired, "
     "incomplete that the listing states or the photos clearly show (e.g. \"AS-IS, "
@@ -423,6 +454,31 @@ def _parse_str_list(raw_value, limit) -> str:
     return json.dumps(out) if out else ""
 
 
+def _parse_secondary_items(raw_value) -> str:
+    """JSON-encoded list of the other identifiable products in a multi-brand lot
+    (Option B). Each is {brand, modelOrSku, productType, searchQuery}; ``model_name``
+    is accepted as the source key (matching the primary). An entry with no brand,
+    model, or search_query is dropped (nothing to comp). Capped at
+    ``MAX_SECONDARY_ITEMS``. "" when none, mirroring the other list fields."""
+    if not isinstance(raw_value, list):
+        return ""
+    out = []
+    for entry in raw_value:
+        if not isinstance(entry, dict):
+            continue
+        item = {
+            "brand": str(entry.get("brand") or "").strip(),
+            "modelOrSku": str(entry.get("model_name") or entry.get("model_or_sku") or "").strip(),
+            "productType": str(entry.get("product_type") or "").strip(),
+            "searchQuery": str(entry.get("search_query") or "").strip(),
+        }
+        if item["brand"] or item["modelOrSku"] or item["searchQuery"]:
+            out.append(item)
+        if len(out) >= MAX_SECONDARY_ITEMS:
+            break
+    return json.dumps(out) if out else ""
+
+
 def parse_enrichment(raw: dict) -> dict:
     """Map the model's JSON to the camelCase fields, validating the closed sets.
     An invalid condition/confidence or a non-http product_url is dropped to ""
@@ -448,6 +504,7 @@ def parse_enrichment(raw: dict) -> dict:
     out["isMixedLot"] = "true" if bool(raw.get("is_mixed_lot")) else "false"
     out["conditionFlags"] = _parse_enum_list(raw.get("condition_flags"), CONDITION_FLAG_VALUES)
     out["keyAttributes"] = _parse_str_list(raw.get("key_attributes"), MAX_KEY_ATTRIBUTES)
+    out["secondaryItems"] = _parse_secondary_items(raw.get("secondary_items"))
     out["condition"] = condition if condition in CONDITION_VALUES else ""
     out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
     out["brandConfidence"] = brand_conf

@@ -178,6 +178,34 @@ class ParseEnrichmentTests(unittest.TestCase):
         # capped at MAX_KEY_ATTRIBUTES, empties removed
         self.assertEqual(len(json.loads(out["keyAttributes"])), 6)
 
+    def test_secondary_items_multi_brand_lot(self):
+        out = parse_enrichment({
+            "brand": "DeWalt", "model_name": "DCD771", "product_type": "drill",
+            "search_query": "DeWalt DCD771 cordless drill",
+            "is_mixed_lot": True, "quantity": 3,
+            "secondary_items": [
+                {"brand": "Milwaukee", "model_name": "M18", "product_type": "circular saw",
+                 "search_query": "Milwaukee M18 circular saw"},
+                {"brand": "", "model_name": "", "product_type": "", "search_query": ""},  # dropped
+                {"brand": "Ryobi", "model_name": "", "product_type": "sander",
+                 "search_query": "Ryobi orbital sander"},
+            ],
+            "condition": "used", "condition_flags": [], "key_attributes": [],
+            "brand_confidence": "high", "model_confidence": "high",
+        })
+        items = json.loads(out["secondaryItems"])
+        self.assertEqual([i["brand"] for i in items], ["Milwaukee", "Ryobi"])  # empty dropped
+        self.assertEqual(items[0]["modelOrSku"], "M18")  # model_name -> modelOrSku
+        self.assertEqual(items[1]["searchQuery"], "Ryobi orbital sander")
+
+    def test_secondary_items_empty_when_single_product(self):
+        out = parse_enrichment({
+            "brand": "Pyrex", "product_type": "bowl", "search_query": "Pyrex bowl",
+            "secondary_items": [], "condition": "used",
+            "brand_confidence": "high", "model_confidence": "low",
+        })
+        self.assertEqual(out["secondaryItems"], "")
+
     def test_v4_mixed_lot_and_indeterminate_quantity(self):
         out = parse_enrichment({
             "brand": "", "product_type": "assorted items", "search_query": "",
