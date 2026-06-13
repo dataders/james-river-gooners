@@ -20,16 +20,42 @@ export function isDisplayConfidence(item) {
   return DISPLAY_CONFIDENCES.has(confidenceOf(item))
 }
 
+// Compose a display label from the v6 category-aware detail bag (scraper enrich
+// v6). `details` is a JSON string of the resale-identifying keys for the lot's
+// detailCategory (furniture: style/material/form; art: artist/medium/subject;
+// ceramics_glass: maker/pattern/material), stored in category-key order — so
+// joining the values reads as a product name ("Mid-century modern walnut
+// credenza", "Helen Lord watercolor winter landscape"). Returns '' when absent.
+export function detailLabel(item) {
+  const raw = (item?.details || '').trim()
+  if (!raw) return ''
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return ''
+  }
+  if (!parsed || typeof parsed !== 'object') return ''
+  const phrase = Object.values(parsed)
+    .map(v => (v == null ? '' : String(v).trim()))
+    .filter(Boolean)
+    .join(' ')
+  if (!phrase) return ''
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1)
+}
+
 // Returns a display-ready enrichment object for confident lots, or null when
 // there's nothing trustworthy to show. `label` is the "Brand Model" product name
 // (the most useful field for the "Lot - N" placeholder lots whose own title
-// carries no detail). `productUrl` is only kept when it's a real http(s) link.
-// `confidence` is passed through so the UI can distinguish medium from high.
+// carries no detail), falling back to the category-aware detail descriptor for
+// unbranded furniture/art/ceramics whose identity is style/artist, not brand.
+// `productUrl` is only kept when it's a real http(s) link. `confidence` is passed
+// through so the UI can distinguish medium from high.
 export function getDisplayEnrichment(item) {
   if (!isDisplayConfidence(item)) return null
   const brand = (item?.brand || '').trim()
   const model = (item?.modelOrSku || '').trim()
-  const label = [brand, model].filter(Boolean).join(' ')
+  const label = [brand, model].filter(Boolean).join(' ') || detailLabel(item)
   if (!label) return null
   const condition = (item?.condition || '').trim()
   const rawUrl = (item?.productUrl || '').trim()
@@ -60,6 +86,9 @@ export function mapEnrichmentRow(row) {
     modelOrSku: row?.model_or_sku || '',
     condition: row?.condition || '',
     productUrl: row?.product_url || '',
+    detailCategory: row?.detail_category || '',
+    details: row?.details || '',
+    detailConfidence: row?.detail_confidence || '',
     enrichmentConfidence: row?.confidence || '',
     enrichmentModel: row?.model || '',
   }

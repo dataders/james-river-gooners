@@ -21,13 +21,25 @@ CLI usage (one-time backfill of existing NDJSON files):
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Optional
 
-from supabase_comps import json_safe, resolve_credentials
+from supabase_comps import (
+    READ_TIMEOUT,
+    _request_with_retry,
+    json_safe,
+    resolve_credentials,
+)
 
 LOTS_TABLE = "lots"
 DEFAULT_BATCH_SIZE = 500
+
+# Read pagination page size. Smaller pages keep each request cheap so a read can
+# ride under the timeout even when the shared compute is busy serving the SPA's
+# heavy full-dataset reads (the dominant DB load). Tunable via env for a backfill
+# against a saturated instance; the default keeps prior behaviour.
+READ_PAGE_SIZE = int(os.environ.get("GOONERS_SUPABASE_PAGE", "1000"))
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 ITEMS_DIR = _REPO_ROOT / "public" / "data" / "items"
@@ -268,19 +280,25 @@ def _row_to_item(row: dict) -> dict:
 
 
 def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[dict]:
-    """Paginate through a PostgREST endpoint and return all rows."""
-    PAGE = 1000
+    """Paginate through a PostgREST endpoint and return all rows.
+
+    Each page GET retries transient failures (network/timeout/429/5xx) with
+    backoff via the shared helper, and uses the generous shared read timeout.
+    A full-table scan here is dozens of sequential requests, so one blip must
+    not abort the whole ``--from-supabase`` backfill — the same reason
+    ``comp_item_freshness`` needed it (a flat 30s read fired as an unretryable
+    ReadTimeout)."""
+    PAGE = READ_PAGE_SIZE
     rows = []
     offset = 0
     while True:
-        resp = session.get(
-            endpoint,
-            headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
-            params=params,
-            timeout=30,
+        page_headers = {**headers, "Range": f"{offset}-{offset + PAGE - 1}"}
+        resp = _request_with_retry(
+            lambda h=page_headers: session.get(
+                endpoint, headers=h, params=params, timeout=READ_TIMEOUT,
+            ),
+            f"Supabase GET {endpoint}",
         )
-        if not resp.ok:
-            raise RuntimeError(f"Supabase GET failed: {resp.status_code} {resp.text[:300]}")
         batch = resp.json()
         rows.extend(batch)
         if len(batch) < PAGE:

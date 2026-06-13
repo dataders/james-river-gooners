@@ -225,6 +225,70 @@ class ParseEnrichmentTests(unittest.TestCase):
         self.assertEqual(out["modelConfidence"], "medium")
         self.assertEqual(out["enrichmentConfidence"], "medium")
 
+    def test_v6_detail_furniture_lifts_unbranded_lot(self):
+        # An unbranded antique: no brand/model, but a confident detail bag clears
+        # the bar via enrichmentConfidence = max(brand, model, detail).
+        out = parse_enrichment({
+            "brand": "", "model_name": "", "product_type": "table",
+            "search_query": "mid-century walnut tulip table",
+            "detail_category": "furniture",
+            "details": {"style": "mid-century modern", "material": "walnut",
+                        "form": "tulip table", "artist": "should be pruned",
+                        "medium": "", "subject": "", "maker": "", "pattern": ""},
+            "detail_confidence": "high",
+            "brand_confidence": "low", "model_confidence": "low",
+        })
+        self.assertEqual(out["detailCategory"], "furniture")
+        # pruned to furniture's keys only — the foreign `artist` value is dropped
+        self.assertEqual(json.loads(out["details"]),
+                         {"style": "mid-century modern", "material": "walnut", "form": "tulip table"})
+        self.assertEqual(out["detailConfidence"], "high")
+        self.assertEqual(out["enrichmentConfidence"], "high")  # lifted by detail
+
+    def test_v6_detail_art_keys(self):
+        out = parse_enrichment({
+            "brand": "", "detail_category": "art",
+            "details": {"style": "", "material": "", "form": "",
+                        "artist": "Helen Lord", "medium": "watercolor",
+                        "subject": "winter landscape", "maker": "", "pattern": ""},
+            "detail_confidence": "medium",
+            "brand_confidence": "low", "model_confidence": "low",
+        })
+        self.assertEqual(out["detailCategory"], "art")
+        self.assertEqual(json.loads(out["details"]),
+                         {"artist": "Helen Lord", "medium": "watercolor", "subject": "winter landscape"})
+        self.assertEqual(out["enrichmentConfidence"], "medium")
+
+    def test_v6_detail_low_confidence_cleared(self):
+        # Only medium/high detail is saved — a low-confidence bag is dropped.
+        out = parse_enrichment({
+            "detail_category": "furniture",
+            "details": {"style": "maybe deco", "material": "", "form": "",
+                        "artist": "", "medium": "", "subject": "", "maker": "", "pattern": ""},
+            "detail_confidence": "low",
+            "brand_confidence": "low", "model_confidence": "low",
+        })
+        self.assertEqual(out["detailCategory"], "")
+        self.assertEqual(out["details"], "")
+        self.assertEqual(out["detailConfidence"], "")
+        # detail dropped → overall falls back to the brand/model floor ("low"),
+        # which is still below the medium/high display bar, so the lot stays hidden.
+        self.assertEqual(out["enrichmentConfidence"], "low")
+
+    def test_v6_detail_other_category_empty(self):
+        # "other" carries no detail keys — a branded good's identity is brand/model.
+        out = parse_enrichment({
+            "brand": "DeWalt", "model_name": "DCD771",
+            "detail_category": "other",
+            "details": {k: "" for k in
+                        ("style", "material", "form", "artist", "medium", "subject", "maker", "pattern")},
+            "detail_confidence": "high",
+            "brand_confidence": "high", "model_confidence": "high",
+        })
+        self.assertEqual(out["detailCategory"], "")
+        self.assertEqual(out["details"], "")
+        self.assertEqual(out["enrichmentConfidence"], "high")  # from brand/model
+
     def test_non_dict_returns_all_empty(self):
         out = parse_enrichment("nope")
         self.assertEqual(set(out), set(enrich.ENRICHMENT_FIELDS))

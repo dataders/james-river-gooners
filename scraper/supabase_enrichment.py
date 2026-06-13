@@ -33,7 +33,7 @@ import sys
 import time
 from pathlib import Path
 
-from supabase_comps import json_safe, resolve_credentials
+from supabase_comps import READ_TIMEOUT, json_safe, resolve_credentials
 
 ENRICHMENT_TABLE = "lot_enrichment"
 
@@ -61,6 +61,9 @@ ENRICHMENT_COLUMNS = (
     "condition_flags",
     "key_attributes",
     "secondary_items",
+    "detail_category",
+    "details",
+    "detail_confidence",
     "confidence",
     "model",
     "image_url",
@@ -89,7 +92,7 @@ def _post_batch_with_retry(session, endpoint, headers, batch, max_retries, sleep
     body = json.dumps(batch)
     for attempt in range(max_retries + 1):
         try:
-            response = session.post(endpoint, headers=headers, data=body, timeout=30)
+            response = session.post(endpoint, headers=headers, data=body, timeout=READ_TIMEOUT)
         except requests.exceptions.RequestException as exc:
             if attempt >= max_retries:
                 raise RuntimeError(
@@ -159,6 +162,9 @@ def enrichment_row(lot: dict) -> dict | None:
         "condition_flags": lot.get("conditionFlags") or "",
         "key_attributes": lot.get("keyAttributes") or "",
         "secondary_items": lot.get("secondaryItems") or "",
+        "detail_category": lot.get("detailCategory") or "",
+        "details": lot.get("details") or "",
+        "detail_confidence": lot.get("detailConfidence") or "",
         "confidence": confidence,
         "model": lot.get("enrichmentModel") or "",
         "image_url": _first_image(lot),
@@ -289,7 +295,7 @@ def load_prior_enrichment_from_supabase(
             endpoint,
             headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
             params={"auction_safe_id": f"eq.{safe_id}", "select": "*"},
-            timeout=30,
+            timeout=READ_TIMEOUT,
         )
         if not resp.ok:
             return {}
@@ -319,6 +325,9 @@ def load_prior_enrichment_from_supabase(
             "conditionFlags": row.get("condition_flags") or "",
             "keyAttributes": row.get("key_attributes") or "",
             "secondaryItems": row.get("secondary_items") or "",
+            "detailCategory": row.get("detail_category") or "",
+            "details": row.get("details") or "",
+            "detailConfidence": row.get("detail_confidence") or "",
             "enrichmentConfidence": row.get("confidence") or "",
             "enrichmentModel": row.get("model") or "",
             "enrichmentInputHash": row.get("input_hash") or "",

@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-13',
+    title: 'More lots get identified',
+    changes: [
+      { id: 'enrich-detail-furniture-art', icon: '🪑', text: 'Antique furniture, paintings, and decorative pieces now get identified too — a mid-century walnut table or a signed watercolor now shows a product name and resale comps, not just the lots with an obvious brand.' },
+    ],
+  },
+  {
+    date: '2026-06-13',
     title: 'Your filters follow your account',
     changes: [
       { id: 'filter-account-sync', icon: '🔒', text: 'When you\'re signed in, your filters — hidden categories, price and bid ranges, sort and layout — now save to your account and follow you across devices. Hide Coins, Silver and Jewelry once and they stay hidden everywhere you log in.' },

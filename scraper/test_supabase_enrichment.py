@@ -70,6 +70,25 @@ class EnrichmentRowTest(unittest.TestCase):
         lot = dict(ENRICHED_LOT, enrichmentConfidence="  HIGH ")
         self.assertEqual(supabase_enrichment.enrichment_row(lot)["confidence"], "high")
 
+    def test_v6_detail_columns_mapped(self):
+        lot = dict(
+            ENRICHED_LOT, brand="", modelOrSku="", enrichmentConfidence="high",
+            detailCategory="furniture",
+            details=json.dumps({"style": "mid-century modern", "material": "walnut"}),
+            detailConfidence="high",
+        )
+        row = supabase_enrichment.enrichment_row(lot)
+        self.assertEqual(row["detail_category"], "furniture")
+        self.assertEqual(json.loads(row["details"]), {"style": "mid-century modern", "material": "walnut"})
+        self.assertEqual(row["detail_confidence"], "high")
+
+    def test_detail_columns_default_empty(self):
+        # A branded lot with no detail bag stores empty strings, not None/missing.
+        row = supabase_enrichment.enrichment_row(ENRICHED_LOT)
+        self.assertEqual(row["detail_category"], "")
+        self.assertEqual(row["details"], "")
+        self.assertEqual(row["detail_confidence"], "")
+
 
 class BuildRowsTest(unittest.TestCase):
     def test_only_enriched_lots_and_dedup(self):
