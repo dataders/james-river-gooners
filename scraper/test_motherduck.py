@@ -106,5 +106,46 @@ class MotherDuckSnapshotTest(unittest.TestCase):
                 append_listing_snapshots([], "https://example.test/auction")
 
 
+class ConnectionReuseTest(unittest.TestCase):
+    """Across auctions in one scrape, the snapshot append reuses a single cloud
+    connection and runs the (idempotent) DDL once — the per-auction reconnect
+    was the dominant cost holding the scrape over its step timeout."""
+
+    def setUp(self):
+        import warehouse
+        import motherduck
+        warehouse._CACHED_CONNECTIONS.clear()
+        motherduck._SCHEMA_READY.clear()
+        self.item = {"id": "i1", "auctionId": "a1", "auctionSafeId": "s1", "title": "x"}
+
+    def test_reuses_connection_and_runs_ddl_once(self):
+        import warehouse
+        from unittest.mock import MagicMock
+        conn = MagicMock()
+        with patch.dict(os.environ, {"MOTHERDUCK_TOKEN": "tok"}, clear=True):
+            with patch.object(warehouse, "connect", return_value=conn) as opened:
+                append_listing_snapshots([self.item], "https://x/a", database="md:test")
+                append_listing_snapshots([self.item], "https://x/a", database="md:test")
+        # One physical connection for both auctions; never closed by the caller.
+        self.assertEqual(opened.call_count, 1)
+        conn.close.assert_not_called()
+        # DDL (CREATE + 3 ALTER = 4 execute calls) runs once, not per append.
+        self.assertEqual(conn.execute.call_count, 4)
+        # But each append still writes its rows.
+        self.assertEqual(conn.executemany.call_count, 2)
+
+    def test_reconnects_once_when_connection_goes_stale(self):
+        import warehouse
+        from unittest.mock import MagicMock
+        stale, fresh = MagicMock(), MagicMock()
+        stale.executemany.side_effect = RuntimeError("connection reset")
+        with patch.dict(os.environ, {"MOTHERDUCK_TOKEN": "tok"}, clear=True):
+            with patch.object(warehouse, "connect", side_effect=[stale, fresh]):
+                n = append_listing_snapshots([self.item], "https://x/a", database="md:test")
+        self.assertEqual(n, 1)
+        stale.close.assert_called_once()      # dropped after the failure
+        fresh.executemany.assert_called_once()  # retried on a new connection
+
+
 if __name__ == "__main__":
     unittest.main()
