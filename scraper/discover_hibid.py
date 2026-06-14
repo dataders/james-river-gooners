@@ -27,8 +27,12 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
-
-from scrape_hibid import HIBID_BASE, create_session, discover_company_catalogs, is_real_estate_auction
+from scrape_hibid import (
+    HIBID_BASE,
+    create_session,
+    discover_company_catalogs,
+    is_real_estate_auction,
+)
 
 SOURCES_FILE = Path(__file__).resolve().parent / "hibid_sources.yml"
 

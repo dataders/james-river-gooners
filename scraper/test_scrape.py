@@ -1,12 +1,10 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-
-from unittest.mock import MagicMock
-
 from scrape import (
     auction_date_from_title,
     count_unique_bidders,

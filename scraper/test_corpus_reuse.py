@@ -1,6 +1,6 @@
 import os
 import unittest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import corpus_reuse as cr

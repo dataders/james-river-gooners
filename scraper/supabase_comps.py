@@ -14,7 +14,7 @@ so no comp-fetch call sites change.
 import json
 import os
 import time
-from datetime import date, datetime, timedelta, UTC
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 

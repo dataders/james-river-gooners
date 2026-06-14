@@ -40,6 +40,8 @@ except ImportError:  # pragma: no cover
 
 from prefab_ui.app import PrefabApp
 from prefab_ui.components import (
+    H2,
+    H3,
     Alert,
     Badge,
     Card,
@@ -49,8 +51,6 @@ from prefab_ui.components import (
     DataTable,
     DataTableColumn,
     Grid,
-    H2,
-    H3,
     Muted,
     Row,
     Separator,
@@ -72,14 +72,14 @@ VIOLET = "#8b5cf6"
 SLATE = "#64748b"
 
 
-def _connect() -> "duckdb.DuckDBPyConnection":
+def _connect() -> duckdb.DuckDBPyConnection:
     token = os.environ.get("MOTHERDUCK_TOKEN") or os.environ.get("MOTHERDUCK_READ_TOKEN")
     if not token:
         sys.exit("MOTHERDUCK_TOKEN (or MOTHERDUCK_READ_TOKEN) required")
     return duckdb.connect(f"md:my_db?motherduck_token={token}", read_only=True)
 
 
-_CON: "duckdb.DuckDBPyConnection | None" = None
+_CON: duckdb.DuckDBPyConnection | None = None
 
 
 def _coerce(v):
@@ -98,7 +98,7 @@ def q(sql: str) -> list[dict]:
     try:
         cur = _CON.execute(sql)
         cols = [d[0] for d in cur.description]
-        return [{c: _coerce(v) for c, v in zip(cols, row)} for row in cur.fetchall()]
+        return [{c: _coerce(v) for c, v in zip(cols, row, strict=True)} for row in cur.fetchall()]
     except Exception as exc:  # noqa: BLE001 — intentional: degrade, don't crash
         print(f"  [warn] query failed ({exc.__class__.__name__}): {str(exc)[:120]}", file=sys.stderr)
         return []
@@ -131,7 +131,7 @@ def fmt_dur(seconds) -> str:
 def metric_card(label, value, description=None, delta=None, trend=None, sentiment=None):
     from prefab_ui.components import Metric
 
-    kwargs = dict(label=label, value=value)
+    kwargs = {"label": label, "value": value}
     if description is not None:
         kwargs["description"] = description
     if delta is not None:
@@ -629,7 +629,7 @@ DOMAINS = [
 
 
 def render() -> str:
-    generated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    generated = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
     with PrefabApp(title="Gooners · Admin", css_class="max-w-7xl mx-auto p-6 space-y-4") as app:
         with Row(justify="between", align="center"):
             H2(content="James River Gooners — Admin")

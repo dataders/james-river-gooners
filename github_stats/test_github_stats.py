@@ -6,10 +6,9 @@ parsing, and the client's pagination + log-zip handling against a fake session.
 
 import io
 import zipfile
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import pytest
-
 from github_api import GitHubClient, resolve_repo, resolve_token
 from transforms import (
     _duration_seconds,

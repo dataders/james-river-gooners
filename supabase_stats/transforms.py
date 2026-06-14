@@ -25,8 +25,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import datetime
 from collections.abc import Iterable, Iterator
+from datetime import datetime
 
 # --- Curation -------------------------------------------------------------
 #

@@ -14,7 +14,6 @@ from categories import (
     normalize_raw_with_description,
 )
 
-
 # --- normalize_raw_category --------------------------------------------------
 
 def test_empty_raw_is_other():

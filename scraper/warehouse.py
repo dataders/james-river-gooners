@@ -16,7 +16,6 @@ methods; portable code should depend on those, not on :func:`connect`.
 import os
 from abc import ABC, abstractmethod
 
-
 DEFAULT_DATABASE = "md:"
 
 

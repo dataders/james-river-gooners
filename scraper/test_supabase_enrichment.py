@@ -3,9 +3,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import requests
-
 import supabase_enrichment
-
 
 ENRICHED_LOT = {
     "auctionSafeId": "safe1",

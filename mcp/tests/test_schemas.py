@@ -1,6 +1,8 @@
 from gooners_mcp.schemas import (
-    composite_key, shape_lot, shape_ebay_comp, shape_cannons_comp,
+    composite_key,
     shape_category_stats,
+    shape_ebay_comp,
+    shape_lot,
 )
 
 

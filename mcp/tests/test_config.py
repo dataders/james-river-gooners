@@ -1,4 +1,4 @@
-from gooners_mcp.config import Config, load_config
+from gooners_mcp.config import load_config
 
 
 def test_load_config_reads_env(monkeypatch):

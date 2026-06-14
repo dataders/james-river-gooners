@@ -9,7 +9,7 @@ def _tools(client):
     # FastMCP 3.x: list_tools() is async and returns FunctionTool objects with a .fn attr.
     server = build_server(client)
     tool_list = asyncio.run(server.list_tools())
-    return {t.name: t.fn for t in tool_list}
+    return {t.name: t.fn for t in tool_list}  # ty: ignore[unresolved-attribute]  # fastmcp Tool.fn (untyped)
 
 
 def test_get_lot_merges_enrichment():

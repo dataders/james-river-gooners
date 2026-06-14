@@ -37,14 +37,15 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Server-side PostHog telemetry (shared scraper helper). Silent no-op unless
 # GOONERS_POSTHOG_KEY is set AND the posthog SDK imports; never raises into the
 # caller. Guarded so a missing module can't break the comps job.
 try:
-    from telemetry import capture as _telemetry_capture, flush as _telemetry_flush
+    from telemetry import capture as _telemetry_capture
+    from telemetry import flush as _telemetry_flush
 except Exception:  # pragma: no cover - telemetry is best-effort
     def _telemetry_capture(event, properties=None):
         return None
@@ -149,7 +150,6 @@ def build_comps(
         return summary
 
     import requests
-
     from supabase_cannons_comps import write_auction_comps
 
     session = requests.Session()

@@ -34,7 +34,7 @@ class EnrichTelemetryTests(unittest.TestCase):
         self.addCleanup(slp.stop)
 
     def _by_event(self):
-        return {event: props for event, props in self.events}
+        return dict(self.events)
 
     def test_sync_path_emits_sync_completed(self):
         client = _FakeClient({"DeWalt DCD771 drill": {"brand": "DeWalt", "confidence": "high"}})

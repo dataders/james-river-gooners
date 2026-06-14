@@ -5,7 +5,7 @@ No cross-module imports — only stdlib.
 
 import random
 import re
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from time import sleep
 

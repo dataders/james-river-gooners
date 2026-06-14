@@ -1,12 +1,11 @@
 import json
 import tempfile
 import unittest
-
-import ebay_comps
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import ebay_comps
 from ebay_comps import (
     USER_AGENTS,
     append_ebay_comp_snapshots,

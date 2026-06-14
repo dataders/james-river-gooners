@@ -41,10 +41,9 @@ import time
 import uuid
 from functools import partial
 
+import ebay_query as eq
 import numpy as np
 import requests
-
-import ebay_query as eq
 from embed_sold_listings import listing_to_item
 from supabase_comps import _request_with_retry, resolve_credentials
 

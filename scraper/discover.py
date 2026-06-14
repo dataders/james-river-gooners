@@ -5,11 +5,10 @@ Discover current Cannon's auction item URLs from Maxanet auction cards.
 
 import html
 import re
-from urllib.parse import parse_qs, urljoin, urlparse, unquote
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-
 
 BASE_URL = "https://bid.cannonsauctions.com"
 GET_AUCTIONS_PATH = "/Public/Auction/GetAuctions"

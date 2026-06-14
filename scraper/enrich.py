@@ -70,7 +70,8 @@ from pathlib import Path
 # GOONERS_POSTHOG_KEY is set AND the posthog SDK imports, and it never raises into
 # the caller. Guarded so a missing module can never break a scrape/backfill.
 try:
-    from telemetry import capture as _telemetry_capture, flush as _telemetry_flush
+    from telemetry import capture as _telemetry_capture
+    from telemetry import flush as _telemetry_flush
 except Exception:  # pragma: no cover - telemetry is best-effort
     def _telemetry_capture(event, properties=None):
         return None
@@ -373,7 +374,7 @@ def is_enrichment_enabled() -> bool:
 
 
 def _empty_enrichment() -> dict:
-    return {field: "" for field in ENRICHMENT_FIELDS}
+    return dict.fromkeys(ENRICHMENT_FIELDS, "")
 
 
 def _make_client():
@@ -1296,8 +1297,11 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
         print("error: SUPABASE_SECRET_KEY is required for --from-supabase", file=sys.stderr)
         return 1
 
-    from supabase_lots import list_auction_safe_ids, fetch_lots_for_auction
-    from supabase_enrichment import load_prior_enrichment_from_supabase, maybe_export_enrichment
+    from supabase_enrichment import (
+        load_prior_enrichment_from_supabase,
+        maybe_export_enrichment,
+    )
+    from supabase_lots import fetch_lots_for_auction, list_auction_safe_ids
 
     if safe_ids:
         # Named IDs: collect (safe_id, archived, rows) for each that resolves.

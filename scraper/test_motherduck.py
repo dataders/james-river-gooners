@@ -112,15 +112,16 @@ class ConnectionReuseTest(unittest.TestCase):
     was the dominant cost holding the scrape over its step timeout."""
 
     def setUp(self):
-        import warehouse
         import motherduck
+        import warehouse
         warehouse._CACHED_CONNECTIONS.clear()
         motherduck._SCHEMA_READY.clear()
         self.item = {"id": "i1", "auctionId": "a1", "auctionSafeId": "s1", "title": "x"}
 
     def test_reuses_connection_and_runs_ddl_once(self):
-        import warehouse
         from unittest.mock import MagicMock
+
+        import warehouse
         conn = MagicMock()
         with patch.dict(os.environ, {"MOTHERDUCK_TOKEN": "tok"}, clear=True):
             with patch.object(warehouse, "connect", return_value=conn) as opened:
@@ -138,8 +139,9 @@ class ConnectionReuseTest(unittest.TestCase):
         conn.executemany.assert_not_called()
 
     def test_reconnects_once_when_connection_goes_stale(self):
-        import warehouse
         from unittest.mock import MagicMock
+
+        import warehouse
         stale, fresh = MagicMock(), MagicMock()
         stale.execute.side_effect = RuntimeError("connection reset")
         with patch.dict(os.environ, {"MOTHERDUCK_TOKEN": "tok"}, clear=True):
@@ -188,8 +190,12 @@ class BulkInsertParityTest(unittest.TestCase):
 
         import duckdb
         from motherduck import (
-            CREATE_TABLE_SQL, INSERT_SNAPSHOT_SQL, SNAPSHOT_COLUMN_CASTS,
-            SNAPSHOT_TABLE, bulk_insert_rows, row_values,
+            CREATE_TABLE_SQL,
+            INSERT_SNAPSHOT_SQL,
+            SNAPSHOT_COLUMN_CASTS,
+            SNAPSHOT_TABLE,
+            bulk_insert_rows,
+            row_values,
         )
 
         rows = self._rows()

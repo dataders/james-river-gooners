@@ -19,17 +19,19 @@ import argparse
 import re
 import sys
 import time
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse, unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-
 from categories import normalize_category, normalize_raw_with_description
 from persist import WriteContext, write_read_model
-from scraper_common import has_bid_changes, load_existing_bids, load_existing_unique_bidders
-
+from scraper_common import (
+    has_bid_changes,
+    load_existing_bids,
+    load_existing_unique_bidders,
+)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 ITEMS_DIR = DATA_DIR / "items"

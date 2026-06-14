@@ -37,10 +37,9 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import dlt
-
 from github_api import GitHubClient, resolve_repo
 from transforms import (
     commit_row,

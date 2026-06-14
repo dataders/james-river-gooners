@@ -9,7 +9,7 @@ flat row dicts dlt loads into Postgres, plus the log-line regexes that extract
 from __future__ import annotations
 
 import re
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 
 def _parse_dt(value: str | None) -> datetime | None:

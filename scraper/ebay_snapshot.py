@@ -5,7 +5,7 @@ Owns the warehouse write contract: how comp rows are shaped for the
 """
 
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from ebay_util import decimal_text, text_value
 

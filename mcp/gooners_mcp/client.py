@@ -85,7 +85,8 @@ class GoonersClient:
             self.login()
         elif time.time() >= self._expires_at:
             self._refresh()
-        return self._access_token  # type: ignore[return-value]
+        assert self._access_token is not None
+        return self._access_token
 
     # ---- transport ------------------------------------------------------
     def _headers(self, auth: bool, prefer: str | None = None) -> dict:

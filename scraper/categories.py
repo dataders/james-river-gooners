@@ -13,7 +13,8 @@ use the legacy alias + group-term path for backward compatibility.
 from pathlib import Path
 
 import yaml
-from build_category_table import Resolver, load as _load_canonical
+from build_category_table import Resolver
+from build_category_table import load as _load_canonical
 
 _MAPPINGS_PATH = Path(__file__).resolve().parent / "category_mappings.yml"
 
