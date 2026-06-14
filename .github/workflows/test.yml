@@ -27,6 +27,8 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+      # Bundle-size ratchet: fails if the gzipped JS grows past the budget.
+      - run: npm run bundle:check
 
   lint:
     name: Lint
@@ -55,8 +57,8 @@ jobs:
 
       - run: npm ci
       - run: npm run type-check
-      # One-way migration guard: fails if typed-source coverage drops.
-      - run: npm run ts:ratchet
+      # One-way guards: typed-file floor, untyped-file ceiling, suppression ceiling.
+      - run: npm run ratchets
 
   unit:
     name: Unit tests

@@ -129,6 +129,15 @@ When a change moves a read model into Supabase (or adds an auth gate that emptie
 
 This is the inverse of the frontend-first order used for a pure *gate* (#149, where the data already existed and only access changed); here the data is new, so it must lead.
 
+## Ratchets (one-way quality gates)
+
+CI enforces several **ratchets** — baselines that may only move the good direction, so quality can't silently erode. Baselines live in one file, `scripts/ratchets.json`; each check prints the new number to lock in when you beat it (then bump the baseline in the same PR). Shared reporting helper: `scripts/lib-ratchet.mjs`.
+
+- **`npm run ratchets`** (`scripts/ratchets.mjs`, in the *type-check* job) — static source scans: **typed-file floor** (`.ts/.tsx` + `// @ts-check` `.js/.jsx` can't drop), **untyped-file ceiling** (un-`@ts-check`ed `.js/.jsx` can't rise → new source must be typed), and **suppression ceiling** (`eslint-disable`/`@ts-expect-error`/`@ts-ignore` can't proliferate). Excludes tests + `.d.ts`.
+- **`npm run bundle:check`** (`scripts/bundle-size.mjs`, in the *build* job after `npm run build`) — gzipped production JS must stay under `bundleGzipBytesCeiling`. Catches a mis-imported heavy dep.
+- **`npm run test:unit:coverage`** (`scripts/coverage-check.mjs`, in the *unit* job) — runs the unit suite with Node's built-in `--test-coverage-*` thresholds (lines/branches/functions floors). Needs node ≥22.13.
+- The **usability benchmark** (`tests/usability`, `USABILITY_GATE=85`) is the same idea for UX.
+
 ## CI / PR Monitoring
 
 **GitHub CLI is available and authenticated** (`gh`, PAT for `dataders`). Use it for GitHub Actions work the MCP can't do — dispatching workflows (`gh workflow run`), watching runs (`gh run list/view/watch`), reading job logs (`gh run view --log`), re-running, cancelling. **Always pass `--repo dataders/james-river-gooners`:** the git remote is a local proxy, so `gh` can't infer the repo and errors with "none of the git remotes … point to a known GitHub host" without it. Prefer the GitHub MCP tools for PR reads/reviews/comments (richer, structured); reach for `gh` for Actions/dispatch and anything the MCP token lacks permission for.
