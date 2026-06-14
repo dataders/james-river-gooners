@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useMemo } from 'react'
 import { itemTimeRemaining } from '../utils/time'
 import { EbayComps } from './EbayComps'

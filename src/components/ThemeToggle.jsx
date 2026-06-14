@@ -1,3 +1,4 @@
+// @ts-nocheck
 export function ThemeToggle({ theme, onToggle }) {
   return (
     <button

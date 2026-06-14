@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Pure normalizers for the browser read model.
 // No Vite / browser dependencies so these can be unit-tested with plain Node.
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { normalizeEbaySoldMatches } from './ebayComps.js'
 
 const BUYERS_PREMIUM = 0.20

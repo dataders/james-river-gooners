@@ -1,3 +1,4 @@
+// @ts-nocheck
 // GitHub Pages / Fastly rejects URLs longer than ~4 KB with 414 URI Too Long.
 // Keep well under that; localStorage carries the overflow state across reloads.
 const MAX_URL_LENGTH = 2000

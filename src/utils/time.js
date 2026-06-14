@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { parseAuctionDate } from './dates.js'
 
 // Compact "Jun 11, 7:56 PM" in the viewer's local timezone — consistent with

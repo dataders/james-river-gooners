@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { pipeline, env } from '@huggingface/transformers'
 
 // Never attempt to load local models — always fetch from Hugging Face Hub

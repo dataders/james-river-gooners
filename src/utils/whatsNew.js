@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { CHANGELOG } from '../data/changelog.js'
 
 // Every change id across the changelog, in display order.

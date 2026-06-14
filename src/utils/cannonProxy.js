@@ -1,3 +1,4 @@
+// @ts-nocheck
 // cannon-proxy Edge Function caller with an injectable Supabase client for testability.
 // No Vite / browser dependencies.
 

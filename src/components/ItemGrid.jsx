@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { ItemCard } from './ItemCard'

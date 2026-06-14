@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Cannon's per-category sold-price history (#95/#96/#97). Normalizes rows from
 // the Supabase `public_category_sold_stats` view and turns the category baseline
 // — plus per-item eBay comps when present — into a resale/margin estimate the

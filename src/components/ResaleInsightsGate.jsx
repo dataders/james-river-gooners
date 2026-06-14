@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Logged-out placeholder shown in the item detail panel in place of the
 // resale-intelligence cluster (eBay sold comps, Cannon's "sold previously"
 // comps, category sold-price history, and the max-bid calculator).

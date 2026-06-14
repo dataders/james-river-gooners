@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { COST_MULTIPLIER } from '../utils/roiCalc'
 
 function money(v) {

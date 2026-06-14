@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useCallback } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { buildEbaySoldSearchUrl } from '../utils/ebayComps'

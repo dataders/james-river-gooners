@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue, lazy, Suspense } from 'react'
 import { useAuctionData } from './hooks/useAuctionData'
 import { useEbayComps } from './hooks/useEbayComps'

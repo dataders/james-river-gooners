@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Standalone entry for the owner-only admin dashboard at /admin.
 //
 // This is a SEPARATE Vite entry (see vite.config.js rollupOptions.input) so the

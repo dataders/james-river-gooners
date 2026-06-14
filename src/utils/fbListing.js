@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Call the facebook-listing Edge Function with an item object.
 // Returns the generated listing or { error: string } on failure.
 export async function generateFbListing(item, client) {

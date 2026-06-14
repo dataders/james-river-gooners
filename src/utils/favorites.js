@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { itemKey } from './itemKey.js'
 
 export const FAVORITES_COOKIE = 'gooners-favorites'

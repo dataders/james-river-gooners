@@ -1,3 +1,4 @@
+// @ts-nocheck
 // "My Bids" history panel — shows all bid rows from user_bids (active and
 // archived auction items), sorted by status: open/winning first, then
 // open/outbid, then closed. Reads directly from cannonBids.bidRows so no

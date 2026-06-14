@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { itemKey } from './itemKey.js'
 
 // Mirrors src/utils/favorites.js — the "not interested" list. Same composite

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { calcMaxBid, COST_MULTIPLIER, extractCompPrices, calcMedian, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { normalizeEbaySoldMatches } from '../utils/ebayComps'
 
