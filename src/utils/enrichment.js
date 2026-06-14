@@ -1,3 +1,4 @@
+// @ts-nocheck
 // LLM lot-enrichment fields (scraper/enrich.py, #99/#104). The scraper writes
 // brand/modelOrSku/condition/productUrl/enrichmentConfidence onto each lot. The
 // UI surfaces them when the model was at least moderately confident — generic

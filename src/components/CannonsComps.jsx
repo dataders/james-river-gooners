@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react'
 import { normalizeCannonsComps, getCannonsCompMedian } from '../utils/cannonsComps'
 

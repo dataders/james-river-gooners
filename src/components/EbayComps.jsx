@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { buildEbaySoldSearches, getEbayCompThumbnail, normalizeEbaySoldMatches } from '../utils/ebayComps'
 
 export function EbayComps({ item, soldComps }) {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Component } from 'react'
 
 // Catches render-time errors anywhere below it so a single bad item or component

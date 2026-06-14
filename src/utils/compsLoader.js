@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Supabase eBay-comps fetch helper with an injectable client for testability.
 // No Vite / browser dependencies.
 

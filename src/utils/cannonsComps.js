@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Helpers for the "Cannon's comps" read model — similar past lots and their
 // final hammer prices, precomputed by the scraper (scraper/cannons_comps.py).
 

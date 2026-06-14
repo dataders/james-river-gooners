@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Cannon's/Maxanet "My Bids" integration.
 //
 // Calls the cannon-proxy Edge Function to:

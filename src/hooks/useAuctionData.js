@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { itemKey } from '../utils/itemKey'
 import { normalizeManifest } from '../utils/manifest'

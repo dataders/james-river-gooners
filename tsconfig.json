@@ -1,11 +1,9 @@
 {
-  // Initial TypeScript harness. The codebase is still mostly .js/.jsx with
-  // JSDoc types (see src/types.ts and the `// @ts-check` files). This config
-  // type-checks two things without forcing a big-bang migration:
-  //   1. real .ts/.tsx files (start: src/types.ts), and
-  //   2. .js files that individually opt in with a `// @ts-check` comment.
-  // `checkJs` stays OFF so the ~80 un-annotated .js/.jsx files don't redden CI;
-  // flip it to true (or migrate files to .ts) to widen coverage incrementally.
+  // TypeScript harness. `checkJs` is ON: every .js/.jsx is type-checked unless
+  // it opts out with `// @ts-nocheck` — so new JS is checked by default, the
+  // inverse of the old opt-in `// @ts-check` model. The remaining un-migrated
+  // files carry `@ts-nocheck`; the `@ts-nocheck` ratchet (scripts/ratchets.mjs)
+  // drives that count to zero as files are typed or migrated to .ts.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -32,7 +30,7 @@
     // Vite owns transpilation; tsc is type-check only.
     "noEmit": true,
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,

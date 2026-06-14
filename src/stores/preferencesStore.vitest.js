@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach } from 'vitest'
 import { usePreferencesStore } from './preferencesStore.js'
 import { STORAGE_KEY, DEFAULT_EXCLUDED_GROUPS } from '../utils/prefs.js'

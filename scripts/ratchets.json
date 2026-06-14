@@ -8,5 +8,6 @@
     "lines": 97,
     "branches": 91,
     "functions": 97
-  }
+  },
+  "nocheckCeiling": 78
 }

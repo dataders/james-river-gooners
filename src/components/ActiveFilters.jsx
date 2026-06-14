@@ -1,3 +1,4 @@
+// @ts-nocheck
 function Chip({ label, onRemove }) {
   return (
     <span className="af-chip">

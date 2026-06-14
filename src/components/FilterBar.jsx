@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react'
 
 function GroupSection({ group, excludedCategories, excludedGroups, onToggle, onShowOnly, onHideGroup, onShowGroup, startExpanded }) {

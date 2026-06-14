@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react'
 import { generateFbListing } from '../utils/fbListing'
 import { supabase } from '../lib/supabase'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react'
 import { RangeFilters } from './RangeFilters'
 import { HasFilters } from './HasFilters'

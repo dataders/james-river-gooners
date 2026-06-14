@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { isDisplayConfidence } from './enrichment.js'
 
 const EBAY_SEARCH_URL = 'https://www.ebay.com/sch/i.html'

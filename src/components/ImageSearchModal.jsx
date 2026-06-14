@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useImageSearch } from '../hooks/useImageSearch'

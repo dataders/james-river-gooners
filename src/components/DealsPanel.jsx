@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo, useState } from 'react'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { itemTimeRemaining } from '../utils/time'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { itemTimeRemaining } from '../utils/time'
 

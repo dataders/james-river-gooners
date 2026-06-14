@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SORT_OPTIONS } from '../utils/sort'
 
 export function SortBar({ value, onChange, showForYou = false }) {

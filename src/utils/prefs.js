@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const STORAGE_KEY = 'gooners-preferences'
 
 // Normalized category groups hidden out of the box. These are noise for this

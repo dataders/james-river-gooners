@@ -34,16 +34,24 @@ function walk(dir) {
 let typed = 0
 let untyped = 0
 let suppressions = 0
+// `checkJs` is on (tsconfig), so every .js/.jsx is type-checked unless it opts
+// out with `// @ts-nocheck`. Count those across all source (tests included) and
+// drive the ceiling to zero as files get typed or migrated to .ts.
+let nocheck = 0
 
 for (const f of walk(SRC)) {
-  if (isExcluded(f)) continue
   const isTs = f.endsWith('.ts') || f.endsWith('.tsx')
   const isJs = f.endsWith('.js') || f.endsWith('.jsx')
   if (!isTs && !isJs) continue
+  if (f.endsWith('.d.ts')) continue
 
   const text = readFileSync(f, 'utf8')
+  const head = text.slice(0, 200)
+  if (head.includes('@ts-nocheck')) nocheck++
+
+  if (isExcluded(f)) continue
   if (isTs) typed++
-  else if (text.slice(0, 200).includes('@ts-check')) typed++
+  else if (head.includes('@ts-check')) typed++
   else untyped++
 
   suppressions += (text.match(SUPPRESSION_RE) || []).length
@@ -53,5 +61,6 @@ for (const f of walk(SRC)) {
 // the new number — the floor/ceiling tightens automatically, never drifts.
 floor('Typed source files', typed, baselines.typedSourceFloor, '', { lockIn: true })
 ceiling('Untyped source files', untyped, baselines.untypedSourceCeiling, '', { lockIn: true })
+ceiling('@ts-nocheck files', nocheck, baselines.nocheckCeiling, '', { lockIn: true })
 ceiling('Lint/type suppressions', suppressions, baselines.suppressionsCeiling, '', { lockIn: true })
 finish()

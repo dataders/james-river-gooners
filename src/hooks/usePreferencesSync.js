@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useRef } from 'react'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { pickPersistedPrefs } from '../utils/prefs'

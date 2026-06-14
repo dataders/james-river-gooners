@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useMemo } from 'react'
 import MiniSearch from 'minisearch'
 import { itemKey } from '../utils/itemKey'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Pure Maxanet HTML/cookie parsing helpers.
 // No Deno or Node APIs — safe to import in either runtime.
 // Tested in src/utils/cannonProxy.parsers.test.js.

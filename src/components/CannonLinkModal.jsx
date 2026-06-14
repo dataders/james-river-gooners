@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useRef, useState } from 'react'
 
 // Modal for linking / unlinking a Cannon's Auctions account.

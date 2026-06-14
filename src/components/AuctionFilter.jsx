@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react'
 
 const SOURCE_LABELS = {
