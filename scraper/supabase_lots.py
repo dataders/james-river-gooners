@@ -172,8 +172,8 @@ def upsert_lots(
     items: list[dict],
     safe_id: str,
     *,
-    url: str = None,
-    key: str = None,
+    url: str | None = None,
+    key: str | None = None,
     session=None,
     batch_size: int = DEFAULT_BATCH_SIZE,
     skip_unchanged: bool = True,
@@ -229,8 +229,8 @@ def archive_lots(
     safe_id: str,
     final_items: list[dict],
     *,
-    url: str = None,
-    key: str = None,
+    url: str | None = None,
+    key: str | None = None,
     session=None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> int:
@@ -315,13 +315,15 @@ def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[
 
 def list_auction_safe_ids(
     *,
-    url: str = None,
-    key: str = None,
+    url: str | None = None,
+    key: str | None = None,
     session=None,
     archived: bool = False,
 ) -> list[str]:
     """Return all distinct auction_safe_id values from the lots table."""
     url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return []
     if session is None:
         from http_client import supabase_session
         session = supabase_session("lots")
@@ -349,13 +351,15 @@ def list_auction_safe_ids(
 def fetch_lots_for_auction(
     safe_id: str,
     *,
-    url: str = None,
-    key: str = None,
+    url: str | None = None,
+    key: str | None = None,
     session=None,
     archived: bool = False,
 ) -> list[dict]:
     """Fetch all lots for one auction from Supabase as camelCase item dicts."""
     url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return []
     if session is None:
         from http_client import supabase_session
         session = supabase_session("lots")
@@ -379,8 +383,8 @@ def fetch_lots_for_auction(
 
 def backfill(
     *,
-    url: str = None,
-    key: str = None,
+    url: str | None = None,
+    key: str | None = None,
     session=None,
     do_active: bool = True,
     do_archived: bool = True,

@@ -146,6 +146,7 @@ def _lot_doc(**overrides) -> dict:
 class MapItemTest(unittest.TestCase):
     def test_maps_core_fields(self):
         item = map_item(_lot_doc(), "ASdfsbPK6nsMUmU69NZM")
+        assert item is not None
         self.assertEqual(item["id"], "rasmus_0001zxfoJl12GN2NEu24")
         self.assertEqual(item["lotNumber"], 121)
         self.assertEqual(item["title"], "Colorful Fruit Plates")
@@ -159,6 +160,7 @@ class MapItemTest(unittest.TestCase):
 
     def test_unique_bidders_from_bidder_list(self):
         item = map_item(_lot_doc(), "aid")
+        assert item is not None
         self.assertEqual(item["uniqueBidders"], 3)
         self.assertEqual(item["totalBids"], 3)
 
@@ -168,6 +170,7 @@ class MapItemTest(unittest.TestCase):
             bidders_by_uid={"arrayValue": {"values": []}},
         )
         item = map_item(doc, "aid")
+        assert item is not None
         self.assertEqual(item["uniqueBidders"], 0)
         self.assertEqual(item["totalBids"], 0)
 
@@ -175,10 +178,12 @@ class MapItemTest(unittest.TestCase):
         doc = _lot_doc()
         del doc["fields"]["iid"]
         item = map_item(doc, "aid")
+        assert item is not None
         self.assertEqual(item["id"], "rasmus_0001zxfoJl12GN2NEu24")
 
     def test_category_normalized(self):
         item = map_item(_lot_doc(), "aid")
+        assert item is not None
         # raw "China" should survive into rawCategory; category is a broad group
         self.assertTrue(item["category"])
         self.assertTrue(item["rawCategory"])

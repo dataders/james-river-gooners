@@ -411,7 +411,7 @@ def map_item(doc: dict, aid: str) -> dict | None:
 
     lot = f.get("lot")
     try:
-        lot_number = int(lot)
+        lot_number = int(lot) if isinstance(lot, (str, int, float)) else 0
     except (TypeError, ValueError):
         lot_number = 0
 

@@ -18,6 +18,8 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from functools import partial
 
+from ebay_ledger import CompLedger
+
 COMP_SNAPSHOT_TABLE = "ebay_comp_snapshots"
 # Reconstruction views (migration 0005) the scraper reads as its ledger.
 FRESHNESS_VIEW = "comp_item_freshness"
@@ -199,7 +201,7 @@ def content_range_total(value: str | None) -> int:
         return 0
 
 
-class SupabaseCompLedger:
+class SupabaseCompLedger(CompLedger):
     """Reads the scraper's freshness + request-budget ledger from Supabase.
 
     Replaces the per-auction JSON files as the scraper's state store (issue #6

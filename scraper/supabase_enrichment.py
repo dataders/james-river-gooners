@@ -389,8 +389,8 @@ def record_enrich_run(
 def load_prior_enrichment_from_supabase(
     safe_id: str,
     *,
-    url: str = None,
-    key: str = None,
+    url: str | None = None,
+    key: str | None = None,
     session=None,
 ) -> dict:
     """Load prior enrichment for one auction from the lot_enrichment table.

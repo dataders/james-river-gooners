@@ -353,7 +353,7 @@ class SourceRunner:
     """Binds a source's display name to its spec→SourceJob builder."""
 
     name: str
-    build: Callable[[object], SourceJob]
+    build: Callable[..., SourceJob]
 
 
 def _maxanet_job(url: str) -> SourceJob:

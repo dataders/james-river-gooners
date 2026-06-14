@@ -983,7 +983,8 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
     input_tokens = 0
     output_tokens = 0
     for result in client.messages.batches.results(batch_id):
-        item = by_custom_id.get(getattr(result, "custom_id", None))
+        custom_id = getattr(result, "custom_id", None)
+        item = by_custom_id.get(custom_id) if isinstance(custom_id, str) else None
         if item is None:
             continue
         outcome = result.result

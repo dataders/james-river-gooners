@@ -16,7 +16,7 @@ class TelemetryGatingTest(unittest.TestCase):
     def test_unconfigured_is_noop_and_never_raises(self):
         with patch.dict(os.environ, {"GOONERS_POSTHOG_KEY": ""}, clear=False):
             import telemetry
-            telemetry = importlib.reload(telemetry)
+            importlib.reload(telemetry)
             self.assertFalse(telemetry.is_telemetry_configured())
             # No key → capture/flush must be harmless no-ops.
             telemetry.capture("soldcomps_api_request", {"status": "ok"})
@@ -26,7 +26,7 @@ class TelemetryGatingTest(unittest.TestCase):
     def test_capture_swallows_sdk_errors(self):
         with patch.dict(os.environ, {"GOONERS_POSTHOG_KEY": "phc_test"}, clear=False):
             import telemetry
-            telemetry = importlib.reload(telemetry)
+            importlib.reload(telemetry)
             self.assertTrue(telemetry.is_telemetry_configured())
 
             class Boom:

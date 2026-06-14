@@ -28,9 +28,17 @@ ENRICHED_LOT = {
 }
 
 
+def _enriched_row():
+    """enrichment_row(ENRICHED_LOT) asserted non-None, for the list-arg call sites."""
+    r = supabase_enrichment.enrichment_row(ENRICHED_LOT)
+    assert r is not None
+    return r
+
+
 class EnrichmentRowTest(unittest.TestCase):
     def test_builds_row_with_only_table_columns(self):
         row = supabase_enrichment.enrichment_row(ENRICHED_LOT)
+        assert row is not None
         self.assertEqual(set(row), set(supabase_enrichment.ENRICHMENT_COLUMNS))
         self.assertEqual(row["item_id"], "42")
         self.assertEqual(row["brand"], "Sony")
@@ -50,7 +58,7 @@ class EnrichmentRowTest(unittest.TestCase):
         row = supabase_enrichment.enrichment_row(
             dict(ENRICHED_LOT, enrichmentConfidence="medium")
         )
-        self.assertIsNotNone(row)
+        assert row is not None
         self.assertEqual(row["confidence"], "medium")
 
     def test_missing_identity_is_skipped(self):
@@ -64,11 +72,15 @@ class EnrichmentRowTest(unittest.TestCase):
 
     def test_images_as_json_string(self):
         lot = dict(ENRICHED_LOT, images=json.dumps(["https://img/c.jpg"]))
-        self.assertEqual(supabase_enrichment.enrichment_row(lot)["image_url"], "https://img/c.jpg")
+        row = supabase_enrichment.enrichment_row(lot)
+        assert row is not None
+        self.assertEqual(row["image_url"], "https://img/c.jpg")
 
     def test_confidence_normalized(self):
         lot = dict(ENRICHED_LOT, enrichmentConfidence="  HIGH ")
-        self.assertEqual(supabase_enrichment.enrichment_row(lot)["confidence"], "high")
+        row = supabase_enrichment.enrichment_row(lot)
+        assert row is not None
+        self.assertEqual(row["confidence"], "high")
 
     def test_v6_detail_columns_mapped(self):
         lot = dict(
@@ -78,6 +90,7 @@ class EnrichmentRowTest(unittest.TestCase):
             detailConfidence="high",
         )
         row = supabase_enrichment.enrichment_row(lot)
+        assert row is not None
         self.assertEqual(row["detail_category"], "furniture")
         self.assertEqual(json.loads(row["details"]), {"style": "mid-century modern", "material": "walnut"})
         self.assertEqual(row["detail_confidence"], "high")
@@ -85,6 +98,7 @@ class EnrichmentRowTest(unittest.TestCase):
     def test_detail_columns_default_empty(self):
         # A branded lot with no detail bag stores empty strings, not None/missing.
         row = supabase_enrichment.enrichment_row(ENRICHED_LOT)
+        assert row is not None
         self.assertEqual(row["detail_category"], "")
         self.assertEqual(row["details"], "")
         self.assertEqual(row["detail_confidence"], "")
@@ -92,10 +106,12 @@ class EnrichmentRowTest(unittest.TestCase):
 
     def test_schema_version_mapped(self):
         row = supabase_enrichment.enrichment_row({**ENRICHED_LOT, "enrichmentSchemaVersion": "6"})
+        assert row is not None
         self.assertEqual(row["schema_version"], "6")
 
     def test_schema_version_defaults_empty(self):
         row = supabase_enrichment.enrichment_row(ENRICHED_LOT)
+        assert row is not None
         self.assertEqual(row["schema_version"], "")
 
 
@@ -201,7 +217,7 @@ class UpsertTest(unittest.TestCase):
     def test_posts_to_table_with_merge_prefer_header(self):
         session = self._session()
         n = supabase_enrichment.upsert_enrichment(
-            [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+            [_enriched_row()],
             url="https://proj.supabase.co",
             key="secret",
             session=session,
@@ -223,7 +239,7 @@ class UpsertTest(unittest.TestCase):
         session.post.return_value = MagicMock(status_code=400, text="bad")
         with self.assertRaises(RuntimeError):
             supabase_enrichment.upsert_enrichment(
-                [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+                [_enriched_row()],
                 url="https://proj.supabase.co",
                 key="secret",
                 session=session,
@@ -238,7 +254,7 @@ class UpsertTest(unittest.TestCase):
             MagicMock(status_code=201),
         ]
         n = supabase_enrichment.upsert_enrichment(
-            [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+            [_enriched_row()],
             url="https://proj.supabase.co", key="secret", session=session,
         )
         self.assertEqual(n, 1)
@@ -253,7 +269,7 @@ class UpsertTest(unittest.TestCase):
             MagicMock(status_code=201),
         ]
         n = supabase_enrichment.upsert_enrichment(
-            [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+            [_enriched_row()],
             url="https://proj.supabase.co", key="secret", session=session,
         )
         self.assertEqual(n, 1)
@@ -265,7 +281,7 @@ class UpsertTest(unittest.TestCase):
         session.post.return_value = MagicMock(status_code=503, text="busy")
         with self.assertRaises(RuntimeError):
             supabase_enrichment.upsert_enrichment(
-                [supabase_enrichment.enrichment_row(ENRICHED_LOT)],
+                [_enriched_row()],
                 url="https://proj.supabase.co", key="secret", session=session,
                 max_retries=2,
             )
