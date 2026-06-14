@@ -8,10 +8,13 @@
 # This replaces the old advisory `continue-on-error` step.
 #
 # The ty version AND target python version are pinned so the count is identical
-# in dev and CI (it drifts between python versions otherwise).
+# in dev and CI (it drifts between python versions otherwise). scraper/ty.toml
+# ignores environment-artifact rules (unresolved-import / possibly-missing-
+# submodule) so the baseline is real, drivable type errors — not deps the
+# type-check job doesn't install.
 set -uo pipefail
 
-BASELINE=237
+BASELINE=127
 TY_VERSION="0.0.44"
 PYTHON_VERSION="3.13"
 
