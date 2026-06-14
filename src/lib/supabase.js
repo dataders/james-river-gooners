@@ -22,7 +22,9 @@ const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
 export const isSupabaseConfigured = Boolean(url && publishableKey)
 
-export const supabase = isSupabaseConfigured
+// Gate on `url && publishableKey` (not the derived isSupabaseConfigured) so
+// createClient sees `string`, not `string | undefined`.
+export const supabase = url && publishableKey
   ? createClient(url, publishableKey, {
       auth: {
         persistSession: true,

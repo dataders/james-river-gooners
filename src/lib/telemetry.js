@@ -37,7 +37,9 @@ let initialized = false
  * configured (no-op) or more than once (idempotent).
  */
 export function initAnalytics() {
-  if (!isAnalyticsConfigured || initialized) return
+  // Narrow on `key` (not the derived isAnalyticsConfigured) so posthog.init
+  // sees a `string`, not `string | undefined`.
+  if (!key || initialized) return
   if (typeof window === 'undefined') return
 
   posthog.init(key, {

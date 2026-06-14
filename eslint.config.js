@@ -10,14 +10,18 @@ export default defineConfig([
   // checkouts that must never be linted as part of this tree's `eslint .`.
   globalIgnores(['dist', '.vite', 'node_modules', '.claude']),
   // TypeScript files (the migration is incremental — most of the tree is still
-  // .js/.jsx; see tsconfig.json). Lint-only recommended rules, no type-aware
-  // project parsing, so this stays fast and doesn't duplicate `npm run type-check`.
+  // .js/.jsx; see tsconfig.json). Type-aware linting: `recommendedTypeChecked`
+  // + `projectService` pull in the type-checker so rules like
+  // no-floating-promises / no-misused-promises / no-unsafe-* can catch bugs
+  // `tsc --noEmit` won't (unawaited promises, `any` leaking in from untyped
+  // JSON). Slower than syntax-only lint, but scoped to the .ts/.tsx files the
+  // migration has reached, so it stays cheap until coverage grows.
   {
     // Scoped to src/ (the SPA migration target); the Deno edge functions under
     // supabase/functions have their own runtime + console conventions.
     files: ['src/**/*.{ts,tsx}'],
     extends: [
-      tseslint.configs.recommended,
+      tseslint.configs.recommendedTypeChecked,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
@@ -28,6 +32,8 @@ export default defineConfig([
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
         sourceType: 'module',
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
@@ -37,6 +43,17 @@ export default defineConfig([
       'no-throw-literal': 'error',
       'no-unneeded-ternary': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // verbatimModuleSyntax is on (tsconfig); enforce `import type` to match.
+      '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  {
+    // node:test's `test(...)` returns a Promise the runner itself awaits, so a
+    // top-level `test(...)` call is a floating promise by design — the rule is
+    // a false positive for the whole test-runner idiom.
+    files: ['src/**/*.test.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
     },
   },
   {
