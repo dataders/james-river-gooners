@@ -78,6 +78,29 @@ except Exception:  # pragma: no cover - telemetry is best-effort
     def _telemetry_flush():
         return None
 
+
+def _chunk_safe_id(items: list[dict]) -> str | None:
+    """The auction a unit of work covers — best-effort, for the cost ledger.
+    Backfills/scrapes process one auction at a time so a chunk is single-auction;
+    return None when a chunk happens to span auctions (don't mislabel the row)."""
+    ids = {item.get("auctionSafeId") for item in items if item.get("auctionSafeId")}
+    return next(iter(ids)) if len(ids) == 1 else None
+
+
+def _record_enrich_run(payload: dict) -> None:
+    """Append one row to the Supabase ``enrich_runs`` cost ledger. Best-effort:
+    a no-op when Supabase is unconfigured, and warns (never raises) on failure —
+    the enrichment itself is the deliverable, not the ledger entry."""
+    try:
+        from supabase_enrichment import record_enrich_run
+    except Exception:  # pragma: no cover - supabase deps optional
+        return
+    try:
+        record_enrich_run(payload)
+    except Exception as exc:  # noqa: BLE001 - ledger is best-effort
+        print(f"  WARNING: failed to record enrich_runs ledger row: {exc}", file=sys.stderr)
+
+
 # Haiku is plenty for structured extraction and the cheapest option; overridable
 # for experiments. Note Haiku 4.5 rejects the `effort` parameter, so we don't
 # set one — extraction needs neither effort nor extended thinking.
@@ -178,7 +201,7 @@ ENRICHMENT_FIELDS = (
     "quantity", "isMixedLot", "conditionFlags", "keyAttributes", "secondaryItems",
     "notes", "detailCategory", "details",
     "brandConfidence", "modelConfidence", "detailConfidence", "enrichmentConfidence",
-    "enrichmentModel", "enrichmentInputHash",
+    "enrichmentModel", "enrichmentSchemaVersion", "enrichmentInputHash",
 )
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
@@ -664,6 +687,10 @@ def _finalize_result(item: dict, result: dict) -> dict:
     # Stamp provenance only on lots that were actually identified.
     if result.get("enrichmentConfidence"):
         result["enrichmentModel"] = MODEL
+    # Schema version is stamped on every processed lot (identified or not) so the
+    # Supabase mirror can record which prompt/schema produced the row — queryable
+    # without recomputing the fingerprint.
+    result["enrichmentSchemaVersion"] = ENRICHMENT_SCHEMA_VERSION
     # Fingerprint the inputs so a later scrape can reuse this result unchanged.
     # Stamped on every processed lot (identified or not) so even empty results
     # are cached — otherwise the generic-junk majority would re-call every run.
@@ -676,7 +703,16 @@ def enrich_item(client, item: dict) -> dict:
     error — the caller isolates per-lot failures."""
     _limiter.acquire()
     response = client.messages.create(**build_request_params(item))
-    return _finalize_result(item, parse_enrichment(json.loads(_response_text(response.content))))
+    result = _finalize_result(item, parse_enrichment(json.loads(_response_text(response.content))))
+    # Stash usage for the run's cost ledger. These private keys are not in
+    # ENRICHMENT_FIELDS, so apply_enrichment never copies them onto the item.
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        in_tok = getattr(usage, "input_tokens", 0)
+        out_tok = getattr(usage, "output_tokens", 0)
+        result["_input_tokens"] = in_tok if isinstance(in_tok, int) else 0
+        result["_output_tokens"] = out_tok if isinstance(out_tok, int) else 0
+    return result
 
 
 def apply_enrichment(item: dict, enrichment: dict) -> None:
@@ -811,6 +847,8 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
     to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
 
     enriched = 0
+    input_tokens = 0
+    output_tokens = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
         futures = {pool.submit(enrich_item, client, item): item for item in to_enrich}
         for future in concurrent.futures.as_completed(futures):
@@ -820,17 +858,39 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
             except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
                 print(f"  enrich: skipped lot {item.get('id')} ({exc})", file=sys.stderr)
                 continue
+            input_tokens += int(result.pop("_input_tokens", 0) or 0)
+            output_tokens += int(result.pop("_output_tokens", 0) or 0)
             apply_enrichment(item, result)
             if any(result.get(field) for field in ENRICHMENT_FIELDS):
                 enriched += 1
 
+    # Sync path is the standard (non-batch) per-token rate — no 50% discount.
+    est_cost_usd = round(
+        input_tokens / 1e6 * PRICE_IN_PER_MTOK + output_tokens / 1e6 * PRICE_OUT_PER_MTOK, 4)
     reused_note = f" (reused {reused} unchanged)" if reused else ""
     print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL}{reused_note}")
+    if to_enrich:
+        print(f"  enrich: sync cost ~${est_cost_usd:.4f} "
+              f"({input_tokens} in + {output_tokens} out tok, standard rate, {MODEL})")
     _telemetry_capture("enrich_sync_completed", {
         "lots": len(to_enrich),
         "enriched": enriched,
         "reused": reused,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "est_cost_usd": est_cost_usd,
         "model": MODEL,
+    })
+    _record_enrich_run({
+        "mode": "sync",
+        "model": MODEL,
+        "schema_version": ENRICHMENT_SCHEMA_VERSION,
+        "auction_safe_id": _chunk_safe_id(to_enrich),
+        "lots_submitted": len(to_enrich),
+        "lots_enriched": enriched,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "est_cost_usd": est_cost_usd,
     })
     return enriched
 
@@ -953,6 +1013,8 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
         (input_tokens / 1e6 * PRICE_IN_PER_MTOK + output_tokens / 1e6 * PRICE_OUT_PER_MTOK) * 0.5,
         4,
     )
+    print(f"  enrich: batch {batch_id} cost ~${est_cost_usd:.4f} "
+          f"({input_tokens} in + {output_tokens} out tok, batch 50%-off rate, {MODEL})")
     _telemetry_capture("enrich_batch_completed", {
         "batch_id": batch_id,
         "lots": len(requests),
@@ -962,6 +1024,18 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
         "output_tokens": output_tokens,
         "est_cost_usd": est_cost_usd,
         "model": MODEL,
+    })
+    _record_enrich_run({
+        "mode": "batch",
+        "model": MODEL,
+        "schema_version": ENRICHMENT_SCHEMA_VERSION,
+        "auction_safe_id": _chunk_safe_id(chunk),
+        "lots_submitted": len(requests),
+        "lots_enriched": enriched,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "est_cost_usd": est_cost_usd,
+        "raw": {"batch_id": batch_id, "errored": errored},
     })
     return enriched
 

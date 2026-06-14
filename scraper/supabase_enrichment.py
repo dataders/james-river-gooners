@@ -42,6 +42,22 @@ from pathlib import Path
 from supabase_comps import READ_TIMEOUT, json_safe, resolve_credentials
 
 ENRICHMENT_TABLE = "lot_enrichment"
+ENRICH_RUNS_TABLE = "enrich_runs"
+
+# Columns of the enrich_runs cost ledger (0031). Anything else in a payload is
+# dropped so a caller can't write an unknown column.
+ENRICH_RUNS_COLUMNS = (
+    "mode",
+    "model",
+    "schema_version",
+    "auction_safe_id",
+    "lots_submitted",
+    "lots_enriched",
+    "input_tokens",
+    "output_tokens",
+    "est_cost_usd",
+    "raw",
+)
 
 # Columns written per row; mirrors the `lot_enrichment` table
 # (0009_lot_enrichment.sql). `updated_at` is Postgres-filled and omitted.
@@ -72,6 +88,7 @@ ENRICHMENT_COLUMNS = (
     "detail_confidence",
     "confidence",
     "model",
+    "schema_version",
     "image_url",
     "detail_url",
     "source",
@@ -102,7 +119,7 @@ def _post_batch_with_retry(session, endpoint, headers, batch, max_retries, sleep
         except requests.exceptions.RequestException as exc:
             if attempt >= max_retries:
                 raise RuntimeError(
-                    f"Supabase lot_enrichment upsert failed after {attempt + 1} attempt(s): {exc}"
+                    f"Supabase write failed after {attempt + 1} attempt(s): {exc}"
                 ) from exc
             sleep(2 ** (attempt + 1))
             continue
@@ -113,7 +130,7 @@ def _post_batch_with_retry(session, endpoint, headers, batch, max_retries, sleep
             sleep(2 ** (attempt + 1))
             continue
         raise RuntimeError(
-            f"Supabase lot_enrichment upsert failed ({response.status_code}): {response.text[:300]}"
+            f"Supabase write failed ({response.status_code}): {response.text[:300]}"
         )
 
 
@@ -173,6 +190,7 @@ def enrichment_row(lot: dict) -> dict | None:
         "detail_confidence": lot.get("detailConfidence") or "",
         "confidence": confidence,
         "model": lot.get("enrichmentModel") or "",
+        "schema_version": lot.get("enrichmentSchemaVersion") or "",
         "image_url": _first_image(lot),
         "detail_url": lot.get("detailUrl"),
         "source": lot.get("source"),
@@ -261,6 +279,41 @@ def maybe_export_enrichment(items: list[dict], session=None) -> int:
     return written
 
 
+def record_enrich_run(
+    payload: dict,
+    url: str | None = None,
+    key: str | None = None,
+    session=None,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+) -> int:
+    """Append one cost-ledger row to ``enrich_runs`` (the spend-tracking table).
+
+    Best-effort and resilient like ``maybe_export_enrichment``: a quiet no-op
+    when Supabase is unconfigured (returns 0), and raises only on a permanent
+    write failure (the inline callers wrap this and warn). ``raw`` is passed
+    through as JSON for the jsonb column."""
+    url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return 0
+
+    row = {col: json_safe(payload.get(col)) for col in ENRICH_RUNS_COLUMNS if col in payload}
+    if not row:
+        return 0
+
+    from http_client import supabase_session
+
+    session = session or supabase_session("enrich")
+    endpoint = f"{url.rstrip('/')}/rest/v1/{ENRICH_RUNS_TABLE}"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    _post_batch_with_retry(session, endpoint, headers, [row], max_retries)
+    return 1
+
+
 def load_prior_enrichment_from_supabase(
     safe_id: str,
     *,
@@ -336,6 +389,7 @@ def load_prior_enrichment_from_supabase(
             "detailConfidence": row.get("detail_confidence") or "",
             "enrichmentConfidence": row.get("confidence") or "",
             "enrichmentModel": row.get("model") or "",
+            "enrichmentSchemaVersion": row.get("schema_version") or "",
             "enrichmentInputHash": row.get("input_hash") or "",
         }
     return prior

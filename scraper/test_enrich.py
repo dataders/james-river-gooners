@@ -22,6 +22,24 @@ from enrich import (
 )
 
 
+# The cost-ledger writer (enrich._record_enrich_run) does a real Supabase POST
+# when SUPABASE_* env vars are present, so exercising enrich_items/_run_one_batch
+# in a credentialed shell would pollute the live `enrich_runs` table. Stub it out
+# for the whole module; the ledger payload is asserted in test_supabase_enrichment.
+_record_run_patcher = None
+
+
+def setUpModule():
+    global _record_run_patcher
+    _record_run_patcher = mock.patch.object(enrich, "_record_enrich_run")
+    _record_run_patcher.start()
+
+
+def tearDownModule():
+    if _record_run_patcher is not None:
+        _record_run_patcher.stop()
+
+
 class _FakeBlock:
     def __init__(self, text):
         self.type = "text"
