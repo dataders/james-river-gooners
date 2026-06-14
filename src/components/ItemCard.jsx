@@ -61,11 +61,31 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
       </div>
       <div className="item-info">
         <div className="item-title">{displayTitle}</div>
-        {enrichment && (!usedLabelAsTitle || enrichment.condition || enrichment.isMixedLot) && (
+        {enrichment && (!usedLabelAsTitle || enrichment.condition || enrichment.isMixedLot || parseInt(enrichment.quantity, 10) > 1) && (
           <div className="item-product">
             {!usedLabelAsTitle && <span className="item-product-label">{enrichment.label}</span>}
             {enrichment.condition && <span className="item-condition">{enrichment.condition}</span>}
             {enrichment.isMixedLot && <span className="enrichment-badge enrichment-badge-mixed">Mixed lot</span>}
+            {(() => {
+              const qty = parseInt(enrichment.quantity, 10)
+              return Number.isFinite(qty) && qty > 1
+                ? <span className="enrichment-badge enrichment-badge-qty">Qty {qty}</span>
+                : null
+            })()}
+          </div>
+        )}
+        {enrichment?.conditionFlags.length > 0 && (
+          <div className="enrichment-flags">
+            {enrichment.conditionFlags.map(flag => (
+              <span key={flag} className="enrichment-flag" title="Resale-risk flag">⚠ {flag}</span>
+            ))}
+          </div>
+        )}
+        {enrichment?.keyAttributes.length > 0 && (
+          <div className="enrichment-chips">
+            {enrichment.keyAttributes.map(attr => (
+              <span key={attr} className="enrichment-chip">{attr}</span>
+            ))}
           </div>
         )}
         <div className="item-category">
