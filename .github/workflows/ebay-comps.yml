@@ -54,6 +54,11 @@ on:
         required: false
         type: boolean
         default: false
+      sold_listings_corpus:
+        description: 'Capture the full eBay candidate set into the sold_listings corpus (#290/#294)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -105,6 +110,9 @@ jobs:
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
           AGENT_BROWSER_SESSION: gooners-ebay-comps
           GOONERS_EBAY_COMPS_SKIP_CATEGORIES: ${{ inputs.skip_categories }}
+          # Raw sold-listings corpus (#290/#294): opt-in capture of the full
+          # candidate set per query. No-op unless on.
+          GOONERS_SOLD_LISTINGS_CORPUS: ${{ inputs.sold_listings_corpus && '1' || '' }}
         run: |
           cd scraper
           # Prefer Supabase (#6): the comps read model + ledger, so no JSON is
@@ -128,15 +136,19 @@ jobs:
           # skip_categories is passed via GOONERS_EBAY_COMPS_SKIP_CATEGORIES env var
           # (values may contain spaces, e.g. "Jewelry & Watches"), which ebay_comps.py
           # reads as the --skip-categories default.
+          # This comps-only workflow does not scrape, so there's no local read
+          # model — source lots from Supabase (the active `lots` table +
+          # enrichment) via --from-supabase.
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
-              python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0 \
+              python ebay_comps.py fetch-direct --dry-run --from-supabase --limit 1 --sleep-seconds 0 \
                 --monthly-budget "${{ inputs.monthly_budget }}" \
                 --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG $PACING_FLAG
           else
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
               python ebay_comps.py fetch-direct \
+                --from-supabase \
                 --limit "${{ inputs.limit }}" \
                 --max-queries "${{ inputs.max_queries }}" \
                 --monthly-budget "${{ inputs.monthly_budget }}" \
@@ -148,7 +160,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/ebay-comps/
+          # In Supabase mode comps go to the DB and no JSON is written, so the
+          # ebay-comps dir may not exist — only stage it when present, and never
+          # let a missing path abort the step (bash -e).
+          if [ -d public/data/ebay-comps ]; then
+            git add public/data/ebay-comps/
+          fi
           if git diff --staged --quiet; then
             echo "No eBay comp changes to commit"
             exit 0

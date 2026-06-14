@@ -1,0 +1,48 @@
+name: Re-rank eBay Comps (visual)
+
+# SoldComps Phase 2 / RFC #290, increment 2. Off the hourly hot path: embeds the
+# sold-listings corpus with the Nomic text+vision models, then re-ranks each
+# active lot's candidate comps by visual+text similarity and writes the best K
+# back into ebay_comp_snapshots (source_query='visual'). Manual-dispatch while
+# the corpus is small / being validated; add a schedule once it's proven.
+
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: 'embed (generate listing embeddings) | rerank (write visual comps) | all'
+        required: false
+        type: choice
+        options: [all, embed, rerank]
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  rerank:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Cache HuggingFace models (Nomic)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-nomic-embed-v1.5
+
+      - name: Embed + re-rank the sold-listings corpus
+        run: |
+          cd scraper
+          # Same Nomic stack as the lot embeddings (#165): einops for nomic_bert's
+          # trust_remote_code, transformers==4.49.0 for the vision config, torchvision
+          # for the image processor.
+          uv run --with requests \
+            --with sentence-transformers --with 'transformers==4.49.0' \
+            --with torchvision --with pillow --with einops \
+            python embed_sold_listings.py --step "${{ inputs.step || 'all' }}"
