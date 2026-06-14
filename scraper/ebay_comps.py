@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+# ]
+# ///
 """
 Fetch eBay sold-comps into the comps read model.
 

@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "dlt[postgres]",
+#     "requests",
+# ]
+# ///
 """Supabase platform metrics → Postgres, via dlt.
 
 Scrapes the project's privileged Prometheus metrics endpoint (host load,

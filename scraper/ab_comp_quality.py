@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyyaml",
+#     "numpy",
+# ]
+# ///
 """A/B eval of comp quality across the comp-pipeline factors (RFC #290 follow-up).
 
 Measures whether the comp-quality improvements actually surface better comps,

@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
 """Cannon's historical sold prices → Supabase (issue #95 / M3.2).
 
 Reads the archive read model (``public/data/archive/items/*.ndjson``) — the

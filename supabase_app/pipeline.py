@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "dlt[motherduck]",
+#     "requests",
+# ]
+# ///
 """Supabase app tables → MotherDuck, via dlt (PostgREST source).
 
 Copies the RLS-public application tables (lots, sold_lots, lot_enrichment, the

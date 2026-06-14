@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "numpy",
+# ]
+# ///
 """Nomic Embed (text + vision) generation → Supabase pgvector table.
 
 Activated by setting GOONERS_NOMIC_EMBEDDINGS=1 before running scrape.py or

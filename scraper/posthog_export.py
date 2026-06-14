@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
 """
 Export PostHog event aggregates → MotherDuck posthog_raw schema.
 

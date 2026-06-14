@@ -36,19 +36,24 @@ npm run build     # production build → dist/
 npm run lint      # eslint
 
 # Scraper — run from scraper/
-uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml python3 rescrape_all.py
-uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml python3 scrape.py "<full_auction_url>"
+# Each entry-point script declares its baseline deps inline (PEP 723), so a plain
+# `uv run <script>.py` resolves them automatically — no `--with requests …` needed.
+# Run the script directly (`uv run scrape.py`), NOT `uv run python3 scrape.py`: the
+# `python3 …` form bypasses the inline metadata. Heavy/optional deps (anthropic,
+# the Nomic ML stack, duckdb, playwright) stay opt-in `--with` flags, layered on top.
+uv run rescrape_all.py
+uv run scrape.py "<full_auction_url>"
 
 # Optional MotherDuck snapshot (requires MOTHERDUCK_TOKEN env var)
-GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' python3 scrape.py "<full_auction_url>"
+GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with 'duckdb==1.5.2' scrape.py "<full_auction_url>"
 
 # Optional Nomic embeddings (text+vision → Supabase pgvector; needs SUPABASE_SECRET_KEY)
-GOONERS_NOMIC_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops python3 scrape.py "<full_auction_url>"
+GOONERS_NOMIC_EMBEDDINGS=1 uv run --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops scrape.py "<full_auction_url>"
 
 # Optional LLM enrichment (brand/model/condition; needs ANTHROPIC_API_KEY)
-GOONERS_ENRICHMENT=1 uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with anthropic python3 scrape.py "<full_auction_url>"
-GOONERS_ENRICHMENT=1 uv run --with pyarrow --with anthropic python3 enrich.py "<safeId>"   # backfill existing read model
-uv run --with pyarrow --with anthropic python3 enrich.py --enrich 1 "<safeId>"   # same, gate via flag instead of env var (bare --enrich = 1; --enrich 0 = off)
+GOONERS_ENRICHMENT=1 uv run --with anthropic scrape.py "<full_auction_url>"
+GOONERS_ENRICHMENT=1 uv run --with anthropic --with pillow enrich.py "<safeId>"   # backfill existing read model
+uv run --with anthropic --with pillow enrich.py --enrich 1 "<safeId>"   # same, gate via flag instead of env var (bare --enrich = 1; --enrich 0 = off)
 ```
 
 ## UI Changes — Screenshot Before Merging

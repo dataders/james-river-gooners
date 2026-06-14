@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+# ]
+# ///
 """
 Backfill already-closed auctions into the archive read model.
 
