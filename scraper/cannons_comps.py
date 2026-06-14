@@ -34,6 +34,18 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Server-side PostHog telemetry (shared scraper helper). Silent no-op unless
+# GOONERS_POSTHOG_KEY is set AND the posthog SDK imports; never raises into the
+# caller. Guarded so a missing module can't break the comps job.
+try:
+    from telemetry import capture as _telemetry_capture, flush as _telemetry_flush
+except Exception:  # pragma: no cover - telemetry is best-effort
+    def _telemetry_capture(event, properties=None):
+        return None
+
+    def _telemetry_flush():
+        return None
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 SCHEMA_VERSION = 1
 DEFAULT_TOP_K = 3
@@ -167,6 +179,16 @@ def build_comps(
         f"{summary['auctions']} auctions, {summary['matches']} matches, "
         f"{summary['rows_written']} rows → Supabase ({summary['auctions_written']} auctions)"
     )
+    _telemetry_capture("cannons_comps_completed", {
+        "auctions": summary["auctions"],
+        "items_with_comps": summary["items_with_comps"],
+        "matches": summary["matches"],
+        "auctions_written": summary["auctions_written"],
+        "rows_written": summary["rows_written"],
+        "top_k": top_k,
+        "min_sim": min_sim,
+        "dry_run": dry_run,
+    })
     return summary
 
 
@@ -207,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         supabase_url=supabase_url,
         supabase_key=supabase_key,
     )
+    _telemetry_flush()  # ship events before this short-lived process exits
     return 0
 
 
