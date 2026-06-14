@@ -1,19 +1,23 @@
-// @ts-nocheck
 import { parseAuctionDate } from './dates.js'
+
+interface TimedItem {
+  endDate?: string | null
+  auctionEndDate?: string | null
+}
 
 // Compact "Jun 11, 7:56 PM" in the viewer's local timezone — consistent with
 // the live countdown, which also displays local time (see dates.js).
-function formatEndedAt(end) {
+function formatEndedAt(end: Date): string {
   const date = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   const time = end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   return `${date}, ${time}`
 }
 
-export function timeRemaining(endDate) {
+export function timeRemaining(endDate: string | null | undefined): string {
   const end = parseAuctionDate(endDate)
   if (!end) return ''
   const now = new Date()
-  const diff = end - now
+  const diff = end.getTime() - now.getTime()
   // Stamp closed lots with *when* they ended. Sources like HiBid stagger lot
   // close times across days, so a lot can read "Ended" while its parent auction
   // is still live — the date makes that visible at a glance.
@@ -31,14 +35,14 @@ export function timeRemaining(endDate) {
 // `auctionEndDate`, which the scraper always populates (from the title date for
 // closed auctions), so closed lots show "Ended" and active lots still get a
 // real countdown.
-export function itemTimeRemaining(item) {
+export function itemTimeRemaining(item: TimedItem | null | undefined): string {
   return timeRemaining(item?.endDate || item?.auctionEndDate)
 }
 
 // Whether a lot's bidding window has closed. A missing/unparseable date is
 // treated as ended (no live deadline to bid against). Kept separate from the
 // display string so callers don't depend on the exact "Ended …" wording.
-export function itemEnded(item) {
+export function itemEnded(item: TimedItem | null | undefined): boolean {
   const end = parseAuctionDate(item?.endDate || item?.auctionEndDate)
   return end == null || end.getTime() <= Date.now()
 }
