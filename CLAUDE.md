@@ -131,11 +131,13 @@ This is the inverse of the frontend-first order used for a pure *gate* (#149, wh
 
 ## Ratchets (one-way quality gates)
 
-CI enforces several **ratchets** — baselines that may only move the good direction, so quality can't silently erode. Baselines live in one file, `scripts/ratchets.json`; each check prints the new number to lock in when you beat it (then bump the baseline in the same PR). Shared reporting helper: `scripts/lib-ratchet.mjs`.
+CI enforces **ratchets** — baselines that may only move the good direction, so quality can't silently erode. Each check prints the new number/keys to lock in when you beat it (then update the baseline in the same PR).
 
-- **`npm run ratchets`** (`scripts/ratchets.mjs`, in the *type-check* job) — static source scans: **typed-file floor** (`.ts/.tsx` + `// @ts-check` `.js/.jsx` can't drop), **untyped-file ceiling** (un-`@ts-check`ed `.js/.jsx` can't rise → new source must be typed), and **suppression ceiling** (`eslint-disable`/`@ts-expect-error`/`@ts-ignore` can't proliferate). Excludes tests + `.d.ts`.
-- **`npm run bundle:check`** (`scripts/bundle-size.mjs`, in the *build* job after `npm run build`) — gzipped production JS must stay under `bundleGzipBytesCeiling`. Catches a mis-imported heavy dep.
-- **`npm run test:unit:coverage`** (`scripts/coverage-check.mjs`, in the *unit* job) — runs the unit suite with Node's built-in `--test-coverage-*` thresholds (lines/branches/functions floors). Needs node ≥22.13.
+- **`npm run ratchets`** (`scripts/ratchets.mjs`, *type-check* job) — static source scans: typed-file floor (`.ts/.tsx` + `// @ts-check`), untyped-file ceiling (new source must be typed), and suppression ceiling (`eslint-disable`/`@ts-expect-error`/`@ts-ignore`). Baselines in `scripts/ratchets.json`; shared reporter `scripts/lib-ratchet.mjs`.
+- **`npm run bundle:check`** (`scripts/bundle-size.mjs`, *build* job) — gzipped production JS must stay under `bundleGzipBytesCeiling`.
+- **`npm run test:unit:coverage`** (`scripts/coverage-check.mjs`, *unit* job) — Node's built-in `--test-coverage-*` floors (lines/branches/functions). Needs node ≥22.13.
+- **`npm run ty:ratchet`** (`scripts/ty-ratchet.sh`, *scraper-type-check* job) — the scraper's `ty` diagnostic count may not rise above a pinned baseline (ty version + python version pinned for reproducibility). Replaces the old advisory `continue-on-error` step; ratchet it down as the scraper gets typed.
+- **`npm run advisors:ratchet`** (`scripts/supabase-advisors-ratchet.mjs`, `supabase-advisors.yml` — scheduled + migration PRs) — fails if the live project gains a NEW Supabase security/perf advisor finding vs `scripts/supabase-advisors-baseline.json` (keyed on each lint's `cache_key`, so it catches a regression even behind an unrelated fix). Needs `SUPABASE_ACCESS_TOKEN`; skips cleanly without it.
 - The **usability benchmark** (`tests/usability`, `USABILITY_GATE=85`) is the same idea for UX.
 
 ## CI / PR Monitoring
