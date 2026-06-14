@@ -81,6 +81,43 @@ For any change that affects the visual layout (CSS, component structure, new con
 - Network reads from the read model go through `src/utils/net.js` (`fetchWithRetry` / `fetchJsonWithRetry` / `fetchTextWithRetry`): retries 5xx + network errors with exponential backoff, returns 4xx as-is so the comps loader can treat 404 as "no comps yet"
 - A top-level `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx`) keeps a render error in one item/component from blanking the whole page
 
+## Environment variables
+
+Two hard rules: anything prefixed **`VITE_`** is inlined into the public browser bundle, so it must be safe to expose (publishable/write-only keys, protected by RLS where relevant) — never put a secret in a `VITE_` var. Everything else is **backend-only** (scraper, Actions, edge functions) and must never reach a `VITE_` var or a committed file. Local dev reads `.env.local` (gitignored; copy from `.env.example`); CI reads GitHub Actions secrets.
+
+"In GH inventory" = present in the repo-level Actions secret store (`gh secret list`). A few vars are referenced by workflows but **not** in the repo inventory — those steps skip cleanly (or rely on org/environment-scoped secrets) until the secret is added.
+
+**Browser / build-time (`VITE_*`, bundled — safe to expose):**
+
+| Var | Purpose | In GH inventory |
+|-----|---------|-----------------|
+| `VITE_SUPABASE_URL` | Supabase project URL the browser client reads. | ✅ |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Publishable `sb_publishable_…` key; browser-safe via row-level security. | ✅ |
+| `VITE_POSTHOG_KEY` | PostHog write-only ingestion key (`phc_…`); optional (no key → no analytics). | ✅ |
+| `VITE_POSTHOG_HOST` | PostHog ingestion host; optional, defaults to US cloud. | ❌ (optional) |
+| `VITE_HF_TOKEN` | Hugging Face token for in-browser semantic search (`useSemanticSearch.js`); optional. | ❌ (optional) |
+
+**Backend / scraper / Actions (secret — never `VITE_`, never committed):**
+
+| Var | Purpose | In GH inventory |
+|-----|---------|-----------------|
+| `SUPABASE_URL` | Project URL for backend writers. | ✅ |
+| `SUPABASE_SECRET_KEY` | Service-role `sb_secret_…` key; bypasses RLS for scraper/backfill writes. | ✅ |
+| `ANTHROPIC_API_KEY` | Claude key for `enrich.py` lot enrichment. | ✅ |
+| `SOLDCOMPS_API_KEY` | SoldComps provider key for eBay comps. | ✅ |
+| `APIFY_API_KEY` | Apify key for the eBay comps Apify fallback (`scraper/ebay_apify.py`). | ✅ |
+| `MOTHERDUCK_TOKEN` | MotherDuck read/write PAT for the optional `listing_snapshots` snapshot. | ✅ |
+| `MOTHERDUCK_READ_SCALING_TOKEN` | Read-scaling token (browser/CDN-safe) for comps export; CLAUDE.md `MOTHERDUCK_READ_TOKEN`. | ❌ |
+| `AUTO_BID_EMAIL` / `AUTO_BID_SECRET` / `AUTO_BID_USER_ID` | Auto-bid creds; consumed by the `cannon-proxy` Supabase **edge function** (not repo code/Actions). | ✅ (edge-fn) |
+| `SUPABASE_POSTGRES_URL` (+ `…_IP4`) | Direct/session-pooler Postgres conn string (IPv4 variant for runners without IPv6); `supabase-stats` + dbt. | ❌ (job skips if unset) |
+| `SUPABASE_ACCESS_TOKEN` | Personal access token (`sbp_…`) for the Supabase CLI — `npm run gen:types` + the `types-drift` workflow. | ❌ (drift check skips until added) |
+| `SUPABASE_METRICS_URL` / `SUPABASE_METRICS_PASSWORD` | Supabase metrics-endpoint creds (`supabase-stats`). | ❌ |
+| `GOONERS_POSTHOG_KEY` | Server-side PostHog key for scraper/enrichment cost events (`scraper/telemetry.py`). | ❌ |
+| `POSTHOG_PERSONAL_KEY` | PostHog personal/admin key for analytics export (`scraper/posthog_export.py`, admin-dashboard). | ❌ |
+| `GITHUB_TOKEN` | Auto-provided by Actions; not a stored secret. | n/a |
+
+Runtime **feature toggles** (not secrets, opt-in behavior) live alongside the commands above: `GOONERS_ENRICHMENT`, `GOONERS_NOMIC_EMBEDDINGS`, `GOONERS_WAREHOUSE`, `GOONERS_MOTHERDUCK_SNAPSHOTS`, `GOONERS_EMBED_DEVICE`, and the various `GOONERS_ENRICHMENT_*` knobs — see the Architecture notes and `## Commands`.
+
 ## Rolling out data-backed migrations
 
 When a change moves a read model into Supabase (or adds an auth gate that empties it), the table must be **populated before the new frontend goes live**, or signed-in users briefly see empty sections. The pattern: **populate from the dev branch first, then merge.**
