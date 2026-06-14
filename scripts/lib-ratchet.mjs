@@ -13,25 +13,41 @@ export const baselines = JSON.parse(
 
 let failed = false
 
+// Discrete count ratchets pass `{ lockIn: true }`: beating the baseline without
+// committing the new number FAILS, so gains are locked in immediately and the
+// baseline always equals reality (it can only ever move the good way, never
+// drift). Continuous metrics (bundle bytes, coverage %) leave it off — those
+// fluctuate, so "better than baseline" is fine without an edit.
+
 /** A floor: `current` must stay >= baseline (coverage, typed-file count). */
-export function floor(label, current, baseline, unit = '') {
+export function floor(label, current, baseline, unit = '', { lockIn = false } = {}) {
   if (current < baseline) {
     failed = true
     console.error(`❌ ${label}: ${current}${unit} dropped below floor ${baseline}${unit}.`)
   } else if (current > baseline) {
-    console.log(`✅ ${label}: ${current}${unit} (floor ${baseline}${unit}) — raise the baseline to lock it in.`)
+    if (lockIn) {
+      failed = true
+      console.error(`❌ ${label}: ${current}${unit} beats floor ${baseline}${unit} — lock it in: set the baseline to ${current}${unit}.`)
+    } else {
+      console.log(`✅ ${label}: ${current}${unit} (floor ${baseline}${unit}) — raise the baseline to lock it in.`)
+    }
   } else {
     console.log(`✅ ${label}: ${current}${unit} (at floor ${baseline}${unit}).`)
   }
 }
 
 /** A ceiling: `current` must stay <= baseline (untyped files, suppressions, bundle). */
-export function ceiling(label, current, baseline, unit = '') {
+export function ceiling(label, current, baseline, unit = '', { lockIn = false } = {}) {
   if (current > baseline) {
     failed = true
     console.error(`❌ ${label}: ${current}${unit} rose above ceiling ${baseline}${unit}.`)
   } else if (current < baseline) {
-    console.log(`✅ ${label}: ${current}${unit} (ceiling ${baseline}${unit}) — lower the baseline to lock it in.`)
+    if (lockIn) {
+      failed = true
+      console.error(`❌ ${label}: ${current}${unit} beats ceiling ${baseline}${unit} — lock it in: set the baseline to ${current}${unit}.`)
+    } else {
+      console.log(`✅ ${label}: ${current}${unit} (ceiling ${baseline}${unit}) — lower the baseline to lock it in.`)
+    }
   } else {
     console.log(`✅ ${label}: ${current}${unit} (at ceiling ${baseline}${unit}).`)
   }
