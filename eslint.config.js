@@ -12,18 +12,18 @@ export default defineConfig([
   // CLI output); its style is not ours to lint.
   globalIgnores(['dist', '.vite', 'node_modules', '.claude', 'src/types/database.types.ts']),
   // TypeScript files (the migration is incremental — most of the tree is still
-  // .js/.jsx; see tsconfig.json). Type-aware linting: `recommendedTypeChecked`
-  // + `projectService` pull in the type-checker so rules like
-  // no-floating-promises / no-misused-promises / no-unsafe-* can catch bugs
-  // `tsc --noEmit` won't (unawaited promises, `any` leaking in from untyped
-  // JSON). Slower than syntax-only lint, but scoped to the .ts/.tsx files the
+  // .js/.jsx; see tsconfig.json). Type-aware linting at the `strictTypeChecked`
+  // tier + `projectService` pull in the type-checker so rules like
+  // no-floating-promises / no-misused-promises / no-unsafe-* / no-unnecessary-*
+  // can catch bugs `tsc --noEmit` won't (unawaited promises, `any` leaking in
+  // from untyped JSON, redundant casts). Scoped to the .ts/.tsx files the
   // migration has reached, so it stays cheap until coverage grows.
   {
     // Scoped to src/ (the SPA migration target); the Deno edge functions under
     // supabase/functions have their own runtime + console conventions.
     files: ['src/**/*.{ts,tsx}'],
     extends: [
-      tseslint.configs.recommendedTypeChecked,
+      tseslint.configs.strictTypeChecked,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
@@ -47,15 +47,28 @@ export default defineConfig([
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       // verbatimModuleSyntax is on (tsconfig); enforce `import type` to match.
       '@typescript-eslint/consistent-type-imports': 'error',
+      // These two strictTypeChecked rules assume the type-checker's view is
+      // ground truth. It isn't at this app's boundaries: the read model is loose
+      // JSON (Supabase rows / NDJSON) whose declared types are aspirational, so
+      // `Number(data.x)` coercions (PostgREST returns numerics as strings) and
+      // `if (data)` / `?? []` guards are deliberate runtime defenses the rules
+      // would have us delete. Off — keep the guards; the no-unsafe-* family
+      // still polices genuine `any` leaks.
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+      '@typescript-eslint/no-unnecessary-type-conversion': 'off',
+      // Numbers in template literals are idiomatic (e.g. `${count} lots`).
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     },
   },
   {
     // node:test's `test(...)` returns a Promise the runner itself awaits, so a
     // top-level `test(...)` call is a floating promise by design — the rule is
-    // a false positive for the whole test-runner idiom.
+    // a false positive for the whole test-runner idiom. Tests also use `!` on
+    // known-good fixtures, where a non-null assertion is clearer than a guard.
     files: ['src/**/*.test.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
   {
