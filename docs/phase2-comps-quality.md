@@ -1,20 +1,45 @@
 # Phase 2 — sold-comps quality: corpus, visual re-rank, reuse, leaf categories
 
-**Status:** design / RFC (no code yet — approve before build)
+**Status:** ✅ **Increments 1–3 IMPLEMENTED & merged** (this RFC has been built — the
+sections below are kept as the as-designed record). ⏳ **Increment 4 is the only
+open item**, gated on eBay developer credentials from the maintainer.
 **Builds on:** Phase 1 (#283) — structured `/v1/scrape` filters (US-only, recency,
 `minPrice`, wide `count`, L1 `categoryId` + condition on the precise tier).
+
+> **Implementation status (2026-06-14).** Increments 1–3 shipped to `main` as
+> separate PRs and overtook this design doc, so #290 is closed (built, not
+> abandoned). What landed:
+>
+> | # | Increment | Status | Where it lives |
+> |---|-----------|--------|----------------|
+> | 1 | Raw sold-listings **corpus** | ✅ merged | `scraper/supabase_sold_listings.py`, `supabase/migrations/0023_sold_listings_corpus.sql` |
+> | 2 | **Nomic visual re-rank** | ✅ merged | `scraper/embed_sold_listings.py`, migrations `0026_sold_listing_embeddings.sql` / `0027_match_sold_listings.sql` / `0028_match_sold_listings_for_item.sql` |
+> | 3 | **Corpus-first reuse** | ✅ merged | `scraper/corpus_reuse.py` (wired into `ebay_comps.py`) |
+> | — | A/B comp-quality harness *(bonus)* | ✅ merged | `scraper/ab_comp_quality.py` |
+> | 4 | eBay **category tree** → leaf scoping | ⏳ **not built** | needs `EBAY_CLIENT_ID` + `EBAY_CLIENT_SECRET` (Taxonomy API OAuth) |
+>
+> **How the open decisions actually resolved** (see "Open decisions" at the bottom for
+> the original framing):
+> - **D1 — corpus gating:** opt-in `GOONERS_SOLD_LISTINGS_CORPUS=1` *(as recommended)*.
+> - **D2 — re-rank → UI:** overwrite the curated comps path *(option a, UI unchanged)*.
+> - **D3 — reuse thresholds:** **tightened** from the RFC defaults to `MIN_FRESH=3`,
+>   `MAX_AGE_DAYS=60` (was 90), `min_sim=0.85` (was 0.80); reuse is itself opt-in via
+>   `GOONERS_CORPUS_FIRST=1`. All env-tunable (`GOONERS_CORPUS_*`).
+> - **D5 — retention:** **changed to none** — every listing is retained and recency is
+>   enforced at *query* time (`MAX_AGE_DAYS`) instead of a prune window.
+> - **D4 — leaf mapping:** still open (part of unbuilt Increment 4).
 
 Phase 1 made each comp *query* sharper. Phase 2 makes the comp *results* sharper
 and the spend lower, by turning the listings we already pay for into a reusable,
 visually-searchable corpus. Four increments, built in dependency order as
 separate PRs:
 
-| # | Increment | Depends on | Needs from you |
-|---|-----------|-----------|----------------|
-| 1 | Raw sold-listings **corpus** | — | nothing |
-| 2 | Batch **Nomic visual re-rank** | 1 | nothing |
-| 3 | **Corpus-first reuse** (skip the API) | 1, 2 | nothing |
-| 4 | eBay **category tree** → leaf scoping | — (parallel) | eBay dev OAuth token |
+| # | Increment | Depends on | Needs from you | Status |
+|---|-----------|-----------|----------------|--------|
+| 1 | Raw sold-listings **corpus** | — | nothing | ✅ merged |
+| 2 | Batch **Nomic visual re-rank** | 1 | nothing | ✅ merged |
+| 3 | **Corpus-first reuse** (skip the API) | 1, 2 | nothing | ✅ merged |
+| 4 | eBay **category tree** → leaf scoping | — (parallel) | eBay dev OAuth token | ⏳ open |
 
 The guiding idea: today `soldcomps_sold_matches` fetches up to `count` (40)
 listings per query and **throws away all but the top `max_matches` (3)**. That
@@ -246,17 +271,19 @@ increments 1–3, so there's **no frontend-gap risk** — apply the migration, l
 the scraper populate, and the data accrues before any reader exists. (Increment
 2(b)/the UI surface, if we do it, follows the populate-then-merge order.)
 
-## Open decisions to confirm before building
-- **D1 — Corpus gating:** opt-in `GOONERS_SOLD_LISTINGS_CORPUS=1` first (validate
-  size/quality), or on-by-default whenever Supabase is configured? *Rec: opt-in
-  first.*
-- **D2 — Re-rank → UI:** overwrite `ebay_comp_snapshots` (UI unchanged) vs a new
-  "visual match" comps source. *Rec: overwrite first.*
-- **D3 — Reuse thresholds:** `MIN_FRESH` / `MAX_AGE_DAYS` / `min_sim` defaults.
-  *Rec: 3 / 90 / 0.80, env-tunable.*
-- **D4 — Leaf mapping:** name/path match vs embedding match to start. *Rec:
-  name/path first.*
-- **D5 — Retention:** corpus prune window. *Rec: 180 days.*
+## Open decisions — resolved (1–3 built; D4 still open)
+- **D1 — Corpus gating:** ✅ **opt-in `GOONERS_SOLD_LISTINGS_CORPUS=1`** (as
+  recommended).
+- **D2 — Re-rank → UI:** ✅ **overwrite the curated comps path** (UI unchanged).
+- **D3 — Reuse thresholds:** ✅ **tightened to `MIN_FRESH=3` / `MAX_AGE_DAYS=60` /
+  `min_sim=0.85`** (was 3 / 90 / 0.80), all `GOONERS_CORPUS_*` env-tunable; reuse
+  itself opt-in via `GOONERS_CORPUS_FIRST=1`.
+- **D4 — Leaf mapping:** ⏳ **still open** — part of unbuilt Increment 4 (name/path
+  match vs embedding match). *Rec: name/path first, but confirm the SoldComps
+  provider honors a leaf `categoryId` before building, and prefer a curated
+  category→leaf map over fuzzy matching against eBay's ~17k leaf paths.*
+- **D5 — Retention:** ✅ **none** — retain every listing, enforce recency at query
+  time via `MAX_AGE_DAYS` (changed from the 180-day prune window).
 
 ## Testing
 Each increment ships with: pure-function unit tests (candidate extraction, row
