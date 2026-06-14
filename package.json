@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "ratchets": "node scripts/ratchets.mjs",
     "bundle:check": "node scripts/bundle-size.mjs",
-    "ty:ratchet": "bash scripts/ty-ratchet.sh",
+    "ty:ratchet": "for p in scraper github_stats supabase_stats supabase_app pipeline_meta; do bash scripts/ty-ratchet.sh $p 0 || exit 1; done",
     "advisors:ratchet": "node scripts/supabase-advisors-ratchet.mjs",
     "gen:types": "bash scripts/gen-types.sh",
     "preview": "vite preview",

@@ -10,7 +10,7 @@ classification, and the metrics client against a fake session.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import pytest
 
@@ -64,16 +64,20 @@ def test_parse_metric_line_no_labels():
 
 
 def test_parse_metric_line_with_labels():
-    name, labels, value = parse_metric_line('node_cpu_seconds_total{cpu="0",mode="idle"} 12345.6')
+    parsed = parse_metric_line('node_cpu_seconds_total{cpu="0",mode="idle"} 12345.6')
+    assert parsed is not None
+    name, labels, value = parsed
     assert name == "node_cpu_seconds_total"
     assert labels == {"cpu": "0", "mode": "idle"}
     assert value == 12345.6
 
 
 def test_parse_metric_line_handles_escaped_label_values():
-    name, labels, value = parse_metric_line(
+    parsed = parse_metric_line(
         'some_metric{label="with, comma and \\"quote\\""} 5'
     )
+    assert parsed is not None
+    name, labels, value = parsed
     assert name == "some_metric"
     assert labels == {"label": 'with, comma and "quote"'}
     assert value == 5.0
@@ -101,7 +105,7 @@ def test_classify_longest_prefix_and_pillars():
 
 
 def test_metric_rows_curated_only_skips_uncurated():
-    ts = datetime(2026, 6, 9, 12, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 6, 9, 12, 0, tzinfo=UTC)
     rows = list(metric_rows(SAMPLE, ts, curated_only=True))
     metrics = {r["metric"] for r in rows}
     assert "some_unknown_service_metric" not in metrics
@@ -114,7 +118,7 @@ def test_metric_rows_curated_only_skips_uncurated():
 
 
 def test_metric_rows_all_includes_uncurated():
-    ts = datetime(2026, 6, 9, 12, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 6, 9, 12, 0, tzinfo=UTC)
     rows = list(metric_rows(SAMPLE, ts, curated_only=False))
     other = [r for r in rows if r["metric"] == "some_unknown_service_metric"]
     assert len(other) == 1
@@ -124,7 +128,7 @@ def test_metric_rows_all_includes_uncurated():
 
 
 def test_metric_rows_stamps_and_hashes():
-    ts = datetime(2026, 6, 9, 12, 0, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 6, 9, 12, 0, 0, tzinfo=UTC)
     rows = list(metric_rows(SAMPLE, ts))
     assert all(r["scraped_at"] == ts for r in rows)
     # Same series → same label_hash; different labels → different hash.

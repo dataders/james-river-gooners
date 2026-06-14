@@ -110,6 +110,7 @@ class SupabaseMetricsClient:
         """GET the privileged metrics endpoint and return the raw Prometheus text."""
         if not self.configured:
             raise RuntimeError(self.missing_config_message())
+        assert self.url is not None  # narrowed by `configured`
         resp = self.session.get(
             self.url,
             auth=(self.username, self.password),

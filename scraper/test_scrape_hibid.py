@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from unittest import mock
 
 from scrape_hibid import (
@@ -22,7 +22,7 @@ def _fake_session(html: str):
 
 
 class FetchLotPriceTest(unittest.TestCase):
-    NOW = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
     def test_live_lot_uses_high_bid(self):
         html = "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD 5 Bids</body></html>"
@@ -123,7 +123,7 @@ class ParseDateRangeEndTest(unittest.TestCase):
 
 class ParseRelativeCloseTimeTest(unittest.TestCase):
     def setUp(self):
-        self.base = datetime(2026, 5, 27, 14, 0, 0, tzinfo=timezone.utc)
+        self.base = datetime(2026, 5, 27, 14, 0, 0, tzinfo=UTC)
 
     def test_days_hours_minutes(self):
         result = parse_relative_close_time("1d 3h 24m", self.base)

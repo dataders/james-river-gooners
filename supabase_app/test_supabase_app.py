@@ -37,14 +37,18 @@ def test_rest_config(monkeypatch):
 
     monkeypatch.setenv("SUPABASE_URL", "https://ref.supabase.co/")
     monkeypatch.setenv("SUPABASE_SECRET_KEY", "sb_secret_x")
-    base, key = pipeline._rest_config()
+    config = pipeline._rest_config()
+    assert config is not None
+    base, key = config
     assert base == "https://ref.supabase.co/rest/v1"  # trailing slash trimmed
     assert key == "sb_secret_x"
 
     # SERVICE_ROLE_KEY is an accepted fallback.
     monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
-    _, key = pipeline._rest_config()
+    config = pipeline._rest_config()
+    assert config is not None
+    _, key = config
     assert key == "svc"
 
 
@@ -70,6 +74,7 @@ class _FakeSession:
         self.ranges = []
 
     def get(self, url, headers=None, params=None, timeout=None):
+        assert headers is not None
         rng = headers["Range"]
         self.ranges.append(rng)
         start, end = (int(x) for x in rng.split("-"))
@@ -96,7 +101,7 @@ def test_run_requires_motherduck_token(monkeypatch):
     monkeypatch.setenv("SUPABASE_SECRET_KEY", "k")
     try:
         pipeline.run()
-        assert False, "expected RuntimeError"
+        raise AssertionError("expected RuntimeError")
     except RuntimeError as exc:
         assert "MOTHERDUCK_TOKEN" in str(exc)
 
@@ -108,7 +113,7 @@ def test_run_requires_rest_config(monkeypatch):
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
     try:
         pipeline.run()
-        assert False, "expected RuntimeError"
+        raise AssertionError("expected RuntimeError")
     except RuntimeError as exc:
         assert "SUPABASE_URL" in str(exc)
 

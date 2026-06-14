@@ -19,7 +19,7 @@ import argparse
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse, unquote
 
@@ -413,7 +413,7 @@ def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None)
         auction_end_date=latest_end,
         source="cannons",
         source_url=auction_url,
-        scraped_at=datetime.now(timezone.utc).isoformat(),
+        scraped_at=datetime.now(UTC).isoformat(),
         session=session,
         snapshot_to_motherduck=snapshot_to_motherduck,
         fill_blank_end_dates=True,

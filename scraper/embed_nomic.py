@@ -277,10 +277,10 @@ def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str],
     item_img_embs: list[list[np.ndarray]] = [[] for _ in range(n)]
     img_encode_tasks = sorted(pil_by_key.items())
     if img_encode_tasks:
-        keys, imgs = zip(*img_encode_tasks)
+        keys, imgs = zip(*img_encode_tasks, strict=True)
         print(f"  [nomic] Encoding {len(imgs)} images...")
         encoded = _encode_images(list(imgs))
-        for (item_idx, _), emb in zip(keys, encoded):
+        for (item_idx, _), emb in zip(keys, encoded, strict=True):
             item_img_embs[item_idx].append(emb)
 
     # 4. Fuse text + mean(images) and re-normalise

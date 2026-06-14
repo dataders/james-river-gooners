@@ -24,7 +24,7 @@ import json
 import re
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 
 import requests
@@ -84,7 +84,7 @@ def _mdyyyy_to_iso(date_str: str) -> str:
         try:
             dt = datetime.strptime(date_str.strip(), fmt)
             # Fallback close time: 23:00 UTC when no time is scraped from the page
-            return dt.replace(hour=23, minute=0, tzinfo=timezone.utc).isoformat()
+            return dt.replace(hour=23, minute=0, tzinfo=UTC).isoformat()
         except ValueError:
             continue
     return ""
@@ -497,7 +497,7 @@ def scrape_hibid_auction(
     print(f"Scraping HiBid catalog {catalog_id} ({company_name})")
 
     session = create_session()
-    scraped_at = datetime.now(timezone.utc)
+    scraped_at = datetime.now(UTC)
 
     # Canonical catalog URL (no state prefix)
     full_catalog_url = f"{HIBID_BASE}/catalog/{catalog_id}/"

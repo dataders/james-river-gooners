@@ -9,7 +9,7 @@ flat row dicts dlt loads into Postgres, plus the log-line regexes that extract
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -18,7 +18,7 @@ def _parse_dt(value: str | None) -> datetime | None:
         return None
     try:
         # GitHub uses a trailing "Z"; fromisoformat handles "+00:00".
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
     except (ValueError, AttributeError):
         return None
 

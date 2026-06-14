@@ -6,7 +6,7 @@ parsing, and the client's pagination + log-zip handling against a fake session.
 
 import io
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import pytest
 
@@ -25,7 +25,7 @@ from transforms import (
 
 def test_parse_dt_handles_z_suffix_and_none():
     dt = _parse_dt("2024-01-02T03:04:05Z")
-    assert dt == datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    assert dt == datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC)
     assert _parse_dt(None) is None
     assert _parse_dt("not-a-date") is None
 

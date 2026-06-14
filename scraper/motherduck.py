@@ -1,7 +1,7 @@
 import json
 import os
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from dates import parse_auction_datetime
 
@@ -130,7 +130,7 @@ def timestamp_value(value):
 
 
 def rows_for_snapshots(items: list[dict], source_url: str) -> list[dict]:
-    snapshot_at = datetime.now(timezone.utc)
+    snapshot_at = datetime.now(UTC)
     rows = []
 
     for item in items:

@@ -106,6 +106,9 @@ jobs:
           cd github_stats
           uvx ruff@0.15.8 check .
 
+      - name: Run ty ratchet (github_stats)
+        run: bash scripts/ty-ratchet.sh github_stats 0
+
   supabase-stats:
     name: Supabase-stats tests (pytest)
     runs-on: ubuntu-latest
@@ -123,6 +126,9 @@ jobs:
         run: |
           cd supabase_stats
           uvx ruff@0.15.8 check .
+
+      - name: Run ty ratchet (supabase_stats)
+        run: bash scripts/ty-ratchet.sh supabase_stats 0
 
   supabase-app:
     name: Supabase-app tests (pytest)
@@ -142,6 +148,9 @@ jobs:
           cd supabase_app
           uvx ruff@0.15.8 check .
 
+      - name: Run ty ratchet (supabase_app)
+        run: bash scripts/ty-ratchet.sh supabase_app 0
+
   pipeline-meta:
     name: Pipeline-meta tests (pytest)
     runs-on: ubuntu-latest
@@ -159,6 +168,9 @@ jobs:
         run: |
           cd pipeline_meta
           uvx ruff@0.15.8 check .
+
+      - name: Run ty ratchet (pipeline_meta)
+        run: bash scripts/ty-ratchet.sh pipeline_meta 0
 
   scraper-lint:
     name: Scraper lint (ruff)
@@ -184,12 +196,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@v6
 
-      # Ratchet (replaces the old advisory continue-on-error step): ty's
-      # diagnostic count may not RISE above the baseline, so a new type error
-      # fails CI while the existing noise is tolerated. Lower the baseline in
-      # scripts/ty-ratchet.sh as the scraper gets typed.
+      # Ratchet: the scraper is ty-clean (baseline 0); a new type error fails CI.
       - name: Run ty ratchet
-        run: bash scripts/ty-ratchet.sh
+        run: bash scripts/ty-ratchet.sh scraper 0
 
   e2e:
     name: E2E tests (Playwright)

@@ -5,7 +5,7 @@ Owns the warehouse write contract: how comp rows are shaped for the
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from ebay_util import decimal_text, text_value
 
@@ -124,7 +124,7 @@ def comp_rows_for_item(
     fetched_at: str | datetime | None = None,
     warning: str | None = None,
 ) -> list[dict]:
-    fetched_at = fetched_at or datetime.now(timezone.utc)
+    fetched_at = fetched_at or datetime.now(UTC)
     base = {
         "auction_safe_id": text_value(item.get("auctionSafeId")),
         "item_id": text_value(item.get("id")),

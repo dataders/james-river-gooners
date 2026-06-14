@@ -37,7 +37,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 # Server-side PostHog telemetry (shared scraper helper). Silent no-op unless
@@ -60,7 +60,7 @@ RPC_NAME = "match_cannons_comps"
 
 
 def utc_now_text() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def read_manifest(path: Path) -> list[dict]:

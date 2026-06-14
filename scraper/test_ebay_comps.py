@@ -3,7 +3,7 @@ import tempfile
 import unittest
 
 import ebay_comps
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -591,7 +591,7 @@ class EbayCompExportTest(unittest.TestCase):
             },
             [],
             status="no_results",
-            fetched_at=datetime(2026, 5, 27, 12, 0, tzinfo=timezone.utc),
+            fetched_at=datetime(2026, 5, 27, 12, 0, tzinfo=UTC),
         )
 
         self.assertEqual(len(rows), 1)
@@ -610,7 +610,7 @@ class EbayCompExportTest(unittest.TestCase):
                     "status": "ok",
                     "query": "Rosenthal vase",
                     "search_url": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+vase&LH_Sold=1",
-                    "fetched_at": datetime(2026, 5, 27, 12, 0, tzinfo=timezone.utc),
+                    "fetched_at": datetime(2026, 5, 27, 12, 0, tzinfo=UTC),
                     "warning": None,
                     "ebay_item_id": "177917908706",
                     "title": "Vintage Rosenthal vase",
@@ -670,7 +670,7 @@ class EbayCompExportTest(unittest.TestCase):
                 "status": "ok",
                 "query": "Rosenthal vase",
                 "search_url": "https://www.ebay.com/sch/i.html?_nkw=Rosenthal+vase&LH_Sold=1",
-                "fetched_at": datetime(2026, 5, 27, 12, 0, tzinfo=timezone.utc),
+                "fetched_at": datetime(2026, 5, 27, 12, 0, tzinfo=UTC),
                 "warning": None,
                 "ebay_item_id": "177917908706",
                 "title": "Vintage Rosenthal vase",
@@ -839,7 +839,7 @@ class FetchSoldMatchesAntiBlockingTest(unittest.TestCase):
 
 class StaleDiretKeysTest(unittest.TestCase):
     def test_returns_fresh_keys_from_existing_json(self):
-        fresh_ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        fresh_ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         payload = {
             "items": {
                 "item-1": {"fetchedAt": fresh_ts, "matches": []},
@@ -865,7 +865,7 @@ class StaleDiretKeysTest(unittest.TestCase):
         self.assertNotIn("auction-1:item-1", keys)
 
     def test_returns_empty_when_stale_hours_is_zero(self):
-        fresh_ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        fresh_ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         payload = {"items": {"item-1": {"fetchedAt": fresh_ts}}}
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
@@ -949,7 +949,7 @@ class FetchDirectTest(unittest.TestCase):
             self.assertEqual(match["price"]["value"], "99.00")
 
     def test_skips_fresh_items_based_on_existing_json(self):
-        fresh_ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        fresh_ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         session = Mock()
         session.get.return_value = Mock(status_code=200, text="")
 
@@ -1065,7 +1065,7 @@ class BackfillBudgetTest(unittest.TestCase):
                 patch("ebay_comps.load_manifest_items", return_value=items), \
                 patch("ebay_comps.fetch_sold_matches", side_effect=fake):
             out = Path(tmp)
-            today = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            today = datetime.now(UTC).isoformat().replace("+00:00", "Z")
             # Per-auction file: attempts keyed by item id, "queries" = requests spent.
             ebay_comps.write_comp_file(out / "PRE.json", {
                 "schemaVersion": 2, "items": {},
@@ -1081,7 +1081,7 @@ class BackfillBudgetTest(unittest.TestCase):
     def test_daily_pacing_spreads_budget_across_month(self):
         with tempfile.TemporaryDirectory() as tmp:
             # May has 31 days; from the 30th, 2 days remain -> ceil(2000/2) = 1000.
-            now = datetime(2026, 5, 30, 12, 0, tzinfo=timezone.utc)
+            now = datetime(2026, 5, 30, 12, 0, tzinfo=UTC)
             cap_active, limit = ebay_comps.resolve_query_budget(
                 ebay_comps.FileCompLedger(Path(tmp)),
                 monthly_budget=2000, max_queries=0, daily_pacing=True, now=now)
@@ -1125,7 +1125,7 @@ class BackfillBudgetTest(unittest.TestCase):
         ledger.provider_remaining.return_value = 1700
         ledger.provider_used_today.return_value = 50
         ledger.requests_used_today.return_value = 9999  # coarse overcount ignored
-        now = datetime(2026, 6, 14, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 14, 12, 0, tzinfo=UTC)
         _, limit = ebay_comps.resolve_query_budget(
             ledger, monthly_budget=5000, max_queries=0, daily_pacing=True, now=now)
         self.assertEqual(limit, 50)
@@ -1152,7 +1152,7 @@ class BackfillBudgetTest(unittest.TestCase):
                 patch("ebay_comps.load_manifest_items", return_value=[self._item(0)]), \
                 patch("ebay_comps.fetch_sold_matches", side_effect=fake):
             out = Path(tmp)
-            old = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat().replace(
+            old = (datetime.now(UTC) - timedelta(days=90)).isoformat().replace(
                 "+00:00", "Z")
             ebay_comps.write_comp_file(out / "A.json", {
                 "schemaVersion": 2, "items": {},

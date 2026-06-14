@@ -6,7 +6,7 @@ Also owns manifest + Parquet loading and the optional warehouse mirror.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 from ebay_fetch import is_ebay_item_url
@@ -228,8 +228,7 @@ def _iter_attempt_records(output_dir: Path):
         payload = load_comp_file(json_path)
         if not payload:
             continue
-        for record in payload.get("attempts", {}).values():
-            yield record
+        yield from payload.get("attempts", {}).values()
 
 
 def requests_used_in_bucket(output_dir: Path, bucket: str, fmt: str) -> int:
@@ -239,19 +238,19 @@ def requests_used_in_bucket(output_dir: Path, bucket: str, fmt: str) -> int:
         ts = parse_fetched_at(record.get("fetchedAt", ""))
         if ts is None:
             continue
-        if datetime.fromtimestamp(ts, timezone.utc).strftime(fmt) != bucket:
+        if datetime.fromtimestamp(ts, UTC).strftime(fmt) != bucket:
             continue
         used += int(record.get("queries") or 1)
     return used
 
 
 def requests_used_in_month(output_dir: Path, now: datetime | None = None) -> int:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return requests_used_in_bucket(output_dir, now.strftime("%Y-%m"), "%Y-%m")
 
 
 def requests_used_today(output_dir: Path, now: datetime | None = None) -> int:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return requests_used_in_bucket(output_dir, now.strftime("%Y-%m-%d"), "%Y-%m-%d")
 
 
@@ -269,7 +268,7 @@ def fresh_comp_keys_from_files(
     elif stale_hours <= 0:
         return set()
     else:
-        cutoff = datetime.now(timezone.utc).timestamp() - stale_hours * 3600
+        cutoff = datetime.now(UTC).timestamp() - stale_hours * 3600
     fresh = set()
     for json_path in output_dir.glob("*.json"):
         payload = load_comp_file(json_path)
@@ -351,7 +350,7 @@ def auction_end_sort_key(item: dict) -> float:
     """
     raw = item.get("auctionEndDate") or item.get("endDate")
     if isinstance(raw, datetime):
-        dt = raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+        dt = raw if raw.tzinfo else raw.replace(tzinfo=UTC)
         return dt.timestamp()
     text = text_value(raw)
     if not text:
@@ -361,7 +360,7 @@ def auction_end_sort_key(item: dict) -> float:
         return parsed
     for fmt in ("%Y-%m-%d %I:%M:%S %p", "%Y-%m-%d %H:%M:%S"):
         try:
-            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc).timestamp()
+            return datetime.strptime(text, fmt).replace(tzinfo=UTC).timestamp()
         except ValueError:
             continue
     return float("inf")

@@ -36,7 +36,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import dlt
@@ -60,7 +60,7 @@ def supabase_metrics_source(
     client = client or SupabaseMetricsClient()
     # One scrape time shared by every row in the run — the sample's identity in
     # time. Truncated to the second so retries within the same second merge.
-    stamp = (scraped_at or datetime.now(timezone.utc)).replace(microsecond=0)
+    stamp = (scraped_at or datetime.now(UTC)).replace(microsecond=0)
 
     @dlt.resource(
         name="metric_samples",

@@ -1,0 +1,18 @@
+# Shared ruff config for all Python packages (scraper, github_stats,
+# supabase_stats, supabase_app, pipeline_meta, …). `ruff check .` run from any
+# package dir discovers this by walking up to the repo root.
+#
+# `extend-select` ADDS to ruff's defaults (E4/E7/E9 + F) rather than replacing
+# them — so we keep the existing policy (notably: line length E501 stays OFF)
+# and only layer on two high-signal families:
+#   B  (flake8-bugbear)  — likely bugs: mutable arg defaults, except-pass, etc.
+#   UP (pyupgrade)       — modern syntax for the minimum supported Python.
+target-version = "py311"
+
+[lint]
+extend-select = ["B", "UP"]
+
+[lint.flake8-bugbear]
+# dlt requires its `incremental` cursor as a resource-function default argument;
+# that's the framework's documented pattern, not the bug B008 warns about.
+extend-immutable-calls = ["dlt.sources.incremental"]
