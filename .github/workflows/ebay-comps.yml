@@ -160,7 +160,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/ebay-comps/
+          # In Supabase mode comps go to the DB and no JSON is written, so the
+          # ebay-comps dir may not exist — only stage it when present, and never
+          # let a missing path abort the step (bash -e).
+          if [ -d public/data/ebay-comps ]; then
+            git add public/data/ebay-comps/
+          fi
           if git diff --staged --quiet; then
             echo "No eBay comp changes to commit"
             exit 0
