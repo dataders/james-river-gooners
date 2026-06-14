@@ -279,6 +279,7 @@ class ProviderUsageHeaderTests(unittest.TestCase):
             api_key="test-key",
             max_matches=3,
         )
+        assert result is not None
         # Comps stay trimmed; the corpus gets the full candidate set, each
         # carrying the full provider item as raw_json.
         self.assertEqual(len(result["matches"]), 3)
@@ -298,6 +299,7 @@ class ProviderUsageHeaderTests(unittest.TestCase):
             {"kind": "broad", "query": "vase", "url": "https://example.test"},
             api_key="test-key",
         )
+        assert result is not None
         self.assertEqual(result["status"], "no_results")
         self.assertEqual(result["provider_remaining"], 1624)
         self.assertEqual(result["usage"]["x-usage-limit"], "5000")
@@ -558,6 +560,7 @@ class EbayCompExportTest(unittest.TestCase):
             api_key="test-key",
             max_matches=3,
         )
+        assert result is not None
 
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["matches"][0]["price_value"], "99.00")

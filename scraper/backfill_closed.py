@@ -37,6 +37,7 @@ Usage (from scraper/):
 
 import argparse
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -59,10 +60,10 @@ def existing_safe_ids() -> set[str]:
     return ids
 
 
-def _cannons_jobs(limit: int, include_existing: bool) -> list[tuple[str, str, callable]]:
+def _cannons_jobs(limit: int, include_existing: bool) -> list[tuple[str, str, Callable[..., object]]]:
     # Over-fetch so skipped (already-scraped) auctions don't starve the limit.
     urls = discover_past_auction_urls(limit=None if include_existing else max(limit * 4, limit))
-    jobs: list[tuple[str, str, callable]] = []
+    jobs: list[tuple[str, str, Callable[..., object]]] = []
     for url in urls:
         try:
             safe_id = sanitize_auction_id(extract_auction_id(url))
@@ -72,7 +73,7 @@ def _cannons_jobs(limit: int, include_existing: bool) -> list[tuple[str, str, ca
     return jobs
 
 
-def _rasmus_jobs(days: int) -> list[tuple[str, str, callable]]:
+def _rasmus_jobs(days: int) -> list[tuple[str, str, Callable[..., object]]]:
     specs = discover_rasmus_past_specs(days=days)
     return [
         (
@@ -86,10 +87,10 @@ def _rasmus_jobs(days: int) -> list[tuple[str, str, callable]]:
     ]
 
 
-def _hibid_jobs(sources_file: Path | None = None) -> list[tuple[str, str, callable]]:
+def _hibid_jobs(sources_file: Path | None = None) -> list[tuple[str, str, Callable[..., object]]]:
     with open(sources_file or HIBID_SOURCES_FILE) as f:
         config = yaml.safe_load(f) or {}
-    jobs: list[tuple[str, str, callable]] = []
+    jobs: list[tuple[str, str, Callable[..., object]]] = []
     for company in config.get("companies", []):
         slug = company["slug"]
         name = company["name"]

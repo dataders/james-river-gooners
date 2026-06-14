@@ -1,6 +1,7 @@
 import json
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -10,7 +11,7 @@ from persist import WriteContext, write_read_model
 
 
 def _ctx(tmp: Path, **over) -> WriteContext:
-    base = dict(
+    ctx = WriteContext(
         safe_id="src_42",
         auction_id="42",
         auction_title="Test Auction",
@@ -21,8 +22,7 @@ def _ctx(tmp: Path, **over) -> WriteContext:
         session=mock.Mock(),
         snapshot_to_motherduck=False,
     )
-    base.update(over)
-    return WriteContext(**base)
+    return replace(ctx, **over) if over else ctx
 
 
 def _item(**over) -> dict:
