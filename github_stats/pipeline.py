@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "dlt[motherduck]",
+#     "requests",
+# ]
+# ///
 """GitHub repository-stats → MotherDuck, via dlt.
 
 Pulls issues, pull requests, commits, and Actions workflow runs from the GitHub

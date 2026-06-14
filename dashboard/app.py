@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "prefab-ui>=0.19.0",
+#     "pytz",
+# ]
+# ///
 """Gooners admin monitoring dashboard (prefab-ui → static HTML).
 
 Reads the dbt marts in MotherDuck (`my_db`) and renders a single self-contained

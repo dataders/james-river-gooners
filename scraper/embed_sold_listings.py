@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
 """Batch Nomic embedding + visual re-rank of the sold-listings corpus.
 
 SoldComps Phase 2 / RFC #290, increment 2. Two passes, both off the hourly hot

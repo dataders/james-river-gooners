@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "pyarrow",
+# ]
+# ///
 """
 LLM metadata enrichment for auction lots.
 

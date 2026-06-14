@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+# ]
+# ///
 """
 Rasmus Auctions scraper for Richmond-area auctions.
 

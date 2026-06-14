@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+# ]
+# ///
 """
 Discover current auctions, scrape them, and keep the active manifest current.
 

@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+#     "ruamel.yaml",
+# ]
+# ///
 """
 Discover new HiBid catalog IDs and update hibid_sources.yml.
 
