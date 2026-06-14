@@ -68,4 +68,6 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             DRY_FLAG="--dry-run"
           fi
-          uv run --with requests --with posthog python cannons_comps.py $LIMIT_FLAG $DRY_FLAG
+          # --from-supabase: the read-model manifest isn't committed, so read the
+          # active-auction list from the Supabase lots table instead.
+          uv run --with requests --with posthog python cannons_comps.py --from-supabase $LIMIT_FLAG $DRY_FLAG

@@ -109,6 +109,7 @@ def build_comps(
     dry_run: bool = False,
     supabase_url: str | None = None,
     supabase_key: str | None = None,
+    from_supabase: bool = False,
 ) -> dict:
     """Match active items to sold archived lots via the Nomic pgvector RPC and
     write the comp read model to Supabase (``cannons_comp_snapshots``)."""
@@ -120,7 +121,14 @@ def build_comps(
         "rows_written": 0,
     }
 
-    active_entries = read_manifest(data_dir / "manifest.json")
+    if from_supabase:
+        # Active auctions from Supabase (the source of truth). The committed read
+        # model / manifest isn't present on a fresh CI checkout, so a standalone
+        # dispatch needs this to find anything to comp.
+        from supabase_lots import list_auction_safe_ids
+        active_entries = [{"safeId": sid} for sid in list_auction_safe_ids(archived=False)]
+    else:
+        active_entries = read_manifest(data_dir / "manifest.json")
     if active_limit is not None:
         active_entries = active_entries[:active_limit]
     if not active_entries:
@@ -212,6 +220,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Only process the first N active auctions (for quick validation).",
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--from-supabase",
+        action="store_true",
+        help="Read the active-auction list from Supabase (lots table) instead of "
+        "the local manifest — needed in CI, where the read model isn't checked out.",
+    )
     return parser.parse_args(argv)
 
 
@@ -228,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         supabase_url=supabase_url,
         supabase_key=supabase_key,
+        from_supabase=args.from_supabase,
     )
     _telemetry_flush()  # ship events before this short-lived process exits
     return 0

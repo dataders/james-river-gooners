@@ -89,6 +89,20 @@ class BuildCompsTest(unittest.TestCase):
         self.assertEqual(props["min_sim"], 0.5)
         self.assertFalse(props["dry_run"])
 
+    def test_from_supabase_reads_active_list_from_lots_table(self):
+        with mock.patch("supabase_lots.list_auction_safe_ids", return_value=["act"]) as lister, \
+             mock.patch.object(cannons_comps, "read_manifest") as manifest, \
+             mock.patch.object(cannons_comps, "fetch_comps", return_value=self._rows()), \
+             mock.patch("supabase_cannons_comps.write_auction_comps", return_value=3):
+            summary = cannons_comps.build_comps(
+                supabase_url="https://x.supabase.co", supabase_key="secret",
+                from_supabase=True, top_k=3, min_sim=0.5,
+            )
+        lister.assert_called_once_with(archived=False)
+        manifest.assert_not_called()  # Supabase replaces the local manifest
+        self.assertEqual(summary["auctions"], 1)
+        self.assertEqual(summary["rows_written"], 3)
+
     def test_dry_run_does_not_write(self):
         with mock.patch.object(cannons_comps, "read_manifest", return_value=[{"safeId": "act"}]), \
              mock.patch.object(cannons_comps, "fetch_comps", return_value=self._rows()), \
