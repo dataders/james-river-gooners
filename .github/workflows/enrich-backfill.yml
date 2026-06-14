@@ -45,6 +45,9 @@ jobs:
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       GOONERS_ENRICHMENT: '1'
+      # Server-side enrichment telemetry (scraper/telemetry.py): the batch
+      # submitted/completed/failed events to PostHog. No-op without the key.
+      GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
     steps:
       - uses: actions/checkout@v5
 

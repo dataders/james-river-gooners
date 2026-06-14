@@ -1,12 +1,15 @@
 """Server-side PostHog telemetry for the scraper.
 
-Currently instruments the metered SoldComps API calls (``scraper/ebay_fetch.py``)
-so the real billed-request count and the provider's reported remaining quota (the
-``X-Usage-*`` response headers) land in PostHog. That call site is the one
+Instruments (1) the metered SoldComps API calls (``scraper/ebay_fetch.py``) so the
+real billed-request count and the provider's reported remaining quota (the
+``X-Usage-*`` response headers) land in PostHog — that call site is the one
 chokepoint every billed request passes through, regardless of which workflow,
-manual dispatch, or local run made it — which is exactly why the Supabase comp
+manual dispatch, or local run made it, which is exactly why the Supabase comp
 ledger (which counts *attempts*, including free HTML-scrape fallbacks and
-no-result rows) cannot be reconciled with the provider's meter on its own.
+no-result rows) cannot be reconciled with the provider's meter on its own — and
+(2) the LLM enrichment runs (``scraper/enrich.py``): ``enrich_batch_submitted`` /
+``enrich_batch_completed`` (with token counts + estimated cost) / ``enrich_batch_failed``
+on the Message Batches path, and ``enrich_sync_completed`` on the live path.
 
 Gating mirrors ``src/lib/telemetry.js`` and ``enrich.py``: a silent no-op unless
 ``GOONERS_POSTHOG_KEY`` is set AND the ``posthog`` SDK imports. It never raises
