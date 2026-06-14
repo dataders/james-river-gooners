@@ -73,6 +73,36 @@ insert or ignore into {SNAPSHOT_TABLE} (
 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
+# Bulk-insert plan. The fast warehouse load is one INSERT … SELECT from a
+# registered Arrow relation rather than a per-row executemany over the network.
+# The staging relation is built with every column as a *string* (so there is no
+# fragile Arrow type inference — an all-NULL column like final_bid would
+# otherwise infer a null type), and the strongly-typed target table drives the
+# conversion via these explicit casts. ``None`` cast = the column is already
+# text. Order must match INSERT_SNAPSHOT_SQL.
+SNAPSHOT_COLUMN_CASTS = {
+    "auction_id": None,
+    "auction_safe_id": None,
+    "item_id": None,
+    "lot_number": "bigint",
+    "snapshot_at": "timestamptz",
+    "auction_title": None,
+    "auction_end_at": "timestamptz",
+    "item_end_at": "timestamptz",
+    "title": None,
+    "description": None,
+    "current_bid": "decimal(12, 2)",
+    "final_bid": "decimal(12, 2)",
+    "closed": "boolean",
+    "total_bids": "integer",
+    "unique_bidders": "integer",
+    "category": None,
+    "raw_category": None,
+    "detail_url": None,
+    "images": None,
+    "source_url": None,
+}
+
 
 def should_snapshot_to_motherduck() -> bool:
     flag = os.environ.get("GOONERS_MOTHERDUCK_SNAPSHOTS", "")
@@ -157,6 +187,46 @@ def row_values(row: dict) -> tuple:
     )
 
 
+def stage_value(value):
+    """Serialize a snapshot value to the canonical string the all-string staging
+    relation holds (the typed target column casts it back). ``None`` stays NULL;
+    tz-aware datetimes keep their offset so ``::timestamptz`` preserves the
+    instant; booleans become ``true``/``false`` for ``::boolean``."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def bulk_insert_rows(connection, rows: list[dict]) -> None:
+    """Insert snapshot rows via one INSERT … SELECT from a registered Arrow
+    relation — far fewer network round-trips than a per-row executemany over a
+    remote (MotherDuck) connection."""
+    import pyarrow as pa
+
+    columns = {
+        name: pa.array([stage_value(row[name]) for row in rows], type=pa.string())
+        for name in SNAPSHOT_COLUMN_CASTS
+    }
+    select_list = ", ".join(
+        f'"{name}"' if cast is None else f'"{name}"::{cast}'
+        for name, cast in SNAPSHOT_COLUMN_CASTS.items()
+    )
+    column_list = ", ".join(f'"{name}"' for name in SNAPSHOT_COLUMN_CASTS)
+
+    connection.register("snapshot_batch", pa.table(columns))
+    try:
+        connection.execute(
+            f"insert or ignore into {SNAPSHOT_TABLE} ({column_list}) "
+            f"select {select_list} from snapshot_batch"
+        )
+    finally:
+        connection.unregister("snapshot_batch")
+
+
 # Databases whose snapshot DDL has already run this process — the CREATE/ALTER
 # statements are idempotent, so running them once per process (not once per
 # auction) saves three cloud round-trips per append.
@@ -183,15 +253,13 @@ def append_listing_snapshots(items: list[dict], source_url: str, database: str |
     if not rows:
         return 0
 
-    values = [row_values(row) for row in rows]
-
     def _write():
         # Reuse one cloud connection across all auctions in this scrape instead
         # of reconnecting per call (the old per-auction handshake dominated the
-        # scrape's runtime, #timeout).
+        # scrape's runtime, #timeout), and bulk-load the batch in one statement.
         connection = warehouse.cached_connect(database, "snapshot listings to MotherDuck")
         _ensure_schema(connection, database)
-        connection.executemany(INSERT_SNAPSHOT_SQL, values)
+        bulk_insert_rows(connection, rows)
 
     try:
         _write()

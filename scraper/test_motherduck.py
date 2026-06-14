@@ -126,25 +126,116 @@ class ConnectionReuseTest(unittest.TestCase):
             with patch.object(warehouse, "connect", return_value=conn) as opened:
                 append_listing_snapshots([self.item], "https://x/a", database="md:test")
                 append_listing_snapshots([self.item], "https://x/a", database="md:test")
+        from motherduck import CREATE_TABLE_SQL
         # One physical connection for both auctions; never closed by the caller.
         self.assertEqual(opened.call_count, 1)
         conn.close.assert_not_called()
-        # DDL (CREATE + 3 ALTER = 4 execute calls) runs once, not per append.
-        self.assertEqual(conn.execute.call_count, 4)
-        # But each append still writes its rows.
-        self.assertEqual(conn.executemany.call_count, 2)
+        # The idempotent DDL runs once for the process, not once per append.
+        create_calls = [c for c in conn.execute.call_args_list if c.args and c.args[0] == CREATE_TABLE_SQL]
+        self.assertEqual(len(create_calls), 1)
+        # Each append still bulk-loads its own batch.
+        self.assertEqual(conn.register.call_count, 2)
+        conn.executemany.assert_not_called()
 
     def test_reconnects_once_when_connection_goes_stale(self):
         import warehouse
         from unittest.mock import MagicMock
         stale, fresh = MagicMock(), MagicMock()
-        stale.executemany.side_effect = RuntimeError("connection reset")
+        stale.execute.side_effect = RuntimeError("connection reset")
         with patch.dict(os.environ, {"MOTHERDUCK_TOKEN": "tok"}, clear=True):
             with patch.object(warehouse, "connect", side_effect=[stale, fresh]):
                 n = append_listing_snapshots([self.item], "https://x/a", database="md:test")
         self.assertEqual(n, 1)
-        stale.close.assert_called_once()      # dropped after the failure
-        fresh.executemany.assert_called_once()  # retried on a new connection
+        stale.close.assert_called_once()    # dropped after the failure
+        fresh.register.assert_called_once()  # batch retried on a new connection
+
+
+class BulkInsertParityTest(unittest.TestCase):
+    """The bulk INSERT … SELECT path must store byte-identical rows to the
+    per-row executemany it replaces — including the nasty cases (NULL final_bid
+    on a live lot, tz-aware timestamps, decimals, NULL unique_bidders, booleans).
+    Run against a real in-memory DuckDB so casts are exercised, not mocked."""
+
+    def _rows(self):
+        from motherduck import rows_for_snapshots
+        return rows_for_snapshots(
+            [
+                {  # live lot: no final price yet, no bidder count, comma in text
+                    "auctionId": "a1", "auctionSafeId": "s1", "id": "live",
+                    "lotNumber": 7, "currentBid": 42.5, "totalBids": 0,
+                    "title": 'Chair, "antique"', "description": "oak, worn",
+                    "scrapedAt": "2026-05-27T12:00:00+00:00",
+                    "auctionEndDate": "2026-05-27 8:28:00 PM",
+                    "endDate": "2026-05-27 8:28:00 PM",
+                },
+                {  # closed lot: final price, closed flag, unique bidders
+                    "auctionId": "a1", "auctionSafeId": "s1", "id": "closed",
+                    "lotNumber": 8, "currentBid": 10, "finalBid": 120.0,
+                    "closed": True, "totalBids": 3, "uniqueBidders": 7,
+                    "category": "Furniture",
+                    "scrapedAt": "2026-05-27T12:00:00+00:00",
+                },
+            ],
+            "https://example.test/a1",
+        )
+
+    def test_bulk_matches_executemany(self):
+        try:
+            import duckdb  # noqa: F401
+            import pyarrow  # noqa: F401
+        except ModuleNotFoundError:
+            self.skipTest("duckdb/pyarrow not installed")
+
+        import duckdb
+        from motherduck import (
+            CREATE_TABLE_SQL, INSERT_SNAPSHOT_SQL, SNAPSHOT_COLUMN_CASTS,
+            SNAPSHOT_TABLE, bulk_insert_rows, row_values,
+        )
+
+        rows = self._rows()
+        # Compare only the inserted columns (ingested_at has a now() default).
+        # timestamptz is read as ::text so the fetch doesn't require pytz —
+        # identical text means an identical stored instant for both paths.
+        cols = ", ".join(
+            f'"{c}"::text' if cast == "timestamptz" else f'"{c}"'
+            for c, cast in SNAPSHOT_COLUMN_CASTS.items()
+        )
+        select = f"select {cols} from {SNAPSHOT_TABLE} order by item_id"
+
+        con = duckdb.connect(":memory:")
+        con.execute(CREATE_TABLE_SQL)
+        con.executemany(INSERT_SNAPSHOT_SQL, [row_values(r) for r in rows])
+        expected = con.execute(select).fetchall()
+
+        con.execute(f"delete from {SNAPSHOT_TABLE}")
+        bulk_insert_rows(con, rows)
+        actual = con.execute(select).fetchall()
+
+        self.assertEqual(actual, expected)
+        # Guard the specific hazards explicitly so a regression names itself.
+        by_id = {r[2]: r for r in actual}  # item_id is column index 2
+        self.assertIsNone(by_id["live"][11])       # final_bid NULL, not 0.00
+        self.assertIsNone(by_id["live"][14])       # unique_bidders NULL
+        self.assertEqual(str(by_id["closed"][11]), "120.00")  # decimal preserved
+        self.assertTrue(by_id["closed"][12])       # closed boolean true
+
+    def test_bulk_insert_respects_or_ignore_on_duplicate_pk(self):
+        try:
+            import duckdb  # noqa: F401
+            import pyarrow  # noqa: F401
+        except ModuleNotFoundError:
+            self.skipTest("duckdb/pyarrow not installed")
+
+        import duckdb
+        from motherduck import CREATE_TABLE_SQL, SNAPSHOT_TABLE, bulk_insert_rows
+
+        rows = self._rows()
+        con = duckdb.connect(":memory:")
+        con.execute(CREATE_TABLE_SQL)
+        bulk_insert_rows(con, rows)
+        bulk_insert_rows(con, rows)  # same PKs → ignored, not duplicated/erroring
+        count = con.execute(f"select count(*) from {SNAPSHOT_TABLE}").fetchone()[0]
+        self.assertEqual(count, len(rows))
 
 
 if __name__ == "__main__":
