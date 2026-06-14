@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
 """
 Precompute "Cannon's comps": for each active auction item, the most similar
 *past* (archived) lots and what they actually sold for.

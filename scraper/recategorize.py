@@ -1,3 +1,12 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+# ]
+# ///
 """Re-derive item categories across the read model from the current mappings.
 
 Many archived Cannon's lots sit in category "Other": their site Type was

@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
 """Upload the built admin dashboard HTML to a PRIVATE Supabase Storage bucket.
 
 The bucket (`admin-dashboard`, created in supabase/migrations/0020_admin_dashboard.sql)

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []  # duckdb stays a --with flag (heavy): --with 'duckdb==1.5.2'
+# ///
 """Capture analytics-pipeline run metrics into MotherDuck (my_db.meta).
 
 The dlt copy + dbt build produce rich per-run detail every time — rows loaded,

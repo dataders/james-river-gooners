@@ -78,33 +78,34 @@ offline with the last-scraped snapshot.
 The scraper uses [`uv`](https://docs.astral.sh/uv/) — **never** pip. Run from
 the `scraper/` directory.
 
+Each scraper entry point declares its baseline dependencies inline (PEP 723),
+so `uv run <script>.py` installs them automatically. Run the script directly —
+`uv run scrape.py …`, not `uv run python3 scrape.py …` (the `python3 …` form
+bypasses the inline metadata). Heavy/optional deps stay opt-in `--with` flags.
+
 ```bash
 cd scraper
 
 # Re-scrape everything (auto-discovers Maxanet + HiBid auctions)
-uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-  python3 rescrape_all.py
+uv run rescrape_all.py
 
 # Scrape a single Maxanet auction (URL must include all query params —
 # Maxanet redirects to the homepage without AuctionId/Title/etc.)
-uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-  python3 scrape.py "<full_auction_url>"
+uv run scrape.py "<full_auction_url>"
 ```
 
-Optional pipelines (opt-in via env vars):
+Optional pipelines (opt-in via env vars; heavy deps layered on with `--with`):
 
 ```bash
 # Mirror snapshots to MotherDuck (requires MOTHERDUCK_TOKEN)
-GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with requests --with beautifulsoup4 \
-  --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-  python3 scrape.py "<full_auction_url>"
+GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with 'duckdb==1.5.2' \
+  scrape.py "<full_auction_url>"
 
 # Generate Nomic embeddings for semantic search (text+vision → Supabase pgvector)
 # (needs SUPABASE_SECRET_KEY; first run downloads the model weights to ~/.cache/huggingface)
-GOONERS_NOMIC_EMBEDDINGS=1 uv run --with requests --with beautifulsoup4 \
-  --with pyarrow --with pyyaml --with sentence-transformers --with 'transformers==4.49.0' \
+GOONERS_NOMIC_EMBEDDINGS=1 uv run --with sentence-transformers --with 'transformers==4.49.0' \
   --with torchvision --with pillow --with einops \
-  python3 scrape.py "<full_auction_url>"
+  scrape.py "<full_auction_url>"
 ```
 
 ---

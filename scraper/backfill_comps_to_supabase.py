@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+#     "beautifulsoup4",
+#     "pyarrow",
+#     "pyyaml",
+# ]
+# ///
 """One-time backfill of the static eBay-comps read model into Supabase (#6).
 
 Before Supabase becomes the sole comps source, the comps already accumulated in

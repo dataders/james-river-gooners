@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
 """Active + archived lot listings → Supabase (issue #98).
 
 Mirrors the NDJSON read model into the Supabase ``lots`` table so the browser
