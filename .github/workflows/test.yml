@@ -55,6 +55,8 @@ jobs:
 
       - run: npm ci
       - run: npm run type-check
+      # One-way migration guard: fails if typed-source coverage drops.
+      - run: npm run ts:ratchet
 
   unit:
     name: Unit tests

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { normalizeManifest } from './manifest.js'
+import { normalizeManifest } from './manifest.ts'
 
 test('normalizes old flat active manifest arrays', () => {
   assert.deepEqual(normalizeManifest(['abc']), [

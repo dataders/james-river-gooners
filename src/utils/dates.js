@@ -1,3 +1,4 @@
+// @ts-check
 // Shared parsing for auction/item end-date strings.
 //
 // Two formats appear in the data:
@@ -10,6 +11,10 @@
 // 'T' separator, so the slash swap is applied solely to the Maxanet format.
 // Applying it to ISO strings would corrupt them into an unparseable value.
 
+/**
+ * @param {string | null | undefined} endDate
+ * @returns {Date | null}
+ */
 export function parseAuctionDate(endDate) {
   if (!endDate) return null
   const d = new Date(endDate.includes('T') ? endDate : endDate.replace(/-/g, '/'))
@@ -19,6 +24,11 @@ export function parseAuctionDate(endDate) {
 // True when the deadline is at or before `now` (ms epoch). Unparseable or
 // missing dates are treated as not-yet-passed so we never hide an auction
 // just because its date string is malformed.
+/**
+ * @param {string | null | undefined} endDate
+ * @param {number} [now] ms epoch
+ * @returns {boolean}
+ */
 export function isPastDeadline(endDate, now = Date.now()) {
   const d = parseAuctionDate(endDate)
   return d != null && d.getTime() <= now
