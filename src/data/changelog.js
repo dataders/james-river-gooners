@@ -8,6 +8,13 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-14',
+    title: 'Lot details right on the grid',
+    changes: [
+      { id: 'card-enrichment-badges', icon: '🏷️', text: 'Quantity, condition warnings (like "untested" or "missing parts"), and key specs (like "20V" or "brushless") now show right on the lot cards as you browse — so you can size up a lot at a glance without opening it.' },
+    ],
+  },
+  {
     date: '2026-06-13',
     title: 'Richer lot details & sharper eBay searches',
     changes: [

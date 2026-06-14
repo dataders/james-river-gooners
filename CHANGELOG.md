@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-14 — Lot details right on the grid
+
+- 🏷️ **Lot details on the cards** — quantity, condition warnings (like "untested" or "missing parts"), and key specs (like "20V" or "brushless") now show right on the lot cards as you browse, so you can size up a lot at a glance without opening it.
+
 ## 2026-06-13 — Richer lot details & sharper eBay searches
 
 - 🏷️ **More lot detail at a glance** — identified lots now show a "Mixed lot" tag and quantity when a lot is a box of varied items, plus condition warnings (untested, missing parts) and key specs (like "20V" or "brushless") right on the detail.
