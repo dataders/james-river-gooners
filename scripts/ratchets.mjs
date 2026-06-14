@@ -49,7 +49,9 @@ for (const f of walk(SRC)) {
   suppressions += (text.match(SUPPRESSION_RE) || []).length
 }
 
-floor('Typed source files', typed, baselines.typedSourceFloor)
-ceiling('Untyped source files', untyped, baselines.untypedSourceCeiling)
-ceiling('Lint/type suppressions', suppressions, baselines.suppressionsCeiling)
+// lockIn: these are exact discrete counts, so beating the baseline must commit
+// the new number — the floor/ceiling tightens automatically, never drifts.
+floor('Typed source files', typed, baselines.typedSourceFloor, '', { lockIn: true })
+ceiling('Untyped source files', untyped, baselines.untypedSourceCeiling, '', { lockIn: true })
+ceiling('Lint/type suppressions', suppressions, baselines.suppressionsCeiling, '', { lockIn: true })
 finish()
