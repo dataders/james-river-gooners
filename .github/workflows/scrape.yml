@@ -133,10 +133,15 @@ jobs:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
           AGENT_BROWSER_SESSION: gooners-ebay-comps
-          # Raw sold-listings corpus (#293): opt-in, off on scheduled runs until
-          # validated. When on, the comp fetch also persists the full ~40-listing
-          # candidate set per query into the `sold_listings` table.
-          GOONERS_SOLD_LISTINGS_CORPUS: ${{ inputs.sold_listings_corpus && '1' || '' }}
+          # Raw sold-listings corpus (#290/#294): capture the full ~40-listing
+          # candidate set per query into `sold_listings`. On for every run now —
+          # validated; it feeds the visual re-rank + corpus-first reuse.
+          GOONERS_SOLD_LISTINGS_CORPUS: '1'
+          # Corpus-first reuse (#290 inc 3): before spending a SoldComps call on a
+          # lot, reuse the corpus when it already covers it with fresh, similar
+          # sold listings (3 / 60d / 0.85). Validated — reuses the right comps and
+          # skips the paid API. Falls through to the API when coverage is thin.
+          GOONERS_CORPUS_FIRST: '1'
           # Small-batch knob for a controlled corpus test (defaults to the hourly
           # 2000); ebay_comps.py reads it as the --limit default.
           GOONERS_EBAY_COMPS_LIMIT: ${{ inputs.comps_limit || '2000' }}
