@@ -40,6 +40,8 @@ from pathlib import Path
 
 import telemetry
 
+from corpus_reuse import CorpusReuser, corpus_first_enabled
+
 # ── Re-export the public API so external callers keep working ─────────────────
 from ebay_export import (
     DATA_DIR,
@@ -150,6 +152,7 @@ def fetch_direct(
     mirror_to_warehouse: bool | None = None,
     provider_min_remaining: int | None = None,
     from_supabase: bool = False,
+    corpus_first: bool = False,
     request_session=None,
     _rand=random.uniform,
 ) -> dict:
@@ -173,6 +176,7 @@ def fetch_direct(
         "provider_exhausted": False,
         "provider_remaining": None,
         "sold_listings_written": 0,
+        "reused_items": 0,
     }
     if limit <= 0:
         return summary
@@ -220,6 +224,14 @@ def fetch_direct(
     corpus_enabled = use_supabase and not dry_run and sold_listings_corpus_enabled()
     corpus_records: list[dict] = []
 
+    # Corpus-first reuse (#290 inc 3): if the corpus already covers a lot with
+    # fresh, visually-similar sold listings, use those and skip the paid API.
+    # No-op unless GOONERS_CORPUS_FIRST=1 (or corpus_first=True) + Supabase.
+    reuser = CorpusReuser(
+        generated_at, session=session,
+        enabled=(corpus_first or corpus_first_enabled()) and not dry_run,
+    )
+
     # Source lots from Supabase (no local scrape needed — the read model is
     # Supabase-only in prod) or from the local parquet manifest a scrape wrote.
     loaded = (
@@ -253,6 +265,19 @@ def fetch_direct(
         if cap_active and summary["queries_attempted"] >= query_limit:
             break
         summary["items_attempted"] += 1
+
+        # Corpus-first reuse: when the corpus already covers this lot, use those
+        # comps and skip the paid API queries entirely (no-op unless enabled).
+        reused = reuser.covered_comps(item)
+        if reused is not None:
+            all_rows.extend(reused)
+            summary["matches"] += len(reused)
+            summary["reused_items"] += 1
+            if safe_id and item_id:
+                attempts.setdefault(safe_id, {})[item_id] = {
+                    "fetchedAt": generated_at, "status": "reused", "queries": 0,
+                }
+            continue
 
         item_status = "no_results"
         item_queries = 0
@@ -341,10 +366,11 @@ def fetch_direct(
         if use_supabase
         else f"{summary['files_written']} auction files updated"
     )
+    reused_msg = f", {summary['reused_items']} reused from corpus" if summary["reused_items"] else ""
     print(
         f"eBay comp fetch: {summary['items_attempted']} items, "
-        f"{summary['queries_attempted']} queries, {summary['matches']} matches, "
-        f"{written_msg}"
+        f"{summary['queries_attempted']} queries, {summary['matches']} matches"
+        f"{reused_msg}, {written_msg}"
     )
     if monthly_budget > 0:
         used = ledger.requests_used_in_month()
@@ -422,6 +448,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Source lots from Supabase (the active `lots` table + enrichment) "
         "instead of the local parquet manifest, so comps can run without a "
         "scrape. Requires SUPABASE_URL + SUPABASE_SECRET_KEY.",
+    )
+    fetch_parser.add_argument(
+        "--corpus-first",
+        action="store_true",
+        help="Before spending the API on a lot, reuse the sold-listings corpus "
+        "when it already covers the lot with fresh, similar listings (#290 inc 3). "
+        "Also reads GOONERS_CORPUS_FIRST=1.",
     )
     fetch_parser.add_argument("--dry-run", action="store_true")
     fetch_parser.add_argument(
@@ -562,6 +595,7 @@ def main(argv: list[str] | None = None) -> int:
             mirror_to_warehouse=False if args.no_mirror else None,
             provider_min_remaining=args.provider_min_remaining,
             from_supabase=args.from_supabase,
+            corpus_first=args.corpus_first,
         )
     elif args.command == "fetch-apify":
         skip_categories = (
