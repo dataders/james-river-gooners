@@ -322,6 +322,8 @@ def list_auction_safe_ids(
 ) -> list[str]:
     """Return all distinct auction_safe_id values from the lots table."""
     url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return []
     if session is None:
         from http_client import supabase_session
         session = supabase_session("lots")
@@ -356,6 +358,8 @@ def fetch_lots_for_auction(
 ) -> list[dict]:
     """Fetch all lots for one auction from Supabase as camelCase item dicts."""
     url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return []
     if session is None:
         from http_client import supabase_session
         session = supabase_session("lots")

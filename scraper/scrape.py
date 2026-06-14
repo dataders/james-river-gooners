@@ -343,7 +343,7 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     }
 
 
-def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None) -> None:
+def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None) -> dict:
     """Main scrape function for a single auction."""
     auction_id = extract_auction_id(auction_url)
     safe_id = sanitize_auction_id(auction_id)

@@ -121,7 +121,7 @@ def comp_rows_for_item(
     search: dict,
     matches: list[dict],
     status: str,
-    fetched_at: datetime | None = None,
+    fetched_at: str | datetime | None = None,
     warning: str | None = None,
 ) -> list[dict]:
     fetched_at = fetched_at or datetime.now(timezone.utc)

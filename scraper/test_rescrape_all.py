@@ -14,6 +14,7 @@ from rescrape_all import finalize_closed_file, manifest_entry_for_file, parse_en
 class ManifestEntryTest(unittest.TestCase):
     def test_parse_end_date_treats_cannons_times_as_eastern(self):
         parsed = parse_end_date("2026-05-27 8:28:00 PM")
+        assert parsed is not None
 
         self.assertEqual(parsed.isoformat(), "2026-05-28T00:28:00+00:00")
         self.assertEqual(parsed.tzinfo, timezone.utc)

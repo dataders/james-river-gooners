@@ -5,6 +5,7 @@ import time
 import types
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import enrich
@@ -308,7 +309,7 @@ class ParseEnrichmentTests(unittest.TestCase):
         self.assertEqual(out["enrichmentConfidence"], "high")  # from brand/model
 
     def test_non_dict_returns_all_empty(self):
-        out = parse_enrichment("nope")
+        out = parse_enrichment("nope")  # ty: ignore[invalid-argument-type]  # deliberately non-dict
         self.assertEqual(set(out), set(enrich.ENRICHMENT_FIELDS))
         self.assertTrue(all(value == "" for value in out.values()))
 
@@ -815,7 +816,7 @@ class BackfillRunTests(unittest.TestCase):
             }})
             writes = []
             mirrored = []
-            fake_supabase = types.ModuleType("supabase_enrichment")
+            fake_supabase: Any = types.ModuleType("supabase_enrichment")
             fake_supabase.maybe_export_enrichment = lambda rows: mirrored.append(list(rows))
 
             with mock.patch.object(enrich, "_backfill_dirs", lambda: [active, archive]), \
@@ -850,7 +851,7 @@ class BackfillRunTests(unittest.TestCase):
             (active / "done1.ndjson").write_text(json.dumps(row) + "\n", encoding="utf-8")
 
             client = _FakeBatchClient({})  # would error if any lot were submitted
-            fake_supabase = types.ModuleType("supabase_enrichment")
+            fake_supabase: Any = types.ModuleType("supabase_enrichment")
             fake_supabase.maybe_export_enrichment = lambda rows: None
 
             with mock.patch.object(enrich, "_backfill_dirs", lambda: [active]), \

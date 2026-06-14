@@ -27,12 +27,14 @@ class FetchLotPriceTest(unittest.TestCase):
     def test_live_lot_uses_high_bid(self):
         html = "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD 5 Bids</body></html>"
         item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        assert item is not None
         self.assertEqual(item["currentBid"], 50.0)
 
     def test_closed_lot_uses_price_realized(self):
         # A closed HiBid lot drops "High Bid" and shows the hammer price instead.
         html = "<html><body><h1>Cool Stamp</h1> Price Realized: 21.00 USD</body></html>"
         item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        assert item is not None
         self.assertEqual(item["currentBid"], 21.0)
 
     def test_high_bid_wins_when_both_present(self):
@@ -41,6 +43,7 @@ class FetchLotPriceTest(unittest.TestCase):
             "Price Realized: 21.00 USD</body></html>"
         )
         item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        assert item is not None
         self.assertEqual(item["currentBid"], 50.0)
 
 

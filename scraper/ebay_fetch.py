@@ -14,6 +14,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from time import monotonic, sleep
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import telemetry
@@ -564,7 +565,7 @@ def fetch_sold_matches(
     browser_runner=run_agent_browser,
     _rand=random.uniform,
     _choice=random.choice,
-) -> dict:
+) -> dict[str, Any]:
     provider_result = soldcomps_sold_matches(session, search, max_matches=max_matches, timeout=timeout)
     if provider_result is not None:
         return provider_result
