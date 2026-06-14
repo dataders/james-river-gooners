@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
     "type-check": "tsc --noEmit",
+    "gen:types": "bash scripts/gen-types.sh",
     "preview": "vite preview",
     "test:unit": "node --test src/utils/*.test.js src/utils/*.test.ts",
     "test:unit:coverage": "node --test --experimental-test-coverage src/utils/*.test.js src/utils/*.test.ts",
