@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { timeRemaining, itemTimeRemaining, itemEnded } from './time.js'
+import { timeRemaining, itemTimeRemaining, itemEnded } from './time.ts'
 
 // ── missing / empty input ─────────────────────────────────────────────────────
 
