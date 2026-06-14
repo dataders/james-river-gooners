@@ -58,6 +58,19 @@ import threading
 import time
 from pathlib import Path
 
+# Server-side PostHog telemetry for the enrichment runs (batch + sync). Reuses the
+# shared scraper helper (scraper/telemetry.py) — itself a silent no-op unless
+# GOONERS_POSTHOG_KEY is set AND the posthog SDK imports, and it never raises into
+# the caller. Guarded so a missing module can never break a scrape/backfill.
+try:
+    from telemetry import capture as _telemetry_capture, flush as _telemetry_flush
+except Exception:  # pragma: no cover - telemetry is best-effort
+    def _telemetry_capture(event, properties=None):
+        return None
+
+    def _telemetry_flush():
+        return None
+
 # Haiku is plenty for structured extraction and the cheapest option; overridable
 # for experiments. Note Haiku 4.5 rejects the `effort` parameter, so we don't
 # set one — extraction needs neither effort nor extended thinking.
@@ -806,6 +819,12 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
 
     reused_note = f" (reused {reused} unchanged)" if reused else ""
     print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL}{reused_note}")
+    _telemetry_capture("enrich_sync_completed", {
+        "lots": len(to_enrich),
+        "enriched": enriched,
+        "reused": reused,
+        "model": MODEL,
+    })
     return enriched
 
 
@@ -874,13 +893,28 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
     batch = client.messages.batches.create(requests=requests)
     batch_id = getattr(batch, "id", None) or batch["id"]
     print(f"  enrich: submitted batch {batch_id} ({len(requests)} lots); polling…")
+    _telemetry_capture("enrich_batch_submitted", {
+        "batch_id": batch_id,
+        "lots": len(requests),
+        "transport": "inline" if inline_images else "url",
+        "model": MODEL,
+    })
 
     status = _wait_for_batch(client, batch_id, poll_interval, max_wait)
     if status != "ended":
         print(f"  enrich: batch {batch_id} did not finish (status={status}); skipping", file=sys.stderr)
+        _telemetry_capture("enrich_batch_failed", {
+            "batch_id": batch_id,
+            "lots": len(requests),
+            "status": status,
+            "model": MODEL,
+        })
         return 0
 
     enriched = 0
+    errored = 0
+    input_tokens = 0
+    output_tokens = 0
     for result in client.messages.batches.results(batch_id):
         item = by_custom_id.get(getattr(result, "custom_id", None))
         if item is None:
@@ -890,8 +924,15 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
         if outcome_type != "succeeded":
             # errored / expired / canceled — leave the seeded empty fields and no
             # fingerprint, so the lot is retried on the next backfill (like sync).
+            errored += 1
             print(f"  enrich: batch lot {item.get('id')} {outcome_type}", file=sys.stderr)
             continue
+        usage = getattr(getattr(outcome, "message", None), "usage", None)
+        if usage is not None:
+            in_tok = getattr(usage, "input_tokens", 0)
+            out_tok = getattr(usage, "output_tokens", 0)
+            input_tokens += in_tok if isinstance(in_tok, int) else 0
+            output_tokens += out_tok if isinstance(out_tok, int) else 0
         try:
             applied = _finalize_result(item, parse_enrichment(json.loads(_response_text(outcome.message.content))))
         except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
@@ -900,6 +941,21 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
         apply_enrichment(item, applied)
         if any(applied.get(field) for field in ENRICHMENT_FIELDS):
             enriched += 1
+    # Batch pricing is 50% of the per-token list rate.
+    est_cost_usd = round(
+        (input_tokens / 1e6 * PRICE_IN_PER_MTOK + output_tokens / 1e6 * PRICE_OUT_PER_MTOK) * 0.5,
+        4,
+    )
+    _telemetry_capture("enrich_batch_completed", {
+        "batch_id": batch_id,
+        "lots": len(requests),
+        "succeeded": enriched,
+        "errored": errored,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "est_cost_usd": est_cost_usd,
+        "model": MODEL,
+    })
     return enriched
 
 
@@ -1094,6 +1150,7 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     # Overall identification rate, so a low-yield run is obvious at a glance (and
     # which auctions dragged it down, from the per-auction lines above).
     print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
+    _telemetry_flush()
     return 0
 
 
@@ -1216,6 +1273,7 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
                 break
 
     print(format_enrichment_summary("TOTAL", enrichment_summary(all_rows)))
+    _telemetry_flush()
     return 0
 
 
