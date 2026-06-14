@@ -7,7 +7,7 @@ Also owns the budget-resolution logic used by the main fetch loop.
 
 import calendar
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from ebay_export import fresh_comp_keys_from_files, requests_used_in_month, requests_used_today
 
@@ -105,7 +105,7 @@ def resolve_query_budget(
     (``provider_min_remaining``). The coarse count is used only as a fallback
     when no provider reading is available.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     provider_remaining = ledger.provider_remaining(now)
     cap_active = False
     query_limit = 0

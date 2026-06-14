@@ -1,11 +1,11 @@
 import os
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from unittest.mock import patch
 
 import corpus_reuse as cr
 
-NOW = datetime(2026, 6, 14, tzinfo=timezone.utc)
+NOW = datetime(2026, 6, 14, tzinfo=UTC)
 
 
 def _match(ebay_item_id="111222333444", sold_date="2026-05-20", sim=0.9, **over):

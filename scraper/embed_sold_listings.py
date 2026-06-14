@@ -34,7 +34,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from functools import partial
 
 from supabase_comps import (
@@ -198,7 +198,7 @@ def embed_corpus(session=None) -> int:
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def rerank_rows_for_auction(matches: list[dict], safe_id: str, fetched_at: str) -> list[dict]:

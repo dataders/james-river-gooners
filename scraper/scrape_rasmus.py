@@ -34,7 +34,7 @@ import argparse
 import html
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import requests
@@ -111,7 +111,7 @@ def ms_to_iso(ms) -> str:
         return ""
     if ms <= 0:
         return ""
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(ms / 1000, tz=UTC).isoformat()
 
 
 def location_matches(text: str, keywords: list[str]) -> bool:
@@ -168,7 +168,7 @@ def fetch_active_auction_ids(
     the tenant and to lots whose close time is in the future.
     """
     if now_ms is None:
-        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        now_ms = int(datetime.now(UTC).timestamp() * 1000)
 
     aids: dict[str, int] = {}
     offset = 0
@@ -219,7 +219,7 @@ def fetch_past_auction_ids(
     (a DESCENDING order would need a separate index and 400s).
     """
     if until_ms is None:
-        until_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        until_ms = int(datetime.now(UTC).timestamp() * 1000)
 
     aids: dict[str, int] = {}
     offset = 0
@@ -392,7 +392,7 @@ def discover_rasmus_past_specs(
     keywords = config.get("location_keywords", [])
 
     session = create_session()
-    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now_ms = int(datetime.now(UTC).timestamp() * 1000)
     since_ms = now_ms - days * 24 * 60 * 60 * 1000
     print(f"  Finding {name} auctions closed in the last {days} days (sid={sid})...")
     past = fetch_past_auction_ids(session, sid, since_ms, now_ms)
@@ -477,7 +477,7 @@ def scrape_rasmus_auction(
     print(f"Scraping Rasmus auction {aid} ({company_name})")
 
     session = create_session()
-    scraped_at = datetime.now(timezone.utc)
+    scraped_at = datetime.now(UTC)
 
     if not auction_title:
         auction_title = fetch_auction_meta(session, aid)["title"]

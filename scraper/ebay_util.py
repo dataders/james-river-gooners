@@ -5,18 +5,18 @@ No cross-module imports — only stdlib.
 
 import random
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from decimal import Decimal, InvalidOperation
 from time import sleep
 
 
 def utc_now_text() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def json_value(value):
     if isinstance(value, datetime):
-        return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        return value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):

@@ -123,8 +123,7 @@ def iter_rows(base: str, key: str, table: str, page_size: int = PAGE_SIZE, sessi
         )
         resp.raise_for_status()
         rows = resp.json()
-        for row in rows:
-            yield row
+        yield from rows
 
         # Content-Range: "<start>-<end>/<total>" (total is "*" without count).
         total = None

@@ -24,7 +24,7 @@ Usage:
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 try:
     import duckdb
@@ -47,7 +47,7 @@ def ph_query(api_key: str, hogql: str) -> list[dict]:
     resp.raise_for_status()
     payload = resp.json()
     columns = [col["name"] for col in payload["columns"]]
-    return [dict(zip(columns, row)) for row in payload["results"]]
+    return [dict(zip(columns, row, strict=False)) for row in payload["results"]]
 
 
 def export_events_daily(api_key: str, days: int) -> list[dict]:
@@ -156,7 +156,7 @@ def main() -> None:
     load_to_motherduck(search_stats, "posthog_raw", "search_stats", motherduck_token)
     load_to_motherduck(toggle_stats, "posthog_raw", "toggle_stats", motherduck_token)
 
-    print(f"Done. Exported as of {datetime.now(timezone.utc).isoformat()}")
+    print(f"Done. Exported as of {datetime.now(UTC).isoformat()}")
 
 
 if __name__ == "__main__":

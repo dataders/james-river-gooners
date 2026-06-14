@@ -137,7 +137,7 @@ def snapshot_source_row_counts(con, captured_at: dt.datetime) -> int:
 
 
 def run(target_dir: str):
-    captured_at = dt.datetime.now(dt.timezone.utc)
+    captured_at = dt.datetime.now(dt.UTC)
     con = _connect()
     try:
         run_results_path = os.path.join(target_dir, "run_results.json")

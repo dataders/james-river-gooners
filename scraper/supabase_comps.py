@@ -14,7 +14,7 @@ so no comp-fetch call sites change.
 import json
 import os
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 from decimal import Decimal
 from functools import partial
 
@@ -118,8 +118,8 @@ def json_safe(value):
     """Coerce a row value into something ``json.dumps`` can emit for PostgREST."""
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).isoformat()
+            value = value.replace(tzinfo=UTC)
+        return value.astimezone(UTC).isoformat()
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
@@ -271,8 +271,8 @@ class SupabaseCompLedger(CompLedger):
             return set()
         params = {"select": "auction_safe_id,item_id"}
         if not skip_attempted:
-            now = now or datetime.now(timezone.utc)
-            cutoff = now.astimezone(timezone.utc) - timedelta(hours=stale_hours)
+            now = now or datetime.now(UTC)
+            cutoff = now.astimezone(UTC) - timedelta(hours=stale_hours)
             params["last_fetched_at"] = f"gte.{cutoff.isoformat()}"
         keys = set()
         for row in self._get_all(FRESHNESS_VIEW, params):
@@ -285,7 +285,7 @@ class SupabaseCompLedger(CompLedger):
     def _count_since(self, start: datetime) -> int:
         params = {
             "select": "fetched_at",
-            "fetched_at": f"gte.{start.astimezone(timezone.utc).isoformat()}",
+            "fetched_at": f"gte.{start.astimezone(UTC).isoformat()}",
             "limit": "1",
         }
         response = _request_with_retry(
@@ -301,12 +301,12 @@ class SupabaseCompLedger(CompLedger):
         return content_range_total(response.headers.get("Content-Range"))
 
     def requests_used_in_month(self, now=None) -> int:
-        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        now = (now or datetime.now(UTC)).astimezone(UTC)
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return self._count_since(start)
 
     def requests_used_today(self, now=None) -> int:
-        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        now = (now or datetime.now(UTC)).astimezone(UTC)
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         return self._count_since(start)
 
@@ -346,7 +346,7 @@ class SupabaseCompLedger(CompLedger):
         latest = self.provider_remaining(now)
         if latest is None:
             return 0
-        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        now = (now or datetime.now(UTC)).astimezone(UTC)
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         high = self._usage_remaining(
             {"observed_at": f"gte.{start.isoformat()}", "order": "remaining.desc"}
@@ -359,7 +359,7 @@ class SupabaseCompLedger(CompLedger):
         """Append an observed provider remaining-quota reading."""
         payload: dict = {"remaining": int(remaining)}
         if now is not None:
-            payload["observed_at"] = now.astimezone(timezone.utc).isoformat()
+            payload["observed_at"] = now.astimezone(UTC).isoformat()
         if raw is not None:
             payload["raw"] = raw
         _request_with_retry(

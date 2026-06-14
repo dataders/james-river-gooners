@@ -26,7 +26,7 @@ import hashlib
 import json
 import math
 from datetime import datetime
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 # --- Curation -------------------------------------------------------------
 #

@@ -29,7 +29,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Optional
 
 from supabase_comps import (
     READ_TIMEOUT,
@@ -52,14 +51,14 @@ ITEMS_DIR = _REPO_ROOT / "public" / "data" / "items"
 ARCHIVE_ITEMS_DIR = _REPO_ROOT / "public" / "data" / "archive" / "items"
 
 
-def _to_float(value) -> Optional[float]:
+def _to_float(value) -> float | None:
     try:
         return float(value)
     except (TypeError, ValueError):
         return None
 
 
-def _to_int(value) -> Optional[int]:
+def _to_int(value) -> int | None:
     try:
         return int(value)
     except (TypeError, ValueError):

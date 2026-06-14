@@ -15,7 +15,7 @@ default. Thresholds (RFC D3, env-tunable): ``MIN_FRESH=3``, ``MAX_AGE_DAYS=60``,
 
 import json
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from functools import partial
 
 from supabase_comps import WRITE_TIMEOUT, _request_with_retry, resolve_credentials
@@ -56,7 +56,7 @@ def _parse_date(value) -> date | None:
 def fresh_matches(matches: list[dict], max_age_days: int = _MAX_AGE_DAYS, now=None) -> list[dict]:
     """Matches whose sale is within ``max_age_days`` (a sale with no date is not
     counted as fresh — conservative, so a stale comp never anchors a live lot)."""
-    today = (now or datetime.now(timezone.utc)).date()
+    today = (now or datetime.now(UTC)).date()
     fresh = []
     for match in matches or []:
         sold = _parse_date(match.get("sold_date"))

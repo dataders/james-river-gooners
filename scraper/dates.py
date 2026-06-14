@@ -5,7 +5,7 @@ Naive values are interpreted as US Eastern (the auction house's local time).
 Keep all timestamp parsing here — do not copy DATE_PATTERNS into other modules.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 
 
@@ -56,4 +56,4 @@ def parse_auction_datetime(value) -> datetime | None:
 def parse_auction_datetime_utc(value) -> datetime | None:
     """Like :func:`parse_auction_datetime`, but normalized to UTC."""
     parsed = parse_auction_datetime(value)
-    return parsed.astimezone(timezone.utc) if parsed else None
+    return parsed.astimezone(UTC) if parsed else None

@@ -154,7 +154,7 @@ def candidate_vectors(session, url, key, candidates):
         from embed_nomic import embed_items
         items = [listing_to_item(c) for c in missing]
         embs, eids, _ = embed_items(items, session=session)
-        for eid, vec in zip(eids, embs):
+        for eid, vec in zip(eids, embs, strict=True):
             vecs[str(eid)] = np.asarray(vec, dtype=np.float32)
     return vecs
 
@@ -202,7 +202,7 @@ def main(argv=None):
         all_cands = [c for arm in fetched.values() for c in arm]
         vecs = candidate_vectors(session, url, key, all_cands)
 
-        def scored(cands):
+        def scored(cands, vecs=vecs, lot_emb=lot_emb):
             out = []
             for c in cands:
                 v = vecs.get(c.get("ebay_item_id"))
@@ -237,7 +237,7 @@ def main(argv=None):
     # Persist all rows.
     cols = ("run_id", "auction_safe_id", "item_id", "arm", "ebay_item_id", "rank",
             "similarity", "query", "title", "sold_price", "sold_date")
-    payload = [dict(zip(cols, r)) for r in eval_rows]
+    payload = [dict(zip(cols, r, strict=False)) for r in eval_rows]
     endpoint = f"{url.rstrip('/')}/rest/v1/{EVAL_TABLE}"
     for start in range(0, len(payload), 500):
         _request_with_retry(

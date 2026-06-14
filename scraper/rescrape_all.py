@@ -22,9 +22,9 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 import pyarrow.parquet as pq
 
@@ -89,7 +89,7 @@ def is_closed(path: Path) -> bool:
     end_date = parquet_end_date(path)
     if end_date is None:
         return False
-    return end_date <= datetime.now(timezone.utc)
+    return end_date <= datetime.now(UTC)
 
 
 def finalize_closed_file(path: Path) -> None:
@@ -202,7 +202,7 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
 
 def manifest_sort_key(entry: dict) -> tuple[datetime, str]:
     parsed = parse_end_date(str(entry.get("endDate", "")))
-    return parsed or datetime.max.replace(tzinfo=timezone.utc), entry.get("title") or entry.get("safeId", "")
+    return parsed or datetime.max.replace(tzinfo=UTC), entry.get("title") or entry.get("safeId", "")
 
 
 def build_manifest(paths: list[Path], archived: bool) -> dict:

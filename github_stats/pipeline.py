@@ -37,7 +37,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 import dlt
 
@@ -62,7 +62,7 @@ DEFAULT_MAX_LOG_RUNS = 60
 
 
 def _lookback_start(days: int) -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=days)
+    return datetime.now(UTC) - timedelta(days=days)
 
 
 @dlt.source(name="github_stats")
@@ -149,7 +149,10 @@ def github_source(
                 continue
             if downloaded >= max_log_runs:
                 break
-            text = client.run_log_text(raw.get("id"))
+            run_id = raw.get("id")
+            if not isinstance(run_id, int):
+                continue
+            text = client.run_log_text(run_id)
             downloaded += 1
             if not text:
                 continue

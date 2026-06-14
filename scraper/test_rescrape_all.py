@@ -1,6 +1,6 @@
 import tempfile
 import unittest
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
 
 import json
@@ -17,7 +17,7 @@ class ManifestEntryTest(unittest.TestCase):
         assert parsed is not None
 
         self.assertEqual(parsed.isoformat(), "2026-05-28T00:28:00+00:00")
-        self.assertEqual(parsed.tzinfo, timezone.utc)
+        self.assertEqual(parsed.tzinfo, UTC)
 
     def test_manifest_entry_reads_parquet_metadata(self):
         with tempfile.TemporaryDirectory() as tmpdir:

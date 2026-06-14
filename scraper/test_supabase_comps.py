@@ -1,7 +1,7 @@
 import json
 import os
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -10,7 +10,7 @@ import supabase_comps
 
 class JsonSafeTest(unittest.TestCase):
     def test_aware_datetime_kept_utc(self):
-        dt = datetime(2026, 6, 5, 12, 30, tzinfo=timezone.utc)
+        dt = datetime(2026, 6, 5, 12, 30, tzinfo=UTC)
         self.assertEqual(supabase_comps.json_safe(dt), "2026-06-05T12:30:00+00:00")
 
     def test_naive_datetime_assumed_utc(self):
@@ -34,7 +34,7 @@ class RowPayloadTest(unittest.TestCase):
             "auction_safe_id": "a1",
             "item_id": "i1",
             "price_value": Decimal("99.99"),
-            "fetched_at": datetime(2026, 6, 5, tzinfo=timezone.utc),
+            "fetched_at": datetime(2026, 6, 5, tzinfo=UTC),
             "lot_number": 7,
             "not_a_column": "dropped",
         }
@@ -184,7 +184,7 @@ class SupabaseCompLedgerTest(unittest.TestCase):
             ],
         )
         ledger = self._ledger(session)
-        now = datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 5, 12, 0, tzinfo=UTC)
         keys = ledger.fresh_keys(stale_hours=168, now=now)  # 7 days
         self.assertEqual(keys, {"A:1", "A:2"})
         _, kwargs = session.get.call_args
@@ -212,7 +212,7 @@ class SupabaseCompLedgerTest(unittest.TestCase):
             status_code=200, headers={"Content-Range": "0-0/42"}
         )
         ledger = self._ledger(session)
-        now = datetime(2026, 6, 5, 12, 30, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 5, 12, 30, tzinfo=UTC)
         self.assertEqual(ledger.requests_used_in_month(now), 42)
         _, kwargs = session.get.call_args
         self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-01T00:00:00+00:00")
@@ -224,7 +224,7 @@ class SupabaseCompLedgerTest(unittest.TestCase):
             status_code=200, headers={"Content-Range": "0-0/5"}
         )
         ledger = self._ledger(session)
-        now = datetime(2026, 6, 5, 12, 30, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 5, 12, 30, tzinfo=UTC)
         self.assertEqual(ledger.requests_used_today(now), 5)
         _, kwargs = session.get.call_args
         self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-05T00:00:00+00:00")
@@ -266,7 +266,7 @@ class SupabaseCompLedgerTest(unittest.TestCase):
             unittest.mock.MagicMock(status_code=200, json=lambda: [{"remaining": 1600}]),
             unittest.mock.MagicMock(status_code=200, json=lambda: [{"remaining": 1750}]),
         ]
-        now = datetime(2026, 6, 14, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 14, 12, 0, tzinfo=UTC)
         self.assertEqual(self._ledger(session).provider_used_today(now), 150)
         _, kwargs = session.get.call_args  # the day-high read
         self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-14T00:00:00+00:00")
