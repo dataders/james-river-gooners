@@ -147,6 +147,51 @@ class BuildRowsTest(unittest.TestCase):
         self.assertEqual(rows[0]["brand"], "Sony2")
 
 
+class BuildSeenRowsTest(unittest.TestCase):
+    def test_includes_any_processed_lot_with_a_hash(self):
+        identified = {"auctionSafeId": "s", "id": 1, "enrichmentInputHash": "h1"}
+        unidentified = {"auctionSafeId": "s", "id": 2, "enrichmentInputHash": "h2"}  # no brand
+        rows = supabase_enrichment.build_seen_rows([identified, unidentified])
+        self.assertEqual(
+            sorted((r["item_id"], r["input_hash"]) for r in rows),
+            [("1", "h1"), ("2", "h2")],
+        )
+        self.assertEqual(set(rows[0]), {"auction_safe_id", "item_id", "input_hash"})
+
+    def test_skips_lots_without_a_hash_or_id(self):
+        rows = supabase_enrichment.build_seen_rows([
+            {"auctionSafeId": "s", "id": 1},                      # no hash -> not processed
+            {"auctionSafeId": "s", "enrichmentInputHash": "h"},   # no id
+            {"id": 1, "enrichmentInputHash": "h"},                # no safe id
+        ])
+        self.assertEqual(rows, [])
+
+    def test_dedup_last_wins(self):
+        a = {"auctionSafeId": "s", "id": 1, "enrichmentInputHash": "old"}
+        b = {"auctionSafeId": "s", "id": 1, "enrichmentInputHash": "new"}
+        rows = supabase_enrichment.build_seen_rows([a, b])
+        self.assertEqual(rows, [{"auction_safe_id": "s", "item_id": "1", "input_hash": "new"}])
+
+
+class UpsertSeenTest(unittest.TestCase):
+    def test_posts_to_seen_table_with_merge_header(self):
+        session = MagicMock()
+        session.post.return_value = MagicMock(status_code=201)
+        n = supabase_enrichment.upsert_seen(
+            [{"auction_safe_id": "s", "item_id": "1", "input_hash": "h"}],
+            url="https://proj.supabase.co", key="secret", session=session,
+        )
+        self.assertEqual(n, 1)
+        args, kwargs = session.post.call_args
+        self.assertTrue(args[0].endswith("/rest/v1/enrichment_seen"))
+        self.assertIn("merge-duplicates", kwargs["headers"]["Prefer"])
+
+    def test_empty_is_noop(self):
+        session = MagicMock()
+        self.assertEqual(supabase_enrichment.upsert_seen([], session=session), 0)
+        session.post.assert_not_called()
+
+
 class UpsertTest(unittest.TestCase):
     def _session(self):
         session = MagicMock()
@@ -247,6 +292,19 @@ class MaybeExportTest(unittest.TestCase):
                     # Must NOT raise — the scrape's read model is the primary deliverable.
                     self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
         self.assertTrue(any("WARNING" in str(c) for c in printed.call_args_list))
+
+    def test_caches_hash_for_unidentified_lots(self):
+        # A low-confidence lot reaches enrichment_seen (so it reuses next run) but
+        # not lot_enrichment (which stays an identified-only index).
+        unidentified = {"auctionSafeId": "s", "id": 7, "enrichmentConfidence": "low",
+                        "enrichmentInputHash": "h7"}
+        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: ("https://x", "secret")):
+            with patch.object(supabase_enrichment, "upsert_seen", return_value=1) as seen, \
+                 patch.object(supabase_enrichment, "upsert_enrichment", return_value=0) as enr:
+                supabase_enrichment.maybe_export_enrichment([unidentified])
+        seen_rows = seen.call_args.args[0]
+        self.assertEqual(seen_rows, [{"auction_safe_id": "s", "item_id": "7", "input_hash": "h7"}])
+        enr.assert_not_called()  # nothing identified -> no lot_enrichment write
 
 
 if __name__ == "__main__":

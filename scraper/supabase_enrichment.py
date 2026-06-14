@@ -43,6 +43,7 @@ from supabase_comps import READ_TIMEOUT, json_safe, resolve_credentials
 
 ENRICHMENT_TABLE = "lot_enrichment"
 ENRICH_RUNS_TABLE = "enrich_runs"
+SEEN_TABLE = "enrichment_seen"
 
 # Columns of the enrich_runs cost ledger (0031). Anything else in a payload is
 # dropped so a caller can't write an unknown column.
@@ -209,6 +210,66 @@ def build_enrichment_rows(items: list[dict]) -> list[dict]:
     return list(rows.values())
 
 
+def build_seen_rows(items: list[dict]) -> list[dict]:
+    """Build `enrichment_seen` rows for every *processed* lot — identified or not.
+
+    Unlike ``build_enrichment_rows`` (medium/high only), this records the
+    ``input_hash`` of any lot that was actually run through enrichment, so the
+    next scrape can reuse unidentified lots instead of re-calling the API. A lot
+    is "processed" once it carries an ``enrichmentInputHash`` (stamped on every
+    lot enrich touches, identified or not). Last write wins on the key."""
+    rows: dict[tuple[str, str], dict] = {}
+    for lot in items:
+        safe_id = lot.get("auctionSafeId")
+        item_id = lot.get("id")
+        input_hash = lot.get("enrichmentInputHash") or ""
+        if not safe_id or item_id in (None, "") or not input_hash:
+            continue
+        key = (safe_id, str(item_id))
+        rows[key] = {"auction_safe_id": safe_id, "item_id": str(item_id), "input_hash": input_hash}
+    return list(rows.values())
+
+
+def upsert_seen(
+    rows: list[dict],
+    url: str | None = None,
+    key: str | None = None,
+    session=None,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+) -> int:
+    """Upsert `enrichment_seen` hash-cache rows (merge on the primary key).
+
+    Same mechanics as ``upsert_enrichment``; raises RuntimeError on missing
+    credentials or a permanent failure (callers wrap it best-effort)."""
+    if not rows:
+        return 0
+
+    url, key = resolve_credentials(url, key)
+    if not url:
+        raise RuntimeError("SUPABASE_URL is required to write enrichment_seen to Supabase")
+    if not key:
+        raise RuntimeError("SUPABASE_SECRET_KEY is required to write enrichment_seen to Supabase")
+
+    from http_client import supabase_session
+
+    session = session or supabase_session("enrich")
+    endpoint = f"{url.rstrip('/')}/rest/v1/{SEEN_TABLE}"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+
+    written = 0
+    for start in range(0, len(rows), batch_size):
+        batch = rows[start : start + batch_size]
+        _post_batch_with_retry(session, endpoint, headers, batch, max_retries)
+        written += len(batch)
+    return written
+
+
 def upsert_enrichment(
     rows: list[dict],
     url: str | None = None,
@@ -267,6 +328,17 @@ def maybe_export_enrichment(items: list[dict], session=None) -> int:
             print("  WARNING: SUPABASE_URL is set but SUPABASE_SECRET_KEY is not — "
                   "skipping enrichment mirror to Supabase")
         return 0
+    # Cache every processed lot's input_hash (identified or not) so the next
+    # scrape reuses unidentified lots too, instead of re-paying to re-derive the
+    # same empty result every run. Best-effort: a failure here just means some
+    # lots re-enrich next time, so warn rather than abort the identified mirror.
+    seen = build_seen_rows(items)
+    if seen:
+        try:
+            upsert_seen(seen, url=url, key=key, session=session)
+        except RuntimeError as exc:
+            print(f"  WARNING: failed to cache {len(seen)} enrichment hash(es) to Supabase: {exc}")
+
     rows = build_enrichment_rows(items)
     if not rows:
         return 0
@@ -392,6 +464,37 @@ def load_prior_enrichment_from_supabase(
             "enrichmentSchemaVersion": row.get("schema_version") or "",
             "enrichmentInputHash": row.get("input_hash") or "",
         }
+
+    # Merge the hash cache so *unidentified* lots reuse too. lot_enrichment holds
+    # only identified lots (full fields); enrichment_seen holds every processed
+    # lot's hash. For any item not already in `prior`, a hash-only entry lets
+    # reuse_prior_enrichment skip the API (it copies empty fields forward). The
+    # identified rows above take precedence (their full fields). Best-effort: if
+    # the cache table is absent/unreadable (e.g. mid-rollout), keep the
+    # identified-only prior rather than failing the whole load.
+    seen_endpoint = f"{url.rstrip('/')}/rest/v1/{SEEN_TABLE}"
+    offset = 0
+    while True:
+        try:
+            resp = session.get(
+                seen_endpoint,
+                headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
+                params={"auction_safe_id": f"eq.{safe_id}", "select": "item_id,input_hash"},
+                timeout=READ_TIMEOUT,
+            )
+        except Exception:  # noqa: BLE001 — cache read is best-effort
+            break
+        if not resp.ok:
+            break
+        batch = resp.json()
+        for row in batch:
+            item_id = row.get("item_id")
+            if item_id and item_id not in prior:
+                prior[item_id] = {"id": item_id, "enrichmentInputHash": row.get("input_hash") or ""}
+        if len(batch) < PAGE:
+            break
+        offset += len(batch)
+
     return prior
 
 
