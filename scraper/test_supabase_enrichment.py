@@ -90,6 +90,54 @@ class EnrichmentRowTest(unittest.TestCase):
         self.assertEqual(row["detail_confidence"], "")
 
 
+    def test_schema_version_mapped(self):
+        row = supabase_enrichment.enrichment_row({**ENRICHED_LOT, "enrichmentSchemaVersion": "6"})
+        self.assertEqual(row["schema_version"], "6")
+
+    def test_schema_version_defaults_empty(self):
+        row = supabase_enrichment.enrichment_row(ENRICHED_LOT)
+        self.assertEqual(row["schema_version"], "")
+
+
+class RecordEnrichRunTest(unittest.TestCase):
+    def _session(self):
+        session = MagicMock()
+        session.post.return_value = MagicMock(status_code=201)
+        return session
+
+    def test_posts_one_ledger_row_to_enrich_runs(self):
+        session = self._session()
+        n = supabase_enrichment.record_enrich_run(
+            {"mode": "batch", "model": "claude-haiku-4-5", "schema_version": "6",
+             "lots_submitted": 10, "lots_enriched": 7, "input_tokens": 100,
+             "output_tokens": 20, "est_cost_usd": 0.01, "raw": {"batch_id": "b1"}},
+            url="https://proj.supabase.co", key="secret", session=session,
+        )
+        self.assertEqual(n, 1)
+        args, kwargs = session.post.call_args
+        self.assertTrue(args[0].endswith("/rest/v1/enrich_runs"))
+        body = json.loads(kwargs["data"])
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["mode"], "batch")
+        self.assertEqual(body[0]["est_cost_usd"], 0.01)
+
+    def test_unknown_columns_are_dropped(self):
+        session = self._session()
+        supabase_enrichment.record_enrich_run(
+            {"mode": "sync", "bogus_column": "x"},
+            url="https://proj.supabase.co", key="secret", session=session,
+        )
+        body = json.loads(session.post.call_args.kwargs["data"])
+        self.assertNotIn("bogus_column", body[0])
+
+    def test_noop_without_credentials(self):
+        session = self._session()
+        with patch.object(supabase_enrichment, "resolve_credentials", return_value=(None, None)):
+            self.assertEqual(
+                supabase_enrichment.record_enrich_run({"mode": "sync"}, session=session), 0)
+        session.post.assert_not_called()
+
+
 class BuildRowsTest(unittest.TestCase):
     def test_only_enriched_lots_and_dedup(self):
         plain = {"auctionSafeId": "s", "id": 9}
