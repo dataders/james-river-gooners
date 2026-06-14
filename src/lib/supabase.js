@@ -17,21 +17,28 @@
 
 import { createClient } from '@supabase/supabase-js'
 
+/** @typedef {import('../types/database.types').Database} Database */
+
 const url = import.meta.env.VITE_SUPABASE_URL
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
 export const isSupabaseConfigured = Boolean(url && publishableKey)
 
 // Gate on `url && publishableKey` (not the derived isSupabaseConfigured) so
-// createClient sees `string`, not `string | undefined`.
+// createClient sees `string`, not `string | undefined`. The result is cast to
+// the generated Database type so .from(view)/.rpc(fn) are typed end-to-end
+// (the JS file can't write createClient<Database>(); the cast is the @ts-check
+// equivalent). Regenerate the types with `npm run gen:types` after a migration.
 export const supabase = url && publishableKey
-  ? createClient(url, publishableKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        // Must be true so the client picks up the token Supabase appends to the
-        // email confirmation / password-reset redirect URL.
-        detectSessionInUrl: true,
-      },
-    })
+  ? /** @type {import('@supabase/supabase-js').SupabaseClient<Database>} */ (
+      createClient(url, publishableKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          // Must be true so the client picks up the token Supabase appends to the
+          // email confirmation / password-reset redirect URL.
+          detectSessionInUrl: true,
+        },
+      })
+    )
   : null
