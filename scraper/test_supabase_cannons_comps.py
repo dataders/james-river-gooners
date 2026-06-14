@@ -82,7 +82,7 @@ class WriteAuctionCompsTest(unittest.TestCase):
     def test_insert_http_error_raises_before_prune(self):
         session = mock.MagicMock()
         session.post.return_value = mock.MagicMock(status_code=400, text="bad")
-        with self.assertRaisesRegex(RuntimeError, "cannons comp insert failed"):
+        with self.assertRaisesRegex(RuntimeError, "cannons comp insert.*failed"):
             scc.write_auction_comps(
                 "auc", {"i": {"matches": [{"title": "x", "soldPrice": 1}]}}, "t",
                 url="https://x.supabase.co", key="k", session=session,
