@@ -7,9 +7,13 @@ Also owns the budget-resolution logic used by the main fetch loop.
 
 import calendar
 from abc import ABC, abstractmethod
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
-from ebay_export import fresh_comp_keys_from_files, requests_used_in_month, requests_used_today
+from ebay_export import (
+    fresh_comp_keys_from_files,
+    requests_used_in_month,
+    requests_used_today,
+)
 
 
 class CompLedger(ABC):

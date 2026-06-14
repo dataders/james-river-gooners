@@ -1,13 +1,11 @@
+import json
 import tempfile
 import unittest
 from datetime import UTC
 from pathlib import Path
 
-import json
-
 import pyarrow as pa
 import pyarrow.parquet as pq
-
 from rescrape_all import finalize_closed_file, manifest_entry_for_file, parse_end_date
 
 

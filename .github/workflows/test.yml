@@ -13,6 +13,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every job here only reads the repo (checkout + test/lint); none commit or
+# comment, so a read-only token is all they need.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Production build
@@ -171,6 +176,43 @@ jobs:
 
       - name: Run ty ratchet (pipeline_meta)
         run: bash scripts/ty-ratchet.sh pipeline_meta 0
+
+  mcp:
+    name: MCP tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Run mcp unit tests
+        run: |
+          cd mcp
+          uv run --extra dev pytest -q
+
+      - name: Lint mcp (ruff)
+        run: |
+          cd mcp
+          uvx ruff@0.15.8 check .
+
+      - name: Run ty ratchet (mcp)
+        run: bash scripts/ty-ratchet.sh mcp 0
+
+  dashboard:
+    name: Dashboard lint + type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Lint dashboard (ruff)
+        run: |
+          cd dashboard
+          uvx ruff@0.15.8 check .
+
+      - name: Run ty ratchet (dashboard)
+        run: bash scripts/ty-ratchet.sh dashboard 0
 
   scraper-lint:
     name: Scraper lint (ruff)

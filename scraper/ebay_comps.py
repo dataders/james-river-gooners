@@ -48,8 +48,22 @@ import sys
 from pathlib import Path
 
 import telemetry
-
 from corpus_reuse import CorpusReuser, corpus_first_enabled
+
+# Apify backend — re-export for external callers and expose via the CLI.
+from ebay_apify import (
+    APIFY_ACTOR_ID,
+    APIFY_API_URL,
+    APIFY_CONCURRENCY,
+    APIFY_MAX_WAIT,
+    APIFY_POLL_INTERVAL,
+    _apify_fetch_one_query,
+    apify_fetch_dataset,
+    apify_item_match,
+    apify_start_run,
+    apify_wait_for_run,
+    fetch_comps_apify,
+)
 
 # ── Re-export the public API so external callers keep working ─────────────────
 from ebay_export import (
@@ -98,13 +112,18 @@ from ebay_query import (
     build_ebay_sold_searches,
     item_exact_phrase,
 )
+
+# Keep these available for the rare callers that import the SQL templates.
 from ebay_snapshot import (
+    CREATE_COMP_TABLE_SQL,
     EXPORT_COLUMNS,
+    INSERT_COMP_SQL,
     PUBLIC_VIEW,
+    PUBLIC_VIEW_SQL,
     SNAPSHOT_TABLE,
     append_ebay_comp_snapshots,
-    comp_rows_for_item,
     comp_row_values,
+    comp_rows_for_item,
     ensure_comp_tables,
     insert_comp_rows,
 )
@@ -115,24 +134,6 @@ from ebay_util import (
     normalize_spaces,
     text_value,
     utc_now_text,
-)
-
-# Keep these available for the rare callers that import the SQL templates.
-from ebay_snapshot import CREATE_COMP_TABLE_SQL, INSERT_COMP_SQL, PUBLIC_VIEW_SQL
-
-# Apify backend — re-export for external callers and expose via the CLI.
-from ebay_apify import (
-    APIFY_API_URL,
-    APIFY_ACTOR_ID,
-    APIFY_CONCURRENCY,
-    APIFY_POLL_INTERVAL,
-    APIFY_MAX_WAIT,
-    apify_item_match,
-    apify_start_run,
-    apify_wait_for_run,
-    apify_fetch_dataset,
-    _apify_fetch_one_query,
-    fetch_comps_apify,
 )
 
 DEFAULT_LIMIT = 50

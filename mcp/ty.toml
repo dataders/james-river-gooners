@@ -1,0 +1,14 @@
+# ty configuration for the scraper type-check ratchet (scripts/ty-ratchet.sh).
+#
+# ty resolves imports against the *installed* environment, but the scrapers run
+# via `uv run` with PEP 723 inline deps (and a long tail of optional deps:
+# torch, transformers, playwright, …) that aren't installed in the type-check
+# job — and the libs that are installed ship no type stubs. That makes
+# `unresolved-import` and `possibly-missing-submodule` pure environment
+# artifacts, not code bugs (import sanity is already covered by the ruff
+# pyflakes F-codes in the scraper-lint job). Ignoring them leaves a baseline of
+# real type-logic findings (not-subscriptable, invalid-argument-type, …) that
+# the ratchet can actually drive toward zero.
+[rules]
+unresolved-import = "ignore"
+possibly-missing-submodule = "ignore"

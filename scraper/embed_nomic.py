@@ -657,7 +657,7 @@ def backfill_from_supabase(
     if not os.environ.get("SUPABASE_SECRET_KEY"):
         raise RuntimeError("SUPABASE_SECRET_KEY is required to backfill Nomic embeddings from Supabase")
 
-    from supabase_lots import list_auction_safe_ids, fetch_lots_for_auction
+    from supabase_lots import fetch_lots_for_auction, list_auction_safe_ids
 
     if session is None:
         session = _req.Session()

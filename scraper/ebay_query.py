@@ -11,7 +11,6 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 import yaml
-
 from ebay_util import normalize_spaces
 
 EBAY_SEARCH_URL = "https://www.ebay.com/sch/i.html"

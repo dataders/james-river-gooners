@@ -34,7 +34,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from functools import partial
 
 from supabase_comps import (

@@ -1,10 +1,9 @@
 import json
 import os
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, UTC
 
 from dates import parse_auction_datetime
-
 
 SNAPSHOT_TABLE = "listing_snapshots"
 

@@ -23,7 +23,6 @@ from pathlib import Path
 from time import sleep
 
 import requests
-
 from ebay_export import (
     DATA_DIR,
     EBAY_COMPS_DIR,

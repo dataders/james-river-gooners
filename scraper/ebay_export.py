@@ -6,7 +6,7 @@ Also owns manifest + Parquet loading and the optional warehouse mirror.
 """
 
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ebay_fetch import is_ebay_item_url

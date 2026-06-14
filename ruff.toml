@@ -7,10 +7,12 @@
 # and only layer on two high-signal families:
 #   B  (flake8-bugbear)  — likely bugs: mutable arg defaults, except-pass, etc.
 #   UP (pyupgrade)       — modern syntax for the minimum supported Python.
+#   I  (isort)           — import ordering (autofixed).
+#   C4 (comprehensions)  — flag/clean unnecessary list/dict/set comprehensions.
 target-version = "py311"
 
 [lint]
-extend-select = ["B", "UP"]
+extend-select = ["B", "UP", "I", "C4"]
 
 [lint.flake8-bugbear]
 # dlt requires its `incremental` cursor as a resource-function default argument;

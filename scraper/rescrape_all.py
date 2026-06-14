@@ -21,19 +21,17 @@ import os
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
-from datetime import datetime, UTC
-from pathlib import Path
 from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pyarrow.parquet as pq
-
 from dates import parse_auction_datetime_utc
 from discover import discover_current_auction_urls
 from scrape import DATA_DIR, ITEMS_DIR, extract_auction_id, sanitize_auction_id
-from scrape_hibid import discover_hibid_specs, hibid_safe_id, extract_catalog_id
+from scrape_hibid import discover_hibid_specs, extract_catalog_id, hibid_safe_id
 from scrape_rasmus import discover_rasmus_specs, rasmus_safe_id
-
 
 URLS_FILE = Path(__file__).resolve().parent / "auction_urls.txt"
 ARCHIVE_ITEMS_DIR = DATA_DIR / "archive" / "items"

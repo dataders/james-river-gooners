@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def composite_key(auction_safe_id: str, item_id: Any) -> str:
+def composite_key(auction_safe_id: Any, item_id: Any) -> str:
     return f"{auction_safe_id}:{item_id}"
 
 

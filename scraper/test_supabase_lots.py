@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import supabase_lots
 
-
 # ---------------------------------------------------------------------------
 # _lot_row — camelCase NDJSON → snake_case Supabase row
 # ---------------------------------------------------------------------------

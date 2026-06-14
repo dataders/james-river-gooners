@@ -1,6 +1,6 @@
 """Tests for the centralized date parsing in dates.py."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from dates import (
     AUCTION_TZ,

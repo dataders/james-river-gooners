@@ -6,14 +6,18 @@ either its result dict/list or {"error": "..."}.
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastmcp import FastMCP
 
 from .client import AuthRequiredError, GoonersClient
 from .schemas import (
-    composite_key, shape_cannons_comp, shape_category_stats,
-    shape_ebay_comp, shape_lot,
+    composite_key,
+    shape_cannons_comp,
+    shape_category_stats,
+    shape_ebay_comp,
+    shape_lot,
 )
 
 
@@ -92,7 +96,7 @@ def build_server(client: GoonersClient) -> FastMCP:
             "auction_safe_id": f"in.({','.join(safe_ids)})",
             "item_id": f"in.({','.join(item_ids)})",
         })
-        by_key = {composite_key(l["auction_safe_id"], l["item_id"]): l for l in lots}
+        by_key = {composite_key(lot["auction_safe_id"], lot["item_id"]): lot for lot in lots}
         return [by_key[f"{a}:{b}"] for a, b in ids if f"{a}:{b}" in by_key]  # preserve rank
 
     @mcp.tool
@@ -112,10 +116,10 @@ def build_server(client: GoonersClient) -> FastMCP:
         else:
             ordered = _keyword_lots(query, category, max_price, auction_safe_id, limit)
 
-        keys = [(l["auction_safe_id"], str(l["item_id"])) for l in ordered]
+        keys = [(lot["auction_safe_id"], str(lot["item_id"])) for lot in ordered]
         enrich = _enrichment_for(client, keys)
-        out = {"results": [shape_lot(l, enrich.get(composite_key(l["auction_safe_id"], l["item_id"])))
-                           for l in ordered]}
+        out: dict[str, object] = {"results": [shape_lot(lot, enrich.get(composite_key(lot["auction_safe_id"], lot["item_id"])))
+                           for lot in ordered]}
         if fallback:
             out["semantic_fallback"] = True
         return out

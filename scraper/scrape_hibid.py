@@ -24,15 +24,16 @@ import json
 import re
 import sys
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import requests
 import yaml
 from bs4 import BeautifulSoup
-
 from categories import normalize_category, normalize_raw_with_description
-from filters import is_real_estate_auction  # noqa: F401 (re-exported for test/back-compat)
+from filters import (
+    is_real_estate_auction,  # noqa: F401 (re-exported for test/back-compat)
+)
 from http_client import make_session
 from persist import WriteContext, write_read_model
 from scraper_common import has_bid_changes, load_existing_bids

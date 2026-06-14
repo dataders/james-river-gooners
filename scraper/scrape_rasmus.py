@@ -34,12 +34,11 @@ import argparse
 import html
 import re
 import sys
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
 import yaml
-
 from categories import normalize_category, normalize_raw_with_description
 from filters import is_real_estate_auction
 from http_client import make_session

@@ -15,7 +15,7 @@ default. Thresholds (RFC D3, env-tunable): ``MIN_FRESH=3``, ``MAX_AGE_DAYS=60``,
 
 import json
 import os
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from functools import partial
 
 from supabase_comps import WRITE_TIMEOUT, _request_with_retry, resolve_credentials

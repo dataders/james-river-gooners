@@ -5,9 +5,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import numpy as np
-
 import embed_nomic
+import numpy as np
 
 
 def _items(ids):

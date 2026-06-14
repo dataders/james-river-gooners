@@ -5,9 +5,8 @@ Naive values are interpreted as US Eastern (the auction house's local time).
 Keep all timestamp parsing here — do not copy DATE_PATTERNS into other modules.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
-
 
 AUCTION_TZ = ZoneInfo("America/New_York")
 

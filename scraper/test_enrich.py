@@ -22,7 +22,6 @@ from enrich import (
     parse_enrichment,
 )
 
-
 # The cost-ledger writer (enrich._record_enrich_run) does a real Supabase POST
 # when SUPABASE_* env vars are present, so exercising enrich_items/_run_one_batch
 # in a credentialed shell would pollute the live `enrich_runs` table. Stub it out
@@ -299,8 +298,7 @@ class ParseEnrichmentTests(unittest.TestCase):
         out = parse_enrichment({
             "brand": "DeWalt", "model_name": "DCD771",
             "detail_category": "other",
-            "details": {k: "" for k in
-                        ("style", "material", "form", "artist", "medium", "subject", "maker", "pattern")},
+            "details": dict.fromkeys(("style", "material", "form", "artist", "medium", "subject", "maker", "pattern"), ""),
             "detail_confidence": "high",
             "brand_confidence": "high", "model_confidence": "high",
         })
@@ -676,6 +674,7 @@ class EstimateCostTests(unittest.TestCase):
 
     def test_extrapolates_from_sample(self):
         from unittest import mock
+
         import enrich
         items = [{"id": i, "title": f"Item {i}", "description": "x"} for i in range(10)]
         with mock.patch.object(enrich, "_fetch_chunk_images", return_value={}):
@@ -688,6 +687,7 @@ class EstimateCostTests(unittest.TestCase):
 
     def test_batch_is_half_of_standard(self):
         from unittest import mock
+
         import enrich
         items = [{"id": i, "title": f"Item {i}"} for i in range(6)]
         with mock.patch.object(enrich, "_fetch_chunk_images", return_value={}):
@@ -704,6 +704,7 @@ class NotesAndTextOnlyTests(unittest.TestCase):
 
     def test_text_only_drops_images_and_changes_fingerprint(self):
         from unittest import mock
+
         import enrich
         item = {"id": "x", "title": "Drill", "description": "DeWalt cordless",
                 "images": ["http://e/1.jpg", "http://e/2.jpg"]}
@@ -721,6 +722,7 @@ class NotesAndTextOnlyTests(unittest.TestCase):
 class LimitFlagTests(unittest.TestCase):
     def test_limit_parsed_and_passed(self):
         from unittest import mock
+
         import enrich
         with mock.patch.object(enrich, "_backfill_from_supabase", return_value=0) as m:
             enrich.main(["--batch", "--from-supabase", "--limit", "20"])
@@ -775,7 +777,7 @@ class BackfillTargetTests(unittest.TestCase):
         ids = [safe_id for _, safe_id in targets]
         self.assertEqual(sorted(ids), ["a1", "dup", "old1"])
         # `dup` resolves to the active dir (active wins).
-        self.assertEqual(dict((s, d) for d, s in targets)["dup"], active)
+        self.assertEqual({s: d for d, s in targets}["dup"], active)
 
     def test_named_id_resolves_in_archive(self):
         with tempfile.TemporaryDirectory() as tmp:

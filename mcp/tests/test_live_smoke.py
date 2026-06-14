@@ -2,7 +2,6 @@ import asyncio
 import os
 
 import pytest
-
 from gooners_mcp.client import GoonersClient
 from gooners_mcp.config import load_config
 from gooners_mcp.server import build_server
@@ -18,7 +17,7 @@ def _tools():
     client = GoonersClient(cfg.url, cfg.publishable_key, cfg.email, cfg.password)
     server = build_server(client)
     tool_list = asyncio.run(server.list_tools())
-    return {t.name: t.fn for t in tool_list}
+    return {t.name: t.fn for t in tool_list}  # ty: ignore[unresolved-attribute]  # fastmcp Tool.fn (untyped)
 
 
 def test_list_auctions_returns_some():

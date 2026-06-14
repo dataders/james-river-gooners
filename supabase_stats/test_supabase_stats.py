@@ -10,10 +10,9 @@ classification, and the metrics client against a fake session.
 from __future__ import annotations
 
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import pytest
-
 from metrics_api import SupabaseMetricsClient, _derive_metrics_url
 from transforms import (
     classify,
