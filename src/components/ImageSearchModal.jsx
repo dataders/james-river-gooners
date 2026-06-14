@@ -37,7 +37,9 @@ export function ImageSearchModal({ onClose, items = [], user, onSearchInGrid, on
     if (!term || term.length < 3) return
     let cancelled = false
     supabase
-      .from('sold_lots')
+      // Read the gated public_sold_lots view (members-only auth predicate), not
+      // the raw sold_lots compat view — keeps sold prices behind the login gate.
+      .from('public_sold_lots')
       .select('item_id, auction_safe_id, title, description, final_bid, image_url, sold_at, category')
       .or(`title.ilike.%${term}%,description.ilike.%${term}%`)
       .gt('final_bid', 0)

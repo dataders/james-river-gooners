@@ -39,8 +39,6 @@
 -- Rollback: recreate sold_lots as a table from `select * from sold_lots` (the
 -- view), restore its RLS policy (0008), drop the FKs and lots.sold_at.
 
-begin;
-
 -- 1. Promote sold_at onto lots and backfill losslessly from the current table --
 alter table lots add column if not exists sold_at timestamptz;
 
@@ -131,8 +129,15 @@ select
 from lots
 where archived and final_bid is not null and final_bid > 0;
 
--- Internal compat layer (RPC + dbt). Not the browser's entry point, so it is not
--- granted to anon; the members-only gate lives in the public_* views below.
+-- Internal compat layer (RPC + dbt + the authed-only ImageSearchModal lookup).
+-- The members-only gate lives in the public_* views below AND here: this view is
+-- security_invoker over the now-public `lots`, so without revoking anon a
+-- logged-out client could read every sold price by querying `sold_lots`
+-- directly, bypassing the public_* gate. Revoke anon explicitly (Supabase's
+-- default privileges auto-grant SELECT to anon on new views) and grant only the
+-- authenticated/service roles. This matches the dropped base table, which never
+-- returned rows to anon (RLS, migration 0008).
+revoke all on sold_lots from anon;
 grant select on sold_lots to authenticated, service_role;
 
 -- Supports the per-category recency/median aggregation below.
@@ -236,5 +241,3 @@ where archived and final_bid is not null and final_bid > 0
 group by category;
 
 grant select on public_sold_lots, public_category_sold_stats to anon, authenticated;
-
-commit;
