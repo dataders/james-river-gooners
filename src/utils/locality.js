@@ -1,3 +1,4 @@
+// @ts-check
 const FAR_KEYWORDS = [
   'earlysville',
   'charlottesville',
@@ -16,6 +17,10 @@ const FAR_KEYWORDS = [
   'chase city',
 ]
 
+/**
+ * @param {string | null | undefined} title
+ * @returns {boolean}
+ */
 export function isLocalAuction(title) {
   if (!title) return true
   const lower = title.toLowerCase()
