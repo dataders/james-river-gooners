@@ -1236,3 +1236,39 @@ class FetchDirectSupabaseModeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LoadSupabaseItemsTest(unittest.TestCase):
+    """The Supabase-sourced item loader (so comps can run without a scrape)."""
+
+    def test_overlays_enrichment_onto_active_lots(self):
+        with patch("supabase_comps.resolve_credentials",
+                   return_value=("https://x.supabase.co", "k")), \
+             patch("supabase_lots.list_auction_safe_ids", return_value=["a1"]), \
+             patch("supabase_lots.fetch_lots_for_auction", return_value=[
+                 {"id": "i1", "auctionSafeId": "a1", "title": "Lot - 1",
+                  "category": "Tools", "currentBid": 10},
+                 {"id": "i2", "auctionSafeId": "a1", "title": "Lot - 2",
+                  "category": "Tools", "currentBid": 5},
+             ]), \
+             patch("supabase_enrichment.load_prior_enrichment_from_supabase",
+                   return_value={
+                       "i1": {"brand": "DeWalt", "modelOrSku": "DCD771",
+                              "searchQuery": "DeWalt DCD771 drill",
+                              "condition": "used", "enrichmentConfidence": "high"},
+                   }):
+            from ebay_export import load_supabase_items
+            items = load_supabase_items()
+
+        by_id = {it["id"]: it for it in items}
+        self.assertEqual(set(by_id), {"i1", "i2"})
+        # Enriched lot carries the query-builder fields...
+        self.assertEqual(by_id["i1"]["searchQuery"], "DeWalt DCD771 drill")
+        self.assertEqual(by_id["i1"]["enrichmentConfidence"], "high")
+        # ...and an unenriched lot is left untouched.
+        self.assertNotIn("searchQuery", by_id["i2"])
+
+    def test_returns_empty_when_unconfigured(self):
+        with patch("supabase_comps.resolve_credentials", return_value=(None, None)):
+            from ebay_export import load_supabase_items
+            self.assertEqual(load_supabase_items(), [])

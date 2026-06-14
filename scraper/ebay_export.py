@@ -68,6 +68,63 @@ def load_manifest_items(
     return items
 
 
+# Fields the comp query builder reads off enrichment (ebay_query):
+# enriched_exact_phrase needs enrichmentConfidence + searchQuery/brand/modelOrSku;
+# ebay_item_condition needs condition. Overlaid onto the bare lot so a
+# Supabase-sourced item behaves identically to one read from the local parquet.
+_COMP_ENRICHMENT_FIELDS = (
+    "brand", "modelOrSku", "searchQuery", "condition", "enrichmentConfidence",
+)
+
+
+def load_supabase_items(
+    include_archived: bool = False,
+    auction_safe_id: str | None = None,
+) -> list[dict]:
+    """Load active lots (+enrichment) from Supabase as camelCase item dicts.
+
+    The Supabase-sourced twin of :func:`load_manifest_items`: lets the comp fetch
+    run **without a local scrape** (the read model is Supabase-only in prod, so a
+    fresh checkout has no manifest/parquet). Each lot is overlaid with its
+    enrichment so the query builder's enriched-phrase / category / condition
+    filters behave identically. Returns ``[]`` when Supabase is unconfigured, so
+    callers can fall back to the file path. The caller sorts (by auction end).
+    """
+    from supabase_comps import resolve_credentials
+
+    url, key = resolve_credentials()
+    if not url or not key:
+        return []
+
+    import supabase_enrichment
+    import supabase_lots
+
+    items: list[dict] = []
+    for archived in (False, *( (True,) if include_archived else () )):
+        safe_ids = (
+            [auction_safe_id]
+            if auction_safe_id
+            else supabase_lots.list_auction_safe_ids(url=url, key=key, archived=archived)
+        )
+        for safe_id in safe_ids:
+            lots = supabase_lots.fetch_lots_for_auction(
+                safe_id, url=url, key=key, archived=archived
+            )
+            if not lots:
+                continue
+            enrichment = supabase_enrichment.load_prior_enrichment_from_supabase(
+                safe_id, url=url, key=key
+            )
+            for lot in lots:
+                enr = enrichment.get(lot.get("id"))
+                if enr:
+                    for field in _COMP_ENRICHMENT_FIELDS:
+                        if enr.get(field):
+                            lot[field] = enr[field]
+                items.append(lot)
+    return items
+
+
 # ── JSON export helpers ────────────────────────────────────────────────────────
 
 def normalize_match_row(row: dict) -> tuple[str, str, dict] | None:

@@ -50,6 +50,7 @@ from ebay_export import (
     fresh_comp_keys_from_files,
     load_comp_file,
     load_manifest_items,
+    load_supabase_items,
     merge_comp_files,
     mirror_rows_to_warehouse,
     normalize_match_row,
@@ -148,6 +149,7 @@ def fetch_direct(
     sleep_seconds: float = 1.0,
     mirror_to_warehouse: bool | None = None,
     provider_min_remaining: int | None = None,
+    from_supabase: bool = False,
     request_session=None,
     _rand=random.uniform,
 ) -> dict:
@@ -218,14 +220,21 @@ def fetch_direct(
     corpus_enabled = use_supabase and not dry_run and sold_listings_corpus_enabled()
     corpus_records: list[dict] = []
 
-    candidates = sorted(
-        load_manifest_items(
+    # Source lots from Supabase (no local scrape needed — the read model is
+    # Supabase-only in prod) or from the local parquet manifest a scrape wrote.
+    loaded = (
+        load_supabase_items(
+            include_archived=include_archived,
+            auction_safe_id=auction_safe_id,
+        )
+        if from_supabase
+        else load_manifest_items(
             data_dir=data_dir,
             include_archived=include_archived,
             auction_safe_id=auction_safe_id,
-        ),
-        key=auction_end_sort_key,
+        )
     )
+    candidates = sorted(loaded, key=auction_end_sort_key)
 
     for item in candidates:
         safe_id = text_value(item.get("auctionSafeId"))
@@ -407,6 +416,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "Also reads GOONERS_EBAY_COMPS_SKIP_CATEGORIES env var.",
     )
     fetch_parser.add_argument("--include-archived", action="store_true")
+    fetch_parser.add_argument(
+        "--from-supabase",
+        action="store_true",
+        help="Source lots from Supabase (the active `lots` table + enrichment) "
+        "instead of the local parquet manifest, so comps can run without a "
+        "scrape. Requires SUPABASE_URL + SUPABASE_SECRET_KEY.",
+    )
     fetch_parser.add_argument("--dry-run", action="store_true")
     fetch_parser.add_argument(
         "--no-mirror",
@@ -545,6 +561,7 @@ def main(argv: list[str] | None = None) -> int:
             sleep_seconds=args.sleep_seconds,
             mirror_to_warehouse=False if args.no_mirror else None,
             provider_min_remaining=args.provider_min_remaining,
+            from_supabase=args.from_supabase,
         )
     elif args.command == "fetch-apify":
         skip_categories = (
