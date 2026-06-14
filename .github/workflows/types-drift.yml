@@ -17,6 +17,10 @@ on:
       - 'scripts/gen-types.sh'
   workflow_dispatch:
 
+# Read-only token: the job only checks out the repo and reads the schema.
+permissions:
+  contents: read
+
 jobs:
   types-drift:
     name: Supabase types up to date
