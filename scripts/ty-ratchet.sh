@@ -40,7 +40,7 @@ if [ "$count" -gt "$BASELINE" ]; then
   exit 1
 fi
 if [ "$count" -lt "$BASELINE" ]; then
-  echo "✅ [$PKG] below ceiling — lower the baseline arg to $count to lock it in."
-else
-  echo "✅ [$PKG] at ceiling $BASELINE — ty-clean."
+  echo "❌ [$PKG] ty diagnostics improved to $count (was $BASELINE). Lower the baseline arg to $count to lock in the gain."
+  exit 1
 fi
+echo "✅ [$PKG] at ceiling $BASELINE — ty-clean."

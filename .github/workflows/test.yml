@@ -22,6 +22,7 @@ jobs:
   build:
     name: Production build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -38,6 +39,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
@@ -52,6 +54,7 @@ jobs:
   type-check:
     name: Type check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
@@ -68,6 +71,7 @@ jobs:
   unit:
     name: Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -82,10 +86,13 @@ jobs:
   scraper:
     name: Scraper tests (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run scraper unit tests
         run: |
@@ -96,10 +103,13 @@ jobs:
   github-stats:
     name: GitHub-stats tests (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run github_stats unit tests
         run: |
@@ -117,10 +127,13 @@ jobs:
   supabase-stats:
     name: Supabase-stats tests (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run supabase_stats unit tests
         run: |
@@ -138,10 +151,13 @@ jobs:
   supabase-app:
     name: Supabase-app tests (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run supabase_app unit tests
         run: |
@@ -159,10 +175,13 @@ jobs:
   pipeline-meta:
     name: Pipeline-meta tests (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run pipeline_meta unit tests
         run: |
@@ -180,10 +199,13 @@ jobs:
   mcp:
     name: MCP tests (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run mcp unit tests
         run: |
@@ -201,10 +223,13 @@ jobs:
   dashboard:
     name: Dashboard lint + type check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Lint dashboard (ruff)
         run: |
@@ -217,10 +242,13 @@ jobs:
   scraper-lint:
     name: Scraper lint (ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       # Blocking: ruff's default rules (incl. pyflakes F-codes) catch real bugs
       # like names used before assignment — exactly the class of error a unit
@@ -233,10 +261,13 @@ jobs:
   scraper-type-check:
     name: Scraper type check (ty)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       # Ratchet: the scraper is ty-clean (baseline 0); a new type error fails CI.
       - name: Run ty ratchet
@@ -258,6 +289,13 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
@@ -292,6 +330,13 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps

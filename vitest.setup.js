@@ -4,6 +4,7 @@ import { afterEach } from 'vitest'
 
 afterEach(() => {
   cleanup()
+  localStorage.clear()
 })
 
 globalThis.ResizeObserver = class ResizeObserver {

@@ -46,8 +46,14 @@ export function ImageSearchModal({ onClose, items = [], user, onSearchInGrid, on
       .gt('final_bid', 0)
       .order('sold_at', { ascending: false })
       .limit(6)
-      .then(({ data }) => {
-        if (!cancelled) setSoldHistory(data || [])
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.warn('Failed to load sold history:', error.message)
+          setSoldHistory([])
+          return
+        }
+        setSoldHistory(data || [])
       })
     return () => { cancelled = true }
   }, [result, user])
