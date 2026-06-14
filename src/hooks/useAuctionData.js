@@ -10,6 +10,7 @@ import {
   normalizeRowsNdjson,
   normalizeRowsSupabase,
 } from '../utils/auctionNormalize'
+import { validateItems } from '../utils/readModelSchema'
 
 // How often to re-check active auctions for a passed deadline (ms). Auctions
 // rarely turn over second-to-second, so a coarse tick keeps the page reactive
@@ -90,18 +91,37 @@ async function fetchAllFromView(viewName, onFirstPage) {
   return rows
 }
 
+// Drop lots that fail the read-model schema (missing/empty id or
+// auctionSafeId, non-numeric bid, …) so a malformed row fails loud-and-located
+// here instead of as `undefined` deep in the grid. `warn` is reserved for the
+// complete load so the progressive first-page pass doesn't double-log.
+function applyValidation({ items, auctions }, { warn = false, label = '' } = {}) {
+  const { valid, invalidCount, sampleReasons } = validateItems(items)
+  if (warn && invalidCount > 0) {
+    console.warn(
+      `[useAuctionData] dropped ${invalidCount} invalid lot(s) from ${label}:`,
+      sampleReasons
+    )
+  }
+  return { items: valid, auctions, invalidCount }
+}
+
 async function fetchSupabaseDataset({ archived = false, onPartial } = {}) {
   const t0 = performance.now()
   // The _card views slice images down to the first (thumbnail) element — the
   // only one the grid renders — cutting the payload roughly in half. The detail
   // panel hydrates the full image set on demand (see useFullImages).
   const viewName = archived ? 'public_archived_lots_card' : 'public_active_lots_card'
+  const label = archived ? 'archive (supabase)' : 'active (supabase)'
   const onFirstPage = onPartial
-    ? rows => onPartial(normalizeRowsSupabase(rows, archived))
+    ? rows => onPartial(applyValidation(normalizeRowsSupabase(rows, archived)))
     : undefined
   const rows = await fetchAllFromView(viewName, onFirstPage)
-  const { items, auctions } = normalizeRowsSupabase(rows, archived)
-  return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
+  const { items, auctions, invalidCount } = applyValidation(
+    normalizeRowsSupabase(rows, archived),
+    { warn: true, label }
+  )
+  return { items, auctions, invalidCount, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 // --- Shared dataset fetch ---
@@ -115,8 +135,11 @@ async function fetchDataset(manifestPath, { archived = false } = {}) {
     const path = entry.ndjsonPath || entry.itemsPath.replace('.parquet', '.ndjson')
     return fetchNdjson(dataUrl(path))
   }))
-  const { items, auctions } = normalizeRowsNdjson(results, entries, archived)
-  return { items, auctions, loadTimeMs: Math.round(performance.now() - t0) }
+  const { items, auctions, invalidCount } = applyValidation(
+    normalizeRowsNdjson(results, entries, archived),
+    { warn: true, label: archived ? 'archive (ndjson)' : 'active (ndjson)' }
+  )
+  return { items, auctions, invalidCount, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
 // archiveMode: 'active' (active auctions only), 'both' (active + archived),
@@ -174,7 +197,7 @@ export function useAuctionData(archiveMode = 'active') {
       : () => fetchDataset('data/manifest.json')
     const startedAt = performance.now()
     activeLoader()
-      .then(({ items, auctions, loadTimeMs }) => {
+      .then(({ items, auctions, loadTimeMs, invalidCount = 0 }) => {
         if (cancelled) return
         setActiveItems(items)
         setActiveAuctions(auctions)
@@ -183,13 +206,15 @@ export function useAuctionData(archiveMode = 'active') {
         setLoadComplete(true)
         // Surface real-world load latency to telemetry so slowness is
         // measurable (and alertable) instead of just "feels slow". No-op when
-        // analytics is unconfigured.
+        // analytics is unconfigured. `invalidCount` makes boundary data
+        // corruption alertable too (should be 0).
         captureEvent('dataset_loaded', {
           dataset: 'active',
           source,
           loadTimeMs,
           itemCount: items.length,
           auctionCount: auctions.length,
+          invalidCount,
         })
       })
       .catch(e => {
@@ -217,7 +242,7 @@ export function useAuctionData(archiveMode = 'active') {
       : () => fetchDataset('data/archive-manifest.json', { archived: true })
     const startedAt = performance.now()
     archiveLoader()
-      .then(({ items, auctions, loadTimeMs }) => {
+      .then(({ items, auctions, loadTimeMs, invalidCount = 0 }) => {
         if (cancelled) return
         setArchiveItems(items)
         setArchiveAuctions(auctions)
@@ -229,6 +254,7 @@ export function useAuctionData(archiveMode = 'active') {
           loadTimeMs,
           itemCount: items.length,
           auctionCount: auctions.length,
+          invalidCount,
         })
       })
       .catch(e => {
