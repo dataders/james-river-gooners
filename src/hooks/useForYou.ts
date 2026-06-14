@@ -50,7 +50,12 @@ export function useForYou(
 
     let cancelled = false
     setStatus('loading')
-    ;(async () => {
+    // Fire-and-forget: the cleanup `cancelled` flag (not awaiting) is how this
+    // effect cancels a stale in-flight request, so mark the promise `void`.
+    void (async () => {
+      // supabase client is untyped (no generated Database type yet), so .rpc()
+      // returns `any`; the row shape is asserted at the map below.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { data, error } = await supabase.rpc('rank_for_you', {
         history_auction_ids: historyAuctionIds,
         history_item_ids: historyItemIds,

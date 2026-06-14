@@ -71,18 +71,18 @@ test('ending sort handles ISO (HiBid) and Maxanet dates together', () => {
 })
 
 test('SORT_OPTIONS leads with For You then Best margin', () => {
-  assert.equal(SORT_OPTIONS[0].key, 'foryou')
-  assert.equal(SORT_OPTIONS[1].key, 'margin')
+  assert.equal(SORT_OPTIONS[0]?.key, 'foryou')
+  assert.equal(SORT_OPTIONS[1]?.key, 'margin')
   // every option has a non-empty label
   for (const o of SORT_OPTIONS) assert.ok(o.label.length > 0)
 })
 
 test('sortByMargin orders by score desc, unscored lots last', () => {
   const marginByKey = new Map<string, number | null>([
-    [itemKey(items[0]), 20],    // a
-    [itemKey(items[1]), 150],   // b — highest
-    [itemKey(items[2]), null],  // c — no signal
-    [itemKey(items[3]), 80],    // d
+    [itemKey(items[0]!), 20],    // a
+    [itemKey(items[1]!), 150],   // b — highest
+    [itemKey(items[2]!), null],  // c — no signal
+    [itemKey(items[3]!), 80],    // d
   ])
   assert.deepEqual(ids(sortByMargin(items, marginByKey)), ['b', 'd', 'a', 'c'])
   // pure: input array is not mutated

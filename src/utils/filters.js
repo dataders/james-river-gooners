@@ -103,7 +103,9 @@ export function getGroupedCategories(items) {
   /** @type {Record<string, CategoryGroup>} */
   const groups = {}
   for (const [raw, count] of Object.entries(rawCounts)) {
-    const group = rawToGroup[raw]
+    // rawToGroup[raw] is set for every key in rawCounts (same loop above), but
+    // noUncheckedIndexedAccess widens the read to `string | undefined`.
+    const group = rawToGroup[raw] ?? 'Other'
     if (!groups[group]) {
       groups[group] = { group, rawCategories: [], totalCount: 0 }
     }

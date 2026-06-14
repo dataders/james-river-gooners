@@ -17,6 +17,17 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    // Stricter than `strict` bundles. The big one is noUncheckedIndexedAccess:
+    // every arr[i] / record[key] becomes `T | undefined`, which forces the
+    // gap to be handled at the source instead of surfacing as `undefined`
+    // deep in a component. The rest close small holes `strict` leaves open.
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
 
     // Vite owns transpilation; tsc is type-check only.
     "noEmit": true,

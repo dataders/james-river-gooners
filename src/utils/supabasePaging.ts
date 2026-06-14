@@ -36,6 +36,9 @@ export async function fetchAllRows(makePage: PageFetcher): Promise<unknown[]> {
   const rows: unknown[] = []
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await makePage(from, from + PAGE_SIZE - 1)
+    // Deliberately rethrows the opaque PostgREST error (a plain object, not an
+    // Error instance) so callers can decide whether to swallow it — see docstring.
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
     if (error) throw error
     rows.push(...(data || []))
     if (!data || data.length < PAGE_SIZE) break

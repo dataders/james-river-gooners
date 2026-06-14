@@ -71,9 +71,9 @@ export function useByAuctionResource<T>(
     const map: Record<string, T> = {}
     ids.forEach((id, i) => {
       const data = results[i]?.data
-      if (data !== undefined) map[id] = data as T
+      if (data !== undefined) map[id] = data
     })
-    return (Object.keys(map).length ? map : EMPTY) as Record<string, T>
+    return (Object.keys(map).length ? map : EMPTY)
     // `results`/`ids` are intentionally omitted: loadedSig already captures every
     // transition that changes the map (an auction's data going undefined→loaded),
     // and including the fresh-every-render `results` array would defeat the
