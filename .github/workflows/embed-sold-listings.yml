@@ -7,6 +7,11 @@ name: Re-rank eBay Comps (visual)
 # the corpus is small / being validated; add a schedule once it's proven.
 
 on:
+  # Daily, off-peak: embed the listings captured by the hourly comp runs and
+  # re-rank, so the corpus stays fresh for corpus-first reuse. Incremental — only
+  # new listings are embedded, so most runs are cheap despite loading the models.
+  schedule:
+    - cron: '30 5 * * *'
   workflow_dispatch:
     inputs:
       step:
