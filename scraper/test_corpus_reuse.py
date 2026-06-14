@@ -77,9 +77,14 @@ class CorpusReuserTest(unittest.TestCase):
             reuser = cr.CorpusReuser("t", enabled=False)
             self.assertIsNone(reuser.covered_comps({"auctionSafeId": "a", "id": "1"}))
 
+    def _reuser(self, fetched_at="2026-06-14T00:00:00+00:00"):
+        # Patch credential resolution so __init__ keeps enabled=True regardless of
+        # the ambient env (it correctly self-disables when creds are absent).
+        with patch.object(cr, "resolve_credentials", return_value=("https://x.supabase.co", "k")):
+            return cr.CorpusReuser(fetched_at, enabled=True)
+
     def test_covered_when_corpus_has_fresh_matches(self):
-        reuser = cr.CorpusReuser("2026-06-14T00:00:00+00:00", enabled=True)
-        reuser.url, reuser.key = "https://x.supabase.co", "k"
+        reuser = self._reuser()
         fresh = [_match(str(i), sold_date="2026-06-01") for i in range(3)]
         with patch.object(cr, "fetch_item_coverage", return_value=fresh), \
              patch.object(cr, "datetime", wraps=cr.datetime) as dt:
@@ -89,8 +94,7 @@ class CorpusReuserTest(unittest.TestCase):
         self.assertEqual(len(rows), 3)
 
     def test_not_covered_when_matches_stale(self):
-        reuser = cr.CorpusReuser("t", enabled=True)
-        reuser.url, reuser.key = "https://x.supabase.co", "k"
+        reuser = self._reuser("t")
         stale = [_match(str(i), sold_date="2026-01-01") for i in range(3)]
         with patch.object(cr, "fetch_item_coverage", return_value=stale), \
              patch.object(cr, "datetime", wraps=cr.datetime) as dt:
@@ -98,8 +102,7 @@ class CorpusReuserTest(unittest.TestCase):
             self.assertIsNone(reuser.covered_comps({"auctionSafeId": "a", "id": "1"}))
 
     def test_coverage_error_falls_through_to_api(self):
-        reuser = cr.CorpusReuser("t", enabled=True)
-        reuser.url, reuser.key = "https://x.supabase.co", "k"
+        reuser = self._reuser("t")
         with patch.object(cr, "fetch_item_coverage", side_effect=RuntimeError("boom")):
             self.assertIsNone(reuser.covered_comps({"auctionSafeId": "a", "id": "1"}))
 

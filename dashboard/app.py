@@ -47,8 +47,6 @@ from prefab_ui.components import (
     Muted,
     Row,
     Separator,
-    Tab,
-    Tabs,
     Text,
 )
 from prefab_ui.components.charts import AreaChart, BarChart, ChartSeries, LineChart
@@ -608,6 +606,21 @@ def tab_pipeline():
             empty_note()
 
 
+# The five mart domains, rendered as one long scrollable page rather than tabs.
+# prefab's interactive Tabs freeze the CDN renderer on pointerdown for a payload
+# this size (a real mouse click locks the page; only a synthetic click switches),
+# so tabs gated four of five domains behind an interaction that doesn't work.
+# Stacking every domain under a heading sidesteps the broken interaction entirely —
+# the whole dashboard is always visible by scrolling.
+DOMAINS = [
+    ("Engineering / CI", tab_engineering),
+    ("Operations & Cost", tab_operations),
+    ("Resale Intelligence", tab_resale),
+    ("Product & Users", tab_product),
+    ("Pipeline Health", tab_pipeline),
+]
+
+
 def render() -> str:
     generated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     with PrefabApp(title="Gooners · Admin", css_class="max-w-7xl mx-auto p-6 space-y-4") as app:
@@ -617,17 +630,11 @@ def render() -> str:
                 Text(content=f"Generated {generated}")
         Muted(content="Operational, engineering, resale and product metrics. "
                       "Built from the dbt marts in MotherDuck; visible only to the signed-in owner.")
-        with Tabs():
-            with Tab(title="Engineering / CI", value="engineering"):
-                tab_engineering()
-            with Tab(title="Operations & Cost", value="operations"):
-                tab_operations()
-            with Tab(title="Resale Intelligence", value="resale"):
-                tab_resale()
-            with Tab(title="Product & Users", value="product"):
-                tab_product()
-            with Tab(title="Pipeline Health", value="pipeline"):
-                tab_pipeline()
+        for i, (title, fn) in enumerate(DOMAINS):
+            if i:
+                Separator(spacing=8)
+            H2(content=title)
+            fn()
     return app.html()
 
 

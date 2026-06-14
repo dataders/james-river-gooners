@@ -161,6 +161,53 @@ def _fetch_image(url: str):
         return None
 
 
+# Enrichment identity fields (camelCase, as the read model / overlay carry them)
+# folded into the embedded text so semantic search AND the Cannon's-comps pgvector
+# similarity match on the lot's *resale identity*, not just its raw listing text.
+_ENRICH_TEXT_FIELDS = ("brand", "modelOrSku", "productType", "searchQuery")
+
+
+def _enrichment_text(item: dict) -> str:
+    """The resale-identity phrase for a lot: brand/model/type/searchQuery plus the
+    v6 category-detail values (furniture style/material/form, art artist/medium/
+    subject, ceramics maker/pattern/material). '' when the lot has no enrichment
+    overlaid, so an unenriched lot embeds exactly as before (title+description)."""
+    parts: list[str] = []
+    for field in _ENRICH_TEXT_FIELDS:
+        value = str(item.get(field) or "").strip()
+        if value:
+            parts.append(value)
+    raw_details = item.get("details")
+    if raw_details:
+        try:
+            bag = json.loads(raw_details) if isinstance(raw_details, str) else raw_details
+        except (ValueError, TypeError):
+            bag = None
+        if isinstance(bag, dict):
+            parts.extend(str(v).strip() for v in bag.values() if str(v or "").strip())
+    # De-dup at the word level, case-insensitively, preserving order: searchQuery
+    # usually repeats the brand/model words already listed, and this is a keyword
+    # bag for the embedding, so collapsing repeats keeps the text clean without
+    # over-weighting any one term.
+    seen: set[str] = set()
+    tokens: list[str] = []
+    for word in " ".join(parts).split():
+        key = word.lower()
+        if key not in seen:
+            seen.add(key)
+            tokens.append(word)
+    return " ".join(tokens)
+
+
+def _document_text(item: dict) -> str:
+    """The ``search_document:`` text encoded for a lot — title + description, with
+    the resale-identity phrase appended when enrichment is present."""
+    base = f"{item.get('title', '')} {item.get('description', '')}".strip()
+    enrich = _enrichment_text(item)
+    combined = f"{base} {enrich}".strip() if enrich else base
+    return "search_document: " + (combined or ".")
+
+
 def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str], list[int]]:
     """Return (embeddings, ids, n_images_used) — float32 (n, 768) L2-normalised,
     the item IDs, and the image count fused into each vector.
@@ -187,11 +234,10 @@ def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str],
         valid = [u for u in images if isinstance(u, str) and u.startswith("http")]
         item_image_urls.append(valid[:_MAX_IMAGES])
 
-    # 1. Batch-encode all texts with search_document: task prefix
-    texts = [
-        "search_document: " + (f"{item.get('title', '')} {item.get('description', '')}".strip() or ".")
-        for item in items
-    ]
+    # 1. Batch-encode all texts with search_document: task prefix. The text folds
+    #    in the lot's enrichment identity (brand/model/type/searchQuery + v6 detail
+    #    keys) when present — see _document_text — so search + comps match on it.
+    texts = [_document_text(item) for item in items]
     print(f"  [nomic] Encoding {n} texts...")
     text_embs = text_model.encode(
         texts,
@@ -387,7 +433,92 @@ def existing_item_ids(
     return ids
 
 
-def generate_and_upsert(items: list[dict], safe_id: str, session=None) -> int:
+# lot_enrichment columns (snake_case) -> the camelCase keys _document_text reads.
+_ENRICH_OVERLAY_COLUMNS = {
+    "brand": "brand",
+    "model_or_sku": "modelOrSku",
+    "product_type": "productType",
+    "search_query": "searchQuery",
+    "details": "details",
+}
+
+
+def fetch_enrichment_overlay(
+    safe_id: str,
+    *,
+    url: str | None = None,
+    key: str | None = None,
+    session=None,
+) -> dict[str, dict]:
+    """Return ``{item_id: {camelCase enrichment fields}}`` for one auction from the
+    Supabase ``lot_enrichment`` table, so the from-Supabase backfill can fold each
+    lot's resale identity into its embedded text. Empty dict when unconfigured or
+    none found. Pages with Range headers like ``existing_item_ids``."""
+    from supabase_comps import resolve_credentials
+
+    url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return {}
+    if session is None:
+        import requests
+        session = requests.Session()
+
+    endpoint = f"{url.rstrip('/')}/rest/v1/lot_enrichment"
+    select = ",".join(["item_id", *_ENRICH_OVERLAY_COLUMNS])
+    params = {"select": select, "auction_safe_id": f"eq.{safe_id}"}
+    out: dict[str, dict] = {}
+    page = 1000
+    start = 0
+    while True:
+        headers = {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Range-Unit": "items",
+            "Range": f"{start}-{start + page - 1}",
+            "User-Agent": _SUPABASE_UA,
+        }
+        resp = session.get(endpoint, headers=headers, params=params, timeout=60)
+        resp.raise_for_status()
+        rows = resp.json()
+        for row in rows:
+            overlay = {
+                cc: row.get(sc)
+                for sc, cc in _ENRICH_OVERLAY_COLUMNS.items()
+                if str(row.get(sc) or "").strip()
+            }
+            if overlay:
+                out[str(row.get("item_id"))] = overlay
+        if len(rows) < page:
+            break
+        start += page
+    return out
+
+
+def overlay_enrichment(items: list[dict], safe_id: str, session=None) -> int:
+    """Merge the auction's lot_enrichment fields onto each lot in place (matched by
+    item id) so ``embed_items`` folds the resale identity into the text. Returns the
+    count of lots that got enrichment; warns (not raises) on a read failure so the
+    embed still runs on title+description."""
+    try:
+        emap = fetch_enrichment_overlay(safe_id, session=session)
+    except Exception as exc:
+        print(f"  [nomic] WARNING: could not load enrichment for {safe_id} "
+              f"({exc}); embedding on listing text only")
+        return 0
+    if not emap:
+        return 0
+    n = 0
+    for item in items:
+        enr = emap.get(str(item.get("id")))
+        if enr:
+            item.update(enr)
+            n += 1
+    return n
+
+
+def generate_and_upsert(
+    items: list[dict], safe_id: str, session=None, force: bool = False
+) -> int:
     """Embed the lots not already in the table for one auction and upsert them.
 
     Incremental: reads the auction's already-embedded item_ids and embeds only
@@ -397,14 +528,20 @@ def generate_and_upsert(items: list[dict], safe_id: str, session=None) -> int:
     """
     if not items:
         return 0
-    try:
-        already = existing_item_ids(safe_id, session=session)
-    except Exception as exc:
-        print(f"  [nomic] WARNING: could not read existing ids for {safe_id} "
-              f"({exc}); embedding all {len(items)} lots")
-        already = set()
+    if force:
+        # Re-embed every lot regardless of presence — used when the embedded text
+        # changed (e.g. enrichment was folded in), since reuse is keyed on presence
+        # not content, so an incremental run would otherwise keep the stale vector.
+        todo = items
+    else:
+        try:
+            already = existing_item_ids(safe_id, session=session)
+        except Exception as exc:
+            print(f"  [nomic] WARNING: could not read existing ids for {safe_id} "
+                  f"({exc}); embedding all {len(items)} lots")
+            already = set()
 
-    todo = [it for it in items if str(it["id"]) not in already]
+        todo = [it for it in items if str(it["id"]) not in already]
     if not todo:
         print(f"[nomic] {safe_id}: all {len(items)} lots already embedded — skipping")
         return 0
@@ -455,12 +592,15 @@ def backfill_from_read_model(
     *,
     include_archive: bool = False,
     session=None,
+    force: bool = False,
 ) -> int:
     """Populate ``nomic_embeddings`` from the on-disk NDJSON read model.
 
     One auction at a time (each sidecar is one auction), incrementally — lots
-    already in the table are skipped, so the backfill is resumable: re-running
-    only embeds what's still missing. Returns total rows written.
+    already in the table are skipped (unless ``force``), so the backfill is
+    resumable: re-running only embeds what's still missing. The NDJSON rows
+    already carry enrichment fields, so the embedded text folds in the resale
+    identity without a separate overlay. Returns total rows written.
     """
     if not os.environ.get("SUPABASE_SECRET_KEY"):
         raise RuntimeError("SUPABASE_SECRET_KEY is required to backfill Nomic embeddings")
@@ -484,7 +624,7 @@ def backfill_from_read_model(
         if not items:
             continue
         try:
-            total += generate_and_upsert(items, safe_id, session=session)
+            total += generate_and_upsert(items, safe_id, session=session, force=force)
         except Exception as exc:
             print(f"  [nomic] WARNING: backfill failed for {safe_id}: {exc}")
     print(f"\n[nomic] backfill complete: {total} embeddings upserted")
@@ -496,11 +636,15 @@ def backfill_from_supabase(
     *,
     include_archive: bool = False,
     session=None,
+    force: bool = False,
 ) -> int:
     """Populate ``nomic_embeddings`` by fetching lot items from the Supabase
-    ``lots`` table instead of on-disk NDJSON files.
+    ``lots`` table instead of on-disk NDJSON files. Each lot's ``lot_enrichment``
+    row (when present) is overlaid first, so the embedded text carries the resale
+    identity (brand/model/searchQuery + v6 detail keys).
 
-    Incrementally resumes — lots already in ``nomic_embeddings`` are skipped.
+    Incrementally resumes — lots already in ``nomic_embeddings`` are skipped —
+    unless ``force`` re-embeds every lot (use after enrichment changes the text).
     Requires ``SUPABASE_SECRET_KEY`` (reads and writes to Supabase).
     """
     if not os.environ.get("SUPABASE_SECRET_KEY"):
@@ -530,8 +674,30 @@ def backfill_from_supabase(
         if not items:
             print(f"[nomic] skip (empty): {safe_id} (archived={archived})")
             continue
+        n_enriched = overlay_enrichment(items, safe_id, session=session)
+        if n_enriched:
+            print(f"[nomic] {safe_id}: overlaid enrichment on {n_enriched}/{len(items)} lots")
+        targets = items
+        if force:
+            # Re-embed only what would actually change: lots whose text gained
+            # enrichment, plus any not-yet-embedded lots. Unenriched + already-
+            # embedded lots keep their (identical) vectors — avoids re-fetching
+            # their images and re-encoding for no change.
+            try:
+                already = existing_item_ids(safe_id, session=session)
+            except Exception:
+                already = set()
+            targets = [
+                it for it in items
+                if _enrichment_text(it) or str(it["id"]) not in already
+            ]
+            skipped = len(items) - len(targets)
+            if skipped:
+                print(f"[nomic] {safe_id}: {skipped} unenriched, already-embedded lots kept as-is")
+            if not targets:
+                continue
         try:
-            total += generate_and_upsert(items, safe_id, session=session)
+            total += generate_and_upsert(targets, safe_id, session=session, force=force)
         except Exception as exc:
             print(f"  [nomic] WARNING: backfill failed for {safe_id}: {exc}")
     print(f"\n[nomic] Supabase backfill complete: {total} embeddings upserted")
@@ -546,11 +712,14 @@ if __name__ == "__main__":
     #
     # Or from the Supabase lots table (no NDJSON needed):
     #   ... python embed_nomic.py --from-supabase [--archive] [<safeId> ...]
+    # Add --force to re-embed every lot (not just missing ones) — needed after the
+    # embedded text changes, e.g. a re-embed that folds in new enrichment.
     args = sys.argv[1:]
     include_archive = "--archive" in args
     from_supabase = "--from-supabase" in args
+    force = "--force" in args
     ids = [a for a in args if not a.startswith("--")]
     if from_supabase:
-        backfill_from_supabase(ids or None, include_archive=include_archive)
+        backfill_from_supabase(ids or None, include_archive=include_archive, force=force)
     else:
-        backfill_from_read_model(ids or None, include_archive=include_archive)
+        backfill_from_read_model(ids or None, include_archive=include_archive, force=force)

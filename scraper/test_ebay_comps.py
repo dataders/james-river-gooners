@@ -1085,6 +1085,57 @@ class BackfillBudgetTest(unittest.TestCase):
         self.assertTrue(cap_active)
         self.assertEqual(limit, 1000)
 
+    def test_provider_meter_unblocks_when_coarse_count_exhausted(self):
+        # Issue #299: the coarse attempt count says the monthly cap is spent, but
+        # the provider's own meter still has quota — the run must not be blocked.
+        ledger = Mock()
+        ledger.provider_remaining.return_value = 1620
+        ledger.provider_used_today.return_value = 0
+        ledger.requests_used_in_month.return_value = 5000  # coarse: "exhausted"
+        cap_active, limit = ebay_comps.resolve_query_budget(
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False)
+        self.assertTrue(cap_active)
+        self.assertEqual(limit, 1620)  # gated on the provider meter
+        ledger.requests_used_in_month.assert_not_called()  # coarse count ignored
+
+    def test_monthly_budget_caps_provider_remaining(self):
+        # --monthly-budget stays a secondary coarse cap below the provider meter.
+        ledger = Mock()
+        ledger.provider_remaining.return_value = 4000
+        ledger.provider_used_today.return_value = 0
+        _, limit = ebay_comps.resolve_query_budget(
+            ledger, monthly_budget=2000, max_queries=0, daily_pacing=False)
+        self.assertEqual(limit, 2000)
+
+    def test_provider_min_remaining_floor_subtracted(self):
+        ledger = Mock()
+        ledger.provider_remaining.return_value = 100
+        ledger.provider_used_today.return_value = 0
+        _, limit = ebay_comps.resolve_query_budget(
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False,
+            provider_min_remaining=20)
+        self.assertEqual(limit, 80)
+
+    def test_daily_pacing_uses_provider_used_today_not_coarse(self):
+        # June 14 → 17 days left; ceil(1700/17)=100/day; 50 already spent today.
+        ledger = Mock()
+        ledger.provider_remaining.return_value = 1700
+        ledger.provider_used_today.return_value = 50
+        ledger.requests_used_today.return_value = 9999  # coarse overcount ignored
+        now = datetime(2026, 6, 14, 12, 0, tzinfo=timezone.utc)
+        _, limit = ebay_comps.resolve_query_budget(
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=True, now=now)
+        self.assertEqual(limit, 50)
+        ledger.requests_used_today.assert_not_called()
+
+    def test_budget_falls_back_to_coarse_count_without_provider_reading(self):
+        ledger = Mock()
+        ledger.provider_remaining.return_value = None  # no header cached yet
+        ledger.requests_used_in_month.return_value = 4990
+        _, limit = ebay_comps.resolve_query_budget(
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False)
+        self.assertEqual(limit, 10)
+
     def test_skip_attempted_overrides_staleness(self):
         from datetime import timedelta
 

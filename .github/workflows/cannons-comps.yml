@@ -55,6 +55,9 @@ jobs:
           # RPC and writes to cannons_comp_snapshots, bypassing RLS. Required.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # Server-side telemetry (scraper/telemetry.py): the cannons_comps_completed
+          # run summary to PostHog. No-op without the key.
+          GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
         run: |
           cd scraper
           LIMIT_FLAG=""
@@ -65,4 +68,6 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             DRY_FLAG="--dry-run"
           fi
-          uv run --with requests python cannons_comps.py $LIMIT_FLAG $DRY_FLAG
+          # --from-supabase: the read-model manifest isn't committed, so read the
+          # active-auction list from the Supabase lots table instead.
+          uv run --with requests --with posthog python cannons_comps.py --from-supabase $LIMIT_FLAG $DRY_FLAG

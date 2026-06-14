@@ -16,7 +16,12 @@ comps and stays bounded (insert-before-delete leaves no empty window).
 
 import json
 
-from supabase_comps import json_safe, resolve_credentials
+from supabase_comps import (
+    WRITE_TIMEOUT,
+    _request_with_retry,
+    json_safe,
+    resolve_credentials,
+)
 
 CANNONS_COMP_TABLE = "cannons_comp_snapshots"
 
@@ -109,23 +114,26 @@ def write_auction_comps(
     insert_headers = _headers(key, {"Content-Type": "application/json", "Prefer": "return=minimal"})
     for start in range(0, len(rows), batch_size):
         batch = rows[start : start + batch_size]
-        response = session.post(endpoint, headers=insert_headers, data=json.dumps(batch), timeout=30)
-        if response.status_code >= 400:
-            raise RuntimeError(
-                f"Supabase cannons comp insert failed ({response.status_code}): {response.text[:300]}"
-            )
+        # Retry transient failures (network/timeout/429/5xx) with backoff via the
+        # shared helper, like the other Supabase writers; it raises on a permanent
+        # failure, so the manual status check is no longer needed.
+        _request_with_retry(
+            lambda b=batch: session.post(
+                endpoint, headers=insert_headers, data=json.dumps(b), timeout=WRITE_TIMEOUT
+            ),
+            f"Supabase cannons comp insert ({safe_id})",
+        )
         written += len(batch)
 
     # Drop older generations for this auction so only the latest remains.
-    prune = session.delete(
-        endpoint,
-        headers=_headers(key, {"Prefer": "return=minimal"}),
-        params={"auction_safe_id": f"eq.{safe_id}", "generated_at": f"lt.{generated_at}"},
-        timeout=30,
+    _request_with_retry(
+        lambda: session.delete(
+            endpoint,
+            headers=_headers(key, {"Prefer": "return=minimal"}),
+            params={"auction_safe_id": f"eq.{safe_id}", "generated_at": f"lt.{generated_at}"},
+            timeout=WRITE_TIMEOUT,
+        ),
+        f"Supabase cannons comp prune ({safe_id})",
     )
-    if prune.status_code >= 400:
-        raise RuntimeError(
-            f"Supabase cannons comp prune failed ({prune.status_code}): {prune.text[:300]}"
-        )
 
     return written

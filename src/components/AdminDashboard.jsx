@@ -244,7 +244,12 @@ export function AdminDashboard() {
           <iframe
             title="Gooners admin dashboard"
             src={src}
-            style={{ border: 'none', width: '100%', height: '100%', display: 'block' }}
+            // Fill the relative container via absolute insets rather than
+            // height:100%. The shell is a min-height (not a definite height)
+            // flex column, so a percentage height here resolves against an
+            // indefinite parent and Chrome collapses the iframe to ~150px.
+            // inset:0 sizes off the already-positioned container instead.
+            style={{ border: 'none', position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
           />
         )}
       </div>

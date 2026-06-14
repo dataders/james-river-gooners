@@ -205,11 +205,40 @@ def fetch_direct(
         else ledger.fresh_keys(stale_hours, skip_attempted=skip_attempted)
     )
 
+    # Gate the start of the run on the provider's authoritative remaining-quota
+    # meter when one has been cached (issue #299), not the coarse attempt count.
+    provider_remaining_cached = ledger.provider_remaining()
     cap_active, query_limit = resolve_query_budget(
-        ledger, monthly_budget, max_queries, daily_pacing
+        ledger,
+        monthly_budget,
+        max_queries,
+        daily_pacing,
+        provider_min_remaining=provider_min_remaining,
     )
+    # Surface the gap between the coarse ledger count and the real meter so the
+    # decoupling that caused #299 is observable. The ledger count read only runs
+    # when telemetry is configured (it is otherwise an extra Supabase round-trip).
+    if telemetry.is_telemetry_configured():
+        telemetry.capture(
+            "soldcomps_budget_gate",
+            {
+                "monthly_budget": monthly_budget,
+                "ledger_requests_used_in_month": ledger.requests_used_in_month(),
+                "provider_remaining": provider_remaining_cached,
+                "cap_active": cap_active,
+                "query_limit": query_limit,
+                "gated_on_provider": provider_remaining_cached is not None,
+            },
+        )
     if cap_active and query_limit <= 0:
         print("eBay comp fetch: request budget exhausted for now; nothing to do.")
+        if provider_remaining_cached is not None:
+            print(
+                "  (gated on the provider meter: "
+                f"{provider_remaining_cached} remaining, "
+                f"floor {provider_min_remaining})"
+            )
+        telemetry.flush()
         return summary
 
     session = request_session or requests.Session()
@@ -380,6 +409,13 @@ def fetch_direct(
         )
     if summary["provider_remaining"] is not None:
         print(f"SoldComps provider quota remaining: {summary['provider_remaining']}")
+        # Cache the latest reading so the next run's start gate can consult the
+        # provider meter instead of the coarse attempt count (issue #299).
+        # Auxiliary bookkeeping — never crash the run if the write fails.
+        try:
+            ledger.record_provider_remaining(summary["provider_remaining"])
+        except Exception as exc:  # noqa: BLE001
+            print(f"  (could not cache provider quota reading: {exc})")
     # Flush any queued telemetry before this (often short-lived) process exits.
     telemetry.flush()
     return summary
