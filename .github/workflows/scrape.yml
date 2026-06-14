@@ -77,7 +77,10 @@ jobs:
       - name: Scrape Cannon's (Maxanet) auctions
         id: scrape_maxanet
         continue-on-error: true
-        timeout-minutes: 45
+        # 45 min was too tight: with enrichment now reused (enrichment_seen cache)
+        # the remaining per-auction cost is MotherDuck snapshot appends + bid
+        # history across ~23 auctions, which ran ~45m13s. Bumped for headroom.
+        timeout-minutes: 60
         run: |
           cd scraper
           if [ "${{ inputs.dry_run }}" = "true" ]; then

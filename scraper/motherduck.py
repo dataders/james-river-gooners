@@ -157,6 +157,22 @@ def row_values(row: dict) -> tuple:
     )
 
 
+# Databases whose snapshot DDL has already run this process — the CREATE/ALTER
+# statements are idempotent, so running them once per process (not once per
+# auction) saves three cloud round-trips per append.
+_SCHEMA_READY: set = set()
+
+
+def _ensure_schema(connection, database: str) -> None:
+    if database in _SCHEMA_READY:
+        return
+    connection.execute(CREATE_TABLE_SQL)
+    connection.execute(ADD_UNIQUE_BIDDERS_SQL)
+    connection.execute(ADD_FINAL_BID_SQL)
+    connection.execute(ADD_CLOSED_SQL)
+    _SCHEMA_READY.add(database)
+
+
 def append_listing_snapshots(items: list[dict], source_url: str, database: str | None = None) -> int:
     import warehouse
 
@@ -167,14 +183,21 @@ def append_listing_snapshots(items: list[dict], source_url: str, database: str |
     if not rows:
         return 0
 
-    connection = warehouse.connect(database, "snapshot listings to MotherDuck")
+    values = [row_values(row) for row in rows]
+
+    def _write():
+        # Reuse one cloud connection across all auctions in this scrape instead
+        # of reconnecting per call (the old per-auction handshake dominated the
+        # scrape's runtime, #timeout).
+        connection = warehouse.cached_connect(database, "snapshot listings to MotherDuck")
+        _ensure_schema(connection, database)
+        connection.executemany(INSERT_SNAPSHOT_SQL, values)
+
     try:
-        connection.execute(CREATE_TABLE_SQL)
-        connection.execute(ADD_UNIQUE_BIDDERS_SQL)
-        connection.execute(ADD_FINAL_BID_SQL)
-        connection.execute(ADD_CLOSED_SQL)
-        connection.executemany(INSERT_SNAPSHOT_SQL, [row_values(row) for row in rows])
-    finally:
-        connection.close()
+        _write()
+    except Exception:  # noqa: BLE001 — a reused connection may have gone stale
+        warehouse.reset_cached_connection(database)
+        _SCHEMA_READY.discard(database)
+        _write()
 
     return len(rows)

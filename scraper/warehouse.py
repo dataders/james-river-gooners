@@ -44,6 +44,38 @@ def connect(database: str | None = None, action: str = "use MotherDuck"):
     return duckdb.connect(database)
 
 
+# Process-lived connection cache. Opening a MotherDuck (cloud) connection pays an
+# auth + round-trip handshake worth several seconds; the per-auction snapshot
+# append used to pay it on every call (22 auctions → 22 handshakes per scrape).
+# Reuse one connection per database for the life of the process instead.
+_CACHED_CONNECTIONS: dict = {}
+
+
+def cached_connect(database: str | None = None, action: str = "use MotherDuck"):
+    """Return a process-cached connection for ``database``, opening it once.
+
+    Callers must NOT close it — it lives until the process exits (or is dropped
+    via :func:`reset_cached_connection` after an error)."""
+    database = resolve_database(database)
+    conn = _CACHED_CONNECTIONS.get(database)
+    if conn is None:
+        conn = connect(database, action)
+        _CACHED_CONNECTIONS[database] = conn
+    return conn
+
+
+def reset_cached_connection(database: str | None = None) -> None:
+    """Drop (and close) a cached connection so the next call reconnects — used to
+    recover from a connection that went stale mid-scrape."""
+    database = resolve_database(database)
+    conn = _CACHED_CONNECTIONS.pop(database, None)
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001 — best-effort cleanup
+            pass
+
+
 def warehouse_kind() -> str:
     """Which warehouse implementation to use (``GOONERS_WAREHOUSE``)."""
     return os.environ.get("GOONERS_WAREHOUSE", "motherduck").strip().lower()
