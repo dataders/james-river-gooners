@@ -22,6 +22,9 @@ COMP_SNAPSHOT_TABLE = "ebay_comp_snapshots"
 # Reconstruction views (migration 0005) the scraper reads as its ledger.
 FRESHNESS_VIEW = "comp_item_freshness"
 QUERY_ATTEMPTS_VIEW = "comp_query_attempts"
+# SoldComps provider quota ledger (migration 0025, issue #299): the cached
+# X-Usage-* remaining readings the start gate consults as the authoritative meter.
+USAGE_TABLE = "soldcomps_usage"
 # PostgREST caps a response at 1000 rows; freshness reads page past it.
 READ_PAGE_SIZE = 1000
 
@@ -304,3 +307,67 @@ class SupabaseCompLedger:
         now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         return self._count_since(start)
+
+    # ── Provider quota meter (issue #299) ────────────────────────────────────
+
+    def _usage_remaining(self, params: dict) -> int | None:
+        """Read one ``remaining`` value from ``soldcomps_usage`` for ``params``."""
+        response = _request_with_retry(
+            partial(
+                self._session_obj().get,
+                self._endpoint(USAGE_TABLE),
+                headers=self._headers(),
+                params={"select": "remaining", "limit": "1", **params},
+                timeout=READ_TIMEOUT,
+            ),
+            "Supabase provider-quota read",
+        )
+        rows = response.json() or []
+        if not rows:
+            return None
+        try:
+            return int(rows[0]["remaining"])
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def provider_remaining(self, now=None) -> int | None:
+        """Most recent provider-reported remaining quota, or None if none cached."""
+        return self._usage_remaining({"order": "observed_at.desc"})
+
+    def provider_used_today(self, now=None) -> int:
+        """Billed requests spent today per the provider meter.
+
+        Remaining decreases monotonically within a period, so today's spend is
+        the day's high reading minus the latest one. 0 when nothing was observed
+        today (no basis to constrain pacing) or remaining unknown.
+        """
+        latest = self.provider_remaining(now)
+        if latest is None:
+            return 0
+        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        high = self._usage_remaining(
+            {"observed_at": f"gte.{start.isoformat()}", "order": "remaining.desc"}
+        )
+        if high is None:
+            return 0
+        return max(0, high - latest)
+
+    def record_provider_remaining(self, remaining, raw=None, now=None) -> None:
+        """Append an observed provider remaining-quota reading."""
+        payload: dict = {"remaining": int(remaining)}
+        if now is not None:
+            payload["observed_at"] = now.astimezone(timezone.utc).isoformat()
+        if raw is not None:
+            payload["raw"] = raw
+        _request_with_retry(
+            partial(
+                self._session_obj().post,
+                self._endpoint(USAGE_TABLE),
+                headers={**self._headers(), "Content-Type": "application/json",
+                         "Prefer": "return=minimal"},
+                data=json.dumps(payload),
+                timeout=WRITE_TIMEOUT,
+            ),
+            "Supabase provider-quota write",
+        )

@@ -241,6 +241,53 @@ class SupabaseCompLedgerTest(unittest.TestCase):
             [call.args[0] for call in sleep.call_args_list], [2, 4, 8, 16]
         )
 
+    def test_provider_remaining_reads_latest_reading(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, json=lambda: [{"remaining": 1620}]
+        )
+        self.assertEqual(self._ledger(session).provider_remaining(), 1620)
+        args, kwargs = session.get.call_args
+        self.assertTrue(args[0].endswith("/soldcomps_usage"))
+        self.assertEqual(kwargs["params"]["order"], "observed_at.desc")
+        self.assertEqual(kwargs["params"]["limit"], "1")
+
+    def test_provider_remaining_none_when_no_rows(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, json=lambda: []
+        )
+        self.assertIsNone(self._ledger(session).provider_remaining())
+
+    def test_provider_used_today_is_high_minus_latest(self):
+        session = unittest.mock.MagicMock()
+        # First call: latest remaining (order observed_at.desc). Second: day high.
+        session.get.side_effect = [
+            unittest.mock.MagicMock(status_code=200, json=lambda: [{"remaining": 1600}]),
+            unittest.mock.MagicMock(status_code=200, json=lambda: [{"remaining": 1750}]),
+        ]
+        now = datetime(2026, 6, 14, 12, 0, tzinfo=timezone.utc)
+        self.assertEqual(self._ledger(session).provider_used_today(now), 150)
+        _, kwargs = session.get.call_args  # the day-high read
+        self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-14T00:00:00+00:00")
+        self.assertEqual(kwargs["params"]["order"], "remaining.desc")
+
+    def test_provider_used_today_zero_when_no_reading(self):
+        session = unittest.mock.MagicMock()
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, json=lambda: []
+        )
+        self.assertEqual(self._ledger(session).provider_used_today(), 0)
+
+    def test_record_provider_remaining_posts_row(self):
+        session = unittest.mock.MagicMock()
+        session.post.return_value = unittest.mock.MagicMock(status_code=201)
+        self._ledger(session).record_provider_remaining(1500)
+        args, kwargs = session.post.call_args
+        self.assertTrue(args[0].endswith("/soldcomps_usage"))
+        self.assertEqual(json.loads(kwargs["data"]), {"remaining": 1500})
+        self.assertEqual(kwargs["headers"]["Authorization"], "Bearer sb_secret_x")
+
     def test_ledger_read_transient_503_recovers(self):
         session = unittest.mock.MagicMock()
         session.get.side_effect = [
