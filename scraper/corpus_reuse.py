@@ -21,6 +21,10 @@ from functools import partial
 from supabase_comps import WRITE_TIMEOUT, _request_with_retry, resolve_credentials
 
 RPC = "match_sold_listings_for_item"
+# Supabase rejects the secret key from a browser-looking UA; any non-browser UA
+# works. Defined locally (not imported from embed_nomic) so corpus-first reuse
+# stays in the lightweight comp-fetch env — no numpy / embedding stack needed.
+_SUPABASE_UA = "gooners-corpus-reuse/1.0 (+scraper)"
 
 # RFC #290 D3 (tighter reuse): need >= MIN_FRESH listings above MIN_SIM whose sale
 # is within MAX_AGE_DAYS to trust the corpus enough to skip the paid call.
@@ -102,8 +106,6 @@ def reuse_comp_rows(matches: list[dict], safe_id: str, item_id: str, fetched_at:
 def fetch_item_coverage(safe_id: str, item_id: str, url: str, key: str, session,
                         match_count: int = _MATCH_COUNT, min_sim: float = _MIN_SIM) -> list[dict]:
     """Call the per-item KNN RPC; return corpus listings >= min_sim for the lot."""
-    from embed_nomic import _SUPABASE_UA
-
     endpoint = f"{url.rstrip('/')}/rest/v1/rpc/{RPC}"
     headers = {
         "apikey": key,
