@@ -33,25 +33,29 @@ from supabase_comps import (
 
 SOLD_LISTINGS_TABLE = "sold_listings"
 
-# Columns written per row. `first_seen_at` is deliberately omitted so the table
-# default fills it on insert and merge-duplicates preserves it on update;
-# `last_seen_at` IS sent so each re-encounter refreshes it.
-SOLD_LISTING_COLUMNS = (
-    "ebay_item_id",
-    "title",
-    "price_value",
-    "price_currency",
-    "shipping_label",
-    "sold_date",
-    "sold_date_label",
-    "thumbnail_url",
-    "item_web_url",
-    "condition",
-    "source_query",
-    "query",
-    "category",
-    "last_seen_at",
-)
+# Columns written per row, mapping the SoldComps candidate dict (left, as built
+# by ``ebay_fetch.soldcomps_item_match``) onto the `sold_listings` table column
+# (right). `seen_count`/`first_seen_at` are deliberately omitted so the table
+# defaults fill them on insert and merge-duplicates preserves them on update
+# (first values win for the immutable listing); `last_seen_at` IS sent so each
+# re-encounter refreshes it. `raw_json` (the full provider item) is sent as-is
+# into the jsonb column. Caller stamps `category_id`, `source_query`,
+# `last_seen_at`, and `raw_json` with the lot/query context.
+_COLUMN_FROM_CANDIDATE = {
+    "ebay_item_id": "ebay_item_id",
+    "title": "title",
+    "sold_price": "price_value",
+    "sold_currency": "price_currency",
+    "sold_date": "sold_date",
+    "sold_date_label": "sold_date_label",
+    "category_id": "category_id",
+    "condition": "condition",
+    "thumbnail_url": "thumbnail_url",
+    "item_web_url": "item_web_url",
+    "source_query": "source_query",
+    "last_seen_at": "last_seen_at",
+}
+SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json")
 
 
 def sold_listings_corpus_enabled() -> bool:
@@ -62,21 +66,26 @@ def sold_listings_corpus_enabled() -> bool:
 def build_sold_listing_rows(records: list[dict]) -> list[dict]:
     """Project candidate-listing dicts onto the table columns, deduped by id.
 
-    Each input is a SoldComps match dict (``ebay_item_id``/``title``/… as built
-    by ``ebay_fetch.soldcomps_item_match``) with the lot context (``query``,
-    ``category``, ``last_seen_at``) merged on by the caller. Listings without an
-    ``ebay_item_id`` or ``item_web_url`` are dropped; duplicates within the batch
-    collapse to the last occurrence (PostgREST upsert can't touch the same
-    conflict key twice in one request).
+    Each input is a SoldComps match dict (``ebay_item_id``/``price_value``/… as
+    built by ``ebay_fetch.soldcomps_item_match``) with the lot context
+    (``category_id``, ``source_query``, ``last_seen_at``, ``raw_json``) merged on
+    by the caller. Listings without an ``ebay_item_id`` or ``item_web_url`` are
+    dropped; duplicates within the batch collapse to the last occurrence
+    (PostgREST upsert can't touch the same conflict key twice in one request).
     """
     by_id: dict[str, dict] = {}
     for record in records or []:
         ebay_item_id = str(record.get("ebay_item_id") or "").strip()
         if not ebay_item_id or not record.get("item_web_url"):
             continue
-        by_id[ebay_item_id] = {
-            column: json_safe(record.get(column)) for column in SOLD_LISTING_COLUMNS
+        row = {
+            column: json_safe(record.get(source))
+            for column, source in _COLUMN_FROM_CANDIDATE.items()
         }
+        # raw_json is already JSON-native (it came from response.json()); store it
+        # verbatim into the jsonb column rather than coercing it.
+        row["raw_json"] = record.get("raw_json")
+        by_id[ebay_item_id] = row
     return list(by_id.values())
 
 

@@ -9,21 +9,23 @@ import supabase_sold_listings as ssl
 
 
 def _candidate(ebay_item_id="111", **overrides):
+    # A SoldComps match dict after fetch_direct stamps the corpus context.
     base = {
         "ebay_item_id": ebay_item_id,
         "title": "Vintage Rosenthal crackle glaze vase",
         "price_value": Decimal("99.00"),
         "price_currency": "USD",
-        "shipping_label": "Free shipping",
+        "shipping_label": "Free shipping",  # not a corpus column — must be dropped
         "sold_date": date(2026, 3, 4),
         "sold_date_label": "Sold Mar 4, 2026",
         "thumbnail_url": "https://i.ebayimg.com/thumb.jpg",
         "item_web_url": "https://www.ebay.com/itm/111",
         "condition": "Used",
-        "source_query": "specific",
-        "query": "rosenthal crackle vase",
-        "category": "China & Pottery",
+        "match_confidence": "medium",  # not a corpus column — must be dropped
+        "category_id": "20081",
+        "source_query": "rosenthal crackle vase",
         "last_seen_at": "2026-06-13T22:00:00+00:00",
+        "raw_json": {"itemId": ebay_item_id, "title": "Vintage Rosenthal crackle glaze vase"},
     }
     base.update(overrides)
     return base
@@ -51,9 +53,16 @@ class BuildRowsTest(unittest.TestCase):
         row = rows[0]
         self.assertEqual(set(row), set(ssl.SOLD_LISTING_COLUMNS))
         self.assertNotIn("first_seen_at", row)  # default-filled, never sent
+        self.assertNotIn("seen_count", row)  # default-filled, never sent
+        self.assertNotIn("shipping_label", row)  # not a corpus column
         self.assertNotIn("match_confidence", row)  # not a corpus column
-        self.assertEqual(row["price_value"], 99.0)  # Decimal -> float
+        self.assertNotIn("price_value", row)  # renamed -> sold_price
+        self.assertEqual(row["sold_price"], 99.0)  # Decimal -> float
+        self.assertEqual(row["sold_currency"], "USD")
+        self.assertEqual(row["category_id"], "20081")
         self.assertEqual(row["sold_date"], "2026-03-04")  # date -> isoformat
+        # raw_json is stored verbatim (jsonb), not stringified.
+        self.assertEqual(row["raw_json"], {"itemId": "111", "title": "Vintage Rosenthal crackle glaze vase"})
         json.dumps(row)  # must be PostgREST-serializable
 
     def test_dedupes_by_ebay_item_id_last_wins(self):

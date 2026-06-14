@@ -1,47 +1,44 @@
--- Raw eBay sold-listings corpus (SoldComps Phase 2, issue #293, part 1).
+-- Raw eBay sold-listings corpus (SoldComps Phase 2 / RFC #290, increment 1).
 --
--- Phase 1 (#283) requests up to `count` (40) sold listings per SoldComps API
--- call but the curated `ebay_comp_snapshots` table keeps only the top ~3 per
--- query. This table persists the *full* candidate set per call — deduped by
--- eBay item id — so the listings we already pay for become a reusable corpus:
---   * Phase 2 part 2: a batch job embeds each listing's thumbnail with the #165
---     Nomic vision model and re-ranks a lot's candidates by visual similarity
---     against the lot's own `nomic_embeddings` vector ("right words, wrong
---     object" filtering).
---   * Phase 2 part 3: corpus-first reuse — check here for fresh, same-category
---     listings before spending another API request.
+-- Phase 1 (#283) requests up to count=40 sold listings per SoldComps API call
+-- but the curated `ebay_comp_snapshots` keeps only the top ~3 per query. This
+-- table persists the FULL candidate set — deduped by eBay listing id — so the
+-- listings we already pay for become a reusable corpus for the Nomic visual
+-- re-rank (increment 2) and corpus-first reuse (increment 3).
 --
--- One row per distinct eBay listing (primary key `ebay_item_id`); the scraper
--- upserts (merge-duplicates), refreshing the listing's attributes + last_seen_at
--- on re-encounter while preserving first_seen_at. Writes use the secret key
--- (service_role, bypasses RLS).
+-- A sold listing is immutable (its price/date never change once sold), so the
+-- write is "insert, or on conflict keep first values + bump last_seen_at": the
+-- scraper upserts with `resolution=merge-duplicates`; seen_count stays a coarse
+-- last-writer value (exact counting is a nice-to-have, not load-bearing). Writes
+-- use the secret key (service_role, bypasses RLS).
+--
+-- Retention (RFC #290, D5): NONE. We retain every listing and instead query the
+-- corpus within a recency window, widening to older listings only when a lot
+-- finds nothing — so sparse categories still get comps without keeping stale
+-- ones by default. (raw_json is the only heavy column; drop it if size bites.)
 
 create table if not exists sold_listings (
-  ebay_item_id    text primary key,
+  ebay_item_id    text primary key,          -- dedup key: one row per sold listing
   title           text,
-  price_value     numeric(12, 2),
-  price_currency  text,
-  shipping_label  text,
+  sold_price      numeric,
+  sold_currency   text,
   sold_date       date,
   sold_date_label text,
+  category_id     text,                       -- the eBay categoryId we queried under
+  condition       text,
   thumbnail_url   text,
   item_web_url    text,
-  condition       text,
-  -- Provenance: the search context that surfaced this listing (the lot's
-  -- category + the query that found it) — drives same-category corpus reuse.
-  source_query    text,
-  query           text,
-  category        text,
+  source_query    text,                       -- query that surfaced it (debug)
+  seen_count      int  not null default 1,    -- coarse # of lot-queries that hit it
   first_seen_at   timestamptz not null default now(),
-  last_seen_at    timestamptz not null default now()
+  last_seen_at    timestamptz not null default now(),
+  raw_json        jsonb                       -- full provider item; future-proofing
 );
 
--- Serves the corpus-first reuse lookup (fresh listings within a category).
-create index if not exists sold_listings_category_recency
-  on sold_listings (category, sold_date desc);
+create index if not exists sold_listings_category_id on sold_listings (category_id);
+create index if not exists sold_listings_sold_date on sold_listings (sold_date);
 
--- RLS on with NO select policy: this is scraper-side infrastructure, not yet a
--- browser read model. The secret key (service_role) bypasses RLS for the
--- writer; anon/authenticated get zero rows until a deliberate public view is
--- added (mirrors the members-only posture of the resale-intelligence tables).
+-- RLS on with NO select policy: scraper-internal in increment 1 (nothing in the
+-- browser reads it). Only the secret key (service_role) bypasses RLS. A public
+-- view can be added later if the UI ever surfaces "N comparable sold listings".
 alter table sold_listings enable row level security;

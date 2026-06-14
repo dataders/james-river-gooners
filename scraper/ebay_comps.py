@@ -264,14 +264,15 @@ def fetch_direct(
             summary["matches"] += len(result["matches"])
             all_rows.extend(rows)
             if corpus_enabled:
-                # Stamp each raw candidate with the lot context the corpus needs
-                # (the query that found it + the lot's category) for later
-                # same-category reuse and the visual re-rank.
-                for candidate in result.get("candidates") or []:
+                # Stamp each raw candidate with the corpus context: the eBay
+                # categoryId we queried under (only the specific tier carries one;
+                # broad/category tiers leave it empty), the query string that
+                # surfaced it, and the seen time. raw_json is already attached.
+                for candidate in result.get("all_candidates") or []:
                     corpus_records.append({
                         **candidate,
-                        "query": text_value(search.get("query")),
-                        "category": text_value(item.get("category")),
+                        "category_id": text_value(search.get("category_id")),
+                        "source_query": text_value(search.get("query")),
                         "last_seen_at": generated_at,
                     })
             remaining = result.get("provider_remaining")

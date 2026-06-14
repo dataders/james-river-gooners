@@ -279,10 +279,12 @@ class ProviderUsageHeaderTests(unittest.TestCase):
             api_key="test-key",
             max_matches=3,
         )
-        # Comps stay trimmed; the corpus gets the full candidate set.
+        # Comps stay trimmed; the corpus gets the full candidate set, each
+        # carrying the full provider item as raw_json.
         self.assertEqual(len(result["matches"]), 3)
-        self.assertEqual(len(result["candidates"]), 5)
-        self.assertEqual(result["matches"], result["candidates"][:3])
+        self.assertEqual(len(result["all_candidates"]), 5)
+        self.assertEqual(result["matches"], result["all_candidates"][:3])
+        self.assertEqual(result["all_candidates"][0]["raw_json"]["itemId"], "itm0")
 
     def test_soldcomps_result_carries_provider_remaining(self):
         response = Mock(status_code=200)
