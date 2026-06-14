@@ -161,8 +161,9 @@ def _fetch_image(url: str):
         return None
 
 
-def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str]]:
-    """Return (embeddings, ids) — float32 (n, 768) L2-normalised, plus item IDs.
+def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str], list[int]]:
+    """Return (embeddings, ids, n_images_used) — float32 (n, 768) L2-normalised,
+    the item IDs, and the image count fused into each vector.
 
     Strategy:
       1. Batch-encode all texts in one model call.
