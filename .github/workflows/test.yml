@@ -13,6 +13,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every job here only reads the repo (checkout + test/lint); none commit or
+# comment, so a read-only token is all they need.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Production build
