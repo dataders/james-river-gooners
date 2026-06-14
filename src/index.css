@@ -588,13 +588,16 @@ body {
 
 .histogram {
   position: absolute;
-  /* Bar positions are computed in JS using the same thumb-travel formula,
-     so no CSS inset is needed — the SVG overrides left/right via inline style. */
+  /* Bar positions are computed in JS against the measured container width using
+     the same thumb-travel inset (THUMB_RADIUS) the Radix thumbs use, so the SVG
+     must be exactly as wide as the slider container. `width: 100%` (not `auto`)
+     is load-bearing: an SVG with `width: auto`, a fixed height, and a viewBox is
+     sized from the viewBox aspect ratio (height × viewBox-aspect), which made the
+     histogram ~40% too wide and the bars hang off the right end past the track. */
   left: 0;
-  right: 0;
   bottom: 6px;
   height: 28px;
-  width: auto;
+  width: 100%;
   opacity: 0.5;
 }
 .hist-bar {
