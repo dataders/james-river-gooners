@@ -29,6 +29,7 @@ This means:
 | `0009b_cannons_comps.sql` | cannons_comps | 20260605202621 |
 | `0010_nomic_embeddings.sql` | 0010_nomic_embeddings | 20260606014910 |
 | `0017_lots_card_views.sql` | 0010_lots_card_views | 20260609131909 |
+| `0030_consolidate_sold_lots_into_lots.sql` | consolidate_sold_lots_into_lots | 20260614114442 |
 
 Note: `0008_gate_...` and `0009_lot_enrichment.sql` were applied in reverse numeric order (lot_enrichment first, then gate); the local numbers predate that swap.
 
