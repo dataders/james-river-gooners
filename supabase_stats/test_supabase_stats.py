@@ -72,9 +72,7 @@ def test_parse_metric_line_with_labels():
 
 
 def test_parse_metric_line_handles_escaped_label_values():
-    parsed = parse_metric_line(
-        'some_metric{label="with, comma and \\"quote\\""} 5'
-    )
+    parsed = parse_metric_line('some_metric{label="with, comma and \\"quote\\""} 5')
     assert parsed is not None
     name, labels, value = parsed
     assert name == "some_metric"
@@ -83,21 +81,33 @@ def test_parse_metric_line_handles_escaped_label_values():
 
 
 def test_parse_metric_line_drops_nan_and_comments():
-    assert parse_metric_line("pg_x{datname=\"t\"} NaN") is None
+    assert parse_metric_line('pg_x{datname="t"} NaN') is None
     assert parse_metric_line("# HELP foo bar") is None
     assert parse_metric_line("") is None
 
 
 def test_parse_metric_line_ignores_trailing_timestamp():
-    assert parse_metric_line("node_load1 0.42 1700000000000") == ("node_load1", {}, 0.42)
+    assert parse_metric_line("node_load1 0.42 1700000000000") == (
+        "node_load1",
+        {},
+        0.42,
+    )
 
 
 def test_classify_longest_prefix_and_pillars():
     assert classify("node_load1") == ("host", "load", True)
     assert classify("node_disk_io_time_seconds_total") == ("host", "performance", True)
     # _total suffix still matches the prefix; sub-breakdowns inherit the tag.
-    assert classify("pg_stat_database_xact_rollback_total") == ("database", "reliability", True)
-    assert classify("pg_stat_database_conflicts_confl_lock_total") == ("database", "reliability", True)
+    assert classify("pg_stat_database_xact_rollback_total") == (
+        "database",
+        "reliability",
+        True,
+    )
+    assert classify("pg_stat_database_conflicts_confl_lock_total") == (
+        "database",
+        "reliability",
+        True,
+    )
     assert classify("connection_stats_connection_count") == ("database", "load", True)
     assert classify("pgrst_db_pool_waiting") == ("postgrest", "reliability", True)
     assert classify("some_unknown_service_metric") == ("other", None, False)
@@ -113,7 +123,10 @@ def test_metric_rows_curated_only_skips_uncurated():
     blks = [r for r in rows if r["metric"] == "pg_stat_database_blks_hit_total"]
     assert len(blks) == 1 and blks[0]["value"] == 1000.0
     conns = [r for r in rows if r["metric"] == "connection_stats_connection_count"]
-    assert {json.loads(r["labels_json"])["username"] for r in conns} == {"authenticator", "supabase_admin"}
+    assert {json.loads(r["labels_json"])["username"] for r in conns} == {
+        "authenticator",
+        "supabase_admin",
+    }
 
 
 def test_metric_rows_all_includes_uncurated():
@@ -131,12 +144,16 @@ def test_metric_rows_stamps_and_hashes():
     rows = list(metric_rows(SAMPLE, ts))
     assert all(r["scraped_at"] == ts for r in rows)
     # Same series → same label_hash; different labels → different hash.
-    cpu = {json.loads(r["labels_json"])["mode"]: r["label_hash"]
-           for r in rows if r["metric"] == "node_cpu_seconds_total"}
+    cpu = {
+        json.loads(r["labels_json"])["mode"]: r["label_hash"]
+        for r in rows
+        if r["metric"] == "node_cpu_seconds_total"
+    }
     assert cpu["idle"] != cpu["user"]
 
 
 # --- client ---------------------------------------------------------------
+
 
 def test_derive_metrics_url_from_supabase_url():
     assert (
@@ -144,7 +161,10 @@ def test_derive_metrics_url_from_supabase_url():
         == "https://abc.supabase.co/customer/v1/privileged/metrics"
     )
     # Explicit URL wins, query/path on SUPABASE_URL is replaced.
-    assert _derive_metrics_url("https://x/metrics", "https://abc.supabase.co") == "https://x/metrics"
+    assert (
+        _derive_metrics_url("https://x/metrics", "https://abc.supabase.co")
+        == "https://x/metrics"
+    )
     assert _derive_metrics_url(None, None) is None
 
 

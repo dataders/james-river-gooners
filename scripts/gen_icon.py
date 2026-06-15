@@ -1,5 +1,9 @@
 """Generate apple-touch-icon.png + favicon.svg — Arsenal cannon + Richmond VA flag."""
-import cairosvg, pathlib, textwrap
+
+import pathlib
+import textwrap
+
+import cairosvg
 
 SVG = textwrap.dedent("""\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -90,8 +94,12 @@ SVG = textwrap.dedent("""\
 root = pathlib.Path(__file__).parent.parent / "public"
 
 # PNG for apple-touch-icon
-cairosvg.svg2png(bytestring=SVG.encode(), write_to=str(root / "apple-touch-icon.png"),
-                 output_width=180, output_height=180)
+cairosvg.svg2png(
+    bytestring=SVG.encode(),
+    write_to=str(root / "apple-touch-icon.png"),
+    output_width=180,
+    output_height=180,
+)
 print(f"Written {root / 'apple-touch-icon.png'}")
 
 # SVG favicon (no rasterisation needed)

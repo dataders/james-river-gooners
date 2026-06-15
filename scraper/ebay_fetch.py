@@ -99,7 +99,10 @@ def is_ebay_item_url(value: str) -> bool:
     if "itm" not in segments:
         return False
     item_index = segments.index("itm")
-    return any(segment.isdigit() and len(segment) >= 9 for segment in segments[item_index + 1:])
+    return any(
+        segment.isdigit() and len(segment) >= 9
+        for segment in segments[item_index + 1 :]
+    )
 
 
 def extract_ebay_item_id(value: str) -> str | None:
@@ -115,7 +118,7 @@ def extract_ebay_item_id(value: str) -> str | None:
     segments = [segment for segment in parsed.path.split("/") if segment]
     if "itm" in segments:
         item_index = segments.index("itm")
-        for segment in segments[item_index + 1:]:
+        for segment in segments[item_index + 1 :]:
             if segment.isdigit() and len(segment) >= 9:
                 return segment
     query_values = parse_qs(parsed.query)
@@ -247,7 +250,9 @@ def shipping_label(value) -> str:
     return f"+${amount} shipping"
 
 
-def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -> list[dict]:
+def parse_sold_search_html(
+    html: str, source_query: str, max_matches: int = 3
+) -> list[dict]:
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
@@ -265,11 +270,16 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
         if not ebay_item_id or ebay_item_id in seen:
             continue
 
-        title = first_text(card, (".s-item__title", ".s-card__title", "[role='heading']"))
+        title = first_text(
+            card, (".s-item__title", ".s-card__title", "[role='heading']")
+        )
         if not title or title.lower() == "shop on ebay":
             continue
 
-        price_label = first_text(card, (".s-item__price", ".s-card__price", "[data-testid='x-price-primary']"))
+        price_label = first_text(
+            card,
+            (".s-item__price", ".s-card__price", "[data-testid='x-price-primary']"),
+        )
         amount = price_amount(price_label)
         if not amount:
             continue
@@ -277,20 +287,24 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
         sold_label = sold_label_from_card(card)
         image_url = first_image_url(card)
 
-        matches.append({
-            "ebay_item_id": ebay_item_id,
-            "title": title,
-            "price_value": amount,
-            "price_currency": price_currency(price_label) or "USD",
-            "shipping_label": first_text(card, (".s-item__shipping", ".s-card__shipping")),
-            "sold_date": sold_date_from_label(sold_label),
-            "sold_date_label": sold_label,
-            "thumbnail_url": image_url,
-            "item_web_url": item_web_url,
-            "condition": first_text(card, (".SECONDARY_INFO", ".s-card__subtitle")),
-            "source_query": source_query,
-            "match_confidence": "medium",
-        })
+        matches.append(
+            {
+                "ebay_item_id": ebay_item_id,
+                "title": title,
+                "price_value": amount,
+                "price_currency": price_currency(price_label) or "USD",
+                "shipping_label": first_text(
+                    card, (".s-item__shipping", ".s-card__shipping")
+                ),
+                "sold_date": sold_date_from_label(sold_label),
+                "sold_date_label": sold_label,
+                "thumbnail_url": image_url,
+                "item_web_url": item_web_url,
+                "condition": first_text(card, (".SECONDARY_INFO", ".s-card__subtitle")),
+                "source_query": source_query,
+                "match_confidence": "medium",
+            }
+        )
         seen.add(ebay_item_id)
 
         if len(matches) >= max_matches:
@@ -300,25 +314,40 @@ def parse_sold_search_html(html: str, source_query: str, max_matches: int = 3) -
 
 
 def soldcomps_item_match(item: dict, source_query: str) -> dict | None:
-    item_web_url = canonical_ebay_item_url(text_value(item.get("url") or item.get("itemUrl") or item.get("itemWebUrl")))
+    item_web_url = canonical_ebay_item_url(
+        text_value(item.get("url") or item.get("itemUrl") or item.get("itemWebUrl"))
+    )
     if not item_web_url:
         return None
 
     title = text_value(item.get("title"))
-    price_value = price_amount(text_value(item.get("soldPrice") or item.get("price") or item.get("priceValue")))
+    price_value = price_amount(
+        text_value(item.get("soldPrice") or item.get("price") or item.get("priceValue"))
+    )
     if not title or not price_value:
         return None
 
-    ended_at = text_value(item.get("endedAt") or item.get("soldAt") or item.get("soldDate"))
+    ended_at = text_value(
+        item.get("endedAt") or item.get("soldAt") or item.get("soldDate")
+    )
     return {
-        "ebay_item_id": text_value(item.get("itemId") or item.get("ebayItemId")) or extract_ebay_item_id(item_web_url),
+        "ebay_item_id": text_value(item.get("itemId") or item.get("ebayItemId"))
+        or extract_ebay_item_id(item_web_url),
         "title": title,
         "price_value": price_value,
-        "price_currency": text_value(item.get("soldCurrency") or item.get("currency"), "USD"),
-        "shipping_label": shipping_label(item.get("shippingPrice") or item.get("shippingCost") or item.get("shipping")),
+        "price_currency": text_value(
+            item.get("soldCurrency") or item.get("currency"), "USD"
+        ),
+        "shipping_label": shipping_label(
+            item.get("shippingPrice")
+            or item.get("shippingCost")
+            or item.get("shipping")
+        ),
         "sold_date": date_from_iso(ended_at),
         "sold_date_label": sold_date_label_from_iso(ended_at),
-        "thumbnail_url": text_value(item.get("imageUrl") or item.get("thumbnailUrl") or item.get("image")),
+        "thumbnail_url": text_value(
+            item.get("imageUrl") or item.get("thumbnailUrl") or item.get("image")
+        ),
         "item_web_url": item_web_url,
         "condition": text_value(item.get("condition")),
         "source_query": source_query,
@@ -465,17 +494,28 @@ def agent_browser_env() -> dict:
         "USER",
     }
     env = {key: value for key, value in os.environ.items() if key in allowed and value}
-    env.setdefault("npm_config_cache", str(Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "npm-agent-browser"))
+    env.setdefault(
+        "npm_config_cache",
+        str(Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "npm-agent-browser"),
+    )
     env.setdefault("AGENT_BROWSER_ALLOWED_DOMAINS", "www.ebay.com,ebay.com")
-    env.setdefault("AGENT_BROWSER_ARGS", "--no-sandbox,--disable-blink-features=AutomationControlled")
+    env.setdefault(
+        "AGENT_BROWSER_ARGS",
+        "--no-sandbox,--disable-blink-features=AutomationControlled",
+    )
     env.setdefault("AGENT_BROWSER_DEFAULT_TIMEOUT", "30000")
     env.setdefault("AGENT_BROWSER_SESSION", "gooners-ebay-comps")
-    env.setdefault("AGENT_BROWSER_USER_AGENT", os.environ.get("GOONERS_EBAY_USER_AGENT", DEFAULT_USER_AGENT))
+    env.setdefault(
+        "AGENT_BROWSER_USER_AGENT",
+        os.environ.get("GOONERS_EBAY_USER_AGENT", DEFAULT_USER_AGENT),
+    )
     return env
 
 
 def run_agent_browser(args: list[str], timeout: int = 45) -> str:
-    command = shlex.split(os.environ.get("GOONERS_AGENT_BROWSER_COMMAND", DEFAULT_AGENT_BROWSER_COMMAND))
+    command = shlex.split(
+        os.environ.get("GOONERS_AGENT_BROWSER_COMMAND", DEFAULT_AGENT_BROWSER_COMMAND)
+    )
     result = subprocess.run(
         command + args,
         check=True,
@@ -501,7 +541,11 @@ def agent_browser_html(url: str, browser_runner=run_agent_browser) -> str:
         try:
             return html_from_browser_output(browser_runner(["get", "html"], timeout=45))
         except Exception:
-            return html_from_browser_output(browser_runner(["eval", "document.documentElement.outerHTML"], timeout=45))
+            return html_from_browser_output(
+                browser_runner(
+                    ["eval", "document.documentElement.outerHTML"], timeout=45
+                )
+            )
     finally:
         try:
             browser_runner(["close"], timeout=10)
@@ -532,7 +576,9 @@ def html_from_browser_output(output: str) -> str:
     return cleaned[html_start:] if html_start >= 0 else cleaned
 
 
-def browser_sold_matches(search: dict, max_matches: int = 3, browser_runner=run_agent_browser) -> dict:
+def browser_sold_matches(
+    search: dict, max_matches: int = 3, browser_runner=run_agent_browser
+) -> dict:
     try:
         html = agent_browser_html(search["url"], browser_runner=browser_runner)
     except Exception as exc:
@@ -549,7 +595,9 @@ def browser_sold_matches(search: dict, max_matches: int = 3, browser_runner=run_
             "matches": [],
         }
 
-    matches = parse_sold_search_html(html, source_query=search["kind"], max_matches=max_matches)
+    matches = parse_sold_search_html(
+        html, source_query=search["kind"], max_matches=max_matches
+    )
     return {
         "status": "ok" if matches else "no_results",
         "warning": search.get("warning") or "",
@@ -566,12 +614,16 @@ def fetch_sold_matches(
     _rand=random.uniform,
     _choice=random.choice,
 ) -> dict[str, Any]:
-    provider_result = soldcomps_sold_matches(session, search, max_matches=max_matches, timeout=timeout)
+    provider_result = soldcomps_sold_matches(
+        session, search, max_matches=max_matches, timeout=timeout
+    )
     if provider_result is not None:
         return provider_result
 
     def _request_headers():
-        ua = os.environ.get("GOONERS_EBAY_USER_AGENT") or random_user_agent(_choice=_choice)
+        ua = os.environ.get("GOONERS_EBAY_USER_AGENT") or random_user_agent(
+            _choice=_choice
+        )
         return {
             "User-Agent": ua,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -582,12 +634,21 @@ def fetch_sold_matches(
 
     if response.status_code == 429:
         sleep(_rand(BLOCK_BACKOFF_MIN, BLOCK_BACKOFF_MAX))
-        response = session.get(search["url"], headers=_request_headers(), timeout=timeout)
+        response = session.get(
+            search["url"], headers=_request_headers(), timeout=timeout
+        )
 
     if response.status_code in {403, 429, 503}:
         browser_warning = ""
-        if os.environ.get("GOONERS_EBAY_BROWSER_FALLBACK", "1").lower() in {"1", "true", "yes", "on"}:
-            result = browser_sold_matches(search, max_matches=max_matches, browser_runner=browser_runner)
+        if os.environ.get("GOONERS_EBAY_BROWSER_FALLBACK", "1").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            result = browser_sold_matches(
+                search, max_matches=max_matches, browser_runner=browser_runner
+            )
             if result["status"] != "blocked":
                 return result
             browser_warning = f" Browser fallback: {result.get('warning', '')}".rstrip()
@@ -603,7 +664,9 @@ def fetch_sold_matches(
             "matches": [],
         }
 
-    matches = parse_sold_search_html(response.text, source_query=search["kind"], max_matches=max_matches)
+    matches = parse_sold_search_html(
+        response.text, source_query=search["kind"], max_matches=max_matches
+    )
     return {
         "status": "ok" if matches else "no_results",
         "warning": search.get("warning") or "",

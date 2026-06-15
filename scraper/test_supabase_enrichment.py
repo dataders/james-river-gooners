@@ -48,9 +48,15 @@ class EnrichmentRowTest(unittest.TestCase):
     def test_below_display_bar_is_skipped(self):
         # Empty/low confidence => not identified => no row (clean index).
         base = {"auctionSafeId": "s", "id": 1, "brand": "Acme", "modelOrSku": "X"}
-        self.assertIsNone(supabase_enrichment.enrichment_row({**base, "enrichmentConfidence": ""}))
-        self.assertIsNone(supabase_enrichment.enrichment_row({**base, "enrichmentConfidence": "low"}))
-        self.assertIsNone(supabase_enrichment.enrichment_row({"auctionSafeId": "s", "id": 1}))
+        self.assertIsNone(
+            supabase_enrichment.enrichment_row({**base, "enrichmentConfidence": ""})
+        )
+        self.assertIsNone(
+            supabase_enrichment.enrichment_row({**base, "enrichmentConfidence": "low"})
+        )
+        self.assertIsNone(
+            supabase_enrichment.enrichment_row({"auctionSafeId": "s", "id": 1})
+        )
 
     def test_medium_confidence_is_kept(self):
         row = supabase_enrichment.enrichment_row(
@@ -62,10 +68,14 @@ class EnrichmentRowTest(unittest.TestCase):
     def test_missing_identity_is_skipped(self):
         # Use a passing confidence so the None is due to missing identity, not the bar.
         self.assertIsNone(
-            supabase_enrichment.enrichment_row({"id": 1, "enrichmentConfidence": "high"})
+            supabase_enrichment.enrichment_row(
+                {"id": 1, "enrichmentConfidence": "high"}
+            )
         )
         self.assertIsNone(
-            supabase_enrichment.enrichment_row({"auctionSafeId": "s", "enrichmentConfidence": "high"})
+            supabase_enrichment.enrichment_row(
+                {"auctionSafeId": "s", "enrichmentConfidence": "high"}
+            )
         )
 
     def test_images_as_json_string(self):
@@ -82,7 +92,10 @@ class EnrichmentRowTest(unittest.TestCase):
 
     def test_v6_detail_columns_mapped(self):
         lot = dict(
-            ENRICHED_LOT, brand="", modelOrSku="", enrichmentConfidence="high",
+            ENRICHED_LOT,
+            brand="",
+            modelOrSku="",
+            enrichmentConfidence="high",
             detailCategory="furniture",
             details=json.dumps({"style": "mid-century modern", "material": "walnut"}),
             detailConfidence="high",
@@ -90,7 +103,10 @@ class EnrichmentRowTest(unittest.TestCase):
         row = supabase_enrichment.enrichment_row(lot)
         assert row is not None
         self.assertEqual(row["detail_category"], "furniture")
-        self.assertEqual(json.loads(row["details"]), {"style": "mid-century modern", "material": "walnut"})
+        self.assertEqual(
+            json.loads(row["details"]),
+            {"style": "mid-century modern", "material": "walnut"},
+        )
         self.assertEqual(row["detail_confidence"], "high")
 
     def test_detail_columns_default_empty(self):
@@ -101,9 +117,10 @@ class EnrichmentRowTest(unittest.TestCase):
         self.assertEqual(row["details"], "")
         self.assertEqual(row["detail_confidence"], "")
 
-
     def test_schema_version_mapped(self):
-        row = supabase_enrichment.enrichment_row({**ENRICHED_LOT, "enrichmentSchemaVersion": "6"})
+        row = supabase_enrichment.enrichment_row(
+            {**ENRICHED_LOT, "enrichmentSchemaVersion": "6"}
+        )
         assert row is not None
         self.assertEqual(row["schema_version"], "6")
 
@@ -122,10 +139,20 @@ class RecordEnrichRunTest(unittest.TestCase):
     def test_posts_one_ledger_row_to_enrich_runs(self):
         session = self._session()
         n = supabase_enrichment.record_enrich_run(
-            {"mode": "batch", "model": "claude-haiku-4-5", "schema_version": "6",
-             "lots_submitted": 10, "lots_enriched": 7, "input_tokens": 100,
-             "output_tokens": 20, "est_cost_usd": 0.01, "raw": {"batch_id": "b1"}},
-            url="https://proj.supabase.co", key="secret", session=session,
+            {
+                "mode": "batch",
+                "model": "claude-haiku-4-5",
+                "schema_version": "6",
+                "lots_submitted": 10,
+                "lots_enriched": 7,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "est_cost_usd": 0.01,
+                "raw": {"batch_id": "b1"},
+            },
+            url="https://proj.supabase.co",
+            key="secret",
+            session=session,
         )
         self.assertEqual(n, 1)
         args, kwargs = session.post.call_args
@@ -139,16 +166,24 @@ class RecordEnrichRunTest(unittest.TestCase):
         session = self._session()
         supabase_enrichment.record_enrich_run(
             {"mode": "sync", "bogus_column": "x"},
-            url="https://proj.supabase.co", key="secret", session=session,
+            url="https://proj.supabase.co",
+            key="secret",
+            session=session,
         )
         body = json.loads(session.post.call_args.kwargs["data"])
         self.assertNotIn("bogus_column", body[0])
 
     def test_noop_without_credentials(self):
         session = self._session()
-        with patch.object(supabase_enrichment, "resolve_credentials", return_value=(None, None)):
+        with patch.object(
+            supabase_enrichment, "resolve_credentials", return_value=(None, None)
+        ):
             self.assertEqual(
-                supabase_enrichment.record_enrich_run({"mode": "sync"}, session=session), 0)
+                supabase_enrichment.record_enrich_run(
+                    {"mode": "sync"}, session=session
+                ),
+                0,
+            )
         session.post.assert_not_called()
 
 
@@ -164,7 +199,11 @@ class BuildRowsTest(unittest.TestCase):
 class BuildSeenRowsTest(unittest.TestCase):
     def test_includes_any_processed_lot_with_a_hash(self):
         identified = {"auctionSafeId": "s", "id": 1, "enrichmentInputHash": "h1"}
-        unidentified = {"auctionSafeId": "s", "id": 2, "enrichmentInputHash": "h2"}  # no brand
+        unidentified = {
+            "auctionSafeId": "s",
+            "id": 2,
+            "enrichmentInputHash": "h2",
+        }  # no brand
         rows = supabase_enrichment.build_seen_rows([identified, unidentified])
         self.assertEqual(
             sorted((r["item_id"], r["input_hash"]) for r in rows),
@@ -173,18 +212,22 @@ class BuildSeenRowsTest(unittest.TestCase):
         self.assertEqual(set(rows[0]), {"auction_safe_id", "item_id", "input_hash"})
 
     def test_skips_lots_without_a_hash_or_id(self):
-        rows = supabase_enrichment.build_seen_rows([
-            {"auctionSafeId": "s", "id": 1},                      # no hash -> not processed
-            {"auctionSafeId": "s", "enrichmentInputHash": "h"},   # no id
-            {"id": 1, "enrichmentInputHash": "h"},                # no safe id
-        ])
+        rows = supabase_enrichment.build_seen_rows(
+            [
+                {"auctionSafeId": "s", "id": 1},  # no hash -> not processed
+                {"auctionSafeId": "s", "enrichmentInputHash": "h"},  # no id
+                {"id": 1, "enrichmentInputHash": "h"},  # no safe id
+            ]
+        )
         self.assertEqual(rows, [])
 
     def test_dedup_last_wins(self):
         a = {"auctionSafeId": "s", "id": 1, "enrichmentInputHash": "old"}
         b = {"auctionSafeId": "s", "id": 1, "enrichmentInputHash": "new"}
         rows = supabase_enrichment.build_seen_rows([a, b])
-        self.assertEqual(rows, [{"auction_safe_id": "s", "item_id": "1", "input_hash": "new"}])
+        self.assertEqual(
+            rows, [{"auction_safe_id": "s", "item_id": "1", "input_hash": "new"}]
+        )
 
 
 class UpsertSeenTest(unittest.TestCase):
@@ -193,7 +236,9 @@ class UpsertSeenTest(unittest.TestCase):
         session.post.return_value = MagicMock(status_code=201)
         n = supabase_enrichment.upsert_seen(
             [{"auction_safe_id": "s", "item_id": "1", "input_hash": "h"}],
-            url="https://proj.supabase.co", key="secret", session=session,
+            url="https://proj.supabase.co",
+            key="secret",
+            session=session,
         )
         self.assertEqual(n, 1)
         args, kwargs = session.post.call_args
@@ -253,7 +298,9 @@ class UpsertTest(unittest.TestCase):
         ]
         n = supabase_enrichment.upsert_enrichment(
             [_enriched_row()],
-            url="https://proj.supabase.co", key="secret", session=session,
+            url="https://proj.supabase.co",
+            key="secret",
+            session=session,
         )
         self.assertEqual(n, 1)
         self.assertEqual(session.post.call_count, 2)
@@ -268,7 +315,9 @@ class UpsertTest(unittest.TestCase):
         ]
         n = supabase_enrichment.upsert_enrichment(
             [_enriched_row()],
-            url="https://proj.supabase.co", key="secret", session=session,
+            url="https://proj.supabase.co",
+            key="secret",
+            session=session,
         )
         self.assertEqual(n, 1)
         self.assertEqual(session.post.call_count, 2)
@@ -280,7 +329,9 @@ class UpsertTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             supabase_enrichment.upsert_enrichment(
                 [_enriched_row()],
-                url="https://proj.supabase.co", key="secret", session=session,
+                url="https://proj.supabase.co",
+                key="secret",
+                session=session,
                 max_retries=2,
             )
         self.assertEqual(session.post.call_count, 3)  # 1 try + 2 retries
@@ -289,35 +340,71 @@ class UpsertTest(unittest.TestCase):
 
 class MaybeExportTest(unittest.TestCase):
     def test_noop_without_any_credentials(self):
-        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: (None, None)):
-            self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
+        with patch.object(
+            supabase_enrichment, "resolve_credentials", lambda *a, **k: (None, None)
+        ):
+            self.assertEqual(
+                supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0
+            )
 
     def test_warns_when_url_set_but_key_missing(self):
         # Half-configured is a likely misconfiguration — warn rather than stay silent.
-        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: ("https://x", None)):
+        with patch.object(
+            supabase_enrichment,
+            "resolve_credentials",
+            lambda *a, **k: ("https://x", None),
+        ):
             with patch("builtins.print") as printed:
-                self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
+                self.assertEqual(
+                    supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0
+                )
         self.assertTrue(any("WARNING" in str(c) for c in printed.call_args_list))
 
     def test_warns_and_does_not_crash_on_upsert_failure(self):
-        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: ("https://x", "secret")):
-            with patch.object(supabase_enrichment, "upsert_enrichment", side_effect=RuntimeError("down")):
+        with patch.object(
+            supabase_enrichment,
+            "resolve_credentials",
+            lambda *a, **k: ("https://x", "secret"),
+        ):
+            with patch.object(
+                supabase_enrichment,
+                "upsert_enrichment",
+                side_effect=RuntimeError("down"),
+            ):
                 with patch("builtins.print") as printed:
                     # Must NOT raise — the scrape's read model is the primary deliverable.
-                    self.assertEqual(supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0)
+                    self.assertEqual(
+                        supabase_enrichment.maybe_export_enrichment([ENRICHED_LOT]), 0
+                    )
         self.assertTrue(any("WARNING" in str(c) for c in printed.call_args_list))
 
     def test_caches_hash_for_unidentified_lots(self):
         # A low-confidence lot reaches enrichment_seen (so it reuses next run) but
         # not lot_enrichment (which stays an identified-only index).
-        unidentified = {"auctionSafeId": "s", "id": 7, "enrichmentConfidence": "low",
-                        "enrichmentInputHash": "h7"}
-        with patch.object(supabase_enrichment, "resolve_credentials", lambda *a, **k: ("https://x", "secret")):
-            with patch.object(supabase_enrichment, "upsert_seen", return_value=1) as seen, \
-                 patch.object(supabase_enrichment, "upsert_enrichment", return_value=0) as enr:
+        unidentified = {
+            "auctionSafeId": "s",
+            "id": 7,
+            "enrichmentConfidence": "low",
+            "enrichmentInputHash": "h7",
+        }
+        with patch.object(
+            supabase_enrichment,
+            "resolve_credentials",
+            lambda *a, **k: ("https://x", "secret"),
+        ):
+            with (
+                patch.object(
+                    supabase_enrichment, "upsert_seen", return_value=1
+                ) as seen,
+                patch.object(
+                    supabase_enrichment, "upsert_enrichment", return_value=0
+                ) as enr,
+            ):
                 supabase_enrichment.maybe_export_enrichment([unidentified])
         seen_rows = seen.call_args.args[0]
-        self.assertEqual(seen_rows, [{"auction_safe_id": "s", "item_id": "7", "input_hash": "h7"}])
+        self.assertEqual(
+            seen_rows, [{"auction_safe_id": "s", "item_id": "7", "input_hash": "h7"}]
+        )
         enr.assert_not_called()  # nothing identified -> no lot_enrichment write
 
 

@@ -3,6 +3,7 @@
 Pure-function tests — no model load, no network. Run:
   uv run --with numpy --with requests --with pytest python -m pytest scraper/test_embed_nomic_text.py -q
 """
+
 import embed_nomic as en
 
 
@@ -57,7 +58,12 @@ def test_empty_enrichment_yields_empty_string():
 
 
 def test_blank_strings_and_none_ignored():
-    item = {"brand": "", "modelOrSku": None, "productType": "  ", "searchQuery": "valid phrase"}
+    item = {
+        "brand": "",
+        "modelOrSku": None,
+        "productType": "  ",
+        "searchQuery": "valid phrase",
+    }
     assert en._enrichment_text(item) == "valid phrase"
 
 

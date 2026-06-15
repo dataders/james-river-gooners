@@ -54,14 +54,17 @@ class GitHubClient:
         sleeping to the reset, and a short backoff on 5xx."""
         for attempt in range(5):
             resp = self.session.get(url, params=params, timeout=30)
-            if resp.status_code == 403 and resp.headers.get("X-RateLimit-Remaining") == "0":
+            if (
+                resp.status_code == 403
+                and resp.headers.get("X-RateLimit-Remaining") == "0"
+            ):
                 reset = int(resp.headers.get("X-RateLimit-Reset", "0"))
                 wait = max(0, reset - int(time.time())) + 1
                 # Cap the sleep so a pathological reset can't hang CI forever.
                 time.sleep(min(wait, 300))
                 continue
             if resp.status_code >= 500 and attempt < 4:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
                 continue
             return resp
         return resp
@@ -84,7 +87,9 @@ class GitHubClient:
             # The "next" URL already carries page+per_page; don't re-send params.
             params = None
 
-    def paginate_wrapped(self, path: str, key: str, params: dict | None = None) -> Iterator[dict]:
+    def paginate_wrapped(
+        self, path: str, key: str, params: dict | None = None
+    ) -> Iterator[dict]:
         """Like :meth:`paginate` but for endpoints that wrap the array in an
         object under ``key`` (e.g. ``/actions/runs`` → ``{"workflow_runs": [...]}``)."""
         url = f"{API_ROOT}/repos/{self.repo}/{path}"

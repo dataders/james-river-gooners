@@ -25,7 +25,10 @@ def _candidate(ebay_item_id="111", **overrides):
         "category_id": "20081",
         "source_query": "rosenthal crackle vase",
         "last_seen_at": "2026-06-13T22:00:00+00:00",
-        "raw_json": {"itemId": ebay_item_id, "title": "Vintage Rosenthal crackle glaze vase"},
+        "raw_json": {
+            "itemId": ebay_item_id,
+            "title": "Vintage Rosenthal crackle glaze vase",
+        },
     }
     base.update(overrides)
     return base
@@ -38,7 +41,9 @@ class CorpusEnabledTest(unittest.TestCase):
 
     def test_on_when_flag_truthy(self):
         for value in ("1", "true", "True"):
-            with patch.dict(os.environ, {"GOONERS_SOLD_LISTINGS_CORPUS": value}, clear=True):
+            with patch.dict(
+                os.environ, {"GOONERS_SOLD_LISTINGS_CORPUS": value}, clear=True
+            ):
                 self.assertTrue(ssl.sold_listings_corpus_enabled())
 
     def test_off_for_other_values(self):
@@ -62,25 +67,32 @@ class BuildRowsTest(unittest.TestCase):
         self.assertEqual(row["category_id"], "20081")
         self.assertEqual(row["sold_date"], "2026-03-04")  # date -> isoformat
         # raw_json is stored verbatim (jsonb), not stringified.
-        self.assertEqual(row["raw_json"], {"itemId": "111", "title": "Vintage Rosenthal crackle glaze vase"})
+        self.assertEqual(
+            row["raw_json"],
+            {"itemId": "111", "title": "Vintage Rosenthal crackle glaze vase"},
+        )
         json.dumps(row)  # must be PostgREST-serializable
 
     def test_dedupes_by_ebay_item_id_last_wins(self):
-        rows = ssl.build_sold_listing_rows([
-            _candidate("777", title="first"),
-            _candidate("777", title="second"),
-            _candidate("888"),
-        ])
+        rows = ssl.build_sold_listing_rows(
+            [
+                _candidate("777", title="first"),
+                _candidate("777", title="second"),
+                _candidate("888"),
+            ]
+        )
         by_id = {r["ebay_item_id"]: r for r in rows}
         self.assertEqual(set(by_id), {"777", "888"})
         self.assertEqual(by_id["777"]["title"], "second")
 
     def test_drops_listings_without_id_or_url(self):
-        rows = ssl.build_sold_listing_rows([
-            _candidate("", item_web_url="https://www.ebay.com/itm/1"),
-            _candidate("222", item_web_url=""),
-            _candidate("333"),
-        ])
+        rows = ssl.build_sold_listing_rows(
+            [
+                _candidate("", item_web_url="https://www.ebay.com/itm/1"),
+                _candidate("222", item_web_url=""),
+                _candidate("333"),
+            ]
+        )
         self.assertEqual([r["ebay_item_id"] for r in rows], ["333"])
 
 
@@ -95,7 +107,9 @@ class UpsertTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "SUPABASE_URL"):
                 ssl.upsert_sold_listings([{"ebay_item_id": "1"}])
             with self.assertRaisesRegex(RuntimeError, "SUPABASE_SECRET_KEY"):
-                ssl.upsert_sold_listings([{"ebay_item_id": "1"}], url="https://x.supabase.co")
+                ssl.upsert_sold_listings(
+                    [{"ebay_item_id": "1"}], url="https://x.supabase.co"
+                )
 
     def test_posts_batches_with_merge_duplicates(self):
         session = MagicMock()
@@ -103,7 +117,11 @@ class UpsertTest(unittest.TestCase):
         rows = ssl.build_sold_listing_rows([_candidate(str(n)) for n in range(3)])
 
         written = ssl.upsert_sold_listings(
-            rows, url="https://x.supabase.co/", key="sb_secret_x", session=session, batch_size=2
+            rows,
+            url="https://x.supabase.co/",
+            key="sb_secret_x",
+            session=session,
+            batch_size=2,
         )
 
         self.assertEqual(written, 3)
@@ -125,7 +143,10 @@ class MaybeExportTest(unittest.TestCase):
     def test_warns_when_url_set_but_no_key(self):
         with patch.dict(
             os.environ,
-            {"GOONERS_SOLD_LISTINGS_CORPUS": "1", "SUPABASE_URL": "https://x.supabase.co"},
+            {
+                "GOONERS_SOLD_LISTINGS_CORPUS": "1",
+                "SUPABASE_URL": "https://x.supabase.co",
+            },
             clear=True,
         ):
             self.assertEqual(ssl.maybe_export_sold_listings([_candidate()]), 0)
@@ -142,7 +163,9 @@ class MaybeExportTest(unittest.TestCase):
             },
             clear=True,
         ):
-            written = ssl.maybe_export_sold_listings([_candidate("1"), _candidate("2")], session=session)
+            written = ssl.maybe_export_sold_listings(
+                [_candidate("1"), _candidate("2")], session=session
+            )
         self.assertEqual(written, 2)
         session.post.assert_called_once()
 

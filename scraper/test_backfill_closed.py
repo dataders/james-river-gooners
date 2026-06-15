@@ -19,21 +19,23 @@ class BackfillSkipAndLimitTest(unittest.TestCase):
         urls = [self._url("aaa"), self._url("bbb"), self._url("ccc")]
         scraped = []
 
-        with mock.patch.object(
-            backfill_closed, "discover_past_auction_urls", return_value=urls
-        ), mock.patch.object(
-            backfill_closed, "existing_safe_ids", return_value={"aaa"}
-        ), mock.patch.object(
-            backfill_closed, "scrape_auction", side_effect=lambda u: scraped.append(u)
-        ), mock.patch.object(
-            backfill_closed, "finalize_closed_file"
-        ), mock.patch.object(
-            backfill_closed, "archive_file"
-        ) as archive, mock.patch.object(
-            backfill_closed.Path, "exists", return_value=True
-        ), mock.patch.object(
-            backfill_closed, "update_manifests"
-        ) as update:
+        with (
+            mock.patch.object(
+                backfill_closed, "discover_past_auction_urls", return_value=urls
+            ),
+            mock.patch.object(
+                backfill_closed, "existing_safe_ids", return_value={"aaa"}
+            ),
+            mock.patch.object(
+                backfill_closed,
+                "scrape_auction",
+                side_effect=lambda u: scraped.append(u),
+            ),
+            mock.patch.object(backfill_closed, "finalize_closed_file"),
+            mock.patch.object(backfill_closed, "archive_file") as archive,
+            mock.patch.object(backfill_closed.Path, "exists", return_value=True),
+            mock.patch.object(backfill_closed, "update_manifests") as update,
+        ):
             failures = backfill_closed.backfill(limit=2)
 
         self.assertEqual(failures, 0)
@@ -48,20 +50,16 @@ class BackfillSkipAndLimitTest(unittest.TestCase):
             if "bbb" in url:
                 raise RuntimeError("boom")
 
-        with mock.patch.object(
-            backfill_closed, "discover_past_auction_urls", return_value=urls
-        ), mock.patch.object(
-            backfill_closed, "existing_safe_ids", return_value=set()
-        ), mock.patch.object(
-            backfill_closed, "scrape_auction", side_effect=flaky
-        ), mock.patch.object(
-            backfill_closed, "finalize_closed_file"
-        ), mock.patch.object(
-            backfill_closed, "archive_file"
-        ), mock.patch.object(
-            backfill_closed.Path, "exists", return_value=True
-        ), mock.patch.object(
-            backfill_closed, "update_manifests"
+        with (
+            mock.patch.object(
+                backfill_closed, "discover_past_auction_urls", return_value=urls
+            ),
+            mock.patch.object(backfill_closed, "existing_safe_ids", return_value=set()),
+            mock.patch.object(backfill_closed, "scrape_auction", side_effect=flaky),
+            mock.patch.object(backfill_closed, "finalize_closed_file"),
+            mock.patch.object(backfill_closed, "archive_file"),
+            mock.patch.object(backfill_closed.Path, "exists", return_value=True),
+            mock.patch.object(backfill_closed, "update_manifests"),
         ):
             failures = backfill_closed.backfill(limit=2)
 
@@ -87,7 +85,9 @@ class HibidJobsConfigTest(unittest.TestCase):
             path.write_text(yml)
             jobs = backfill_closed._hibid_jobs(sources_file=path)
 
-        self.assertEqual([safe_id for safe_id, _, _ in jobs], ["hibid_111", "hibid_222"])
+        self.assertEqual(
+            [safe_id for safe_id, _, _ in jobs], ["hibid_111", "hibid_222"]
+        )
 
     def test_no_closed_ids_yields_no_jobs(self):
         yml = "companies:\n  - id: 1\n    slug: acme\n    name: Acme\n"

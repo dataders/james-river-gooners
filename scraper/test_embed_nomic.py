@@ -39,10 +39,14 @@ class SupabaseUserAgentTest(unittest.TestCase):
     def test_existing_item_ids_overrides_user_agent(self):
         session = mock.Mock()
         captured = self._capture_get(session)
-        with mock.patch("supabase_comps.resolve_credentials",
-                        return_value=("https://x.supabase.co", "sb_secret_x")):
+        with mock.patch(
+            "supabase_comps.resolve_credentials",
+            return_value=("https://x.supabase.co", "sb_secret_x"),
+        ):
             embed_nomic.existing_item_ids("auc", session=session)
-        self.assertEqual(captured["headers"].get("User-Agent"), embed_nomic._SUPABASE_UA)
+        self.assertEqual(
+            captured["headers"].get("User-Agent"), embed_nomic._SUPABASE_UA
+        )
         self.assertNotIn("Mozilla", captured["headers"].get("User-Agent", ""))
 
     def test_upsert_overrides_user_agent(self):
@@ -54,12 +58,16 @@ class SupabaseUserAgentTest(unittest.TestCase):
             return mock.Mock(status_code=200)
 
         session.post = fake_post
-        with mock.patch("supabase_comps.resolve_credentials",
-                        return_value=("https://x.supabase.co", "sb_secret_x")):
+        with mock.patch(
+            "supabase_comps.resolve_credentials",
+            return_value=("https://x.supabase.co", "sb_secret_x"),
+        ):
             embed_nomic.upsert_embeddings(
                 np.zeros((1, 768), dtype=np.float32), ["a"], [0], "auc", session=session
             )
-        self.assertEqual(captured["headers"].get("User-Agent"), embed_nomic._SUPABASE_UA)
+        self.assertEqual(
+            captured["headers"].get("User-Agent"), embed_nomic._SUPABASE_UA
+        )
 
 
 class NomicIncrementalTest(unittest.TestCase):
@@ -85,26 +93,42 @@ class NomicIncrementalTest(unittest.TestCase):
             m.assert_not_called()
 
     def test_only_new_lots_embedded(self):
-        with mock.patch.object(embed_nomic, "existing_item_ids", return_value={"a", "b"}), \
-             mock.patch.object(embed_nomic, "embed_items", side_effect=_fake_embed_items) as m_embed, \
-             mock.patch.object(embed_nomic, "upsert_embeddings", return_value=1) as m_up:
+        with (
+            mock.patch.object(
+                embed_nomic, "existing_item_ids", return_value={"a", "b"}
+            ),
+            mock.patch.object(
+                embed_nomic, "embed_items", side_effect=_fake_embed_items
+            ) as m_embed,
+            mock.patch.object(embed_nomic, "upsert_embeddings", return_value=1) as m_up,
+        ):
             embed_nomic.maybe_generate_and_upsert(_items(["a", "b", "c"]), "auc")
         m_embed.assert_called_once()
         self.assertEqual([it["id"] for it in m_embed.call_args.args[0]], ["c"])
         m_up.assert_called_once()
 
     def test_all_already_embedded_skips_model(self):
-        with mock.patch.object(embed_nomic, "existing_item_ids", return_value={"a", "b"}), \
-             mock.patch.object(embed_nomic, "embed_items") as m_embed, \
-             mock.patch.object(embed_nomic, "upsert_embeddings") as m_up:
+        with (
+            mock.patch.object(
+                embed_nomic, "existing_item_ids", return_value={"a", "b"}
+            ),
+            mock.patch.object(embed_nomic, "embed_items") as m_embed,
+            mock.patch.object(embed_nomic, "upsert_embeddings") as m_up,
+        ):
             embed_nomic.maybe_generate_and_upsert(_items(["a", "b"]), "auc")
         m_embed.assert_not_called()
         m_up.assert_not_called()
 
     def test_read_failure_falls_back_to_embedding_all(self):
-        with mock.patch.object(embed_nomic, "existing_item_ids", side_effect=RuntimeError("boom")), \
-             mock.patch.object(embed_nomic, "embed_items", side_effect=_fake_embed_items) as m_embed, \
-             mock.patch.object(embed_nomic, "upsert_embeddings", return_value=2):
+        with (
+            mock.patch.object(
+                embed_nomic, "existing_item_ids", side_effect=RuntimeError("boom")
+            ),
+            mock.patch.object(
+                embed_nomic, "embed_items", side_effect=_fake_embed_items
+            ) as m_embed,
+            mock.patch.object(embed_nomic, "upsert_embeddings", return_value=2),
+        ):
             embed_nomic.maybe_generate_and_upsert(_items(["a", "b"]), "auc")
         m_embed.assert_called_once()
         self.assertEqual([it["id"] for it in m_embed.call_args.args[0]], ["a", "b"])
@@ -112,13 +136,17 @@ class NomicIncrementalTest(unittest.TestCase):
 
 class NomicBackfillTest(unittest.TestCase):
     def test_backfill_iterates_active_sidecars(self):
-        with tempfile.TemporaryDirectory() as tmp, \
-             mock.patch.dict(os.environ, {"SUPABASE_SECRET_KEY": "secret"}):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SUPABASE_SECRET_KEY": "secret"}),
+        ):
             items_dir = Path(tmp)
             (items_dir / "auc1.ndjson").write_text(
                 "\n".join(json.dumps({"id": i, "title": i}) for i in ["a", "b"]) + "\n"
             )
-            (items_dir / "auc2.ndjson").write_text(json.dumps({"id": "x", "title": "x"}) + "\n")
+            (items_dir / "auc2.ndjson").write_text(
+                json.dumps({"id": "x", "title": "x"}) + "\n"
+            )
 
             calls = []
 
@@ -126,8 +154,12 @@ class NomicBackfillTest(unittest.TestCase):
                 calls.append((safe_id, [it["id"] for it in items]))
                 return len(items)
 
-            with mock.patch.object(embed_nomic, "_ACTIVE_ITEMS_DIR", items_dir), \
-                 mock.patch.object(embed_nomic, "generate_and_upsert", side_effect=_fake_gen):
+            with (
+                mock.patch.object(embed_nomic, "_ACTIVE_ITEMS_DIR", items_dir),
+                mock.patch.object(
+                    embed_nomic, "generate_and_upsert", side_effect=_fake_gen
+                ),
+            ):
                 total = embed_nomic.backfill_from_read_model()
 
         self.assertEqual(total, 3)

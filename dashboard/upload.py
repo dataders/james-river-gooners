@@ -41,7 +41,9 @@ def _is_transient(status_code: int) -> bool:
     return status_code == 429 or status_code >= 500
 
 
-def _upload_with_retry(endpoint, headers, body, max_retries=DEFAULT_MAX_RETRIES, sleep=None):
+def _upload_with_retry(
+    endpoint, headers, body, max_retries=DEFAULT_MAX_RETRIES, sleep=None
+):
     """POST the object, retrying transient failures; exit(1) on permanent failure."""
     sleep = sleep or time.sleep  # resolved at call time so tests can patch time.sleep
     for attempt in range(max_retries + 1):
@@ -51,7 +53,9 @@ def _upload_with_retry(endpoint, headers, body, max_retries=DEFAULT_MAX_RETRIES,
             if attempt >= max_retries:
                 sys.exit(f"Upload failed after {attempt + 1} attempt(s): {exc}")
             delay = 2 ** (attempt + 1)
-            print(f"Upload attempt {attempt + 1} errored ({exc}); retrying in {delay}s…")
+            print(
+                f"Upload attempt {attempt + 1} errored ({exc}); retrying in {delay}s…"
+            )
             sleep(delay)
             continue
 
@@ -71,7 +75,9 @@ def _upload_with_retry(endpoint, headers, body, max_retries=DEFAULT_MAX_RETRIES,
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "dist/admin.html"
     url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get(
+        "SUPABASE_SERVICE_ROLE_KEY"
+    )
     if not url or not key:
         sys.exit("SUPABASE_URL and SUPABASE_SECRET_KEY are required to upload")
 

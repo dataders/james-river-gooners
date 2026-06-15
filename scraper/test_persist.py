@@ -79,7 +79,9 @@ class WriteReadModelTest(unittest.TestCase):
 
         # NDJSON sidecar: images stay a real array, metadata stamped.
         ndjson = self._items_dir / "src_42.ndjson"
-        rows = [json.loads(line) for line in ndjson.read_text().splitlines() if line.strip()]
+        rows = [
+            json.loads(line) for line in ndjson.read_text().splitlines() if line.strip()
+        ]
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["auctionId"], "42")
@@ -92,7 +94,9 @@ class WriteReadModelTest(unittest.TestCase):
 
         # Parquet stringifies images in place.
         self.assertEqual((self._items_dir / "src_42.parquet").exists(), True)
-        self.assertEqual(items[0]["images"], json.dumps(["https://img/a.jpg", "https://img/b.jpg"]))
+        self.assertEqual(
+            items[0]["images"], json.dumps(["https://img/a.jpg", "https://img/b.jpg"])
+        )
 
     def test_embeddings_invoked_for_every_source(self):
         """The whole point of the shared tail: HiBid/Rasmus no longer skip embeddings."""

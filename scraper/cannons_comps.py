@@ -47,11 +47,13 @@ try:
     from telemetry import capture as _telemetry_capture
     from telemetry import flush as _telemetry_flush
 except Exception:  # pragma: no cover - telemetry is best-effort
+
     def _telemetry_capture(event, properties=None):
         return None
 
     def _telemetry_flush():
         return None
+
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"
 SCHEMA_VERSION = 1
@@ -68,7 +70,9 @@ def read_manifest(path: Path) -> list[dict]:
     if not path.exists():
         return []
     manifest = json.loads(path.read_text())
-    return manifest.get("auctions", manifest) if isinstance(manifest, dict) else manifest
+    return (
+        manifest.get("auctions", manifest) if isinstance(manifest, dict) else manifest
+    )
 
 
 def _headers(key: str, extra: dict | None = None) -> dict:
@@ -78,7 +82,9 @@ def _headers(key: str, extra: dict | None = None) -> dict:
     return headers
 
 
-def fetch_comps(session, url: str, key: str, safe_id: str, top_k: int, min_sim: float) -> list[dict]:
+def fetch_comps(
+    session, url: str, key: str, safe_id: str, top_k: int, min_sim: float
+) -> list[dict]:
     """Call the match_cannons_comps RPC for one active auction."""
     endpoint = f"{url.rstrip('/')}/rest/v1/rpc/{RPC_NAME}"
     body = {"active_auction": safe_id, "match_count": top_k, "min_sim": min_sim}
@@ -133,7 +139,10 @@ def build_comps(
         # model / manifest isn't present on a fresh CI checkout, so a standalone
         # dispatch needs this to find anything to comp.
         from supabase_lots import list_auction_safe_ids
-        active_entries = [{"safeId": sid} for sid in list_auction_safe_ids(archived=False)]
+
+        active_entries = [
+            {"safeId": sid} for sid in list_auction_safe_ids(archived=False)
+        ]
     else:
         active_entries = read_manifest(data_dir / "manifest.json")
     if active_limit is not None:
@@ -154,7 +163,9 @@ def build_comps(
 
     session = requests.Session()
     generated_at = utc_now_text()
-    print(f"Building Cannon's comps via {RPC_NAME} for {len(active_entries)} active auctions...")
+    print(
+        f"Building Cannon's comps via {RPC_NAME} for {len(active_entries)} active auctions..."
+    )
 
     for entry in active_entries:
         safe_id = entry.get("safeId")
@@ -166,9 +177,9 @@ def build_comps(
         # preserves best-first ranking per item.
         item_exports: dict[str, dict] = {}
         for row in rows:
-            item_exports.setdefault(str(row["item_id"]), {"matches": []})["matches"].append(
-                shape_match(row)
-            )
+            item_exports.setdefault(str(row["item_id"]), {"matches": []})[
+                "matches"
+            ].append(shape_match(row))
 
         summary["auctions"] += 1
         summary["items_with_comps"] += len(item_exports)
@@ -177,12 +188,18 @@ def build_comps(
             continue
 
         if dry_run:
-            print(f"  {safe_id}: {len(item_exports)} items matched (dry-run, not written)")
+            print(
+                f"  {safe_id}: {len(item_exports)} items matched (dry-run, not written)"
+            )
             continue
 
         written = write_auction_comps(
-            safe_id, item_exports, generated_at,
-            url=supabase_url, key=supabase_key, session=session,
+            safe_id,
+            item_exports,
+            generated_at,
+            url=supabase_url,
+            key=supabase_key,
+            session=session,
         )
         summary["auctions_written"] += 1
         summary["rows_written"] += written
@@ -193,16 +210,19 @@ def build_comps(
         f"{summary['auctions']} auctions, {summary['matches']} matches, "
         f"{summary['rows_written']} rows → Supabase ({summary['auctions_written']} auctions)"
     )
-    _telemetry_capture("cannons_comps_completed", {
-        "auctions": summary["auctions"],
-        "items_with_comps": summary["items_with_comps"],
-        "matches": summary["matches"],
-        "auctions_written": summary["auctions_written"],
-        "rows_written": summary["rows_written"],
-        "top_k": top_k,
-        "min_sim": min_sim,
-        "dry_run": dry_run,
-    })
+    _telemetry_capture(
+        "cannons_comps_completed",
+        {
+            "auctions": summary["auctions"],
+            "items_with_comps": summary["items_with_comps"],
+            "matches": summary["matches"],
+            "auctions_written": summary["auctions_written"],
+            "rows_written": summary["rows_written"],
+            "top_k": top_k,
+            "min_sim": min_sim,
+            "dry_run": dry_run,
+        },
+    )
     return summary
 
 
@@ -212,7 +232,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument(
-        "--top-k", type=int, default=int(os.environ.get("GOONERS_CANNONS_COMPS_TOP_K", DEFAULT_TOP_K))
+        "--top-k",
+        type=int,
+        default=int(os.environ.get("GOONERS_CANNONS_COMPS_TOP_K", DEFAULT_TOP_K)),
     )
     parser.add_argument(
         "--min-sim",

@@ -5,6 +5,7 @@ asserts the right events + property keys fire. Reuses the fake Anthropic clients
 from test_enrich. Run:
   uv run --with anthropic --with pytest python -m pytest scraper/test_enrich_telemetry.py -q
 """
+
 import unittest
 from unittest import mock
 
@@ -25,7 +26,9 @@ class EnrichTelemetryTests(unittest.TestCase):
         cap = mock.patch.object(
             enrich,
             "_telemetry_capture",
-            side_effect=lambda event, properties=None: self.events.append((event, properties or {})),
+            side_effect=lambda event, properties=None: self.events.append(
+                (event, properties or {})
+            ),
         )
         cap.start()
         self.addCleanup(cap.stop)
@@ -37,7 +40,9 @@ class EnrichTelemetryTests(unittest.TestCase):
         return dict(self.events)
 
     def test_sync_path_emits_sync_completed(self):
-        client = _FakeClient({"DeWalt DCD771 drill": {"brand": "DeWalt", "confidence": "high"}})
+        client = _FakeClient(
+            {"DeWalt DCD771 drill": {"brand": "DeWalt", "confidence": "high"}}
+        )
         enrich.enrich_items(_items(["a"]), client=client)
         events = self._by_event()
         self.assertIn("enrich_sync_completed", events)
@@ -47,8 +52,12 @@ class EnrichTelemetryTests(unittest.TestCase):
         self.assertEqual(props["model"], enrich.MODEL)
 
     def test_batch_path_emits_submitted_and_completed(self):
-        client = _FakeBatchClient({"DeWalt DCD771 drill": {"brand": "DeWalt", "confidence": "high"}})
-        enrich.enrich_items_batch(_items(["a", "b"]), client=client, poll_interval=0, inline_images=False)
+        client = _FakeBatchClient(
+            {"DeWalt DCD771 drill": {"brand": "DeWalt", "confidence": "high"}}
+        )
+        enrich.enrich_items_batch(
+            _items(["a", "b"]), client=client, poll_interval=0, inline_images=False
+        )
         names = [e for e, _ in self.events]
         self.assertIn("enrich_batch_submitted", names)
         self.assertIn("enrich_batch_completed", names)
@@ -58,7 +67,14 @@ class EnrichTelemetryTests(unittest.TestCase):
         self.assertEqual(submitted["transport"], "url")
         completed = events["enrich_batch_completed"]
         self.assertEqual(completed["lots"], 2)
-        for key in ("succeeded", "errored", "input_tokens", "output_tokens", "est_cost_usd", "model"):
+        for key in (
+            "succeeded",
+            "errored",
+            "input_tokens",
+            "output_tokens",
+            "est_cost_usd",
+            "model",
+        ):
             self.assertIn(key, completed)
 
 

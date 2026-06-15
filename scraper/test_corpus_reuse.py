@@ -37,18 +37,22 @@ class EnabledTest(unittest.TestCase):
 class FreshMatchesTest(unittest.TestCase):
     def test_keeps_only_sales_within_window(self):
         matches = [
-            _match("a", sold_date="2026-06-01"),   # 13 days — fresh
-            _match("b", sold_date="2026-04-20"),   # 55 days — fresh
-            _match("c", sold_date="2026-02-01"),   # >60 days — stale
-            _match("d", sold_date=None),           # undated — not counted
+            _match("a", sold_date="2026-06-01"),  # 13 days — fresh
+            _match("b", sold_date="2026-04-20"),  # 55 days — fresh
+            _match("c", sold_date="2026-02-01"),  # >60 days — stale
+            _match("d", sold_date=None),  # undated — not counted
         ]
         fresh = cr.fresh_matches(matches, max_age_days=60, now=NOW)
         self.assertEqual({m["ebay_item_id"] for m in fresh}, {"a", "b"})
 
     def test_coverage_threshold(self):
         recent = [_match(str(i), sold_date="2026-06-01") for i in range(3)]
-        self.assertTrue(cr.has_fresh_coverage(recent, min_fresh=3, max_age_days=60, now=NOW))
-        self.assertFalse(cr.has_fresh_coverage(recent[:2], min_fresh=3, max_age_days=60, now=NOW))
+        self.assertTrue(
+            cr.has_fresh_coverage(recent, min_fresh=3, max_age_days=60, now=NOW)
+        )
+        self.assertFalse(
+            cr.has_fresh_coverage(recent[:2], min_fresh=3, max_age_days=60, now=NOW)
+        )
 
 
 class ReuseRowsTest(unittest.TestCase):
@@ -59,11 +63,18 @@ class ReuseRowsTest(unittest.TestCase):
             _match("c", sim=0.86),
             _match("d", sim=0.99),  # 4th — dropped by the default keep=3
         ]
-        rows = cr.reuse_comp_rows(matches, "auction-1", "lot-9", "2026-06-14T00:00:00+00:00")
+        rows = cr.reuse_comp_rows(
+            matches, "auction-1", "lot-9", "2026-06-14T00:00:00+00:00"
+        )
         self.assertEqual(len(rows), 3)  # capped at _KEEP
         self.assertTrue(all(r["source_query"] == "visual" for r in rows))
-        self.assertTrue(all(r["auction_safe_id"] == "auction-1" and r["item_id"] == "lot-9" for r in rows))
-        self.assertEqual(rows[0]["match_confidence"], "high")   # 0.91
+        self.assertTrue(
+            all(
+                r["auction_safe_id"] == "auction-1" and r["item_id"] == "lot-9"
+                for r in rows
+            )
+        )
+        self.assertEqual(rows[0]["match_confidence"], "high")  # 0.91
         self.assertEqual(rows[1]["match_confidence"], "medium")  # 0.82
 
     def test_drops_matches_without_a_url(self):
@@ -80,14 +91,18 @@ class CorpusReuserTest(unittest.TestCase):
     def _reuser(self, fetched_at="2026-06-14T00:00:00+00:00"):
         # Patch credential resolution so __init__ keeps enabled=True regardless of
         # the ambient env (it correctly self-disables when creds are absent).
-        with patch.object(cr, "resolve_credentials", return_value=("https://x.supabase.co", "k")):
+        with patch.object(
+            cr, "resolve_credentials", return_value=("https://x.supabase.co", "k")
+        ):
             return cr.CorpusReuser(fetched_at, enabled=True)
 
     def test_covered_when_corpus_has_fresh_matches(self):
         reuser = self._reuser()
         fresh = [_match(str(i), sold_date="2026-06-01") for i in range(3)]
-        with patch.object(cr, "fetch_item_coverage", return_value=fresh), \
-             patch.object(cr, "datetime", wraps=cr.datetime) as dt:
+        with (
+            patch.object(cr, "fetch_item_coverage", return_value=fresh),
+            patch.object(cr, "datetime", wraps=cr.datetime) as dt,
+        ):
             dt.now.return_value = NOW
             rows = reuser.covered_comps({"auctionSafeId": "a", "id": "1"})
         self.assertIsNotNone(rows)
@@ -96,8 +111,10 @@ class CorpusReuserTest(unittest.TestCase):
     def test_not_covered_when_matches_stale(self):
         reuser = self._reuser("t")
         stale = [_match(str(i), sold_date="2026-01-01") for i in range(3)]
-        with patch.object(cr, "fetch_item_coverage", return_value=stale), \
-             patch.object(cr, "datetime", wraps=cr.datetime) as dt:
+        with (
+            patch.object(cr, "fetch_item_coverage", return_value=stale),
+            patch.object(cr, "datetime", wraps=cr.datetime) as dt,
+        ):
             dt.now.return_value = NOW
             self.assertIsNone(reuser.covered_comps({"auctionSafeId": "a", "id": "1"}))
 

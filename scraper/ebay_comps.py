@@ -143,6 +143,7 @@ DEFAULT_MONTHLY_BUDGET = 5000
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
 
+
 def fetch_direct(
     data_dir: Path = DATA_DIR,
     output_dir: Path = EBAY_COMPS_DIR,
@@ -260,6 +261,7 @@ def fetch_direct(
     # candidate set per query (not just the kept comps) for a one-shot upsert
     # after the run. Opt-in + Supabase-only, so the default path is unchanged.
     from supabase_sold_listings import sold_listings_corpus_enabled
+
     corpus_enabled = use_supabase and not dry_run and sold_listings_corpus_enabled()
     corpus_records: list[dict] = []
 
@@ -267,7 +269,8 @@ def fetch_direct(
     # fresh, visually-similar sold listings, use those and skip the paid API.
     # No-op unless GOONERS_CORPUS_FIRST=1 (or corpus_first=True) + Supabase.
     reuser = CorpusReuser(
-        generated_at, session=session,
+        generated_at,
+        session=session,
         enabled=(corpus_first or corpus_first_enabled()) and not dry_run,
     )
 
@@ -297,6 +300,7 @@ def fetch_direct(
     if use_supabase and not dry_run:
         try:
             import ebay_taxonomy
+
             if ebay_taxonomy.leaf_categories_enabled():
                 all_groups = {
                     str(item.get("category") or "")
@@ -323,8 +327,12 @@ def fetch_direct(
             group_candidates = _leaf_candidates_by_group.get(
                 str(item.get("category") or ""), []
             )
-            leaf_id = _best_leaf_fn(group_candidates, str(item.get("productType") or ""))
-        searches = build_ebay_sold_searches(item, leaf_category_id=leaf_id)[:queries_per_item]
+            leaf_id = _best_leaf_fn(
+                group_candidates, str(item.get("productType") or "")
+            )
+        searches = build_ebay_sold_searches(item, leaf_category_id=leaf_id)[
+            :queries_per_item
+        ]
         if not searches:
             continue
 
@@ -343,7 +351,9 @@ def fetch_direct(
             summary["reused_items"] += 1
             if safe_id and item_id:
                 attempts.setdefault(safe_id, {})[item_id] = {
-                    "fetchedAt": generated_at, "status": "reused", "queries": 0,
+                    "fetchedAt": generated_at,
+                    "status": "reused",
+                    "queries": 0,
                 }
             continue
 
@@ -371,12 +381,14 @@ def fetch_direct(
                 # broad/category tiers leave it empty), the query string that
                 # surfaced it, and the seen time. raw_json is already attached.
                 for candidate in result.get("all_candidates") or []:
-                    corpus_records.append({
-                        **candidate,
-                        "category_id": text_value(search.get("category_id")),
-                        "source_query": text_value(search.get("query")),
-                        "last_seen_at": generated_at,
-                    })
+                    corpus_records.append(
+                        {
+                            **candidate,
+                            "category_id": text_value(search.get("category_id")),
+                            "source_query": text_value(search.get("query")),
+                            "last_seen_at": generated_at,
+                        }
+                    )
             remaining = result.get("provider_remaining")
             if remaining is not None:
                 summary["provider_remaining"] = remaining
@@ -434,7 +446,11 @@ def fetch_direct(
         if use_supabase
         else f"{summary['files_written']} auction files updated"
     )
-    reused_msg = f", {summary['reused_items']} reused from corpus" if summary["reused_items"] else ""
+    reused_msg = (
+        f", {summary['reused_items']} reused from corpus"
+        if summary["reused_items"]
+        else ""
+    )
     print(
         f"eBay comp fetch: {summary['items_attempted']} items, "
         f"{summary['queries_attempted']} queries, {summary['matches']} matches"
@@ -462,6 +478,7 @@ def fetch_direct(
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fetch eBay sold comps into the static read model"
@@ -475,7 +492,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     fetch_parser.add_argument("--output-dir", type=Path, default=EBAY_COMPS_DIR)
     fetch_parser.add_argument(
-        "--limit", type=int, default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT))
+        "--limit",
+        type=int,
+        default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT)),
     )
     fetch_parser.add_argument("--queries-per-item", type=int, default=3)
     fetch_parser.add_argument("--max-matches", type=int, default=3)
@@ -490,7 +509,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--monthly-budget",
         type=int,
         default=int(
-            os.environ.get("GOONERS_EBAY_COMPS_MONTHLY_BUDGET", str(DEFAULT_MONTHLY_BUDGET))
+            os.environ.get(
+                "GOONERS_EBAY_COMPS_MONTHLY_BUDGET", str(DEFAULT_MONTHLY_BUDGET)
+            )
         ),
         help="Shared monthly request ceiling across all runs (derived from the "
         "read model). 0 disables it.",
@@ -582,7 +603,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apify_parser.add_argument(
         "--concurrency",
         type=int,
-        default=int(os.environ.get("GOONERS_APIFY_CONCURRENCY", str(APIFY_CONCURRENCY))),
+        default=int(
+            os.environ.get("GOONERS_APIFY_CONCURRENCY", str(APIFY_CONCURRENCY))
+        ),
         help="Max parallel Apify actor runs.",
     )
     apify_parser.add_argument(

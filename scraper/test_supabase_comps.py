@@ -53,9 +53,7 @@ class RowPayloadTest(unittest.TestCase):
 class ResolveCredentialsTest(unittest.TestCase):
     def test_args_win(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(
-                supabase_comps.resolve_credentials("u", "k"), ("u", "k")
-            )
+            self.assertEqual(supabase_comps.resolve_credentials("u", "k"), ("u", "k"))
 
     def test_falls_back_to_vite_url(self):
         with patch.dict(
@@ -93,8 +91,11 @@ class AppendTest(unittest.TestCase):
         rows = [{"item_id": f"i{n}", "price_value": Decimal("1.00")} for n in range(3)]
 
         written = supabase_comps.append_ebay_comp_snapshots(
-            rows, url="https://x.supabase.co/", key="sb_secret_x",
-            session=session, batch_size=2,
+            rows,
+            url="https://x.supabase.co/",
+            key="sb_secret_x",
+            session=session,
+            batch_size=2,
         )
 
         self.assertEqual(written, 3)
@@ -115,7 +116,10 @@ class AppendTest(unittest.TestCase):
         with patch("supabase_comps.time.sleep") as sleep:
             with self.assertRaisesRegex(RuntimeError, "Supabase comp insert failed"):
                 supabase_comps.append_ebay_comp_snapshots(
-                    [{"item_id": "i"}], url="https://x.supabase.co", key="k", session=session
+                    [{"item_id": "i"}],
+                    url="https://x.supabase.co",
+                    key="k",
+                    session=session,
                 )
         # 4xx is permanent — no retry, no backoff.
         self.assertEqual(session.post.call_count, 1)
@@ -129,7 +133,10 @@ class AppendTest(unittest.TestCase):
         ]
         with patch("supabase_comps.time.sleep") as sleep:
             written = supabase_comps.append_ebay_comp_snapshots(
-                [{"item_id": "i"}], url="https://x.supabase.co", key="k", session=session
+                [{"item_id": "i"}],
+                url="https://x.supabase.co",
+                key="k",
+                session=session,
             )
         self.assertEqual(written, 1)
         self.assertEqual(session.post.call_count, 2)
@@ -145,7 +152,10 @@ class AppendTest(unittest.TestCase):
         ]
         with patch("supabase_comps.time.sleep"):
             written = supabase_comps.append_ebay_comp_snapshots(
-                [{"item_id": "i"}], url="https://x.supabase.co", key="k", session=session
+                [{"item_id": "i"}],
+                url="https://x.supabase.co",
+                key="k",
+                session=session,
             )
         self.assertEqual(written, 1)
         self.assertEqual(session.post.call_count, 2)
@@ -196,7 +206,9 @@ class SupabaseCompLedgerTest(unittest.TestCase):
 
     def test_fresh_keys_skip_attempted_has_no_time_filter(self):
         session = unittest.mock.MagicMock()
-        session.get.return_value = unittest.mock.MagicMock(status_code=200, json=lambda: [])
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, json=lambda: []
+        )
         self._ledger(session).fresh_keys(stale_hours=168, skip_attempted=True)
         _, kwargs = session.get.call_args
         self.assertNotIn("last_fetched_at", kwargs["params"])
@@ -215,7 +227,9 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         now = datetime(2026, 6, 5, 12, 30, tzinfo=UTC)
         self.assertEqual(ledger.requests_used_in_month(now), 42)
         _, kwargs = session.get.call_args
-        self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-01T00:00:00+00:00")
+        self.assertEqual(
+            kwargs["params"]["fetched_at"], "gte.2026-06-01T00:00:00+00:00"
+        )
         self.assertEqual(kwargs["headers"]["Prefer"], "count=exact")
 
     def test_requests_used_today_counts_from_midnight(self):
@@ -227,7 +241,9 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         now = datetime(2026, 6, 5, 12, 30, tzinfo=UTC)
         self.assertEqual(ledger.requests_used_today(now), 5)
         _, kwargs = session.get.call_args
-        self.assertEqual(kwargs["params"]["fetched_at"], "gte.2026-06-05T00:00:00+00:00")
+        self.assertEqual(
+            kwargs["params"]["fetched_at"], "gte.2026-06-05T00:00:00+00:00"
+        )
 
     def test_ledger_read_http_error_retries_then_raises(self):
         session = unittest.mock.MagicMock()
@@ -237,9 +253,7 @@ class SupabaseCompLedgerTest(unittest.TestCase):
                 self._ledger(session).fresh_keys(stale_hours=168)
         # Transient 5xx is retried with backoff before giving up.
         self.assertEqual(session.get.call_count, supabase_comps.DEFAULT_MAX_RETRIES + 1)
-        self.assertEqual(
-            [call.args[0] for call in sleep.call_args_list], [2, 4, 8, 16]
-        )
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 4, 8, 16])
 
     def test_provider_remaining_reads_latest_reading(self):
         session = unittest.mock.MagicMock()
@@ -263,13 +277,19 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         session = unittest.mock.MagicMock()
         # First call: latest remaining (order observed_at.desc). Second: day high.
         session.get.side_effect = [
-            unittest.mock.MagicMock(status_code=200, json=lambda: [{"remaining": 1600}]),
-            unittest.mock.MagicMock(status_code=200, json=lambda: [{"remaining": 1750}]),
+            unittest.mock.MagicMock(
+                status_code=200, json=lambda: [{"remaining": 1600}]
+            ),
+            unittest.mock.MagicMock(
+                status_code=200, json=lambda: [{"remaining": 1750}]
+            ),
         ]
         now = datetime(2026, 6, 14, 12, 0, tzinfo=UTC)
         self.assertEqual(self._ledger(session).provider_used_today(now), 150)
         _, kwargs = session.get.call_args  # the day-high read
-        self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-14T00:00:00+00:00")
+        self.assertEqual(
+            kwargs["params"]["observed_at"], "gte.2026-06-14T00:00:00+00:00"
+        )
         self.assertEqual(kwargs["params"]["order"], "remaining.desc")
 
     def test_provider_used_today_zero_when_no_reading(self):

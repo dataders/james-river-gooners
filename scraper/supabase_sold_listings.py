@@ -60,7 +60,11 @@ SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json")
 
 def sold_listings_corpus_enabled() -> bool:
     """Whether to capture + persist the raw sold-listings corpus (opt-in)."""
-    return os.environ.get("GOONERS_SOLD_LISTINGS_CORPUS", "").strip() in {"1", "true", "True"}
+    return os.environ.get("GOONERS_SOLD_LISTINGS_CORPUS", "").strip() in {
+        "1",
+        "true",
+        "True",
+    }
 
 
 def build_sold_listing_rows(records: list[dict]) -> list[dict]:
@@ -105,9 +109,13 @@ def upsert_sold_listings(
 
     url, key = resolve_credentials(url, key)
     if not url:
-        raise RuntimeError("SUPABASE_URL is required to write sold listings to Supabase")
+        raise RuntimeError(
+            "SUPABASE_URL is required to write sold listings to Supabase"
+        )
     if not key:
-        raise RuntimeError("SUPABASE_SECRET_KEY is required to write sold listings to Supabase")
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is required to write sold listings to Supabase"
+        )
 
     from http_client import supabase_session
 
@@ -126,7 +134,11 @@ def upsert_sold_listings(
         batch = rows[start : start + batch_size]
         _request_with_retry(
             partial(
-                session.post, endpoint, headers=headers, data=json.dumps(batch), timeout=WRITE_TIMEOUT
+                session.post,
+                endpoint,
+                headers=headers,
+                data=json.dumps(batch),
+                timeout=WRITE_TIMEOUT,
             ),
             "Supabase sold-listings upsert",
         )
@@ -148,8 +160,10 @@ def maybe_export_sold_listings(records: list[dict], session=None) -> int:
     url, key = resolve_credentials()
     if not key:
         if url:
-            print("  WARNING: SUPABASE_URL is set but SUPABASE_SECRET_KEY is not — "
-                  "skipping sold-listings corpus write")
+            print(
+                "  WARNING: SUPABASE_URL is set but SUPABASE_SECRET_KEY is not — "
+                "skipping sold-listings corpus write"
+            )
         return 0
     rows = build_sold_listing_rows(records)
     if not rows:
@@ -157,7 +171,9 @@ def maybe_export_sold_listings(records: list[dict], session=None) -> int:
     try:
         written = upsert_sold_listings(rows, url=url, key=key, session=session)
     except RuntimeError as exc:
-        print(f"  WARNING: failed to write {len(rows)} sold-listing(s) to Supabase: {exc}")
+        print(
+            f"  WARNING: failed to write {len(rows)} sold-listing(s) to Supabase: {exc}"
+        )
         return 0
     print(f"  upserted {written} sold-listing(s) into the corpus")
     return written

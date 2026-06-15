@@ -106,7 +106,11 @@ def finalize_closed_file(path: Path) -> None:
     if not ndjson_path.exists():
         return
 
-    rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in ndjson_path.read_text().splitlines()
+        if line.strip()
+    ]
     if not rows:
         return
 
@@ -200,7 +204,9 @@ def manifest_entry_for_file(path: Path, archived: bool) -> dict:
 
 def manifest_sort_key(entry: dict) -> tuple[datetime, str]:
     parsed = parse_end_date(str(entry.get("endDate", "")))
-    return parsed or datetime.max.replace(tzinfo=UTC), entry.get("title") or entry.get("safeId", "")
+    return parsed or datetime.max.replace(tzinfo=UTC), entry.get("title") or entry.get(
+        "safeId", ""
+    )
 
 
 def build_manifest(paths: list[Path], archived: bool) -> dict:
@@ -212,7 +218,11 @@ def build_manifest(paths: list[Path], archived: bool) -> dict:
 def update_manifests() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     active_paths = sorted(ITEMS_DIR.glob("*.parquet")) if ITEMS_DIR.exists() else []
-    archive_paths = sorted(ARCHIVE_ITEMS_DIR.glob("*.parquet")) if ARCHIVE_ITEMS_DIR.exists() else []
+    archive_paths = (
+        sorted(ARCHIVE_ITEMS_DIR.glob("*.parquet"))
+        if ARCHIVE_ITEMS_DIR.exists()
+        else []
+    )
     active_manifest = build_manifest(active_paths, archived=False)
     archive_manifest = build_manifest(archive_paths, archived=True)
     MANIFEST_PATH.write_text(json.dumps(active_manifest, indent=2) + "\n")
@@ -228,9 +238,12 @@ def _supabase_archive_file(path: Path) -> None:
     ndjson = path.with_suffix(".ndjson")
     if not ndjson.exists():
         return
-    items = [json.loads(line) for line in ndjson.read_text().splitlines() if line.strip()]
+    items = [
+        json.loads(line) for line in ndjson.read_text().splitlines() if line.strip()
+    ]
     if items:
         from supabase_lots import archive_lots
+
         archive_lots(path.stem, items)
 
 
@@ -340,10 +353,10 @@ def _run_with_retry(cmd: list[str], cwd: Path, label: str) -> int:
 class SourceJob:
     """A single auction's subprocess invocation, plus how to label it in logs."""
 
-    header: str         # banner line after "[i/total] <SourceName>: "
-    cmd: list[str]      # argv for the subprocess
-    retry_label: str    # short label for the retry message
-    fail_id: str        # what to record/print when the job fails
+    header: str  # banner line after "[i/total] <SourceName>: "
+    cmd: list[str]  # argv for the subprocess
+    retry_label: str  # short label for the retry message
+    fail_id: str  # what to record/print when the job fails
 
 
 @dataclass
@@ -367,10 +380,13 @@ def _hibid_job(spec: dict) -> SourceJob:
     return SourceJob(
         header=f"({spec['company_name']}): {spec['catalog_url']}",
         cmd=[
-            sys.executable, "scrape_hibid.py",
+            sys.executable,
+            "scrape_hibid.py",
             spec["catalog_url"],
-            "--source", spec["source_slug"],
-            "--company", spec["company_name"],
+            "--source",
+            spec["source_slug"],
+            "--company",
+            spec["company_name"],
         ],
         retry_label=spec["catalog_url"],
         fail_id=spec["catalog_url"],
@@ -381,11 +397,15 @@ def _rasmus_job(spec: dict) -> SourceJob:
     return SourceJob(
         header=f"({spec['company_name']}): {spec['title'][:60]}",
         cmd=[
-            sys.executable, "scrape_rasmus.py",
+            sys.executable,
+            "scrape_rasmus.py",
             spec["aid"],
-            "--source", spec["source_slug"],
-            "--company", spec["company_name"],
-            "--title", spec["title"],
+            "--source",
+            spec["source_slug"],
+            "--company",
+            spec["company_name"],
+            "--title",
+            spec["title"],
         ],
         retry_label=spec["aid"],
         fail_id=spec["aid"],
@@ -405,9 +425,9 @@ def _scrape_source(
     cwd = Path(__file__).resolve().parent
     for j, spec in enumerate(specs, start_i):
         job = runner.build(spec)
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"[{j}/{total}] {runner.name}: {job.header}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         rc = _run_with_retry(job.cmd, cwd, job.retry_label)
         if rc != 0:
             print(f"FAILED: {job.header}")
@@ -484,7 +504,7 @@ def main() -> None:
         RASMUS, rasmus_specs, total, len(maxanet_urls) + len(hibid_specs) + 1
     )
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Done: {total - len(failures)}/{total} succeeded")
 
     if args.source is None:

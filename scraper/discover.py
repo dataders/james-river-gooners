@@ -63,10 +63,12 @@ def _discover_auction_urls(
     auctions (newest first). ``limit`` caps the number of URLs returned.
     """
     session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "X-Requested-With": "XMLHttpRequest",
-    })
+    session.headers.update(
+        {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+    )
     session.get(f"{BASE_URL}/Public", timeout=30).raise_for_status()
 
     urls = []
@@ -100,7 +102,9 @@ def _discover_auction_urls(
     return urls
 
 
-def discover_current_auction_urls(page_size: int = 100, max_pages: int = 10) -> list[str]:
+def discover_current_auction_urls(
+    page_size: int = 100, max_pages: int = 10
+) -> list[str]:
     """Fetch current auction cards and return full AuctionItems URLs."""
     return _discover_auction_urls("Current", page_size=page_size, max_pages=max_pages)
 

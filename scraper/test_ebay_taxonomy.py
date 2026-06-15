@@ -13,11 +13,17 @@ _SAMPLE_TREE = {
                 "category": {"categoryId": "550", "categoryName": "Art"},
                 "childCategoryTreeNodes": [
                     {
-                        "category": {"categoryId": "11890", "categoryName": "Paintings"},
+                        "category": {
+                            "categoryId": "11890",
+                            "categoryName": "Paintings",
+                        },
                         "childCategoryTreeNodes": [],
                     },
                     {
-                        "category": {"categoryId": "13193", "categoryName": "Art Prints"},
+                        "category": {
+                            "categoryId": "13193",
+                            "categoryName": "Art Prints",
+                        },
                         "childCategoryTreeNodes": [],
                     },
                 ],
@@ -26,10 +32,16 @@ _SAMPLE_TREE = {
                 "category": {"categoryId": "870", "categoryName": "Pottery & Glass"},
                 "childCategoryTreeNodes": [
                     {
-                        "category": {"categoryId": "110107", "categoryName": "Art Glass"},
+                        "category": {
+                            "categoryId": "110107",
+                            "categoryName": "Art Glass",
+                        },
                         "childCategoryTreeNodes": [
                             {
-                                "category": {"categoryId": "110108", "categoryName": "Blown Glass"},
+                                "category": {
+                                    "categoryId": "110108",
+                                    "categoryName": "Blown Glass",
+                                },
                                 "childCategoryTreeNodes": [],
                             },
                         ],
@@ -57,7 +69,9 @@ class FetchCategoryTreeTest(unittest.TestCase):
     def test_flattens_all_nodes(self):
         rows = self._fetch()
         by_id = {r["category_id"]: r for r in rows}
-        self.assertEqual(set(by_id), {"550", "11890", "13193", "870", "110107", "110108"})
+        self.assertEqual(
+            set(by_id), {"550", "11890", "13193", "870", "110107", "110108"}
+        )
 
     def test_leaf_flag(self):
         rows = self._fetch()
@@ -76,7 +90,9 @@ class FetchCategoryTreeTest(unittest.TestCase):
         by_id = {r["category_id"]: r for r in rows}
         self.assertEqual(by_id["550"]["full_path"], "Art")
         self.assertEqual(by_id["11890"]["full_path"], "Art > Paintings")
-        self.assertEqual(by_id["110108"]["full_path"], "Pottery & Glass > Art Glass > Blown Glass")
+        self.assertEqual(
+            by_id["110108"]["full_path"], "Pottery & Glass > Art Glass > Blown Glass"
+        )
 
     def test_parent_id(self):
         rows = self._fetch()
@@ -105,11 +121,14 @@ class FetchCategoryTreeTest(unittest.TestCase):
                 ]
             }
         }
-        with patch("requests.get", return_value=MagicMock(
-            status_code=200,
-            json=lambda: tree,
-            raise_for_status=lambda: None,
-        )):
+        with patch(
+            "requests.get",
+            return_value=MagicMock(
+                status_code=200,
+                json=lambda: tree,
+                raise_for_status=lambda: None,
+            ),
+        ):
             rows = et.fetch_category_tree("tok")
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["category_id"], "550")
@@ -143,7 +162,9 @@ class LeafCategoriesEnabledTest(unittest.TestCase):
 
     def test_on_for_truthy_values(self):
         for val in ("1", "true", "True"):
-            with patch.dict(os.environ, {"GOONERS_EBAY_LEAF_CATEGORIES": val}, clear=True):
+            with patch.dict(
+                os.environ, {"GOONERS_EBAY_LEAF_CATEGORIES": val}, clear=True
+            ):
                 self.assertTrue(et.leaf_categories_enabled())
 
     def test_off_for_other_values(self):
@@ -153,11 +174,15 @@ class LeafCategoriesEnabledTest(unittest.TestCase):
 
 class ScorePathTest(unittest.TestCase):
     def test_matching_tokens_score_positive(self):
-        score = et._score_path("Pottery & Glass > Roseville Pottery", "Roseville pottery vase")
+        score = et._score_path(
+            "Pottery & Glass > Roseville Pottery", "Roseville pottery vase"
+        )
         self.assertGreater(score, 0.0)
 
     def test_no_matching_tokens_scores_zero(self):
-        self.assertEqual(et._score_path("Art > Paintings", "Roseville pottery vase"), 0.0)
+        self.assertEqual(
+            et._score_path("Art > Paintings", "Roseville pottery vase"), 0.0
+        )
 
     def test_empty_product_type_scores_zero(self):
         self.assertEqual(et._score_path("Art > Paintings", ""), 0.0)
@@ -183,7 +208,9 @@ class BestLeafFromCandidatesTest(unittest.TestCase):
         self.assertEqual(result, "11890")
 
     def test_returns_empty_when_no_token_matches(self):
-        result = et.best_leaf_from_candidates(self._CANDIDATES, "Roseville pottery vase")
+        result = et.best_leaf_from_candidates(
+            self._CANDIDATES, "Roseville pottery vase"
+        )
         self.assertEqual(result, "")
 
     def test_returns_empty_with_no_product_type(self):
@@ -210,10 +237,14 @@ class LoadLeafCandidatesByGroupTest(unittest.TestCase):
 
     def test_one_query_per_group(self):
         with patch("requests.get", return_value=self._leaf_resp([])) as mock_get:
-            with patch.dict(os.environ, {
-                "SUPABASE_URL": "https://x.supabase.co",
-                "SUPABASE_SECRET_KEY": "sb_secret_x",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "SUPABASE_URL": "https://x.supabase.co",
+                    "SUPABASE_SECRET_KEY": "sb_secret_x",
+                },
+                clear=True,
+            ):
                 result = et.load_leaf_candidates_by_group({"Art", "China & Glass"})
 
         self.assertEqual(mock_get.call_count, 2)
@@ -222,10 +253,14 @@ class LoadLeafCandidatesByGroupTest(unittest.TestCase):
 
     def test_unmapped_group_returns_empty_list_without_http(self):
         with patch("requests.get") as mock_get:
-            with patch.dict(os.environ, {
-                "SUPABASE_URL": "https://x.supabase.co",
-                "SUPABASE_SECRET_KEY": "sb_secret_x",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "SUPABASE_URL": "https://x.supabase.co",
+                    "SUPABASE_SECRET_KEY": "sb_secret_x",
+                },
+                clear=True,
+            ):
                 result = et.load_leaf_candidates_by_group({"Vehicles"})
 
         # "Vehicles" → no L1 name mapping → no HTTP call made
@@ -235,10 +270,14 @@ class LoadLeafCandidatesByGroupTest(unittest.TestCase):
     def test_supabase_error_returns_empty_list(self):
         bad_resp = MagicMock(status_code=500)
         with patch("requests.get", return_value=bad_resp):
-            with patch.dict(os.environ, {
-                "SUPABASE_URL": "https://x.supabase.co",
-                "SUPABASE_SECRET_KEY": "sb_secret_x",
-            }, clear=True):
+            with patch.dict(
+                os.environ,
+                {
+                    "SUPABASE_URL": "https://x.supabase.co",
+                    "SUPABASE_SECRET_KEY": "sb_secret_x",
+                },
+                clear=True,
+            ):
                 result = et.load_leaf_candidates_by_group({"Art"})
 
         self.assertEqual(result["Art"], [])

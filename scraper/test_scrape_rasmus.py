@@ -20,12 +20,28 @@ class RichmondSpecsFromAidsTest(unittest.TestCase):
 
     def test_keeps_only_richmond_non_real_estate(self):
         metas = {
-            "a": {"title": "Estate Auction Richmond VA", "description": "", "image": "imgA"},
-            "b": {"title": "Furniture Sale Laurel MD", "description": "", "image": "imgB"},
-            "c": {"title": "Land Auction Glen Allen VA", "description": "acres", "image": "imgC"},
+            "a": {
+                "title": "Estate Auction Richmond VA",
+                "description": "",
+                "image": "imgA",
+            },
+            "b": {
+                "title": "Furniture Sale Laurel MD",
+                "description": "",
+                "image": "imgB",
+            },
+            "c": {
+                "title": "Land Auction Glen Allen VA",
+                "description": "acres",
+                "image": "imgC",
+            },
         }
-        with mock.patch.object(scrape_rasmus, "fetch_auction_meta", side_effect=lambda s, aid: metas[aid]):
-            specs = _richmond_specs_from_aids(mock.Mock(), ["a", "b", "c"], "rasmus", "Rasmus", self.KEYWORDS)
+        with mock.patch.object(
+            scrape_rasmus, "fetch_auction_meta", side_effect=lambda s, aid: metas[aid]
+        ):
+            specs = _richmond_specs_from_aids(
+                mock.Mock(), ["a", "b", "c"], "rasmus", "Rasmus", self.KEYWORDS
+            )
 
         # b is out (not Richmond), c is out (real estate); only a survives.
         self.assertEqual([s["aid"] for s in specs], ["a"])
@@ -35,7 +51,9 @@ class RichmondSpecsFromAidsTest(unittest.TestCase):
 
 class RasmusSafeIdTest(unittest.TestCase):
     def test_prefixes_aid(self):
-        self.assertEqual(rasmus_safe_id("pf23czO6MUhD0MLWL3Du"), "rasmus_pf23czO6MUhD0MLWL3Du")
+        self.assertEqual(
+            rasmus_safe_id("pf23czO6MUhD0MLWL3Du"), "rasmus_pf23czO6MUhD0MLWL3Du"
+        )
 
     def test_prefix_prevents_collision(self):
         self.assertTrue(rasmus_safe_id("abc").startswith("rasmus_"))
@@ -54,7 +72,9 @@ class LocationMatchesTest(unittest.TestCase):
         self.assertTrue(location_matches("located in AYLETT, virginia", self.KEYWORDS))
 
     def test_non_richmond_not_matched(self):
-        self.assertFalse(location_matches("Appliances & Home Goods Laurel MD", self.KEYWORDS))
+        self.assertFalse(
+            location_matches("Appliances & Home Goods Laurel MD", self.KEYWORDS)
+        )
 
     def test_whole_word_only(self):
         # "Richmondville" should not match "Richmond"
@@ -69,7 +89,9 @@ class ParseRasmusCategoryTest(unittest.TestCase):
         self.assertEqual(parse_rasmus_category(["0--Category--China"]), "China")
 
     def test_nested_path_takes_leaf(self):
-        self.assertEqual(parse_rasmus_category(["3--Category--Vehicles--Trucks"]), "Trucks")
+        self.assertEqual(
+            parse_rasmus_category(["3--Category--Vehicles--Trucks"]), "Trucks"
+        )
 
     def test_takes_first_of_multiple(self):
         self.assertEqual(
@@ -114,7 +136,9 @@ class FirestoreValueTest(unittest.TestCase):
         self.assertEqual(_fs_value(mp), {"k": 1})
 
     def test_fs_fields(self):
-        doc = {"fields": {"name": {"stringValue": "Chair"}, "lot": {"integerValue": "5"}}}
+        doc = {
+            "fields": {"name": {"stringValue": "Chair"}, "lot": {"integerValue": "5"}}
+        }
         self.assertEqual(_fs_fields(doc), {"name": "Chair", "lot": 5})
 
 
@@ -128,19 +152,35 @@ def _lot_doc(**overrides) -> dict:
         "has_bids": {"booleanValue": True},
         "time_end": {"integerValue": "1624825380000"},
         "category": {"arrayValue": {"values": [{"stringValue": "0--Category--China"}]}},
-        "bidders_by_uid": {"arrayValue": {"values": [
-            {"stringValue": "u1"}, {"stringValue": "u2"}, {"stringValue": "u3"},
-        ]}},
-        "photos_display": {"arrayValue": {"values": [
-            {"mapValue": {"fields": {
-                "src": {"stringValue": "https://img/121-0.jpg"},
-                "thumb": {"stringValue": "https://img/121-0-small.jpg"},
-            }}},
-        ]}},
+        "bidders_by_uid": {
+            "arrayValue": {
+                "values": [
+                    {"stringValue": "u1"},
+                    {"stringValue": "u2"},
+                    {"stringValue": "u3"},
+                ]
+            }
+        },
+        "photos_display": {
+            "arrayValue": {
+                "values": [
+                    {
+                        "mapValue": {
+                            "fields": {
+                                "src": {"stringValue": "https://img/121-0.jpg"},
+                                "thumb": {"stringValue": "https://img/121-0-small.jpg"},
+                            }
+                        }
+                    },
+                ]
+            }
+        },
     }
     fields.update(overrides)
-    return {"name": "projects/dark-shade/databases/(default)/documents/items/0001zxfoJl12GN2NEu24",
-            "fields": fields}
+    return {
+        "name": "projects/dark-shade/databases/(default)/documents/items/0001zxfoJl12GN2NEu24",
+        "fields": fields,
+    }
 
 
 class MapItemTest(unittest.TestCase):

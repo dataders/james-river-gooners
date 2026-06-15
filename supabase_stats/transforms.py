@@ -85,7 +85,11 @@ CURATED: tuple[tuple[str, str, str | None], ...] = (
     ("connection_stats_connection_count", "database", "load"),
     ("direct_connection_stats_connection_count", "database", "load"),
     ("max_connections_connection_count", "database", "load"),
-    ("physical_replication_lag_physical_replication_lag_seconds", "database", "performance"),
+    (
+        "physical_replication_lag_physical_replication_lag_seconds",
+        "database",
+        "performance",
+    ),
     ("physical_replication_lag_is_connected_to_primary", "database", "reliability"),
     # ---- PostgREST (the data API the browser hits) ----
     ("pgrst_db_pool_available", "postgrest", "load"),

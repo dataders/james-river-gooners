@@ -12,8 +12,18 @@ class CompRowsTest(unittest.TestCase):
         item_exports = {
             "i1": {
                 "matches": [
-                    {"title": "Pine Chair", "soldPrice": 30, "similarity": 0.91, "source": "cannons"},
-                    {"title": "Oak Chair", "soldPrice": 25, "similarity": 0.83, "source": "rasmus"},
+                    {
+                        "title": "Pine Chair",
+                        "soldPrice": 30,
+                        "similarity": 0.91,
+                        "source": "cannons",
+                    },
+                    {
+                        "title": "Oak Chair",
+                        "soldPrice": 25,
+                        "similarity": 0.83,
+                        "source": "rasmus",
+                    },
                 ]
             },
             "i2": {"matches": [{"title": "Lamp", "soldPrice": 12, "similarity": 0.88}]},
@@ -39,10 +49,14 @@ class WriteAuctionCompsTest(unittest.TestCase):
     def test_missing_credentials_raise(self):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(RuntimeError, "SUPABASE_URL"):
-                scc.write_auction_comps("a", {"i": {"matches": [{"title": "x", "soldPrice": 1}]}}, "t")
+                scc.write_auction_comps(
+                    "a", {"i": {"matches": [{"title": "x", "soldPrice": 1}]}}, "t"
+                )
             with self.assertRaisesRegex(RuntimeError, "SUPABASE_SECRET_KEY"):
                 scc.write_auction_comps(
-                    "a", {"i": {"matches": [{"title": "x", "soldPrice": 1}]}}, "t",
+                    "a",
+                    {"i": {"matches": [{"title": "x", "soldPrice": 1}]}},
+                    "t",
                     url="https://x.supabase.co",
                 )
 
@@ -60,32 +74,48 @@ class WriteAuctionCompsTest(unittest.TestCase):
         session.post.return_value = mock.MagicMock(status_code=201)
         session.delete.return_value = mock.MagicMock(status_code=204)
 
-        item_exports = {"i1": {"matches": [{"title": "Chair", "soldPrice": 30, "similarity": 0.9}]}}
+        item_exports = {
+            "i1": {"matches": [{"title": "Chair", "soldPrice": 30, "similarity": 0.9}]}
+        }
         written = scc.write_auction_comps(
-            "auc", item_exports, "2026-06-05T00:00:00Z",
-            url="https://x.supabase.co/", key="sb_secret_x", session=session,
+            "auc",
+            item_exports,
+            "2026-06-05T00:00:00Z",
+            url="https://x.supabase.co/",
+            key="sb_secret_x",
+            session=session,
         )
 
         self.assertEqual(written, 1)
         # Insert first, then prune.
         post_args, post_kwargs = session.post.call_args
-        self.assertEqual(post_args[0], "https://x.supabase.co/rest/v1/cannons_comp_snapshots")
+        self.assertEqual(
+            post_args[0], "https://x.supabase.co/rest/v1/cannons_comp_snapshots"
+        )
         self.assertEqual(post_kwargs["headers"]["Authorization"], "Bearer sb_secret_x")
         body = json.loads(post_kwargs["data"])
         self.assertEqual(body[0]["match_title"], "Chair")
 
         del_args, del_kwargs = session.delete.call_args
-        self.assertEqual(del_args[0], "https://x.supabase.co/rest/v1/cannons_comp_snapshots")
+        self.assertEqual(
+            del_args[0], "https://x.supabase.co/rest/v1/cannons_comp_snapshots"
+        )
         self.assertEqual(del_kwargs["params"]["auction_safe_id"], "eq.auc")
-        self.assertEqual(del_kwargs["params"]["generated_at"], "lt.2026-06-05T00:00:00Z")
+        self.assertEqual(
+            del_kwargs["params"]["generated_at"], "lt.2026-06-05T00:00:00Z"
+        )
 
     def test_insert_http_error_raises_before_prune(self):
         session = mock.MagicMock()
         session.post.return_value = mock.MagicMock(status_code=400, text="bad")
         with self.assertRaisesRegex(RuntimeError, "cannons comp insert.*failed"):
             scc.write_auction_comps(
-                "auc", {"i": {"matches": [{"title": "x", "soldPrice": 1}]}}, "t",
-                url="https://x.supabase.co", key="k", session=session,
+                "auc",
+                {"i": {"matches": [{"title": "x", "soldPrice": 1}]}},
+                "t",
+                url="https://x.supabase.co",
+                key="k",
+                session=session,
             )
         session.delete.assert_not_called()
 

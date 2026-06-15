@@ -83,7 +83,12 @@ def github_source(
         since = updated_at.last_value or start
         for raw in client.paginate(
             "issues",
-            {"state": "all", "since": since.isoformat(), "sort": "updated", "direction": "asc"},
+            {
+                "state": "all",
+                "since": since.isoformat(),
+                "sort": "updated",
+                "direction": "asc",
+            },
         ):
             row = issue_row(raw)
             if not row["is_pull_request"]:
@@ -117,7 +122,9 @@ def github_source(
     ):
         since = created_at.last_value or start
         for raw in client.paginate_wrapped(
-            "actions/runs", "workflow_runs", {"created": f">={since.date().isoformat()}"}
+            "actions/runs",
+            "workflow_runs",
+            {"created": f">={since.date().isoformat()}"},
         ):
             yield workflow_run_row(raw)
 
@@ -187,22 +194,31 @@ def run(
         )
 
     repo = resolve_repo(repo)
-    print(f"Loading GitHub stats for {repo} (lookback {lookback_days}d) → MotherDuck {MD_DATABASE}.{DATASET_NAME}")
+    print(
+        f"Loading GitHub stats for {repo} (lookback {lookback_days}d) → MotherDuck {MD_DATABASE}.{DATASET_NAME}"
+    )
 
     pipeline = dlt.pipeline(
         pipeline_name=PIPELINE_NAME,
         destination=dlt.destinations.motherduck(credentials=creds),
         dataset_name=DATASET_NAME,
     )
-    source = github_source(repo=repo, lookback_days=lookback_days, max_log_runs=max_log_runs)
+    source = github_source(
+        repo=repo, lookback_days=lookback_days, max_log_runs=max_log_runs
+    )
     info = pipeline.run(source)
     print(info)
     return info
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Load GitHub repo stats into MotherDuck via dlt")
-    parser.add_argument("--repo", help="owner/name to monitor (default: GITHUB_REPOSITORY or project repo)")
+    parser = argparse.ArgumentParser(
+        description="Load GitHub repo stats into MotherDuck via dlt"
+    )
+    parser.add_argument(
+        "--repo",
+        help="owner/name to monitor (default: GITHUB_REPOSITORY or project repo)",
+    )
     parser.add_argument(
         "--lookback-days",
         type=int,

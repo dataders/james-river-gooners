@@ -25,15 +25,21 @@ class FetchLotPriceTest(unittest.TestCase):
     NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
     def test_live_lot_uses_high_bid(self):
-        html = "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD 5 Bids</body></html>"
-        item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        html = (
+            "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD 5 Bids</body></html>"
+        )
+        item = fetch_lot_details(
+            _fake_session(html), "https://hibid.com/lot/123/", "", self.NOW
+        )
         assert item is not None
         self.assertEqual(item["currentBid"], 50.0)
 
     def test_closed_lot_uses_price_realized(self):
         # A closed HiBid lot drops "High Bid" and shows the hammer price instead.
         html = "<html><body><h1>Cool Stamp</h1> Price Realized: 21.00 USD</body></html>"
-        item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        item = fetch_lot_details(
+            _fake_session(html), "https://hibid.com/lot/123/", "", self.NOW
+        )
         assert item is not None
         self.assertEqual(item["currentBid"], 21.0)
 
@@ -42,7 +48,9 @@ class FetchLotPriceTest(unittest.TestCase):
             "<html><body><h1>Cool Stamp</h1> High Bid: $50.00 USD "
             "Price Realized: 21.00 USD</body></html>"
         )
-        item = fetch_lot_details(_fake_session(html), "https://hibid.com/lot/123/", "", self.NOW)
+        item = fetch_lot_details(
+            _fake_session(html), "https://hibid.com/lot/123/", "", self.NOW
+        )
         assert item is not None
         self.assertEqual(item["currentBid"], 50.0)
 
@@ -64,7 +72,9 @@ class IsRealEstateAuctionTest(unittest.TestCase):
         self.assertTrue(is_real_estate_auction("Bank Foreclosure Liquidation"))
 
     def test_normal_estate_auction_not_flagged(self):
-        self.assertFalse(is_real_estate_auction("Current Estate Auction - Furniture & Collectibles"))
+        self.assertFalse(
+            is_real_estate_auction("Current Estate Auction - Furniture & Collectibles")
+        )
 
     def test_empty_title_not_flagged(self):
         self.assertFalse(is_real_estate_auction(""))
@@ -91,7 +101,9 @@ class ExtractCatalogIdTest(unittest.TestCase):
         self.assertEqual(extract_catalog_id(url), "744897")
 
     def test_url_without_slug(self):
-        self.assertEqual(extract_catalog_id("https://hibid.com/catalog/12345/"), "12345")
+        self.assertEqual(
+            extract_catalog_id("https://hibid.com/catalog/12345/"), "12345"
+        )
 
     def test_no_catalog_returns_none(self):
         self.assertIsNone(extract_catalog_id("https://hibid.com/company/79243/"))

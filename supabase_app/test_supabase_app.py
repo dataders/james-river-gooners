@@ -84,7 +84,9 @@ class _FakeSession:
 
 def test_iter_rows_paginates_to_total():
     sess = _FakeSession(total=2500)
-    rows = list(pipeline.iter_rows("http://b", "k", "lots", page_size=1000, session=sess))
+    rows = list(
+        pipeline.iter_rows("http://b", "k", "lots", page_size=1000, session=sess)
+    )
     assert [r["id"] for r in rows] == list(range(2500))
     # 1000 + 1000 + 500 → three requests, offsets advancing by the page size.
     assert sess.ranges == ["0-999", "1000-1999", "2000-2999"]
@@ -92,7 +94,14 @@ def test_iter_rows_paginates_to_total():
 
 def test_iter_rows_empty_table():
     sess = _FakeSession(total=0)
-    assert list(pipeline.iter_rows("http://b", "k", "favorites", page_size=1000, session=sess)) == []
+    assert (
+        list(
+            pipeline.iter_rows(
+                "http://b", "k", "favorites", page_size=1000, session=sess
+            )
+        )
+        == []
+    )
 
 
 def test_run_requires_motherduck_token(monkeypatch):
@@ -120,4 +129,7 @@ def test_run_requires_rest_config(monkeypatch):
 
 def test_parse_args_table_subset():
     assert pipeline.parse_args([]).tables is None
-    assert pipeline.parse_args(["--tables", "lots", "users"]).tables == ["lots", "users"]
+    assert pipeline.parse_args(["--tables", "lots", "users"]).tables == [
+        "lots",
+        "users",
+    ]

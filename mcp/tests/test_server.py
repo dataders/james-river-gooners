@@ -15,8 +15,10 @@ def _tools(client):
 def test_get_lot_merges_enrichment():
     client = MagicMock()
     client.get.side_effect = [
-        [{"auction_safe_id": "A", "item_id": "5", "title": "T", "detail_url": "u"}],  # lot
-        [{"brand": "DeWalt", "confidence": "high"}],                                  # enrichment
+        [
+            {"auction_safe_id": "A", "item_id": "5", "title": "T", "detail_url": "u"}
+        ],  # lot
+        [{"brand": "DeWalt", "confidence": "high"}],  # enrichment
     ]
     tools = _tools(client)
     out = tools["get_lot"]("A", "5")
@@ -45,8 +47,20 @@ def test_search_lots_semantic_uses_embed_query():
     client = MagicMock()
     client.edge_fn.return_value = {"ids": ["A:5", "A:6"]}
     client.get.side_effect = [
-        [{"auction_safe_id": "A", "item_id": "5", "title": "drill", "detail_url": "u5"},
-         {"auction_safe_id": "A", "item_id": "6", "title": "driver", "detail_url": "u6"}],  # lots
+        [
+            {
+                "auction_safe_id": "A",
+                "item_id": "5",
+                "title": "drill",
+                "detail_url": "u5",
+            },
+            {
+                "auction_safe_id": "A",
+                "item_id": "6",
+                "title": "driver",
+                "detail_url": "u6",
+            },
+        ],  # lots
         [],  # enrichment
     ]
     tools = _tools(client)
@@ -59,7 +73,14 @@ def test_search_lots_semantic_falls_back_to_keyword_when_embed_query_unavailable
     client = MagicMock()
     client.edge_fn.side_effect = RuntimeError("404 not deployed")
     client.get.side_effect = [
-        [{"auction_safe_id": "A", "item_id": "7", "title": "drill", "detail_url": "u7"}],  # keyword lots
+        [
+            {
+                "auction_safe_id": "A",
+                "item_id": "7",
+                "title": "drill",
+                "detail_url": "u7",
+            }
+        ],  # keyword lots
         [],  # enrichment
     ]
     tools = _tools(client)
@@ -72,6 +93,7 @@ def test_search_lots_semantic_falls_back_to_keyword_when_embed_query_unavailable
 
 def test_sanitize_ilike_strips_reserved_chars():
     from gooners_mcp.server import _sanitize_ilike
+
     assert _sanitize_ilike("a,b(c)") == "abc"
     assert _sanitize_ilike("50% *off*") == "50 off"
 
@@ -91,9 +113,21 @@ def test_add_favorite_posts_user_id_and_key():
 def test_list_auctions_dedupes_by_safe_id():
     client = MagicMock()
     client.get.return_value = [
-        {"auction_safe_id": "A", "auction_title": "Auction A", "auction_end_date": "2026-06-20"},
-        {"auction_safe_id": "A", "auction_title": "Auction A", "auction_end_date": "2026-06-20"},
-        {"auction_safe_id": "B", "auction_title": "Auction B", "auction_end_date": "2026-06-21"},
+        {
+            "auction_safe_id": "A",
+            "auction_title": "Auction A",
+            "auction_end_date": "2026-06-20",
+        },
+        {
+            "auction_safe_id": "A",
+            "auction_title": "Auction A",
+            "auction_end_date": "2026-06-20",
+        },
+        {
+            "auction_safe_id": "B",
+            "auction_title": "Auction B",
+            "auction_end_date": "2026-06-21",
+        },
     ]
     tools = _tools(client)
     out = tools["list_auctions"]()

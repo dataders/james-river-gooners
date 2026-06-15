@@ -1,4 +1,5 @@
 """Pure row-shaping helpers: raw PostgREST rows -> compact model-friendly dicts."""
+
 from __future__ import annotations
 
 from typing import Any

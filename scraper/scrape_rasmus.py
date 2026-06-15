@@ -69,6 +69,7 @@ PAGE_SIZE = 300
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def rasmus_safe_id(aid: str) -> str:
     return f"rasmus_{aid}"
 
@@ -142,6 +143,7 @@ def parse_rasmus_category(category) -> str:
 # Firestore REST queries
 # ---------------------------------------------------------------------------
 
+
 def _run_query(session: requests.Session, body: dict) -> list[dict]:
     """POST a structuredQuery and return the list of decoded documents."""
     url = f"{FIRESTORE_BASE}:runQuery?key={FIRESTORE_API_KEY}"
@@ -154,8 +156,13 @@ def _run_query(session: requests.Session, body: dict) -> list[dict]:
 
 
 def _eq_filter(field: str, value: str) -> dict:
-    return {"fieldFilter": {"field": {"fieldPath": field}, "op": "EQUAL",
-                            "value": {"stringValue": value}}}
+    return {
+        "fieldFilter": {
+            "field": {"fieldPath": field},
+            "op": "EQUAL",
+            "value": {"stringValue": value},
+        }
+    }
 
 
 def fetch_active_auction_ids(
@@ -175,16 +182,25 @@ def fetch_active_auction_ids(
         body = {
             "structuredQuery": {
                 "from": [{"collectionId": "items"}],
-                "where": {"compositeFilter": {"op": "AND", "filters": [
-                    _eq_filter("origin_sid", sid),
-                    {"fieldFilter": {"field": {"fieldPath": "time_end"},
-                                     "op": "GREATER_THAN",
-                                     "value": {"integerValue": str(now_ms)}}},
-                ]}},
-                "select": {"fields": [{"fieldPath": "aid"},
-                                      {"fieldPath": "time_end"}]},
-                "orderBy": [{"field": {"fieldPath": "time_end"},
-                             "direction": "ASCENDING"}],
+                "where": {
+                    "compositeFilter": {
+                        "op": "AND",
+                        "filters": [
+                            _eq_filter("origin_sid", sid),
+                            {
+                                "fieldFilter": {
+                                    "field": {"fieldPath": "time_end"},
+                                    "op": "GREATER_THAN",
+                                    "value": {"integerValue": str(now_ms)},
+                                }
+                            },
+                        ],
+                    }
+                },
+                "select": {"fields": [{"fieldPath": "aid"}, {"fieldPath": "time_end"}]},
+                "orderBy": [
+                    {"field": {"fieldPath": "time_end"}, "direction": "ASCENDING"}
+                ],
                 "offset": offset,
                 "limit": PAGE_SIZE,
             }
@@ -226,19 +242,32 @@ def fetch_past_auction_ids(
         body = {
             "structuredQuery": {
                 "from": [{"collectionId": "items"}],
-                "where": {"compositeFilter": {"op": "AND", "filters": [
-                    _eq_filter("origin_sid", sid),
-                    {"fieldFilter": {"field": {"fieldPath": "time_end"},
-                                     "op": "GREATER_THAN",
-                                     "value": {"integerValue": str(since_ms)}}},
-                    {"fieldFilter": {"field": {"fieldPath": "time_end"},
-                                     "op": "LESS_THAN",
-                                     "value": {"integerValue": str(until_ms)}}},
-                ]}},
-                "select": {"fields": [{"fieldPath": "aid"},
-                                      {"fieldPath": "time_end"}]},
-                "orderBy": [{"field": {"fieldPath": "time_end"},
-                             "direction": "ASCENDING"}],
+                "where": {
+                    "compositeFilter": {
+                        "op": "AND",
+                        "filters": [
+                            _eq_filter("origin_sid", sid),
+                            {
+                                "fieldFilter": {
+                                    "field": {"fieldPath": "time_end"},
+                                    "op": "GREATER_THAN",
+                                    "value": {"integerValue": str(since_ms)},
+                                }
+                            },
+                            {
+                                "fieldFilter": {
+                                    "field": {"fieldPath": "time_end"},
+                                    "op": "LESS_THAN",
+                                    "value": {"integerValue": str(until_ms)},
+                                }
+                            },
+                        ],
+                    }
+                },
+                "select": {"fields": [{"fieldPath": "aid"}, {"fieldPath": "time_end"}]},
+                "orderBy": [
+                    {"field": {"fieldPath": "time_end"}, "direction": "ASCENDING"}
+                ],
                 "offset": offset,
                 "limit": PAGE_SIZE,
             }
@@ -266,8 +295,7 @@ def fetch_auction_items(session: requests.Session, aid: str) -> list[dict]:
         query: dict = {
             "from": [{"collectionId": "items"}],
             "where": _eq_filter("aid", aid),
-            "orderBy": [{"field": {"fieldPath": "__name__"},
-                         "direction": "ASCENDING"}],
+            "orderBy": [{"field": {"fieldPath": "__name__"}, "direction": "ASCENDING"}],
             "limit": PAGE_SIZE,
         }
         if cursor is not None:
@@ -289,10 +317,12 @@ def fetch_auction_items(session: requests.Session, aid: str) -> list[dict]:
 # Auction-page metadata (title + city for Richmond filtering)
 # ---------------------------------------------------------------------------
 
+
 def _meta_content(htmltext: str, key: str, attr: str = "property") -> str:
     m = re.search(
         rf'<meta\s+{attr}="{re.escape(key)}"\s+content="([^"]*)"',
-        htmltext, re.IGNORECASE,
+        htmltext,
+        re.IGNORECASE,
     )
     return html.unescape(m.group(1).strip()) if m else ""
 
@@ -322,6 +352,7 @@ def fetch_auction_meta(session: requests.Session, aid: str) -> dict:
 # Discovery
 # ---------------------------------------------------------------------------
 
+
 def load_sources(sources_file: Path | None = None) -> dict:
     with open(sources_file or SOURCES_FILE) as f:
         return yaml.safe_load(f)
@@ -347,14 +378,16 @@ def _richmond_specs_from_aids(
             print(f"    Skipping real estate: {title[:60]}")
             continue
         print(f"    Found: {title[:60]}")
-        specs.append({
-            "aid": aid,
-            "safe_id": rasmus_safe_id(aid),
-            "source_slug": slug,
-            "company_name": name,
-            "title": title,
-            "image": meta["image"],
-        })
+        specs.append(
+            {
+                "aid": aid,
+                "safe_id": rasmus_safe_id(aid),
+                "source_slug": slug,
+                "company_name": name,
+                "title": title,
+                "image": meta["image"],
+            }
+        )
     return specs
 
 
@@ -403,6 +436,7 @@ def discover_rasmus_past_specs(
 # Item mapping
 # ---------------------------------------------------------------------------
 
+
 def map_item(doc: dict, aid: str) -> dict | None:
     """Map a Firestore lot document into the shared item schema."""
     f = _fs_fields(doc)
@@ -434,7 +468,7 @@ def map_item(doc: dict, aid: str) -> dict | None:
         total_bids = 1  # bid recorded but bidder list withheld
 
     images: list[str] = []
-    for photo in (f.get("photos_display") or []):
+    for photo in f.get("photos_display") or []:
         if isinstance(photo, dict) and photo.get("src"):
             images.append(photo["src"])
     images = images[:5]
@@ -453,16 +487,17 @@ def map_item(doc: dict, aid: str) -> dict | None:
         "endDate": ms_to_iso(f.get("time_end")),
         "images": images,
         "category": normalize_category(raw_cat, combined, source="rasmus"),
-        "rawCategory": normalize_raw_with_description(raw_cat, combined, source="rasmus"),
+        "rawCategory": normalize_raw_with_description(
+            raw_cat, combined, source="rasmus"
+        ),
         "detailUrl": f"{RASMUS_BASE}/auctions/{aid}/lot/{lot_number}",
     }
-
-
 
 
 # ---------------------------------------------------------------------------
 # Main scrape function
 # ---------------------------------------------------------------------------
+
 
 def scrape_rasmus_auction(
     aid: str,
@@ -527,13 +562,22 @@ def scrape_rasmus_auction(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Scrape a Rasmus auction")
-    parser.add_argument("aid", nargs="?", help="Rasmus auction id (from the /auctions/<aid>/ URL)")
+    parser.add_argument(
+        "aid", nargs="?", help="Rasmus auction id (from the /auctions/<aid>/ URL)"
+    )
     parser.add_argument("--source", default="rasmus", help="Source slug")
     parser.add_argument("--company", default="Rasmus Auctions", help="Display name")
-    parser.add_argument("--title", default="", help="Auction title (skips a page fetch)")
-    parser.add_argument("--discover-only", action="store_true", help="Print what would be scraped and exit")
+    parser.add_argument(
+        "--title", default="", help="Auction title (skips a page fetch)"
+    )
+    parser.add_argument(
+        "--discover-only",
+        action="store_true",
+        help="Print what would be scraped and exit",
+    )
     parser.add_argument("--motherduck", action="store_true")
     return parser.parse_args(argv)
 
