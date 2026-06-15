@@ -43,9 +43,24 @@ jobs:
           BRANCH="bot/hibid-discovery-$(date +%Y%m%d)"
           git checkout -b "$BRANCH"
           git commit -m "chore: update HiBid catalog IDs (daily discovery)"
-          git push -u origin "$BRANCH"
-          gh pr create \
-            --title "chore: update HiBid catalog IDs (daily discovery)" \
-            --body "Automated PR: new HiBid catalog IDs added to \`scraper/hibid_sources.yml\` by the daily discovery workflow." \
-            --base main \
-            --head "$BRANCH"
+          # A re-run (or a retried failure) on the same day lands on a branch that
+          # already exists on origin, so a plain push is rejected as non-fast-forward.
+          # The branch content is the bot's own deterministic daily output, so it's
+          # safe to force-update it to the freshly discovered set.
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Branch $BRANCH already exists on origin — force-updating it."
+            git push -u origin "$BRANCH" --force
+          else
+            git push -u origin "$BRANCH"
+          fi
+          # Only open a PR if one isn't already open for this branch; otherwise the
+          # force-push above has already updated the existing PR.
+          if [ "$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')" != "0" ]; then
+            echo "An open PR for $BRANCH already exists — updated it via push, skipping create."
+          else
+            gh pr create \
+              --title "chore: update HiBid catalog IDs (daily discovery)" \
+              --body "Automated PR: new HiBid catalog IDs added to \`scraper/hibid_sources.yml\` by the daily discovery workflow." \
+              --base main \
+              --head "$BRANCH"
+          fi
