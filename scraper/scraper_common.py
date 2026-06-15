@@ -18,9 +18,16 @@ def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
     ndjson_path = path.with_suffix(".ndjson")
     if ndjson_path.exists():
         try:
-            rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+            rows = [
+                json.loads(line)
+                for line in ndjson_path.read_text().splitlines()
+                if line.strip()
+            ]
             return {
-                row["id"]: (float(row.get("currentBid") or 0), int(row.get("totalBids") or 0))
+                row["id"]: (
+                    float(row.get("currentBid") or 0),
+                    int(row.get("totalBids") or 0),
+                )
                 for row in rows
             }
         except Exception:
@@ -29,6 +36,7 @@ def load_existing_bids(path: Path) -> dict[str, tuple[float, int]]:
         return {}
     try:
         import pyarrow.parquet as pq
+
         table = pq.read_table(path, columns=["id", "currentBid", "totalBids"])
         return {
             row["id"]: (float(row["currentBid"] or 0), int(row["totalBids"] or 0))
@@ -62,6 +70,7 @@ def load_existing_unique_bidders(path: Path) -> dict[str, int]:
         return {}
     try:
         import pyarrow.parquet as pq
+
         table = pq.read_table(path, columns=["id", "uniqueBidders"])
         return {
             row["id"]: int(row["uniqueBidders"])

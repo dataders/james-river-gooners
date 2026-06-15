@@ -11,11 +11,13 @@ class TelemetryGatingTest(unittest.TestCase):
         # Leave the module unconfigured so other test files see a clean state.
         with patch.dict(os.environ, {"GOONERS_POSTHOG_KEY": ""}, clear=False):
             import telemetry
+
             importlib.reload(telemetry)
 
     def test_unconfigured_is_noop_and_never_raises(self):
         with patch.dict(os.environ, {"GOONERS_POSTHOG_KEY": ""}, clear=False):
             import telemetry
+
             importlib.reload(telemetry)
             self.assertFalse(telemetry.is_telemetry_configured())
             # No key → capture/flush must be harmless no-ops.
@@ -26,6 +28,7 @@ class TelemetryGatingTest(unittest.TestCase):
     def test_capture_swallows_sdk_errors(self):
         with patch.dict(os.environ, {"GOONERS_POSTHOG_KEY": "phc_test"}, clear=False):
             import telemetry
+
             importlib.reload(telemetry)
             self.assertTrue(telemetry.is_telemetry_configured())
 

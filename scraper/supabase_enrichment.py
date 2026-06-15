@@ -116,7 +116,9 @@ def _post_batch_with_retry(session, endpoint, headers, batch, max_retries, sleep
     body = json.dumps(batch)
     for attempt in range(max_retries + 1):
         try:
-            response = session.post(endpoint, headers=headers, data=body, timeout=READ_TIMEOUT)
+            response = session.post(
+                endpoint, headers=headers, data=body, timeout=READ_TIMEOUT
+            )
         except requests.exceptions.RequestException as exc:
             if attempt >= max_retries:
                 raise RuntimeError(
@@ -226,7 +228,11 @@ def build_seen_rows(items: list[dict]) -> list[dict]:
         if not safe_id or item_id in (None, "") or not input_hash:
             continue
         key = (safe_id, str(item_id))
-        rows[key] = {"auction_safe_id": safe_id, "item_id": str(item_id), "input_hash": input_hash}
+        rows[key] = {
+            "auction_safe_id": safe_id,
+            "item_id": str(item_id),
+            "input_hash": input_hash,
+        }
     return list(rows.values())
 
 
@@ -247,9 +253,13 @@ def upsert_seen(
 
     url, key = resolve_credentials(url, key)
     if not url:
-        raise RuntimeError("SUPABASE_URL is required to write enrichment_seen to Supabase")
+        raise RuntimeError(
+            "SUPABASE_URL is required to write enrichment_seen to Supabase"
+        )
     if not key:
-        raise RuntimeError("SUPABASE_SECRET_KEY is required to write enrichment_seen to Supabase")
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is required to write enrichment_seen to Supabase"
+        )
 
     from http_client import supabase_session
 
@@ -289,7 +299,9 @@ def upsert_enrichment(
     if not url:
         raise RuntimeError("SUPABASE_URL is required to write enrichment to Supabase")
     if not key:
-        raise RuntimeError("SUPABASE_SECRET_KEY is required to write enrichment to Supabase")
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is required to write enrichment to Supabase"
+        )
 
     from http_client import supabase_session
 
@@ -325,8 +337,10 @@ def maybe_export_enrichment(items: list[dict], session=None) -> int:
     url, key = resolve_credentials()
     if not key:
         if url:
-            print("  WARNING: SUPABASE_URL is set but SUPABASE_SECRET_KEY is not — "
-                  "skipping enrichment mirror to Supabase")
+            print(
+                "  WARNING: SUPABASE_URL is set but SUPABASE_SECRET_KEY is not — "
+                "skipping enrichment mirror to Supabase"
+            )
         return 0
     # Cache every processed lot's input_hash (identified or not) so the next
     # scrape reuses unidentified lots too, instead of re-paying to re-derive the
@@ -337,7 +351,9 @@ def maybe_export_enrichment(items: list[dict], session=None) -> int:
         try:
             upsert_seen(seen, url=url, key=key, session=session)
         except RuntimeError as exc:
-            print(f"  WARNING: failed to cache {len(seen)} enrichment hash(es) to Supabase: {exc}")
+            print(
+                f"  WARNING: failed to cache {len(seen)} enrichment hash(es) to Supabase: {exc}"
+            )
 
     rows = build_enrichment_rows(items)
     if not rows:
@@ -345,7 +361,9 @@ def maybe_export_enrichment(items: list[dict], session=None) -> int:
     try:
         written = upsert_enrichment(rows, url=url, key=key, session=session)
     except RuntimeError as exc:
-        print(f"  WARNING: failed to mirror {len(rows)} enrichment row(s) to Supabase: {exc}")
+        print(
+            f"  WARNING: failed to mirror {len(rows)} enrichment row(s) to Supabase: {exc}"
+        )
         return 0
     print(f"  upserted {written} enrichment row(s) to Supabase")
     return written
@@ -368,7 +386,11 @@ def record_enrich_run(
     if not url or not key:
         return 0
 
-    row = {col: json_safe(payload.get(col)) for col in ENRICH_RUNS_COLUMNS if col in payload}
+    row = {
+        col: json_safe(payload.get(col))
+        for col in ENRICH_RUNS_COLUMNS
+        if col in payload
+    }
     if not row:
         return 0
 
@@ -479,7 +501,10 @@ def load_prior_enrichment_from_supabase(
             resp = session.get(
                 seen_endpoint,
                 headers={**headers, "Range": f"{offset}-{offset + PAGE - 1}"},
-                params={"auction_safe_id": f"eq.{safe_id}", "select": "item_id,input_hash"},
+                params={
+                    "auction_safe_id": f"eq.{safe_id}",
+                    "select": "item_id,input_hash",
+                },
                 timeout=READ_TIMEOUT,
             )
         except Exception:  # noqa: BLE001 — cache read is best-effort
@@ -490,7 +515,10 @@ def load_prior_enrichment_from_supabase(
         for row in batch:
             item_id = row.get("item_id")
             if item_id and item_id not in prior:
-                prior[item_id] = {"id": item_id, "enrichmentInputHash": row.get("input_hash") or ""}
+                prior[item_id] = {
+                    "id": item_id,
+                    "enrichmentInputHash": row.get("input_hash") or "",
+                }
         if len(batch) < PAGE:
             break
         offset += len(batch)
@@ -508,7 +536,9 @@ def _iter_ndjson(path: Path):
                 continue
 
 
-def export_from_read_model(safe_ids: list[str], items_dir: Path = DEFAULT_ITEMS_DIR, **kwargs) -> int:
+def export_from_read_model(
+    safe_ids: list[str], items_dir: Path = DEFAULT_ITEMS_DIR, **kwargs
+) -> int:
     """Backfill the table from already-enriched NDJSON sidecars."""
     paths = (
         [items_dir / f"{safe_id}.ndjson" for safe_id in safe_ids]
@@ -526,8 +556,12 @@ def export_from_read_model(safe_ids: list[str], items_dir: Path = DEFAULT_ITEMS_
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Upsert LLM lot enrichment to Supabase")
-    parser.add_argument("safe_ids", nargs="*", help="Auction safeIds (default: all active)")
+    parser = argparse.ArgumentParser(
+        description="Upsert LLM lot enrichment to Supabase"
+    )
+    parser.add_argument(
+        "safe_ids", nargs="*", help="Auction safeIds (default: all active)"
+    )
     return parser.parse_args(argv)
 
 

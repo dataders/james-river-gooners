@@ -1,0 +1,28 @@
+# Pre-commit hooks — fast local quality gate.
+#
+# Matches CI's tool versions exactly so "passes locally" == "passes CI".
+# Type-checking (tsc, ty) is intentionally excluded — it takes 5-15s and
+# would make commits sluggish; CI handles it.
+#
+# Setup: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
+    hooks:
+      - id: ruff          # lint — matches `uvx ruff@0.15.8 check .` in CI
+        args: [--fix]     # auto-fix what it can (same as CI's --fix behaviour)
+      - id: ruff-format   # format check
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        language: system
+        entry: npx eslint --max-warnings 0
+        types_or: [javascript, jsx, ts, tsx]
+        files: ^src/
+        pass_filenames: false
+        # Runs `npx eslint --max-warnings 0` on the src/ tree when any
+        # JS/TS file is staged — matches `npm run lint` in CI.

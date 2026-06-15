@@ -96,9 +96,13 @@ def write_auction_comps(
     """
     url, key = resolve_credentials(url, key)
     if not url:
-        raise RuntimeError("SUPABASE_URL is required to write Cannon's comps to Supabase")
+        raise RuntimeError(
+            "SUPABASE_URL is required to write Cannon's comps to Supabase"
+        )
     if not key:
-        raise RuntimeError("SUPABASE_SECRET_KEY is required to write Cannon's comps to Supabase")
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is required to write Cannon's comps to Supabase"
+        )
 
     rows = comp_rows(safe_id, item_exports, generated_at)
     if not rows:
@@ -111,7 +115,9 @@ def write_auction_comps(
     endpoint = f"{url.rstrip('/')}/rest/v1/{CANNONS_COMP_TABLE}"
 
     written = 0
-    insert_headers = _headers(key, {"Content-Type": "application/json", "Prefer": "return=minimal"})
+    insert_headers = _headers(
+        key, {"Content-Type": "application/json", "Prefer": "return=minimal"}
+    )
     for start in range(0, len(rows), batch_size):
         batch = rows[start : start + batch_size]
         # Retry transient failures (network/timeout/429/5xx) with backoff via the
@@ -119,7 +125,10 @@ def write_auction_comps(
         # failure, so the manual status check is no longer needed.
         _request_with_retry(
             lambda b=batch: session.post(
-                endpoint, headers=insert_headers, data=json.dumps(b), timeout=WRITE_TIMEOUT
+                endpoint,
+                headers=insert_headers,
+                data=json.dumps(b),
+                timeout=WRITE_TIMEOUT,
             ),
             f"Supabase cannons comp insert ({safe_id})",
         )
@@ -130,7 +139,10 @@ def write_auction_comps(
         lambda: session.delete(
             endpoint,
             headers=_headers(key, {"Prefer": "return=minimal"}),
-            params={"auction_safe_id": f"eq.{safe_id}", "generated_at": f"lt.{generated_at}"},
+            params={
+                "auction_safe_id": f"eq.{safe_id}",
+                "generated_at": f"lt.{generated_at}",
+            },
             timeout=WRITE_TIMEOUT,
         ),
         f"Supabase cannons comp prune ({safe_id})",

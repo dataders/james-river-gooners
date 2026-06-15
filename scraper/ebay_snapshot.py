@@ -143,42 +143,46 @@ def comp_rows_for_item(
     }
 
     if not matches:
-        return [{
-            **base,
-            "ebay_item_id": None,
-            "title": None,
-            "price_value": None,
-            "price_currency": None,
-            "shipping_label": None,
-            "sold_date": None,
-            "sold_date_label": None,
-            "thumbnail_url": None,
-            "item_web_url": None,
-            "condition": None,
-            "source_query": search.get("kind"),
-            "match_confidence": None,
-            "raw_match_json": None,
-        }]
+        return [
+            {
+                **base,
+                "ebay_item_id": None,
+                "title": None,
+                "price_value": None,
+                "price_currency": None,
+                "shipping_label": None,
+                "sold_date": None,
+                "sold_date_label": None,
+                "thumbnail_url": None,
+                "item_web_url": None,
+                "condition": None,
+                "source_query": search.get("kind"),
+                "match_confidence": None,
+                "raw_match_json": None,
+            }
+        ]
 
     rows = []
     for match in matches:
-        rows.append({
-            **base,
-            "status": "ok",
-            "ebay_item_id": match.get("ebay_item_id"),
-            "title": match.get("title"),
-            "price_value": match.get("price_value"),
-            "price_currency": match.get("price_currency") or "USD",
-            "shipping_label": match.get("shipping_label"),
-            "sold_date": match.get("sold_date"),
-            "sold_date_label": match.get("sold_date_label"),
-            "thumbnail_url": match.get("thumbnail_url"),
-            "item_web_url": match.get("item_web_url"),
-            "condition": match.get("condition"),
-            "source_query": match.get("source_query") or search.get("kind"),
-            "match_confidence": match.get("match_confidence") or "medium",
-            "raw_match_json": json.dumps(match, sort_keys=True),
-        })
+        rows.append(
+            {
+                **base,
+                "status": "ok",
+                "ebay_item_id": match.get("ebay_item_id"),
+                "title": match.get("title"),
+                "price_value": match.get("price_value"),
+                "price_currency": match.get("price_currency") or "USD",
+                "shipping_label": match.get("shipping_label"),
+                "sold_date": match.get("sold_date"),
+                "sold_date_label": match.get("sold_date_label"),
+                "thumbnail_url": match.get("thumbnail_url"),
+                "item_web_url": match.get("item_web_url"),
+                "condition": match.get("condition"),
+                "source_query": match.get("source_query") or search.get("kind"),
+                "match_confidence": match.get("match_confidence") or "medium",
+                "raw_match_json": json.dumps(match, sort_keys=True),
+            }
+        )
     return rows
 
 

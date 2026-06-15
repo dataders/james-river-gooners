@@ -34,28 +34,34 @@ class ExactPhraseSearchTests(unittest.TestCase):
     def test_specific_query_is_a_quoted_exact_phrase(self):
         # The motivating bug: tokenized queries matched any single word, so a
         # trumpet matched fever OR brand OR brass OR student OR trumpet.
-        searches = build_ebay_sold_searches({
-            "title": "Fever Brand Brass Student Trumpet",
-            "description": "",
-            "category": "Musical Instruments",
-            "rawCategory": "Musical Instruments",
-        })
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Fever Brand Brass Student Trumpet",
+                "description": "",
+                "category": "Musical Instruments",
+                "rawCategory": "Musical Instruments",
+            }
+        )
         self.assertEqual(searches[0]["kind"], "specific")
         self.assertEqual(searches[0]["query"], '"Fever Brand Brass Student Trumpet"')
         # The eBay link carries the quoted phrase into _nkw.
         self.assertIn("%22Fever", searches[0]["url"])
         # Broad/category fallbacks remain, and are not quoted.
-        self.assertTrue(any(
-            s["kind"] == "broad" and '"' not in s["query"] for s in searches
-        ))
+        self.assertTrue(
+            any(s["kind"] == "broad" and '"' not in s["query"] for s in searches)
+        )
 
     def test_item_exact_phrase_caps_falls_back_and_skips_single_word(self):
         self.assertEqual(
-            item_exact_phrase({"title": "Vintage Omega Seamaster De Ville Automatic Wristwatch"}),
+            item_exact_phrase(
+                {"title": "Vintage Omega Seamaster De Ville Automatic Wristwatch"}
+            ),
             '"Vintage Omega Seamaster De Ville Automatic"',
         )
         self.assertEqual(
-            item_exact_phrase({"title": "Lot - 12", "description": "Pair of brass candlesticks"}),
+            item_exact_phrase(
+                {"title": "Lot - 12", "description": "Pair of brass candlesticks"}
+            ),
             '"Pair of brass candlesticks"',
         )
         self.assertEqual(item_exact_phrase({"title": "Trumpet", "description": ""}), "")
@@ -63,30 +69,34 @@ class ExactPhraseSearchTests(unittest.TestCase):
     def test_confident_enrichment_drives_the_specific_query(self):
         # A "Lot - N" placeholder whose description is weak, but enrichment
         # identified the brand+model with high confidence: that wins the query.
-        searches = build_ebay_sold_searches({
-            "title": "Lot - 207",
-            "description": "cordless drill, works",
-            "category": "Tools",
-            "rawCategory": "Tools",
-            "brand": "DeWalt",
-            "modelOrSku": "DCD771",
-            "enrichmentConfidence": "high",
-        })
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Lot - 207",
+                "description": "cordless drill, works",
+                "category": "Tools",
+                "rawCategory": "Tools",
+                "brand": "DeWalt",
+                "modelOrSku": "DCD771",
+                "enrichmentConfidence": "high",
+            }
+        )
         self.assertEqual(searches[0]["kind"], "specific")
         self.assertEqual(searches[0]["query"], '"DeWalt DCD771"')
 
     def test_low_confidence_enrichment_falls_back_to_text(self):
         # Low confidence must not steer the query — fall through to the
         # description phrase, exactly as before enrichment existed.
-        searches = build_ebay_sold_searches({
-            "title": "Lot - 12",
-            "description": "Pair of brass candlesticks",
-            "category": "Other",
-            "rawCategory": "Other",
-            "brand": "Maybe Acme",
-            "modelOrSku": "X1",
-            "enrichmentConfidence": "low",
-        })
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Lot - 12",
+                "description": "Pair of brass candlesticks",
+                "category": "Other",
+                "rawCategory": "Other",
+                "brand": "Maybe Acme",
+                "modelOrSku": "X1",
+                "enrichmentConfidence": "low",
+            }
+        )
         self.assertEqual(searches[0]["query"], '"Pair of brass candlesticks"')
 
 
@@ -119,13 +129,15 @@ class Phase1QueryFilterTests(unittest.TestCase):
         self.assertEqual(ebay_category_id({}), "")
 
     def test_specific_tier_carries_category_and_condition_but_broad_does_not(self):
-        searches = build_ebay_sold_searches({
-            "title": "Fever Brand Brass Student Trumpet",
-            "description": "a really nice horn here",
-            "category": "Art",
-            "rawCategory": "Musical Instruments",
-            "condition": "used",
-        })
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Fever Brand Brass Student Trumpet",
+                "description": "a really nice horn here",
+                "category": "Art",
+                "rawCategory": "Musical Instruments",
+                "condition": "used",
+            }
+        )
         specific = next(s for s in searches if s["kind"] == "specific")
         broad = next(s for s in searches if s["kind"] == "broad")
 
@@ -136,12 +148,14 @@ class Phase1QueryFilterTests(unittest.TestCase):
         self.assertNotIn("item_condition", broad)
 
     def test_safe_constraints_attach_to_every_tier(self):
-        searches = build_ebay_sold_searches({
-            "title": "Fever Brand Brass Student Trumpet",
-            "description": "a really nice horn here for sale",
-            "category": "Art",
-            "rawCategory": "Musical Instruments",
-        })
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Fever Brand Brass Student Trumpet",
+                "description": "a really nice horn here for sale",
+                "category": "Art",
+                "rawCategory": "Musical Instruments",
+            }
+        )
         self.assertTrue(len(searches) >= 2)
         for search in searches:
             self.assertEqual(search["min_price"], 5)
@@ -151,26 +165,33 @@ class Phase1QueryFilterTests(unittest.TestCase):
             self.assertEqual(search["count"], 40)
 
     def test_numeric_filter_defaults_are_env_overridable(self):
-        with patch.dict("os.environ", {
-            "GOONERS_EBAY_COMPS_MIN_PRICE": "12",
-            "GOONERS_EBAY_COMPS_COUNT": "120",
-        }):
-            searches = build_ebay_sold_searches({
-                "title": "Vintage Omega Seamaster Automatic Wristwatch",
-                "description": "",
-                "category": "Jewelry & Watches",
-                "rawCategory": "Jewelry & Watches",
-            })
+        with patch.dict(
+            "os.environ",
+            {
+                "GOONERS_EBAY_COMPS_MIN_PRICE": "12",
+                "GOONERS_EBAY_COMPS_COUNT": "120",
+            },
+        ):
+            searches = build_ebay_sold_searches(
+                {
+                    "title": "Vintage Omega Seamaster Automatic Wristwatch",
+                    "description": "",
+                    "category": "Jewelry & Watches",
+                    "rawCategory": "Jewelry & Watches",
+                }
+            )
         self.assertEqual(searches[0]["min_price"], 12)
         self.assertEqual(searches[0]["count"], 120)
 
     def test_unmapped_category_omits_category_id_on_specific(self):
-        searches = build_ebay_sold_searches({
-            "title": "Distinctive Brass Telescope Antique Instrument",
-            "description": "",
-            "category": "Vehicles",  # mapped to "0" -> omitted
-            "rawCategory": "Vehicles",
-        })
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Distinctive Brass Telescope Antique Instrument",
+                "description": "",
+                "category": "Vehicles",  # mapped to "0" -> omitted
+                "rawCategory": "Vehicles",
+            }
+        )
         specific = next(s for s in searches if s["kind"] == "specific")
         self.assertNotIn("category_id", specific)
 
@@ -229,12 +250,14 @@ class Phase1QueryFilterTests(unittest.TestCase):
 
 class ProviderUsageHeaderTests(unittest.TestCase):
     def test_extract_usage_headers_keeps_only_quota_headers_lowercased(self):
-        usage = extract_usage_headers({
-            "X-Usage-Limit": "5000",
-            "X-Usage-Remaining": "1625",
-            "Content-Type": "application/json",
-            "X-RateLimit-Reset": "1700000000",
-        })
+        usage = extract_usage_headers(
+            {
+                "X-Usage-Limit": "5000",
+                "X-Usage-Remaining": "1625",
+                "Content-Type": "application/json",
+                "X-RateLimit-Reset": "1700000000",
+            }
+        )
         self.assertEqual(
             usage,
             {
@@ -274,7 +297,11 @@ class ProviderUsageHeaderTests(unittest.TestCase):
 
         result = soldcomps_sold_matches(
             session,
-            {"kind": "specific", "query": "rosenthal vase", "url": "https://example.test"},
+            {
+                "kind": "specific",
+                "query": "rosenthal vase",
+                "url": "https://example.test",
+            },
             api_key="test-key",
             max_matches=3,
         )
@@ -321,31 +348,39 @@ def _write_single_item_manifest(data_dir: Path) -> None:
     items_dir = data_dir / "items"
     items_dir.mkdir(parents=True, exist_ok=True)
     parquet.write_table(
-        pyarrow.Table.from_pylist([
-            {
-                "id": "item-1",
-                "lotNumber": 840,
-                "title": "Lot - 840",
-                "description": "Rosenthal crackle glaze hand-painted ceramic vase",
-                "currentBid": 37.0,
-                "totalBids": 6,
-                "endDate": "2026-05-27 8:28:00 PM",
-                "images": "[]",
-                "category": "China & Pottery",
-                "rawCategory": "China & Pottery",
-                "detailUrl": "https://example.test/item",
-                "auctionId": "auction-raw",
-                "auctionSafeId": "auction-1",
-                "auctionTitle": "Estate Auction",
-                "auctionEndDate": "2026-05-27 8:28:00 PM",
-                "scrapedAt": "2026-05-27T12:00:00+00:00",
-            }
-        ]),
+        pyarrow.Table.from_pylist(
+            [
+                {
+                    "id": "item-1",
+                    "lotNumber": 840,
+                    "title": "Lot - 840",
+                    "description": "Rosenthal crackle glaze hand-painted ceramic vase",
+                    "currentBid": 37.0,
+                    "totalBids": 6,
+                    "endDate": "2026-05-27 8:28:00 PM",
+                    "images": "[]",
+                    "category": "China & Pottery",
+                    "rawCategory": "China & Pottery",
+                    "detailUrl": "https://example.test/item",
+                    "auctionId": "auction-raw",
+                    "auctionSafeId": "auction-1",
+                    "auctionTitle": "Estate Auction",
+                    "auctionEndDate": "2026-05-27 8:28:00 PM",
+                    "scrapedAt": "2026-05-27T12:00:00+00:00",
+                }
+            ]
+        ),
         items_dir / "auction-1.parquet",
     )
-    (data_dir / "manifest.json").write_text(json.dumps({
-        "auctions": [{"safeId": "auction-1", "itemsPath": "data/items/auction-1.parquet"}]
-    }))
+    (data_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "auctions": [
+                    {"safeId": "auction-1", "itemsPath": "data/items/auction-1.parquet"}
+                ]
+            }
+        )
+    )
 
 
 class FetchDirectAccumulatorTest(unittest.TestCase):
@@ -360,23 +395,34 @@ class FetchDirectAccumulatorTest(unittest.TestCase):
             output_dir.mkdir(parents=True)
             # An existing comp from a prior run that is NOT in the manifest this
             # run; the accumulator must preserve it untouched.
-            (output_dir / "auction-1.json").write_text(json.dumps({
-                "schemaVersion": 2,
-                "generatedAt": "2026-05-01T00:00:00Z",
-                "marketplaceId": "EBAY_US",
-                "source": "scraper",
-                "items": {
-                    "item-existing": {
-                        "status": "ok",
-                        "matches": [{
-                            "title": "Older comp",
-                            "price": {"value": "5.00", "currency": "USD"},
-                            "itemWebUrl": "https://www.ebay.com/itm/111111111",
-                        }],
+            (output_dir / "auction-1.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 2,
+                        "generatedAt": "2026-05-01T00:00:00Z",
+                        "marketplaceId": "EBAY_US",
+                        "source": "scraper",
+                        "items": {
+                            "item-existing": {
+                                "status": "ok",
+                                "matches": [
+                                    {
+                                        "title": "Older comp",
+                                        "price": {"value": "5.00", "currency": "USD"},
+                                        "itemWebUrl": "https://www.ebay.com/itm/111111111",
+                                    }
+                                ],
+                            }
+                        },
+                        "attempts": {
+                            "item-existing": {
+                                "fetchedAt": "2026-05-01T00:00:00Z",
+                                "status": "ok",
+                            }
+                        },
                     }
-                },
-                "attempts": {"item-existing": {"fetchedAt": "2026-05-01T00:00:00Z", "status": "ok"}},
-            }))
+                )
+            )
 
             summary = fetch_direct(
                 data_dir=data_dir,
@@ -395,7 +441,9 @@ class FetchDirectAccumulatorTest(unittest.TestCase):
         self.assertEqual(summary["files_written"], 1)
         # Existing comp preserved, new match merged in.
         self.assertIn("item-existing", data["items"])
-        self.assertEqual(data["items"]["item-1"]["matches"][0]["price"]["value"], "99.00")
+        self.assertEqual(
+            data["items"]["item-1"]["matches"][0]["price"]["value"], "99.00"
+        )
         self.assertEqual(data["attempts"]["item-1"]["status"], "ok")
         self.assertEqual(data["source"], "scraper")
 
@@ -408,11 +456,20 @@ class FetchDirectAccumulatorTest(unittest.TestCase):
             _write_single_item_manifest(data_dir)
             output_dir = data_dir / "ebay-comps"
             output_dir.mkdir(parents=True)
-            (output_dir / "auction-1.json").write_text(json.dumps({
-                "schemaVersion": 2,
-                "items": {},
-                "attempts": {"item-1": {"fetchedAt": utc_now_text(), "status": "no_results"}},
-            }))
+            (output_dir / "auction-1.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 2,
+                        "items": {},
+                        "attempts": {
+                            "item-1": {
+                                "fetchedAt": utc_now_text(),
+                                "status": "no_results",
+                            }
+                        },
+                    }
+                )
+            )
 
             summary = fetch_direct(
                 data_dir=data_dir,
@@ -437,7 +494,9 @@ class SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             data_dir = Path(tmpdir) / "data"
             _write_single_item_manifest(data_dir)
-            code = smoke(data_dir=data_dir, limit=1, sleep_seconds=0, request_session=session)
+            code = smoke(
+                data_dir=data_dir, limit=1, sleep_seconds=0, request_session=session
+            )
         self.assertEqual(code, 0)
 
     def test_returns_one_when_no_match_is_found(self):
@@ -446,17 +505,23 @@ class SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             data_dir = Path(tmpdir) / "data"
             _write_single_item_manifest(data_dir)
-            code = smoke(data_dir=data_dir, limit=1, sleep_seconds=0, request_session=session)
+            code = smoke(
+                data_dir=data_dir, limit=1, sleep_seconds=0, request_session=session
+            )
         self.assertEqual(code, 1)
 
 
 class EbayCompExportTest(unittest.TestCase):
     def test_extract_ebay_item_id_from_item_urls(self):
         self.assertEqual(
-            extract_ebay_item_id("https://www.ebay.com/itm/Vintage-Rosenthal/177917908706?hash=abc"),
+            extract_ebay_item_id(
+                "https://www.ebay.com/itm/Vintage-Rosenthal/177917908706?hash=abc"
+            ),
             "177917908706",
         )
-        self.assertIsNone(extract_ebay_item_id("https://www.ebay.com/sch/i.html?_nkw=Rosenthal"))
+        self.assertIsNone(
+            extract_ebay_item_id("https://www.ebay.com/sch/i.html?_nkw=Rosenthal")
+        )
 
     def test_parse_sold_search_html_keeps_real_item_links_and_prices(self):
         html = """
@@ -484,7 +549,9 @@ class EbayCompExportTest(unittest.TestCase):
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["ebay_item_id"], "177917908706")
-        self.assertEqual(matches[0]["item_web_url"], "https://www.ebay.com/itm/177917908706")
+        self.assertEqual(
+            matches[0]["item_web_url"], "https://www.ebay.com/itm/177917908706"
+        )
         self.assertEqual(matches[0]["price_value"], "99.00")
         self.assertEqual(matches[0]["shipping_label"], "+$21.75 delivery")
         self.assertEqual(matches[0]["condition"], "Pre-Owned")
@@ -520,7 +587,10 @@ class EbayCompExportTest(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["matches"][0]["item_web_url"], "https://www.ebay.com/itm/177917908706")
+        self.assertEqual(
+            result["matches"][0]["item_web_url"],
+            "https://www.ebay.com/itm/177917908706",
+        )
         self.assertTrue(any(call[0] == "open" for call in calls))
 
     def test_soldcomps_response_maps_to_real_sold_matches(self):
@@ -565,9 +635,13 @@ class EbayCompExportTest(unittest.TestCase):
         self.assertEqual(result["matches"][0]["price_value"], "99.00")
         self.assertEqual(result["matches"][0]["shipping_label"], "+$21.75 shipping")
         self.assertEqual(result["matches"][0]["sold_date"], "2026-03-04")
-        self.assertEqual(result["matches"][0]["thumbnail_url"], "https://i.ebayimg.com/example.jpg")
+        self.assertEqual(
+            result["matches"][0]["thumbnail_url"], "https://i.ebayimg.com/example.jpg"
+        )
         session.get.assert_called_once()
-        self.assertEqual(session.get.call_args.kwargs["headers"]["Authorization"], "Bearer test-key")
+        self.assertEqual(
+            session.get.call_args.kwargs["headers"]["Authorization"], "Bearer test-key"
+        )
 
     def test_comp_rows_for_item_records_no_results_without_fake_match(self):
         rows = comp_rows_for_item(
@@ -647,7 +721,10 @@ class EbayCompExportTest(unittest.TestCase):
                 con.close()
 
         self.assertEqual(written, 1)
-        self.assertEqual(view_rows, [("auction-1", "item-1", "https://www.ebay.com/itm/177917908706")])
+        self.assertEqual(
+            view_rows,
+            [("auction-1", "item-1", "https://www.ebay.com/itm/177917908706")],
+        )
 
     def test_normalize_match_row_rejects_search_urls(self):
         row = {
@@ -691,24 +768,39 @@ class EbayCompExportTest(unittest.TestCase):
         self.assertEqual(list(exports), ["auction-1"])
         item = exports["auction-1"]["items"]["item-1"]
         self.assertEqual(item["status"], "ok")
-        self.assertEqual(item["matches"][0]["itemWebUrl"], "https://www.ebay.com/itm/177917908706")
-        self.assertEqual(item["matches"][0]["price"], {"value": "99.00", "currency": "USD"})
+        self.assertEqual(
+            item["matches"][0]["itemWebUrl"], "https://www.ebay.com/itm/177917908706"
+        )
+        self.assertEqual(
+            item["matches"][0]["price"], {"value": "99.00", "currency": "USD"}
+        )
 
     def test_merge_comp_files_drops_items_whose_latest_fetch_found_no_match(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            (output_dir / "auction-1.json").write_text(json.dumps({
-                "schemaVersion": 2,
-                "items": {
-                    "item-1": {"status": "ok", "matches": [{"title": "Old"}]},
-                    "item-2": {"status": "ok", "matches": [{"title": "Keep me"}]},
-                },
-                "attempts": {},
-            }))
+            (output_dir / "auction-1.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 2,
+                        "items": {
+                            "item-1": {"status": "ok", "matches": [{"title": "Old"}]},
+                            "item-2": {
+                                "status": "ok",
+                                "matches": [{"title": "Keep me"}],
+                            },
+                        },
+                        "attempts": {},
+                    }
+                )
+            )
 
             written = merge_comp_files(
                 new_exports={},
-                attempts={"auction-1": {"item-1": {"fetchedAt": "now", "status": "no_results"}}},
+                attempts={
+                    "auction-1": {
+                        "item-1": {"fetchedAt": "now", "status": "no_results"}
+                    }
+                },
                 output_dir=output_dir,
                 generated_at="2026-05-27T12:00:00Z",
             )
@@ -723,13 +815,23 @@ class EbayCompExportTest(unittest.TestCase):
     def test_fresh_comp_keys_from_files_reads_attempts_and_items(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            (output_dir / "auction-1.json").write_text(json.dumps({
-                "items": {"item-old": {"fetchedAt": "2020-01-01T00:00:00Z"}},
-                "attempts": {
-                    "item-fresh": {"fetchedAt": utc_now_text(), "status": "no_results"},
-                    "item-stale": {"fetchedAt": "2020-01-01T00:00:00Z", "status": "ok"},
-                },
-            }))
+            (output_dir / "auction-1.json").write_text(
+                json.dumps(
+                    {
+                        "items": {"item-old": {"fetchedAt": "2020-01-01T00:00:00Z"}},
+                        "attempts": {
+                            "item-fresh": {
+                                "fetchedAt": utc_now_text(),
+                                "status": "no_results",
+                            },
+                            "item-stale": {
+                                "fetchedAt": "2020-01-01T00:00:00Z",
+                                "status": "ok",
+                            },
+                        },
+                    }
+                )
+            )
 
             fresh = fresh_comp_keys_from_files(output_dir, stale_hours=24)
 
@@ -883,31 +985,42 @@ class FetchDirectTest(unittest.TestCase):
         items_dir = data_dir / "items"
         items_dir.mkdir(parents=True)
         parquet.write_table(
-            pyarrow.Table.from_pylist([
-                {
-                    "id": "item-1",
-                    "lotNumber": 840,
-                    "title": "Lot - 840",
-                    "description": "Rosenthal crackle glaze hand-painted ceramic vase",
-                    "currentBid": 37.0,
-                    "totalBids": 6,
-                    "endDate": "2026-05-27 8:28:00 PM",
-                    "images": "[]",
-                    "category": "China & Pottery",
-                    "rawCategory": "China & Pottery",
-                    "detailUrl": "https://example.test/item",
-                    "auctionId": "auction-raw",
-                    "auctionSafeId": "auction-1",
-                    "auctionTitle": "Estate Auction",
-                    "auctionEndDate": "2026-05-27 8:28:00 PM",
-                    "scrapedAt": "2026-05-27T12:00:00+00:00",
-                }
-            ]),
+            pyarrow.Table.from_pylist(
+                [
+                    {
+                        "id": "item-1",
+                        "lotNumber": 840,
+                        "title": "Lot - 840",
+                        "description": "Rosenthal crackle glaze hand-painted ceramic vase",
+                        "currentBid": 37.0,
+                        "totalBids": 6,
+                        "endDate": "2026-05-27 8:28:00 PM",
+                        "images": "[]",
+                        "category": "China & Pottery",
+                        "rawCategory": "China & Pottery",
+                        "detailUrl": "https://example.test/item",
+                        "auctionId": "auction-raw",
+                        "auctionSafeId": "auction-1",
+                        "auctionTitle": "Estate Auction",
+                        "auctionEndDate": "2026-05-27 8:28:00 PM",
+                        "scrapedAt": "2026-05-27T12:00:00+00:00",
+                    }
+                ]
+            ),
             items_dir / "auction-1.parquet",
         )
-        (data_dir / "manifest.json").write_text(json.dumps({
-            "auctions": [{"safeId": "auction-1", "itemsPath": "data/items/auction-1.parquet"}]
-        }))
+        (data_dir / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "auctions": [
+                        {
+                            "safeId": "auction-1",
+                            "itemsPath": "data/items/auction-1.parquet",
+                        }
+                    ]
+                }
+            )
+        )
         return data_dir
 
     def test_writes_json_files_directly_without_motherduck(self):
@@ -944,7 +1057,9 @@ class FetchDirectTest(unittest.TestCase):
             data = json.loads(output_file.read_text())
             self.assertIn("item-1", data["items"])
             match = data["items"]["item-1"]["matches"][0]
-            self.assertEqual(match["itemWebUrl"], "https://www.ebay.com/itm/177917908706")
+            self.assertEqual(
+                match["itemWebUrl"], "https://www.ebay.com/itm/177917908706"
+            )
             self.assertEqual(match["price"]["value"], "99.00")
 
     def test_skips_fresh_items_based_on_existing_json(self):
@@ -956,9 +1071,11 @@ class FetchDirectTest(unittest.TestCase):
             data_dir = self._make_data_dir(tmpdir)
             output_dir = Path(tmpdir) / "ebay-comps"
             output_dir.mkdir()
-            (output_dir / "auction-1.json").write_text(json.dumps({
-                "items": {"item-1": {"fetchedAt": fresh_ts, "matches": []}}
-            }))
+            (output_dir / "auction-1.json").write_text(
+                json.dumps(
+                    {"items": {"item-1": {"fetchedAt": fresh_ts, "matches": []}}}
+                )
+            )
 
             summary = fetch_direct(
                 data_dir=data_dir,
@@ -1025,8 +1142,12 @@ class BackfillBudgetTest(unittest.TestCase):
     """Shared request budget, daily pacing, skip-attempted, end-date priority."""
 
     @staticmethod
-    def _item(item_id, title="Vintage Fenton Glass Vase", safe_id="A",
-              end="2026-05-31 6:19:00 PM"):
+    def _item(
+        item_id,
+        title="Vintage Fenton Glass Vase",
+        safe_id="A",
+        end="2026-05-31 6:19:00 PM",
+    ):
         return {
             "auctionSafeId": safe_id,
             "id": str(item_id),
@@ -1042,12 +1163,19 @@ class BackfillBudgetTest(unittest.TestCase):
             calls["n"] += 1
             return {"status": "no_results", "matches": [], "warning": None}
 
-        with tempfile.TemporaryDirectory() as tmp, \
-                patch("ebay_comps.load_manifest_items", return_value=items), \
-                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ebay_comps.load_manifest_items", return_value=items),
+            patch("ebay_comps.fetch_sold_matches", side_effect=fake),
+        ):
             summary = ebay_comps.fetch_direct(
-                output_dir=Path(tmp), limit=100, queries_per_item=2, max_queries=5,
-                monthly_budget=0, stale_hours=0, sleep_seconds=0,
+                output_dir=Path(tmp),
+                limit=100,
+                queries_per_item=2,
+                max_queries=5,
+                monthly_budget=0,
+                stale_hours=0,
+                sleep_seconds=0,
                 mirror_to_warehouse=False,
             )
         # 10 items x 2 queries would be 20 requests; the cap holds it to 5.
@@ -1060,19 +1188,36 @@ class BackfillBudgetTest(unittest.TestCase):
         def fake(session, search, max_matches=3):
             return {"status": "no_results", "matches": [], "warning": None}
 
-        with tempfile.TemporaryDirectory() as tmp, \
-                patch("ebay_comps.load_manifest_items", return_value=items), \
-                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ebay_comps.load_manifest_items", return_value=items),
+            patch("ebay_comps.fetch_sold_matches", side_effect=fake),
+        ):
             out = Path(tmp)
             today = datetime.now(UTC).isoformat().replace("+00:00", "Z")
             # Per-auction file: attempts keyed by item id, "queries" = requests spent.
-            ebay_comps.write_comp_file(out / "PRE.json", {
-                "schemaVersion": 2, "items": {},
-                "attempts": {"x": {"fetchedAt": today, "status": "no_results",
-                                   "queries": 1998}}})
+            ebay_comps.write_comp_file(
+                out / "PRE.json",
+                {
+                    "schemaVersion": 2,
+                    "items": {},
+                    "attempts": {
+                        "x": {
+                            "fetchedAt": today,
+                            "status": "no_results",
+                            "queries": 1998,
+                        }
+                    },
+                },
+            )
             summary = ebay_comps.fetch_direct(
-                output_dir=out, limit=100, queries_per_item=2, monthly_budget=2000,
-                daily_pacing=False, stale_hours=0, sleep_seconds=0,
+                output_dir=out,
+                limit=100,
+                queries_per_item=2,
+                monthly_budget=2000,
+                daily_pacing=False,
+                stale_hours=0,
+                sleep_seconds=0,
                 mirror_to_warehouse=False,
             )
         self.assertEqual(summary["queries_attempted"], 2)  # only 2 of 2000 left
@@ -1083,7 +1228,11 @@ class BackfillBudgetTest(unittest.TestCase):
             now = datetime(2026, 5, 30, 12, 0, tzinfo=UTC)
             cap_active, limit = ebay_comps.resolve_query_budget(
                 ebay_comps.FileCompLedger(Path(tmp)),
-                monthly_budget=2000, max_queries=0, daily_pacing=True, now=now)
+                monthly_budget=2000,
+                max_queries=0,
+                daily_pacing=True,
+                now=now,
+            )
         self.assertTrue(cap_active)
         self.assertEqual(limit, 1000)
 
@@ -1095,7 +1244,8 @@ class BackfillBudgetTest(unittest.TestCase):
         ledger.provider_used_today.return_value = 0
         ledger.requests_used_in_month.return_value = 5000  # coarse: "exhausted"
         cap_active, limit = ebay_comps.resolve_query_budget(
-            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False)
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False
+        )
         self.assertTrue(cap_active)
         self.assertEqual(limit, 1620)  # gated on the provider meter
         ledger.requests_used_in_month.assert_not_called()  # coarse count ignored
@@ -1106,7 +1256,8 @@ class BackfillBudgetTest(unittest.TestCase):
         ledger.provider_remaining.return_value = 4000
         ledger.provider_used_today.return_value = 0
         _, limit = ebay_comps.resolve_query_budget(
-            ledger, monthly_budget=2000, max_queries=0, daily_pacing=False)
+            ledger, monthly_budget=2000, max_queries=0, daily_pacing=False
+        )
         self.assertEqual(limit, 2000)
 
     def test_provider_min_remaining_floor_subtracted(self):
@@ -1114,8 +1265,12 @@ class BackfillBudgetTest(unittest.TestCase):
         ledger.provider_remaining.return_value = 100
         ledger.provider_used_today.return_value = 0
         _, limit = ebay_comps.resolve_query_budget(
-            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False,
-            provider_min_remaining=20)
+            ledger,
+            monthly_budget=5000,
+            max_queries=0,
+            daily_pacing=False,
+            provider_min_remaining=20,
+        )
         self.assertEqual(limit, 80)
 
     def test_daily_pacing_uses_provider_used_today_not_coarse(self):
@@ -1126,7 +1281,8 @@ class BackfillBudgetTest(unittest.TestCase):
         ledger.requests_used_today.return_value = 9999  # coarse overcount ignored
         now = datetime(2026, 6, 14, 12, 0, tzinfo=UTC)
         _, limit = ebay_comps.resolve_query_budget(
-            ledger, monthly_budget=5000, max_queries=0, daily_pacing=True, now=now)
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=True, now=now
+        )
         self.assertEqual(limit, 50)
         ledger.requests_used_today.assert_not_called()
 
@@ -1135,7 +1291,8 @@ class BackfillBudgetTest(unittest.TestCase):
         ledger.provider_remaining.return_value = None  # no header cached yet
         ledger.requests_used_in_month.return_value = 4990
         _, limit = ebay_comps.resolve_query_budget(
-            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False)
+            ledger, monthly_budget=5000, max_queries=0, daily_pacing=False
+        )
         self.assertEqual(limit, 10)
 
     def test_skip_attempted_overrides_staleness(self):
@@ -1147,19 +1304,35 @@ class BackfillBudgetTest(unittest.TestCase):
             called["n"] += 1
             return {"status": "ok", "matches": [{"ebayItemId": "9"}], "warning": None}
 
-        with tempfile.TemporaryDirectory() as tmp, \
-                patch("ebay_comps.load_manifest_items", return_value=[self._item(0)]), \
-                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ebay_comps.load_manifest_items", return_value=[self._item(0)]),
+            patch("ebay_comps.fetch_sold_matches", side_effect=fake),
+        ):
             out = Path(tmp)
-            old = (datetime.now(UTC) - timedelta(days=90)).isoformat().replace(
-                "+00:00", "Z")
-            ebay_comps.write_comp_file(out / "A.json", {
-                "schemaVersion": 2, "items": {},
-                "attempts": {"0": {"fetchedAt": old, "status": "no_results",
-                                   "queries": 2}}})
+            old = (
+                (datetime.now(UTC) - timedelta(days=90))
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+            ebay_comps.write_comp_file(
+                out / "A.json",
+                {
+                    "schemaVersion": 2,
+                    "items": {},
+                    "attempts": {
+                        "0": {"fetchedAt": old, "status": "no_results", "queries": 2}
+                    },
+                },
+            )
             summary = ebay_comps.fetch_direct(
-                output_dir=out, limit=10, queries_per_item=2, monthly_budget=0,
-                stale_hours=168, skip_attempted=True, sleep_seconds=0,
+                output_dir=out,
+                limit=10,
+                queries_per_item=2,
+                monthly_budget=0,
+                stale_hours=168,
+                skip_attempted=True,
+                sleep_seconds=0,
                 mirror_to_warehouse=False,
             )
         self.assertEqual(called["n"], 0)  # stale, but already attempted -> skipped
@@ -1182,13 +1355,20 @@ class BackfillBudgetTest(unittest.TestCase):
                 "provider_remaining": remaining,
             }
 
-        with tempfile.TemporaryDirectory() as tmp, \
-                patch("ebay_comps.load_manifest_items", return_value=items), \
-                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ebay_comps.load_manifest_items", return_value=items),
+            patch("ebay_comps.fetch_sold_matches", side_effect=fake),
+        ):
             summary = ebay_comps.fetch_direct(
-                output_dir=Path(tmp), limit=100, queries_per_item=1,
-                monthly_budget=0, stale_hours=0, sleep_seconds=0,
-                mirror_to_warehouse=False, provider_min_remaining=0,
+                output_dir=Path(tmp),
+                limit=100,
+                queries_per_item=1,
+                monthly_budget=0,
+                stale_hours=0,
+                sleep_seconds=0,
+                mirror_to_warehouse=False,
+                provider_min_remaining=0,
             )
         # Second call returns remaining=0 → stop. No third request is made.
         self.assertEqual(calls["n"], 2)
@@ -1196,10 +1376,18 @@ class BackfillBudgetTest(unittest.TestCase):
         self.assertEqual(summary["provider_remaining"], 0)
 
     def test_prioritizes_soonest_ending_auction(self):
-        later = self._item("l", title="Distinctive Walnut Dresser Antique",
-                           safe_id="LATE", end="2026-06-30 6:00:00 PM")
-        sooner = self._item("s", title="Distinctive Brass Telescope Antique",
-                            safe_id="SOON", end="2026-06-01 6:00:00 PM")
+        later = self._item(
+            "l",
+            title="Distinctive Walnut Dresser Antique",
+            safe_id="LATE",
+            end="2026-06-30 6:00:00 PM",
+        )
+        sooner = self._item(
+            "s",
+            title="Distinctive Brass Telescope Antique",
+            safe_id="SOON",
+            end="2026-06-01 6:00:00 PM",
+        )
         seen = []
 
         def fake(session, search, max_matches=3):
@@ -1207,19 +1395,30 @@ class BackfillBudgetTest(unittest.TestCase):
             return {"status": "ok", "matches": [{"ebayItemId": "1"}], "warning": None}
 
         # Reverse-priority input order proves sorting (not input order) drives it.
-        with tempfile.TemporaryDirectory() as tmp, \
-                patch("ebay_comps.load_manifest_items", return_value=[later, sooner]), \
-                patch("ebay_comps.fetch_sold_matches", side_effect=fake):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ebay_comps.load_manifest_items", return_value=[later, sooner]),
+            patch("ebay_comps.fetch_sold_matches", side_effect=fake),
+        ):
             ebay_comps.fetch_direct(
-                output_dir=Path(tmp), limit=1, queries_per_item=1, monthly_budget=0,
-                stale_hours=0, sleep_seconds=0, mirror_to_warehouse=False,
+                output_dir=Path(tmp),
+                limit=1,
+                queries_per_item=1,
+                monthly_budget=0,
+                stale_hours=0,
+                sleep_seconds=0,
+                mirror_to_warehouse=False,
             )
         self.assertTrue(any("telescope" in q.lower() for q in seen))
         self.assertFalse(any("dresser" in q.lower() for q in seen))
 
     def test_auction_end_sort_key_orders_and_handles_missing(self):
-        soon = ebay_comps.auction_end_sort_key({"auctionEndDate": "2026-05-31 6:19:00 PM"})
-        late = ebay_comps.auction_end_sort_key({"auctionEndDate": "2026-06-04 6:09:00 PM"})
+        soon = ebay_comps.auction_end_sort_key(
+            {"auctionEndDate": "2026-05-31 6:19:00 PM"}
+        )
+        late = ebay_comps.auction_end_sort_key(
+            {"auctionEndDate": "2026-06-04 6:09:00 PM"}
+        )
         missing = ebay_comps.auction_end_sort_key({"auctionEndDate": ""})
         self.assertLess(soon, late)
         self.assertLess(late, missing)
@@ -1246,24 +1445,33 @@ class FetchDirectSupabaseModeTest(unittest.TestCase):
         def fake(session, search, max_matches=3):
             return {
                 "status": "ok",
-                "matches": [{
-                    "ebay_item_id": "9",
-                    "item_web_url": "https://www.ebay.com/itm/9",
-                    "price_value": "10",
-                }],
+                "matches": [
+                    {
+                        "ebay_item_id": "9",
+                        "item_web_url": "https://www.ebay.com/itm/9",
+                        "price_value": "10",
+                    }
+                ],
                 "warning": None,
             }
 
-        with tempfile.TemporaryDirectory() as tmp, \
-                patch("ebay_comps.supabase_comp_backend_active", return_value=True), \
-                patch("supabase_comps.SupabaseCompLedger", return_value=fake_ledger), \
-                patch("ebay_comps.load_manifest_items", return_value=[self._item()]), \
-                patch("ebay_comps.fetch_sold_matches", side_effect=fake), \
-                patch("ebay_comps.mirror_rows_to_warehouse") as mirror:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ebay_comps.supabase_comp_backend_active", return_value=True),
+            patch("supabase_comps.SupabaseCompLedger", return_value=fake_ledger),
+            patch("ebay_comps.load_manifest_items", return_value=[self._item()]),
+            patch("ebay_comps.fetch_sold_matches", side_effect=fake),
+            patch("ebay_comps.mirror_rows_to_warehouse") as mirror,
+        ):
             out = Path(tmp)
             summary = ebay_comps.fetch_direct(
-                output_dir=out, limit=10, queries_per_item=1, monthly_budget=0,
-                stale_hours=0, sleep_seconds=0, mirror_to_warehouse=True,
+                output_dir=out,
+                limit=10,
+                queries_per_item=1,
+                monthly_budget=0,
+                stale_hours=0,
+                sleep_seconds=0,
+                mirror_to_warehouse=True,
             )
 
         self.assertEqual(summary["files_written"], 0)
@@ -1275,14 +1483,23 @@ class FetchDirectSupabaseModeTest(unittest.TestCase):
 
     def test_no_mirror_forces_file_backend_even_if_supabase_configured(self):
         # --no-mirror (mirror_to_warehouse=False) must never touch Supabase.
-        with patch("ebay_comps.supabase_comp_backend_active") as active, \
-                patch("ebay_comps.load_manifest_items", return_value=[self._item()]), \
-                patch("ebay_comps.fetch_sold_matches",
-                      return_value={"status": "no_results", "matches": [], "warning": None}), \
-                tempfile.TemporaryDirectory() as tmp:
+        with (
+            patch("ebay_comps.supabase_comp_backend_active") as active,
+            patch("ebay_comps.load_manifest_items", return_value=[self._item()]),
+            patch(
+                "ebay_comps.fetch_sold_matches",
+                return_value={"status": "no_results", "matches": [], "warning": None},
+            ),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
             ebay_comps.fetch_direct(
-                output_dir=Path(tmp), limit=1, queries_per_item=1, monthly_budget=0,
-                stale_hours=0, sleep_seconds=0, mirror_to_warehouse=False,
+                output_dir=Path(tmp),
+                limit=1,
+                queries_per_item=1,
+                monthly_budget=0,
+                stale_hours=0,
+                sleep_seconds=0,
+                mirror_to_warehouse=False,
             )
         active.assert_not_called()  # short-circuited before the backend check
 
@@ -1295,22 +1512,46 @@ class LoadSupabaseItemsTest(unittest.TestCase):
     """The Supabase-sourced item loader (so comps can run without a scrape)."""
 
     def test_overlays_enrichment_onto_active_lots(self):
-        with patch("supabase_comps.resolve_credentials",
-                   return_value=("https://x.supabase.co", "k")), \
-             patch("supabase_lots.list_auction_safe_ids", return_value=["a1"]), \
-             patch("supabase_lots.fetch_lots_for_auction", return_value=[
-                 {"id": "i1", "auctionSafeId": "a1", "title": "Lot - 1",
-                  "category": "Tools", "currentBid": 10},
-                 {"id": "i2", "auctionSafeId": "a1", "title": "Lot - 2",
-                  "category": "Tools", "currentBid": 5},
-             ]), \
-             patch("supabase_enrichment.load_prior_enrichment_from_supabase",
-                   return_value={
-                       "i1": {"brand": "DeWalt", "modelOrSku": "DCD771",
-                              "searchQuery": "DeWalt DCD771 drill",
-                              "condition": "used", "enrichmentConfidence": "high"},
-                   }):
+        with (
+            patch(
+                "supabase_comps.resolve_credentials",
+                return_value=("https://x.supabase.co", "k"),
+            ),
+            patch("supabase_lots.list_auction_safe_ids", return_value=["a1"]),
+            patch(
+                "supabase_lots.fetch_lots_for_auction",
+                return_value=[
+                    {
+                        "id": "i1",
+                        "auctionSafeId": "a1",
+                        "title": "Lot - 1",
+                        "category": "Tools",
+                        "currentBid": 10,
+                    },
+                    {
+                        "id": "i2",
+                        "auctionSafeId": "a1",
+                        "title": "Lot - 2",
+                        "category": "Tools",
+                        "currentBid": 5,
+                    },
+                ],
+            ),
+            patch(
+                "supabase_enrichment.load_prior_enrichment_from_supabase",
+                return_value={
+                    "i1": {
+                        "brand": "DeWalt",
+                        "modelOrSku": "DCD771",
+                        "searchQuery": "DeWalt DCD771 drill",
+                        "condition": "used",
+                        "enrichmentConfidence": "high",
+                    },
+                },
+            ),
+        ):
             from ebay_export import load_supabase_items
+
             items = load_supabase_items()
 
         by_id = {it["id"]: it for it in items}
@@ -1324,4 +1565,5 @@ class LoadSupabaseItemsTest(unittest.TestCase):
     def test_returns_empty_when_unconfigured(self):
         with patch("supabase_comps.resolve_credentials", return_value=(None, None)):
             from ebay_export import load_supabase_items
+
             self.assertEqual(load_supabase_items(), [])

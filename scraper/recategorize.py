@@ -53,7 +53,11 @@ def process_file(path: Path, dry_run: bool) -> tuple[int, int]:
     ndjson_path = path.with_suffix(".ndjson")
     if not ndjson_path.exists():
         return 0, 0
-    rows = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in ndjson_path.read_text().splitlines()
+        if line.strip()
+    ]
     if not rows:
         return 0, 0
 
@@ -81,11 +85,24 @@ def iter_dirs(active_only: bool, archive_only: bool):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Recategorize read-model lots from current mappings")
-    parser.add_argument("--dry-run", action="store_true", help="Report changes without writing")
-    parser.add_argument("--active-only", action="store_true", help="Only the active items dir")
-    parser.add_argument("--archive-only", action="store_true", help="Only the archive items dir")
-    parser.add_argument("--sample", type=int, default=0, help="Print N example reclassifications (dry-run insight)")
+    parser = argparse.ArgumentParser(
+        description="Recategorize read-model lots from current mappings"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Report changes without writing"
+    )
+    parser.add_argument(
+        "--active-only", action="store_true", help="Only the active items dir"
+    )
+    parser.add_argument(
+        "--archive-only", action="store_true", help="Only the archive items dir"
+    )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=0,
+        help="Print N example reclassifications (dry-run insight)",
+    )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     total_rows = total_changed = 0
@@ -100,9 +117,18 @@ def main(argv: list[str] | None = None) -> int:
                             continue
                         row = json.loads(line)
                         before = row.get("category")
-                        if recategorized_row(dict(row)) and before == "Other" and len(samples) < args.sample:
-                            new_cat = normalize_category(row.get("rawCategory") or "", row.get("description") or "")
-                            samples.append((new_cat, (row.get("description") or "")[:70]))
+                        if (
+                            recategorized_row(dict(row))
+                            and before == "Other"
+                            and len(samples) < args.sample
+                        ):
+                            new_cat = normalize_category(
+                                row.get("rawCategory") or "",
+                                row.get("description") or "",
+                            )
+                            samples.append(
+                                (new_cat, (row.get("description") or "")[:70])
+                            )
             rows, changed = process_file(path, args.dry_run)
             total_rows += rows
             total_changed += changed

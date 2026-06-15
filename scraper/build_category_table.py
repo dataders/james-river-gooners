@@ -64,7 +64,9 @@ def validate(cfg):
     for source, table in cfg["mappings"].items():
         for raw, sub in table.items():
             if sub not in subs:
-                errors.append(f"mappings.{source}[{raw!r}] -> undeclared subcategory {sub!r}")
+                errors.append(
+                    f"mappings.{source}[{raw!r}] -> undeclared subcategory {sub!r}"
+                )
     # inference targets must be declared subcategories
     for kw, sub in cfg.get("inference", {}).items():
         if sub not in subs:
@@ -86,7 +88,9 @@ class Resolver:
         self.identity = {
             name.lower(): name for name in self.subs if name != "__unknown__"
         }
-        self.common = {k.lower(): v for k, v in cfg["mappings"].get("common", {}).items()}
+        self.common = {
+            k.lower(): v for k, v in cfg["mappings"].get("common", {}).items()
+        }
         self.per_source = {
             src: {k.lower(): v for k, v in tbl.items()}
             for src, tbl in cfg["mappings"].items()
@@ -204,7 +208,9 @@ truncate public.category_inference;
     grp_rows = ",\n".join(
         f"  ({_sql_lit(g)}, {i})" for i, g in enumerate(cfg["groups"])
     )
-    seed = [f"insert into public.category_groups (category_group, sort_order) values\n{grp_rows};\n"]
+    seed = [
+        f"insert into public.category_groups (category_group, sort_order) values\n{grp_rows};\n"
+    ]
 
     map_rows = []
     for source, table in _effective_mappings(cfg).items():
@@ -237,7 +243,9 @@ truncate public.category_inference;
         # Reuse an existing generated migration filename if present, so repeated
         # runs overwrite in place instead of piling up duplicates.
         existing = sorted(MIGRATIONS_DIR.glob("*_category_mappings.sql"))
-        path = existing[0] if existing else MIGRATIONS_DIR / "0006_category_mappings.sql"
+        path = (
+            existing[0] if existing else MIGRATIONS_DIR / "0006_category_mappings.sql"
+        )
         path.write_text(sql)
         return path
     return None
@@ -253,7 +261,10 @@ def _srcfam(s):
 def coverage(cfg):
     resolver = Resolver(cfg)
     rows = []
-    for mf in (ROOT / "public/data/manifest.json", ROOT / "public/data/archive-manifest.json"):
+    for mf in (
+        ROOT / "public/data/manifest.json",
+        ROOT / "public/data/archive-manifest.json",
+    ):
         if not mf.exists():
             continue
         m = json.loads(mf.read_text())
@@ -272,7 +283,7 @@ def coverage(cfg):
                     continue
                 it = json.loads(line)
                 raw = it.get("rawCategory") or ""
-                text = f"{it.get('title','')} {it.get('description','')}"
+                text = f"{it.get('title', '')} {it.get('description', '')}"
                 old_group = (it.get("category") or "Other").strip()
                 sub, how = resolver.subcategory(fam, raw, text)
                 new_group = resolver.group(sub)
@@ -295,25 +306,35 @@ def coverage(cfg):
         real = [r for r in sub if r[1].strip().lower() not in ("", "other")]
         real_unres = sum(1 for r in real if r[5] in ("unmapped", "ambiguous"))
         print(f"\n-- {fam}: {n} items --")
-        print(f"   Other rate:   scraped {100*old_other/n:5.1f}%  ->  canonical {100*new_other/n:5.1f}%")
-        print(f"   resolved via: table {100*via_table/n:4.1f}%   inference {100*via_infer/n:4.1f}%   "
-              f"unresolved {100*unmapped/n:4.1f}%")
+        print(
+            f"   Other rate:   scraped {100 * old_other / n:5.1f}%  ->  canonical {100 * new_other / n:5.1f}%"
+        )
+        print(
+            f"   resolved via: table {100 * via_table / n:4.1f}%   inference {100 * via_infer / n:4.1f}%   "
+            f"unresolved {100 * unmapped / n:4.1f}%"
+        )
         if real:
-            print(f"   of the {len(real)} items WITH a real source category: "
-                  f"{100*(len(real)-real_unres)/len(real):.1f}% mapped, "
-                  f"{real_unres} left unresolved")
+            print(
+                f"   of the {len(real)} items WITH a real source category: "
+                f"{100 * (len(real) - real_unres) / len(real):.1f}% mapped, "
+                f"{real_unres} left unresolved"
+            )
         overall["n"] += n
         overall["old"] += old_other
         overall["new"] += new_other
     if overall["n"]:
-        print(f"\n-- ALL {overall['n']} items: Other {100*overall['old']/overall['n']:.1f}% "
-              f"-> {100*overall['new']/overall['n']:.1f}% --")
+        print(
+            f"\n-- ALL {overall['n']} items: Other {100 * overall['old'] / overall['n']:.1f}% "
+            f"-> {100 * overall['new'] / overall['n']:.1f}% --"
+        )
 
     # Remaining unresolved raw values worth a human's attention (count >= 3).
     print("\n---- top still-unresolved raw categories (per source) ----")
     for fam in ("cannons", "hibid", "rasmus"):
         c = collections.Counter(
-            r[1] for r in rows if r[0] == fam and r[5] in ("unmapped", "ambiguous") and r[1]
+            r[1]
+            for r in rows
+            if r[0] == fam and r[5] in ("unmapped", "ambiguous") and r[1]
         )
         top = [(raw, k) for raw, k in c.most_common() if k >= 3]
         if top:
@@ -322,15 +343,19 @@ def coverage(cfg):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--write", action="store_true", help="(re)write JSON + migration artifacts")
+    ap.add_argument(
+        "--write", action="store_true", help="(re)write JSON + migration artifacts"
+    )
     args = ap.parse_args()
 
     cfg = load()
     validate(cfg)
-    print(f"OK: {CANONICAL.name} valid — "
-          f"{len(cfg['groups'])} groups, {len(cfg['subcategories'])-1} subcategories, "
-          f"{sum(len(t) for t in cfg['mappings'].values())} raw mappings, "
-          f"{len(cfg.get('inference', {}))} inference keywords.")
+    print(
+        f"OK: {CANONICAL.name} valid — "
+        f"{len(cfg['groups'])} groups, {len(cfg['subcategories']) - 1} subcategories, "
+        f"{sum(len(t) for t in cfg['mappings'].values())} raw mappings, "
+        f"{len(cfg.get('inference', {}))} inference keywords."
+    )
 
     if args.write:
         j = emit_json(cfg)

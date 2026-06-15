@@ -43,9 +43,7 @@ ADD_UNIQUE_BIDDERS_SQL = (
 ADD_FINAL_BID_SQL = (
     f"alter table {SNAPSHOT_TABLE} add column if not exists final_bid decimal(12, 2)"
 )
-ADD_CLOSED_SQL = (
-    f"alter table {SNAPSHOT_TABLE} add column if not exists closed boolean"
-)
+ADD_CLOSED_SQL = f"alter table {SNAPSHOT_TABLE} add column if not exists closed boolean"
 
 INSERT_SNAPSHOT_SQL = f"""
 insert or ignore into {SNAPSHOT_TABLE} (
@@ -133,30 +131,34 @@ def rows_for_snapshots(items: list[dict], source_url: str) -> list[dict]:
     rows = []
 
     for item in items:
-        rows.append({
-            "auction_id": item.get("auctionId", ""),
-            "auction_safe_id": item.get("auctionSafeId", ""),
-            "item_id": item.get("id", ""),
-            "lot_number": item.get("lotNumber", 0),
-            "snapshot_at": timestamp_value(item.get("scrapedAt")) or snapshot_at,
-            "auction_title": item.get("auctionTitle", ""),
-            "auction_end_at": timestamp_value(item.get("auctionEndDate")),
-            "item_end_at": timestamp_value(item.get("endDate")),
-            "title": item.get("title", ""),
-            "description": item.get("description", ""),
-            "current_bid": decimal_text(item.get("currentBid")),
-            # Open lots have no final price yet — keep NULL (not 0.00) so closed
-            # vs. still-live can be told apart in the warehouse.
-            "final_bid": decimal_text(item.get("finalBid")) if item.get("finalBid") is not None else None,
-            "closed": bool(item.get("closed", False)),
-            "total_bids": item.get("totalBids", 0),
-            "unique_bidders": item.get("uniqueBidders"),
-            "category": item.get("category", ""),
-            "raw_category": item.get("rawCategory", ""),
-            "detail_url": item.get("detailUrl", ""),
-            "images": images_text(item.get("images")),
-            "source_url": source_url,
-        })
+        rows.append(
+            {
+                "auction_id": item.get("auctionId", ""),
+                "auction_safe_id": item.get("auctionSafeId", ""),
+                "item_id": item.get("id", ""),
+                "lot_number": item.get("lotNumber", 0),
+                "snapshot_at": timestamp_value(item.get("scrapedAt")) or snapshot_at,
+                "auction_title": item.get("auctionTitle", ""),
+                "auction_end_at": timestamp_value(item.get("auctionEndDate")),
+                "item_end_at": timestamp_value(item.get("endDate")),
+                "title": item.get("title", ""),
+                "description": item.get("description", ""),
+                "current_bid": decimal_text(item.get("currentBid")),
+                # Open lots have no final price yet — keep NULL (not 0.00) so closed
+                # vs. still-live can be told apart in the warehouse.
+                "final_bid": decimal_text(item.get("finalBid"))
+                if item.get("finalBid") is not None
+                else None,
+                "closed": bool(item.get("closed", False)),
+                "total_bids": item.get("totalBids", 0),
+                "unique_bidders": item.get("uniqueBidders"),
+                "category": item.get("category", ""),
+                "raw_category": item.get("rawCategory", ""),
+                "detail_url": item.get("detailUrl", ""),
+                "images": images_text(item.get("images")),
+                "source_url": source_url,
+            }
+        )
 
     return rows
 
@@ -242,7 +244,9 @@ def _ensure_schema(connection, database: str) -> None:
     _SCHEMA_READY.add(database)
 
 
-def append_listing_snapshots(items: list[dict], source_url: str, database: str | None = None) -> int:
+def append_listing_snapshots(
+    items: list[dict], source_url: str, database: str | None = None
+) -> int:
     import warehouse
 
     database = warehouse.resolve_database(database)
@@ -256,7 +260,9 @@ def append_listing_snapshots(items: list[dict], source_url: str, database: str |
         # Reuse one cloud connection across all auctions in this scrape instead
         # of reconnecting per call (the old per-auction handshake dominated the
         # scrape's runtime, #timeout), and bulk-load the batch in one statement.
-        connection = warehouse.cached_connect(database, "snapshot listings to MotherDuck")
+        connection = warehouse.cached_connect(
+            database, "snapshot listings to MotherDuck"
+        )
         _ensure_schema(connection, database)
         bulk_insert_rows(connection, rows)
 

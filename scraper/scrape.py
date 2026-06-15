@@ -166,9 +166,11 @@ def extract_auction_id(url: str) -> str:
 def create_session(auction_url: str) -> tuple[requests.Session, str]:
     """Create a requests session with proper cookies. Returns (session, page_html)."""
     session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-    })
+    session.headers.update(
+        {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        }
+    )
     # Visit the auction page to establish session cookies
     resp = session.get(auction_url, allow_redirects=True, timeout=30)
     resp.raise_for_status()
@@ -181,10 +183,16 @@ def fetch_categories(session: requests.Session, auction_id: str) -> dict:
     resp = session.get(url, params={"AuctionId": auction_id}, timeout=30)
     resp.raise_for_status()
     data = resp.json()
-    return {item["Value"]: item["Text"].strip() for item in data if item.get("Text", "").strip()}
+    return {
+        item["Value"]: item["Text"].strip()
+        for item in data
+        if item.get("Text", "").strip()
+    }
 
 
-def fetch_items_page(session: requests.Session, auction_id: str, page: int, page_size_token: str) -> str:
+def fetch_items_page(
+    session: requests.Session, auction_id: str, page: int, page_size_token: str
+) -> str:
     """Fetch a single page of auction items (returns HTML fragment)."""
     url = "https://bid.cannonsauctions.com/Public/Auction/GetAuctionItems"
     params = {
@@ -263,7 +271,9 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     # Item ID from BidAuctionItemId hidden input
     bid_input = card.find("input", class_="BidAuctionItemId")
     if not bid_input:
-        bid_input = card.find("input", attrs={"name": lambda n: n and "BidAuctionItemId" in str(n)})
+        bid_input = card.find(
+            "input", attrs={"name": lambda n: n and "BidAuctionItemId" in str(n)}
+        )
     item_id = bid_input["value"] if bid_input else None
     if not item_id:
         return None
@@ -282,7 +292,9 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
     current_bid = float(re.sub(r"[^\d.]", "", bid_text) or "0")
 
     # Also check hidden input for more accurate value
-    bid_val_input = card.find("input", attrs={"name": lambda n: n and str(n).startswith("CurrentAmount_")})
+    bid_val_input = card.find(
+        "input", attrs={"name": lambda n: n and str(n).startswith("CurrentAmount_")}
+    )
     if bid_val_input and bid_val_input.get("value"):
         try:
             current_bid = float(bid_val_input["value"])
@@ -291,7 +303,9 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
 
     # Total bids
     bids_input = card.find("input", attrs={"name": "TotalBids"})
-    total_bids = int(bids_input["value"]) if bids_input and bids_input.get("value") else 0
+    total_bids = (
+        int(bids_input["value"]) if bids_input and bids_input.get("value") else 0
+    )
 
     # End date
     timer_el = card.select_one(".remain-time")
@@ -306,7 +320,9 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
             images.append(src)
 
     # Category from hidden Types input
-    cat_input = card.find("input", attrs={"name": lambda n: n and str(n).startswith("Types")})
+    cat_input = card.find(
+        "input", attrs={"name": lambda n: n and str(n).startswith("Types")}
+    )
     raw_category = cat_input["value"] if cat_input else ""
 
     # Detail URL
@@ -340,12 +356,16 @@ def parse_single_card(card, categories_map: dict) -> dict | None:
         "endDate": end_date,
         "images": images[:5],  # Keep first 5 images
         "category": normalize_category(raw_category, description, source="cannons"),
-        "rawCategory": normalize_raw_with_description(raw_category, description, source="cannons"),
+        "rawCategory": normalize_raw_with_description(
+            raw_category, description, source="cannons"
+        ),
         "detailUrl": detail_url,
     }
 
 
-def scrape_auction(auction_url: str, snapshot_to_motherduck: bool | None = None) -> dict:
+def scrape_auction(
+    auction_url: str, snapshot_to_motherduck: bool | None = None
+) -> dict:
     """Main scrape function for a single auction."""
     auction_id = extract_auction_id(auction_url)
     safe_id = sanitize_auction_id(auction_id)

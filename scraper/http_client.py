@@ -42,13 +42,16 @@ def make_session(*, verify: bool = True) -> requests.Session:
     """
     if not verify:
         import urllib3
+
         warnings.filterwarnings("ignore", message="Unverified HTTPS request")
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     session = requests.Session()
-    session.headers.update({
-        "User-Agent": BROWSER_USER_AGENT,
-        "Accept-Language": "en-US,en;q=0.9",
-    })
+    session.headers.update(
+        {
+            "User-Agent": BROWSER_USER_AGENT,
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+    )
     session.verify = verify
     return session

@@ -18,6 +18,7 @@ EBAY_COMPS_DIR = DATA_DIR / "ebay-comps"
 
 # ── Manifest + Parquet loading ─────────────────────────────────────────────────
 
+
 def manifest_path(data_dir: Path = DATA_DIR, archived: bool = False) -> Path:
     return data_dir / ("archive-manifest.json" if archived else "manifest.json")
 
@@ -46,12 +47,18 @@ def load_manifest_items(
             continue
 
         manifest = json.loads(path.read_text())
-        entries = manifest if isinstance(manifest, list) else manifest.get("auctions", [])
+        entries = (
+            manifest if isinstance(manifest, list) else manifest.get("auctions", [])
+        )
         for entry in entries:
-            safe_id = text_value(entry.get("safeId") if isinstance(entry, dict) else entry)
+            safe_id = text_value(
+                entry.get("safeId") if isinstance(entry, dict) else entry
+            )
             if auction_safe_id and safe_id != auction_safe_id:
                 continue
-            parquet_path = manifest_item_path(entry if isinstance(entry, dict) else {"safeId": safe_id}, data_dir)
+            parquet_path = manifest_item_path(
+                entry if isinstance(entry, dict) else {"safeId": safe_id}, data_dir
+            )
             if not parquet_path.exists():
                 continue
             table = pq.read_table(parquet_path)
@@ -73,7 +80,11 @@ def load_manifest_items(
 # ebay_item_condition needs condition. Overlaid onto the bare lot so a
 # Supabase-sourced item behaves identically to one read from the local parquet.
 _COMP_ENRICHMENT_FIELDS = (
-    "brand", "modelOrSku", "searchQuery", "condition", "enrichmentConfidence",
+    "brand",
+    "modelOrSku",
+    "searchQuery",
+    "condition",
+    "enrichmentConfidence",
 )
 
 
@@ -100,11 +111,13 @@ def load_supabase_items(
     import supabase_lots
 
     items: list[dict] = []
-    for archived in (False, *( (True,) if include_archived else () )):
+    for archived in (False, *((True,) if include_archived else ())):
         safe_ids = (
             [auction_safe_id]
             if auction_safe_id
-            else supabase_lots.list_auction_safe_ids(url=url, key=key, archived=archived)
+            else supabase_lots.list_auction_safe_ids(
+                url=url, key=key, archived=archived
+            )
         )
         for safe_id in safe_ids:
             lots = supabase_lots.fetch_lots_for_auction(
@@ -126,6 +139,7 @@ def load_supabase_items(
 
 
 # ── JSON export helpers ────────────────────────────────────────────────────────
+
 
 def normalize_match_row(row: dict) -> tuple[str, str, dict] | None:
     item_web_url = text_value(row.get("item_web_url"))
@@ -159,7 +173,9 @@ def normalize_match_row(row: dict) -> tuple[str, str, dict] | None:
     return auction_safe_id, item_id, {k: v for k, v in match.items() if v is not None}
 
 
-def build_public_exports(rows: list[dict], generated_at: str | None = None) -> dict[str, dict]:
+def build_public_exports(
+    rows: list[dict], generated_at: str | None = None
+) -> dict[str, dict]:
     generated_at = generated_at or utc_now_text()
     exports: dict[str, dict] = {}
 
@@ -169,21 +185,27 @@ def build_public_exports(rows: list[dict], generated_at: str | None = None) -> d
             continue
 
         auction_safe_id, item_id, match = normalized
-        auction_export = exports.setdefault(auction_safe_id, {
-            "schemaVersion": 2,
-            "generatedAt": generated_at,
-            "marketplaceId": "EBAY_US",
-            "source": "scraper",
-            "items": {},
-        })
-        item_export = auction_export["items"].setdefault(item_id, {
-            "status": text_value(row.get("status"), "ok"),
-            "query": text_value(row.get("query")),
-            "searchUrl": text_value(row.get("search_url")),
-            "fetchedAt": text_value(row.get("fetched_at")) or generated_at,
-            "warning": text_value(row.get("warning")) or None,
-            "matches": [],
-        })
+        auction_export = exports.setdefault(
+            auction_safe_id,
+            {
+                "schemaVersion": 2,
+                "generatedAt": generated_at,
+                "marketplaceId": "EBAY_US",
+                "source": "scraper",
+                "items": {},
+            },
+        )
+        item_export = auction_export["items"].setdefault(
+            item_id,
+            {
+                "status": text_value(row.get("status"), "ok"),
+                "query": text_value(row.get("query")),
+                "searchUrl": text_value(row.get("search_url")),
+                "fetchedAt": text_value(row.get("fetched_at")) or generated_at,
+                "warning": text_value(row.get("warning")) or None,
+                "matches": [],
+            },
+        )
         item_export["matches"].append(match)
 
     return exports
@@ -213,6 +235,7 @@ def empty_comp_export(generated_at: str) -> dict:
 
 
 # ── File-ledger freshness + budget ─────────────────────────────────────────────
+
 
 def parse_fetched_at(value: str) -> float | None:
     if not value:
@@ -322,6 +345,7 @@ def merge_comp_files(
 
 # ── Warehouse mirror ───────────────────────────────────────────────────────────
 
+
 def mirror_rows_to_warehouse(rows: list[dict]) -> int:
     """Best-effort append of comp rows to the optional warehouse mirror."""
     if not rows:
@@ -341,6 +365,7 @@ def mirror_rows_to_warehouse(rows: list[dict]) -> int:
 
 
 # ── Sorting helpers ────────────────────────────────────────────────────────────
+
 
 def auction_end_sort_key(item: dict) -> float:
     """Sort key putting soonest-ending auctions first.

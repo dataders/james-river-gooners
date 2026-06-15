@@ -16,6 +16,7 @@ from categories import (
 
 # --- normalize_raw_category --------------------------------------------------
 
+
 def test_empty_raw_is_other():
     assert normalize_raw_category("") == "Other"
     assert normalize_raw_category(None or "") == "Other"
@@ -41,6 +42,7 @@ def test_unknown_raw_is_returned_cleaned():
 
 
 # --- normalize_category (group mapping) --------------------------------------
+
 
 def test_canonical_maps_to_broad_group():
     # "firearm" is a group term, and "Firearms" canonical contains it.
@@ -69,6 +71,7 @@ def test_description_fallback_only_when_raw_is_other():
 
 # --- infer_from_description --------------------------------------------------
 
+
 def test_infer_from_description_returns_tuple():
     result = infer_from_description("a beautiful gold necklace")
     assert result is not None
@@ -85,6 +88,7 @@ def test_infer_from_unmatched_description_is_none():
 
 
 # --- normalize_raw_with_description ------------------------------------------
+
 
 def test_raw_with_description_prefers_known_raw():
     assert normalize_raw_with_description("pottery", "ignored") == "China & Pottery"
@@ -161,8 +165,8 @@ class OtherRecoveryKeywordsTest(unittest.TestCase):
         cases = {
             "Antique mahogany drop leaf table": "Furniture",
             "Pair of Queen Anne dining chairs": "Furniture",
-            "Brass table lamp with shade": "Home & Kitchen",        # lamp → Lighting group
-            "Tall case clock, walnut": "Home & Kitchen",            # clock → Clocks group
+            "Brass table lamp with shade": "Home & Kitchen",  # lamp → Lighting group
+            "Tall case clock, walnut": "Home & Kitchen",  # clock → Clocks group
             "Framed oil painting of a harbor": "Art",
             "Set of ceramic dinner plates": "China & Glass",
             "Cut glass decanter": "China & Glass",
@@ -174,7 +178,9 @@ class OtherRecoveryKeywordsTest(unittest.TestCase):
         # A cherry chest with brass pulls is Furniture, not Silver & Metal —
         # the furniture noun is checked before the bare "brass" material.
         self.assertEqual(
-            normalize_category("Other", "Cherry Hepplewhite bowfront chest, brass pulls"),
+            normalize_category(
+                "Other", "Cherry Hepplewhite bowfront chest, brass pulls"
+            ),
             "Furniture",
         )
 
@@ -216,7 +222,9 @@ class SecondPassRecoveryTest(unittest.TestCase):
     def test_flatware_set_is_not_edged_weapons(self):
         # A flatware set lists "knives, forks, spoons" — Kitchenware, not Collectibles.
         self.assertEqual(
-            normalize_category("Other", "Stainless steel flatware including knives, forks, spoons"),
+            normalize_category(
+                "Other", "Stainless steel flatware including knives, forks, spoons"
+            ),
             "Home & Kitchen",
         )
 
@@ -231,16 +239,25 @@ class SecondPassRecoveryTest(unittest.TestCase):
     def test_plural_plates_avoids_license_plate(self):
         # "plates" (plural) catches dinnerware without grabbing a singular
         # "license plate" in a sports-memorabilia lot.
-        self.assertEqual(normalize_category("Other", "Set of six dinner plates"), "China & Glass")
+        self.assertEqual(
+            normalize_category("Other", "Set of six dinner plates"), "China & Glass"
+        )
         self.assertNotEqual(
             normalize_category("Other", "Dallas Cowboys apron and license plate"),
             "China & Glass",
         )
 
     def test_industrial_equipment_group(self):
-        for crumb in ("Auto Parts & Eqpt", "HVAC & Plumbing", "Food Service Eqpt",
-                      "Packaging & Shipping", "Shelving & Storage"):
-            self.assertEqual(normalize_category(crumb, ""), "Industrial & Equipment", crumb)
+        for crumb in (
+            "Auto Parts & Eqpt",
+            "HVAC & Plumbing",
+            "Food Service Eqpt",
+            "Packaging & Shipping",
+            "Shelving & Storage",
+        ):
+            self.assertEqual(
+                normalize_category(crumb, ""), "Industrial & Equipment", crumb
+            )
 
 
 if __name__ == "__main__":

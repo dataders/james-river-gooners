@@ -99,6 +99,7 @@ class LotRowTest(unittest.TestCase):
 # upsert_lots
 # ---------------------------------------------------------------------------
 
+
 def _ok_session(status=201):
     session = MagicMock()
     session.post.return_value = MagicMock(ok=True, status_code=status)
@@ -108,7 +109,9 @@ def _ok_session(status=201):
 class UpsertLotsTest(unittest.TestCase):
     def test_empty_items_no_request(self):
         session = _ok_session()
-        result = supabase_lots.upsert_lots([], "s", url="https://x.sb.co", key="k", session=session)
+        result = supabase_lots.upsert_lots(
+            [], "s", url="https://x.sb.co", key="k", session=session
+        )
         self.assertEqual(result, 0)
         session.post.assert_not_called()
 
@@ -121,8 +124,12 @@ class UpsertLotsTest(unittest.TestCase):
         session = _ok_session()
         items = [{"auctionSafeId": "s", "id": str(n)} for n in range(3)]
         written = supabase_lots.upsert_lots(
-            items, "s", url="https://x.sb.co/", key="sb_secret_x",
-            session=session, batch_size=2,
+            items,
+            "s",
+            url="https://x.sb.co/",
+            key="sb_secret_x",
+            session=session,
+            batch_size=2,
         )
         self.assertEqual(written, 3)
         self.assertEqual(session.post.call_count, 2)  # 2 + 1
@@ -135,29 +142,44 @@ class UpsertLotsTest(unittest.TestCase):
     def test_batching_splits_correctly(self):
         session = _ok_session()
         items = [{"auctionSafeId": "s", "id": str(n)} for n in range(5)]
-        supabase_lots.upsert_lots(items, "s", url="https://x.sb.co", key="k", session=session, batch_size=2)
+        supabase_lots.upsert_lots(
+            items, "s", url="https://x.sb.co", key="k", session=session, batch_size=2
+        )
         self.assertEqual(session.post.call_count, 3)  # 2 + 2 + 1
 
     def test_http_error_raises_with_status(self):
         session = MagicMock()
-        session.post.return_value = MagicMock(ok=False, status_code=401, text="unauthorized")
+        session.post.return_value = MagicMock(
+            ok=False, status_code=401, text="unauthorized"
+        )
         with self.assertRaisesRegex(RuntimeError, "lots upsert failed.*401"):
             supabase_lots.upsert_lots(
-                [SAMPLE_ITEM], "s", url="https://x.sb.co", key="k", session=session,
+                [SAMPLE_ITEM],
+                "s",
+                url="https://x.sb.co",
+                key="k",
+                session=session,
             )
 
     def test_500_error_includes_response_body(self):
         session = MagicMock()
-        session.post.return_value = MagicMock(ok=False, status_code=500, text="internal server error")
+        session.post.return_value = MagicMock(
+            ok=False, status_code=500, text="internal server error"
+        )
         with self.assertRaisesRegex(RuntimeError, "internal server error"):
             supabase_lots.upsert_lots(
-                [SAMPLE_ITEM], "s", url="https://x.sb.co", key="k", session=session,
+                [SAMPLE_ITEM],
+                "s",
+                url="https://x.sb.co",
+                key="k",
+                session=session,
             )
 
 
 # ---------------------------------------------------------------------------
 # upsert_lots — skip-unchanged diff (#242)
 # ---------------------------------------------------------------------------
+
 
 def _session_with_existing(existing_rows, status=201):
     """Mock session whose GET returns stored rows and whose POST succeeds."""
@@ -207,7 +229,10 @@ class SkipUnchangedTest(unittest.TestCase):
         session = _session_with_existing([_existing_row("1"), _existing_row("2")])
         written = supabase_lots.upsert_lots(
             [_active_item("1"), _active_item("2")],
-            "s", url="https://x.sb.co", key="k", session=session,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
         )
         self.assertEqual(written, 0)
         session.post.assert_not_called()
@@ -217,7 +242,10 @@ class SkipUnchangedTest(unittest.TestCase):
         session = _session_with_existing([_existing_row("1", current_bid="10.00")])
         written = supabase_lots.upsert_lots(
             [_active_item("1", currentBid=10.0)],
-            "s", url="https://x.sb.co", key="k", session=session,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
         )
         self.assertEqual(written, 0)
         session.post.assert_not_called()
@@ -226,12 +254,16 @@ class SkipUnchangedTest(unittest.TestCase):
         existing = [_existing_row("1"), _existing_row("2")]
         session = _session_with_existing(existing)
         items = [
-            _active_item("1"),                    # unchanged → skipped
-            _active_item("2", currentBid=25.0),   # bid changed → upserted
-            _active_item("3"),                    # brand new → upserted
+            _active_item("1"),  # unchanged → skipped
+            _active_item("2", currentBid=25.0),  # bid changed → upserted
+            _active_item("3"),  # brand new → upserted
         ]
         written = supabase_lots.upsert_lots(
-            items, "s", url="https://x.sb.co", key="k", session=session,
+            items,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
         )
         self.assertEqual(written, 2)
         self.assertEqual(self._posted_item_ids(session), {"2", "3"})
@@ -240,7 +272,10 @@ class SkipUnchangedTest(unittest.TestCase):
         session = _session_with_existing([_existing_row("1")])
         written = supabase_lots.upsert_lots(
             [_active_item("1", totalBids=9)],
-            "s", url="https://x.sb.co", key="k", session=session,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
         )
         self.assertEqual(written, 1)
         self.assertEqual(self._posted_item_ids(session), {"1"})
@@ -250,7 +285,10 @@ class SkipUnchangedTest(unittest.TestCase):
         session = _session_with_existing([_existing_row("1")])
         written = supabase_lots.upsert_lots(
             [_active_item("1", endDate="2026-06-10 6:05:00 PM")],
-            "s", url="https://x.sb.co", key="k", session=session,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
         )
         self.assertEqual(written, 1)
 
@@ -259,7 +297,10 @@ class SkipUnchangedTest(unittest.TestCase):
         session = _session_with_existing([])
         written = supabase_lots.upsert_lots(
             [_active_item("1"), _active_item("2")],
-            "s", url="https://x.sb.co", key="k", session=session,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
         )
         self.assertEqual(written, 2)
         self.assertEqual(self._posted_item_ids(session), {"1", "2"})
@@ -268,7 +309,10 @@ class SkipUnchangedTest(unittest.TestCase):
         session = _ok_session()
         written = supabase_lots.upsert_lots(
             [_active_item("1")],
-            "s", url="https://x.sb.co", key="k", session=session,
+            "s",
+            url="https://x.sb.co",
+            key="k",
+            session=session,
             skip_unchanged=False,
         )
         self.assertEqual(written, 1)
@@ -279,17 +323,22 @@ class SkipUnchangedTest(unittest.TestCase):
 # archive_lots
 # ---------------------------------------------------------------------------
 
+
 class ArchiveLotsTest(unittest.TestCase):
     def test_empty_items_no_request(self):
         session = _ok_session()
-        result = supabase_lots.archive_lots("s", [], url="https://x.sb.co", key="k", session=session)
+        result = supabase_lots.archive_lots(
+            "s", [], url="https://x.sb.co", key="k", session=session
+        )
         self.assertEqual(result, 0)
         session.post.assert_not_called()
 
     def test_sets_archived_true_and_final_bid(self):
         session = _ok_session()
         items = [{"auctionSafeId": "s", "id": "1", "finalBid": 75.0, "closed": True}]
-        supabase_lots.archive_lots("s", items, url="https://x.sb.co", key="k", session=session)
+        supabase_lots.archive_lots(
+            "s", items, url="https://x.sb.co", key="k", session=session
+        )
         _, kwargs = session.post.call_args
         row = kwargs["json"][0]
         self.assertTrue(row["archived"])
@@ -299,7 +348,9 @@ class ArchiveLotsTest(unittest.TestCase):
     def test_archived_unsold_lot_has_none_final_bid(self):
         session = _ok_session()
         items = [{"auctionSafeId": "s", "id": "1", "currentBid": 0}]
-        supabase_lots.archive_lots("s", items, url="https://x.sb.co", key="k", session=session)
+        supabase_lots.archive_lots(
+            "s", items, url="https://x.sb.co", key="k", session=session
+        )
         _, kwargs = session.post.call_args
         self.assertIsNone(kwargs["json"][0]["final_bid"])
 
@@ -308,7 +359,11 @@ class ArchiveLotsTest(unittest.TestCase):
         session.post.return_value = MagicMock(ok=False, status_code=500, text="boom")
         with self.assertRaisesRegex(RuntimeError, "lots upsert failed"):
             supabase_lots.archive_lots(
-                "s", [SAMPLE_ITEM], url="https://x.sb.co", key="k", session=session,
+                "s",
+                [SAMPLE_ITEM],
+                url="https://x.sb.co",
+                key="k",
+                session=session,
             )
 
 
@@ -316,10 +371,12 @@ class ArchiveLotsTest(unittest.TestCase):
 # backfill
 # ---------------------------------------------------------------------------
 
+
 class BackfillTest(unittest.TestCase):
     def _write_ndjson(self, directory: Path, filename: str, items: list) -> None:
         (directory / filename).write_text(
-            "\n".join(json.dumps(i) for i in items) + "\n", encoding="utf-8",
+            "\n".join(json.dumps(i) for i in items) + "\n",
+            encoding="utf-8",
         )
 
     def test_reads_active_and_archived_ndjson(self):
@@ -330,13 +387,21 @@ class BackfillTest(unittest.TestCase):
             archive_dir = Path(tmp) / "archive" / "items"
             archive_dir.mkdir(parents=True)
 
-            self._write_ndjson(active_dir, "a1.ndjson", [
-                {"auctionSafeId": "a1", "id": "1"},
-                {"auctionSafeId": "a1", "id": "2"},
-            ])
-            self._write_ndjson(archive_dir, "a2.ndjson", [
-                {"auctionSafeId": "a2", "id": "1", "finalBid": 50.0},
-            ])
+            self._write_ndjson(
+                active_dir,
+                "a1.ndjson",
+                [
+                    {"auctionSafeId": "a1", "id": "1"},
+                    {"auctionSafeId": "a1", "id": "2"},
+                ],
+            )
+            self._write_ndjson(
+                archive_dir,
+                "a2.ndjson",
+                [
+                    {"auctionSafeId": "a2", "id": "1", "finalBid": 50.0},
+                ],
+            )
 
             orig_active = supabase_lots.ITEMS_DIR
             orig_archive = supabase_lots.ARCHIVE_ITEMS_DIR
@@ -344,7 +409,9 @@ class BackfillTest(unittest.TestCase):
             supabase_lots.ARCHIVE_ITEMS_DIR = archive_dir
             try:
                 active, archived = supabase_lots.backfill(
-                    url="https://x.sb.co", key="k", session=session,
+                    url="https://x.sb.co",
+                    key="k",
+                    session=session,
                 )
             finally:
                 supabase_lots.ITEMS_DIR = orig_active
@@ -360,8 +427,12 @@ class BackfillTest(unittest.TestCase):
             active_dir.mkdir()
             archive_dir = Path(tmp) / "archive" / "items"
             archive_dir.mkdir(parents=True)
-            self._write_ndjson(active_dir, "a1.ndjson", [{"auctionSafeId": "a1", "id": "1"}])
-            self._write_ndjson(archive_dir, "a2.ndjson", [{"auctionSafeId": "a2", "id": "1"}])
+            self._write_ndjson(
+                active_dir, "a1.ndjson", [{"auctionSafeId": "a1", "id": "1"}]
+            )
+            self._write_ndjson(
+                archive_dir, "a2.ndjson", [{"auctionSafeId": "a2", "id": "1"}]
+            )
 
             orig_active = supabase_lots.ITEMS_DIR
             orig_archive = supabase_lots.ARCHIVE_ITEMS_DIR
@@ -369,7 +440,10 @@ class BackfillTest(unittest.TestCase):
             supabase_lots.ARCHIVE_ITEMS_DIR = archive_dir
             try:
                 active, archived = supabase_lots.backfill(
-                    url="https://x.sb.co", key="k", session=session, do_archived=False,
+                    url="https://x.sb.co",
+                    key="k",
+                    session=session,
+                    do_archived=False,
                 )
             finally:
                 supabase_lots.ITEMS_DIR = orig_active
@@ -399,7 +473,10 @@ class BackfillTest(unittest.TestCase):
             supabase_lots.ITEMS_DIR = active_dir
             try:
                 active, _ = supabase_lots.backfill(
-                    url="https://x.sb.co", key="k", session=session, do_archived=False,
+                    url="https://x.sb.co",
+                    key="k",
+                    session=session,
+                    do_archived=False,
                 )
             finally:
                 supabase_lots.ITEMS_DIR = orig_active

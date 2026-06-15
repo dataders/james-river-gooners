@@ -55,33 +55,37 @@ def rows_from_comp_file(safe_id: str, payload: dict) -> list[dict]:
         }
         for match in record.get("matches", []) or []:
             price = match.get("price") or {}
-            rows.append({
-                **base,
-                "ebay_item_id": match.get("ebayItemId"),
-                "title": match.get("title"),
-                "price_value": _num(price.get("value")),
-                "price_currency": price.get("currency") or "USD",
-                "shipping_label": match.get("shippingLabel"),
-                "sold_date": match.get("soldDate"),
-                "sold_date_label": match.get("soldDateLabel"),
-                "thumbnail_url": match.get("thumbnailUrl"),
-                "item_web_url": match.get("itemWebUrl"),
-                "condition": match.get("condition"),
-                "source_query": match.get("sourceQuery"),
-                "match_confidence": match.get("matchConfidence"),
-            })
+            rows.append(
+                {
+                    **base,
+                    "ebay_item_id": match.get("ebayItemId"),
+                    "title": match.get("title"),
+                    "price_value": _num(price.get("value")),
+                    "price_currency": price.get("currency") or "USD",
+                    "shipping_label": match.get("shippingLabel"),
+                    "sold_date": match.get("soldDate"),
+                    "sold_date_label": match.get("soldDateLabel"),
+                    "thumbnail_url": match.get("thumbnailUrl"),
+                    "item_web_url": match.get("itemWebUrl"),
+                    "condition": match.get("condition"),
+                    "source_query": match.get("sourceQuery"),
+                    "match_confidence": match.get("matchConfidence"),
+                }
+            )
 
     # Items attempted but with no surviving match: a placeholder row keeps the
     # ledger from re-fetching them immediately (mirrors the live no-match write).
     for item_id, attempt in attempts.items():
         if item_id in items:
             continue
-        rows.append({
-            "auction_safe_id": safe_id,
-            "item_id": item_id,
-            "status": attempt.get("status") or "no_results",
-            "fetched_at": attempt.get("fetchedAt"),
-        })
+        rows.append(
+            {
+                "auction_safe_id": safe_id,
+                "item_id": item_id,
+                "status": attempt.get("status") or "no_results",
+                "fetched_at": attempt.get("fetchedAt"),
+            }
+        )
 
     return rows
 

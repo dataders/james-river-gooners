@@ -75,6 +75,7 @@ _GROUP_TO_L1_NAME: dict[str, str] = {
 
 # ── OAuth ─────────────────────────────────────────────────────────────────────
 
+
 def mint_token(client_id: str, client_secret: str) -> str:
     """Exchange eBay Production client credentials for an OAuth access token."""
     credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
@@ -95,6 +96,7 @@ def mint_token(client_id: str, client_secret: str) -> str:
 
 
 # ── Tree fetch + flatten ──────────────────────────────────────────────────────
+
 
 def fetch_category_tree(token: str) -> list[dict]:
     """Fetch the eBay US category tree and return a flat list of category dicts.
@@ -119,7 +121,9 @@ def fetch_category_tree(token: str) -> list[dict]:
 
     rows: list[dict] = []
 
-    def _walk(node: dict, parent_id: str | None, ancestors: list[str], level: int) -> None:
+    def _walk(
+        node: dict, parent_id: str | None, ancestors: list[str], level: int
+    ) -> None:
         cat = node.get("category") or {}
         cat_id = str(cat.get("categoryId") or "").strip()
         name = str(cat.get("categoryName") or "").strip()
@@ -127,14 +131,16 @@ def fetch_category_tree(token: str) -> list[dict]:
             return
         children = node.get("childCategoryTreeNodes") or []
         full_path = " > ".join(ancestors + [name])
-        rows.append({
-            "category_id": cat_id,
-            "name": name,
-            "full_path": full_path,
-            "parent_id": parent_id,
-            "level": level,
-            "leaf": len(children) == 0,
-        })
+        rows.append(
+            {
+                "category_id": cat_id,
+                "name": name,
+                "full_path": full_path,
+                "parent_id": parent_id,
+                "level": level,
+                "leaf": len(children) == 0,
+            }
+        )
         for child in children:
             _walk(child, cat_id, ancestors + [name], level + 1)
 
@@ -146,6 +152,7 @@ def fetch_category_tree(token: str) -> list[dict]:
 
 
 # ── Supabase write ────────────────────────────────────────────────────────────
+
 
 def upsert_categories(
     rows: list[dict],
@@ -174,7 +181,9 @@ def upsert_categories(
     for i in range(0, len(rows), batch_size):
         batch = rows[i : i + batch_size]
         _request_with_retry(
-            lambda b=batch: requests.post(endpoint, headers=headers, json=b, timeout=(10, 60)),
+            lambda b=batch: requests.post(
+                endpoint, headers=headers, json=b, timeout=(10, 60)
+            ),
             describe=f"upsert ebay_categories batch {i // batch_size + 1}",
         )
         written += len(batch)
@@ -183,9 +192,14 @@ def upsert_categories(
 
 # ── Leaf lookup ───────────────────────────────────────────────────────────────
 
+
 def leaf_categories_enabled() -> bool:
     """Whether to use Supabase leaf-level categoryIds (opt-in, default off)."""
-    return os.environ.get("GOONERS_EBAY_LEAF_CATEGORIES", "").strip() in {"1", "true", "True"}
+    return os.environ.get("GOONERS_EBAY_LEAF_CATEGORIES", "").strip() in {
+        "1",
+        "true",
+        "True",
+    }
 
 
 def _score_path(full_path: str, product_type: str) -> float:
@@ -226,7 +240,9 @@ def _fetch_leaf_candidates(group: str, url: str, key: str) -> list[dict]:
         "Accept": "application/json",
     }
     try:
-        resp = requests.get(endpoint, headers=headers, params=params, timeout=_READ_TIMEOUT)
+        resp = requests.get(
+            endpoint, headers=headers, params=params, timeout=_READ_TIMEOUT
+        )
         if resp.status_code != 200:
             return []
         return resp.json() or []
@@ -282,6 +298,7 @@ def load_leaf_candidates_by_group(
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
+
 
 def _cli() -> None:
     import argparse

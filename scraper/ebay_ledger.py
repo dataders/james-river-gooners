@@ -126,7 +126,9 @@ def resolve_query_budget(
         else:
             query_limit = max(0, monthly_budget - ledger.requests_used_in_month(now))
         if daily_pacing and query_limit > 0:
-            days_left = max(1, calendar.monthrange(now.year, now.month)[1] - now.day + 1)
+            days_left = max(
+                1, calendar.monthrange(now.year, now.month)[1] - now.day + 1
+            )
             daily_allowance = -(-query_limit // days_left)  # ceil division
             used_today = (
                 ledger.provider_used_today(now)

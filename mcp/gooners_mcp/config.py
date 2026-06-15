@@ -3,6 +3,7 @@
 Reads Supabase connection info + optional user credentials from the environment,
 falling back to a repo-root .env.local (the same file the Vite frontend uses).
 """
+
 from __future__ import annotations
 
 import os
@@ -44,7 +45,9 @@ def load_config(*, dotenv: bool = True) -> Config:
     if not url:
         raise ValueError("SUPABASE_URL (or VITE_SUPABASE_URL) is required")
     if not key:
-        raise ValueError("SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) is required")
+        raise ValueError(
+            "SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY) is required"
+        )
 
     return Config(
         url=url.rstrip("/"),

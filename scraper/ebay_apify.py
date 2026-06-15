@@ -53,14 +53,15 @@ from ebay_util import text_value, utc_now_text
 
 APIFY_API_URL = "https://api.apify.com/v2"
 APIFY_ACTOR_ID = "automation-lab~ebay-sold-scraper"
-APIFY_CONCURRENCY = 25   # parallel actor runs
+APIFY_CONCURRENCY = 25  # parallel actor runs
 APIFY_POLL_INTERVAL = 10  # seconds between status polls per run
-APIFY_MAX_WAIT = 300     # 5-minute ceiling per individual run
+APIFY_MAX_WAIT = 300  # 5-minute ceiling per individual run
 
 DEFAULT_STALE_HOURS = 7 * 24
 
 
 # ── Item mapping ──────────────────────────────────────────────────────────────
+
 
 def apify_item_match(item: dict, source_query: str) -> dict | None:
     """Map one Apify dataset item to the same match shape as soldcomps_item_match."""
@@ -87,14 +88,21 @@ def apify_item_match(item: dict, source_query: str) -> dict | None:
         ),
         "title": title,
         "price_value": price_value,
-        "price_currency": text_value(item.get("soldCurrency") or item.get("currency"), "USD"),
+        "price_currency": text_value(
+            item.get("soldCurrency") or item.get("currency"), "USD"
+        ),
         "shipping_label": shipping_label(
-            item.get("shippingCost") or item.get("shippingPrice") or item.get("shipping")
+            item.get("shippingCost")
+            or item.get("shippingPrice")
+            or item.get("shipping")
         ),
         "sold_date": date_from_iso(ended_at),
         "sold_date_label": sold_date_label_from_iso(ended_at),
         "thumbnail_url": text_value(
-            item.get("thumbnail") or item.get("imageUrl") or item.get("thumbnailUrl") or item.get("image")
+            item.get("thumbnail")
+            or item.get("imageUrl")
+            or item.get("thumbnailUrl")
+            or item.get("image")
         ),
         "item_web_url": item_web_url,
         "condition": text_value(item.get("condition")),
@@ -104,6 +112,7 @@ def apify_item_match(item: dict, source_query: str) -> dict | None:
 
 
 # ── Apify API helpers ─────────────────────────────────────────────────────────
+
 
 def apify_start_run(
     api_key: str,
@@ -115,7 +124,10 @@ def apify_start_run(
     """Start an Apify actor run; return (run_id, dataset_id)."""
     resp = requests.post(
         f"{APIFY_API_URL}/acts/{actor_id}/runs",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
         json={
             "searchQueries": search_queries,
             "maxListingsPerSearch": max_listings_per_search,
@@ -174,6 +186,7 @@ def apify_fetch_dataset(
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
 
+
 def _apify_fetch_one_query(
     api_key: str,
     query: str,
@@ -185,7 +198,9 @@ def _apify_fetch_one_query(
     in its output items, so we run one actor per query and correlate via the
     future that called this function rather than by a field in the response.
     """
-    run_id, dataset_id = apify_start_run(api_key, [query], max_listings_per_search=max_listings)
+    run_id, dataset_id = apify_start_run(
+        api_key, [query], max_listings_per_search=max_listings
+    )
     status = apify_wait_for_run(api_key, run_id)
     if status != "SUCCEEDED":
         return query, []
@@ -219,20 +234,31 @@ def fetch_comps_apify(
     if not api_key:
         raise RuntimeError("APIFY_API_KEY is required for the apify backend")
 
-    summary = {"items_attempted": 0, "queries_submitted": 0, "matches": 0, "files_written": 0}
+    summary = {
+        "items_attempted": 0,
+        "queries_submitted": 0,
+        "matches": 0,
+        "files_written": 0,
+    }
 
     if mirror_to_warehouse is None:
         from warehouse import should_mirror
+
         mirror_to_warehouse = should_mirror()
 
     use_supabase = bool(mirror_to_warehouse) and supabase_comp_backend_active()
     if use_supabase:
         from supabase_comps import SupabaseCompLedger
+
         ledger: CompLedger = SupabaseCompLedger()
     else:
         ledger = FileCompLedger(output_dir)
 
-    known_fresh = set() if dry_run else ledger.fresh_keys(stale_hours, skip_attempted=skip_attempted)
+    known_fresh = (
+        set()
+        if dry_run
+        else ledger.fresh_keys(stale_hours, skip_attempted=skip_attempted)
+    )
 
     candidates = sorted(
         load_manifest_items(
@@ -331,11 +357,17 @@ def fetch_comps_apify(
         mirror_rows_to_warehouse(all_rows)
     else:
         new_exports = build_public_exports(all_rows, generated_at)
-        summary["files_written"] = merge_comp_files(new_exports, {}, output_dir, generated_at)
+        summary["files_written"] = merge_comp_files(
+            new_exports, {}, output_dir, generated_at
+        )
         if mirror_to_warehouse:
             mirror_rows_to_warehouse(all_rows)
 
-    written_msg = "Supabase read model updated" if use_supabase else f"{summary['files_written']} auction files updated"
+    written_msg = (
+        "Supabase read model updated"
+        if use_supabase
+        else f"{summary['files_written']} auction files updated"
+    )
     print(
         f"eBay comp fetch (apify): {summary['items_attempted']} items, "
         f"{summary['queries_submitted']} queries, {summary['matches']} matches, "

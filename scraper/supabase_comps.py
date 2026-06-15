@@ -178,7 +178,11 @@ def append_ebay_comp_snapshots(
         batch = [row_payload(row) for row in rows[start : start + batch_size]]
         _request_with_retry(
             partial(
-                session.post, endpoint, headers=headers, data=json.dumps(batch), timeout=WRITE_TIMEOUT
+                session.post,
+                endpoint,
+                headers=headers,
+                data=json.dumps(batch),
+                timeout=WRITE_TIMEOUT,
             ),
             "Supabase comp insert",
         )
@@ -210,12 +214,16 @@ class SupabaseCompLedger(CompLedger):
     (service_role, bypasses RLS), the same credentials the writer uses.
     """
 
-    def __init__(self, url: str | None = None, key: str | None = None, session=None) -> None:
+    def __init__(
+        self, url: str | None = None, key: str | None = None, session=None
+    ) -> None:
         url, key = resolve_credentials(url, key)
         if not url:
             raise RuntimeError("SUPABASE_URL is required to read the comp ledger")
         if not key:
-            raise RuntimeError("SUPABASE_SECRET_KEY is required to read the comp ledger")
+            raise RuntimeError(
+                "SUPABASE_SECRET_KEY is required to read the comp ledger"
+            )
         self.url = url.rstrip("/")
         self.key = key
         self._session = session
@@ -260,7 +268,9 @@ class SupabaseCompLedger(CompLedger):
                 return rows
             offset += READ_PAGE_SIZE
 
-    def fresh_keys(self, stale_hours: int, skip_attempted: bool = False, now=None) -> set[str]:
+    def fresh_keys(
+        self, stale_hours: int, skip_attempted: bool = False, now=None
+    ) -> set[str]:
         """``{auction_safe_id:item_id}`` for items fetched within the window.
 
         Mirrors :func:`ebay_comps.fresh_comp_keys_from_files`: ``skip_attempted``
@@ -366,8 +376,11 @@ class SupabaseCompLedger(CompLedger):
             partial(
                 self._session_obj().post,
                 self._endpoint(USAGE_TABLE),
-                headers={**self._headers(), "Content-Type": "application/json",
-                         "Prefer": "return=minimal"},
+                headers={
+                    **self._headers(),
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal",
+                },
                 data=json.dumps(payload),
                 timeout=WRITE_TIMEOUT,
             ),

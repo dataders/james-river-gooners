@@ -57,7 +57,9 @@ def parse_run_results(doc: dict) -> list[dict]:
                 "resource_type": node.split(".", 1)[0] if node else None,
                 "name": node.rsplit(".", 1)[-1] if node else None,
                 "status": r.get("status"),
-                "rows_affected": int(rows_affected) if isinstance(rows_affected, (int, float)) else None,
+                "rows_affected": int(rows_affected)
+                if isinstance(rows_affected, (int, float))
+                else None,
                 "execution_time": r.get("execution_time"),
                 "message": (r.get("message") or "")[:500],
             }
@@ -89,9 +91,16 @@ def write_dbt_run_results(con, rows: list[dict], captured_at: dt.datetime) -> in
         f"insert into {META_SCHEMA}.dbt_run_results values (?,?,?,?,?,?,?,?,?,?)",
         [
             (
-                captured_at, r["invocation_id"], r["generated_at"], r["node"],
-                r["resource_type"], r["name"], r["status"], r["rows_affected"],
-                r["execution_time"], r["message"],
+                captured_at,
+                r["invocation_id"],
+                r["generated_at"],
+                r["node"],
+                r["resource_type"],
+                r["name"],
+                r["status"],
+                r["rows_affected"],
+                r["execution_time"],
+                r["message"],
             )
             for r in rows
         ],
@@ -126,7 +135,10 @@ def snapshot_source_row_counts(con, captured_at: dt.datetime) -> int:
         try:
             n = con.execute(f'select count(*) from "{schema}"."{table}"').fetchone()[0]
         except Exception as exc:  # noqa: BLE001 — skip an unreadable table, keep going
-            print(f"  [warn] count {schema}.{table} failed: {str(exc)[:80]}", file=sys.stderr)
+            print(
+                f"  [warn] count {schema}.{table} failed: {str(exc)[:80]}",
+                file=sys.stderr,
+            )
             continue
         con.execute(
             f"insert into {META_SCHEMA}.source_row_counts values (?,?,?,?)",
@@ -150,14 +162,22 @@ def run(target_dir: str):
             print(f"No run_results.json at {run_results_path} — skipping dbt capture.")
 
         n = snapshot_source_row_counts(con, captured_at)
-        print(f"Snapshotted {n} source table row counts → {META_SCHEMA}.source_row_counts")
+        print(
+            f"Snapshotted {n} source table row counts → {META_SCHEMA}.source_row_counts"
+        )
     finally:
         con.close()
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Capture dbt + dlt pipeline metrics into MotherDuck meta schema")
-    parser.add_argument("--target-dir", default="../dbt/target", help="dbt target dir holding run_results.json")
+    parser = argparse.ArgumentParser(
+        description="Capture dbt + dlt pipeline metrics into MotherDuck meta schema"
+    )
+    parser.add_argument(
+        "--target-dir",
+        default="../dbt/target",
+        help="dbt target dir holding run_results.json",
+    )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
     run(args.target_dir)
     return 0

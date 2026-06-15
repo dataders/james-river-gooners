@@ -7,7 +7,7 @@ def test_load_config_reads_env(monkeypatch):
     monkeypatch.setenv("GOONERS_EMAIL", "me@example.com")
     monkeypatch.setenv("GOONERS_PASSWORD", "pw")
     cfg = load_config(dotenv=False)
-    assert cfg.url == "https://proj.supabase.co"   # trailing slash stripped
+    assert cfg.url == "https://proj.supabase.co"  # trailing slash stripped
     assert cfg.publishable_key == "sb_publishable_x"
     assert cfg.email == "me@example.com"
     assert cfg.has_credentials is True
@@ -29,5 +29,6 @@ def test_load_config_missing_url_raises(monkeypatch):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_x")
     import pytest
+
     with pytest.raises(ValueError, match="SUPABASE_URL"):
         load_config(dotenv=False)

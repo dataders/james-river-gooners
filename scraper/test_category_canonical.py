@@ -26,12 +26,14 @@ def group_of(source, raw, text=""):
 
 # --- the file is internally consistent ---------------------------------------
 
+
 def test_yaml_validates():
     cfg = load()
     assert validate(cfg) is True
 
 
 # --- determinism: raw category wins, description never overrides it -----------
+
 
 def test_known_raw_is_independent_of_description():
     # Rasmus industrial vocab must not be swayed by stray description keywords
@@ -42,10 +44,14 @@ def test_known_raw_is_independent_of_description():
 
 
 def test_personal_care_does_not_leak_to_firearms():
-    assert group_of("rasmus", "Personal Care Products", "shotgun cleaning kit") == "Health & Beauty"
+    assert (
+        group_of("rasmus", "Personal Care Products", "shotgun cleaning kit")
+        == "Health & Beauty"
+    )
 
 
 # --- source-aware coverage ----------------------------------------------------
+
 
 def test_rasmus_industrial_vocab_mapped():
     assert group_of("rasmus", "Auto Parts & Eqpt") == "Vehicles"
@@ -65,6 +71,7 @@ def test_hibid_card_crumbs_are_collectibles():
 
 # --- identity: upstream canonical display names round-trip --------------------
 
+
 def test_canonical_display_names_round_trip():
     # The stored rawCategory is the upstream pipeline's display name; it must
     # resolve back to itself, not fall to Other.
@@ -74,9 +81,12 @@ def test_canonical_display_names_round_trip():
 
 # --- inference is a genuine last resort --------------------------------------
 
+
 def test_inference_only_when_no_raw():
     # Empty raw + a rifle in the title -> Firearms via inference.
-    assert group_of("cannons", "", "Winchester rifle, .30-30 lever action") == "Firearms"
+    assert (
+        group_of("cannons", "", "Winchester rifle, .30-30 lever action") == "Firearms"
+    )
 
 
 def test_unknown_raw_without_signal_is_other():
@@ -84,6 +94,7 @@ def test_unknown_raw_without_signal_is_other():
 
 
 # --- scrapers use the canonical path via categories.py -----------------------
+
 
 def test_scrapers_route_through_canonical():
     """Verify categories.normalize_category uses source-aware canonical resolution.
@@ -94,9 +105,18 @@ def test_scrapers_route_through_canonical():
     from categories import normalize_category, normalize_raw_with_description
 
     # Rasmus industrial vocab resolves with the rasmus source
-    assert normalize_category("Ind & Warehouse Eqpt", source="rasmus") == "Industrial & Equipment"
-    assert normalize_category("HVAC & Plumbing", source="rasmus") == "Industrial & Equipment"
-    assert normalize_category("Safety Eqpt & PPE", source="rasmus") == "Industrial & Equipment"
+    assert (
+        normalize_category("Ind & Warehouse Eqpt", source="rasmus")
+        == "Industrial & Equipment"
+    )
+    assert (
+        normalize_category("HVAC & Plumbing", source="rasmus")
+        == "Industrial & Equipment"
+    )
+    assert (
+        normalize_category("Safety Eqpt & PPE", source="rasmus")
+        == "Industrial & Equipment"
+    )
 
     # HiBid coin denomination breadcrumbs resolve with the hibid source
     assert normalize_category("Half Dollars", source="hibid") == "Coins & Currency"
@@ -106,8 +126,19 @@ def test_scrapers_route_through_canonical():
     assert normalize_category("Art", source="cannons") == "Art"
 
     # rawCategory is the canonical subcategory name when source is supplied
-    assert normalize_raw_with_description("Ind & Warehouse Eqpt", source="rasmus") == "Industrial Equipment"
-    assert normalize_raw_with_description("Half Dollars", source="hibid") == "Coins & Currency"
+    assert (
+        normalize_raw_with_description("Ind & Warehouse Eqpt", source="rasmus")
+        == "Industrial Equipment"
+    )
+    assert (
+        normalize_raw_with_description("Half Dollars", source="hibid")
+        == "Coins & Currency"
+    )
 
     # Legacy description inference still works as fallback when canonical has no match
-    assert normalize_category("", "Winchester rifle, .30-30 lever action", source="cannons") == "Firearms"
+    assert (
+        normalize_category(
+            "", "Winchester rifle, .30-30 lever action", source="cannons"
+        )
+        == "Firearms"
+    )

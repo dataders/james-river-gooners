@@ -94,9 +94,13 @@ def _get_device() -> str:
             _device = forced
         else:
             import torch
+
             if torch.cuda.is_available():
                 _device = "cuda"
-            elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+            elif (
+                getattr(torch.backends, "mps", None)
+                and torch.backends.mps.is_available()
+            ):
                 _device = "mps"
             else:
                 _device = "cpu"
@@ -108,6 +112,7 @@ def _get_text_model():
     global _text_model
     if _text_model is None:
         from sentence_transformers import SentenceTransformer
+
         print("Loading Nomic text model (first run: ~550 MB download)...")
         _text_model = SentenceTransformer(
             f"nomic-ai/{NOMIC_TEXT_MODEL}", trust_remote_code=True, device=_get_device()
@@ -128,13 +133,18 @@ def _get_vision_model():
     global _vision_model, _vision_processor
     if _vision_model is None:
         from transformers import AutoImageProcessor, AutoModel
+
         print("Loading Nomic vision model (first run: ~550 MB download)...")
         _vision_processor = AutoImageProcessor.from_pretrained(
             f"nomic-ai/{NOMIC_VISION_MODEL}"
         )
-        _vision_model = AutoModel.from_pretrained(
-            f"nomic-ai/{NOMIC_VISION_MODEL}", trust_remote_code=True
-        ).eval().to(_get_device())
+        _vision_model = (
+            AutoModel.from_pretrained(
+                f"nomic-ai/{NOMIC_VISION_MODEL}", trust_remote_code=True
+            )
+            .eval()
+            .to(_get_device())
+        )
         print("Nomic vision model ready.")
     return _vision_model, _vision_processor
 
@@ -160,6 +170,7 @@ def _encode_images(images: list, batch_size: int = 32) -> np.ndarray:
 def _fetch_image(url: str):
     """Fetch url and return a PIL Image, or None on any failure."""
     from PIL import Image
+
     try:
         resp = _req.get(url, timeout=15)
         resp.raise_for_status()
@@ -187,7 +198,9 @@ def _enrichment_text(item: dict) -> str:
     raw_details = item.get("details")
     if raw_details:
         try:
-            bag = json.loads(raw_details) if isinstance(raw_details, str) else raw_details
+            bag = (
+                json.loads(raw_details) if isinstance(raw_details, str) else raw_details
+            )
         except (ValueError, TypeError):
             bag = None
         if isinstance(bag, dict):
@@ -215,7 +228,9 @@ def _document_text(item: dict) -> str:
     return "search_document: " + (combined or ".")
 
 
-def embed_items(items: list[dict], session=None) -> tuple[np.ndarray, list[str], list[int]]:
+def embed_items(
+    items: list[dict], session=None
+) -> tuple[np.ndarray, list[str], list[int]]:
     """Return (embeddings, ids, n_images_used) — float32 (n, 768) L2-normalised,
     the item IDs, and the image count fused into each vector.
 
@@ -338,6 +353,7 @@ def upsert_embeddings(
 
     if session is None:
         import requests
+
         session = requests.Session()
 
     if batch_size is None:
@@ -367,7 +383,9 @@ def upsert_embeddings(
     }
 
     def _post(batch: list[dict]) -> int:
-        resp = session.post(endpoint, headers=headers, data=json.dumps(batch), timeout=120)
+        resp = session.post(
+            endpoint, headers=headers, data=json.dumps(batch), timeout=120
+        )
         if resp.status_code < 400:
             return len(batch)
         # Statement timeout (57014) from HNSW index pressure → split and retry.
@@ -411,6 +429,7 @@ def existing_item_ids(
 
     if session is None:
         import requests
+
         session = requests.Session()
 
     endpoint = f"{url.rstrip('/')}/rest/v1/{NOMIC_TABLE}"
@@ -468,6 +487,7 @@ def fetch_enrichment_overlay(
         return {}
     if session is None:
         import requests
+
         session = requests.Session()
 
     endpoint = f"{url.rstrip('/')}/rest/v1/lot_enrichment"
@@ -509,8 +529,10 @@ def overlay_enrichment(items: list[dict], safe_id: str, session=None) -> int:
     try:
         emap = fetch_enrichment_overlay(safe_id, session=session)
     except Exception as exc:
-        print(f"  [nomic] WARNING: could not load enrichment for {safe_id} "
-              f"({exc}); embedding on listing text only")
+        print(
+            f"  [nomic] WARNING: could not load enrichment for {safe_id} "
+            f"({exc}); embedding on listing text only"
+        )
         return 0
     if not emap:
         return 0
@@ -544,8 +566,10 @@ def generate_and_upsert(
         try:
             already = existing_item_ids(safe_id, session=session)
         except Exception as exc:
-            print(f"  [nomic] WARNING: could not read existing ids for {safe_id} "
-                  f"({exc}); embedding all {len(items)} lots")
+            print(
+                f"  [nomic] WARNING: could not read existing ids for {safe_id} "
+                f"({exc}); embedding all {len(items)} lots"
+            )
             already = set()
 
         todo = [it for it in items if str(it["id"]) not in already]
@@ -610,7 +634,9 @@ def backfill_from_read_model(
     identity without a separate overlay. Returns total rows written.
     """
     if not os.environ.get("SUPABASE_SECRET_KEY"):
-        raise RuntimeError("SUPABASE_SECRET_KEY is required to backfill Nomic embeddings")
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is required to backfill Nomic embeddings"
+        )
 
     dirs = [_ACTIVE_ITEMS_DIR] + ([_ARCHIVE_ITEMS_DIR] if include_archive else [])
     if safe_ids:
@@ -655,7 +681,9 @@ def backfill_from_supabase(
     Requires ``SUPABASE_SECRET_KEY`` (reads and writes to Supabase).
     """
     if not os.environ.get("SUPABASE_SECRET_KEY"):
-        raise RuntimeError("SUPABASE_SECRET_KEY is required to backfill Nomic embeddings from Supabase")
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is required to backfill Nomic embeddings from Supabase"
+        )
 
     from supabase_lots import fetch_lots_for_auction, list_auction_safe_ids
 
@@ -667,7 +695,11 @@ def backfill_from_supabase(
         scopes.append((True, "archive"))
 
     if safe_ids:
-        pairs = [(sid, archived) for archived in ([False] + ([True] if include_archive else [])) for sid in safe_ids]
+        pairs = [
+            (sid, archived)
+            for archived in ([False] + ([True] if include_archive else []))
+            for sid in safe_ids
+        ]
     else:
         pairs = []
         for archived, label in scopes:
@@ -683,7 +715,9 @@ def backfill_from_supabase(
             continue
         n_enriched = overlay_enrichment(items, safe_id, session=session)
         if n_enriched:
-            print(f"[nomic] {safe_id}: overlaid enrichment on {n_enriched}/{len(items)} lots")
+            print(
+                f"[nomic] {safe_id}: overlaid enrichment on {n_enriched}/{len(items)} lots"
+            )
         targets = items
         if force:
             # Re-embed only what would actually change: lots whose text gained
@@ -695,12 +729,15 @@ def backfill_from_supabase(
             except Exception:
                 already = set()
             targets = [
-                it for it in items
+                it
+                for it in items
                 if _enrichment_text(it) or str(it["id"]) not in already
             ]
             skipped = len(items) - len(targets)
             if skipped:
-                print(f"[nomic] {safe_id}: {skipped} unenriched, already-embedded lots kept as-is")
+                print(
+                    f"[nomic] {safe_id}: {skipped} unenriched, already-embedded lots kept as-is"
+                )
             if not targets:
                 continue
         try:
@@ -727,6 +764,10 @@ if __name__ == "__main__":
     force = "--force" in args
     ids = [a for a in args if not a.startswith("--")]
     if from_supabase:
-        backfill_from_supabase(ids or None, include_archive=include_archive, force=force)
+        backfill_from_supabase(
+            ids or None, include_archive=include_archive, force=force
+        )
     else:
-        backfill_from_read_model(ids or None, include_archive=include_archive, force=force)
+        backfill_from_read_model(
+            ids or None, include_archive=include_archive, force=force
+        )

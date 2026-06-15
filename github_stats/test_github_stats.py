@@ -80,7 +80,12 @@ def test_pull_request_row_merge_fields():
     assert merged["base_ref"] == "main"
 
     open_pr = pull_request_row(
-        {"id": 6, "state": "open", "created_at": "2024-01-01T00:00:00Z", "merged_at": None}
+        {
+            "id": 6,
+            "state": "open",
+            "created_at": "2024-01-01T00:00:00Z",
+            "merged_at": None,
+        }
     )
     assert open_pr["merged"] is False
     assert open_pr["hours_to_merge"] is None
@@ -122,8 +127,12 @@ def test_workflow_run_row_success_failure_duration():
     assert failed["failed"] is True and failed["succeeded"] is False
 
     # Cancelled counts as a failure; in-progress runs have null flags.
-    assert workflow_run_row({"id": 2, "status": "completed", "conclusion": "cancelled"})["failed"]
-    in_progress = workflow_run_row({"id": 3, "status": "in_progress", "conclusion": None})
+    assert workflow_run_row(
+        {"id": 2, "status": "completed", "conclusion": "cancelled"}
+    )["failed"]
+    in_progress = workflow_run_row(
+        {"id": 3, "status": "in_progress", "conclusion": None}
+    )
     assert in_progress["failed"] is None and in_progress["succeeded"] is None
 
 

@@ -50,6 +50,7 @@ REQUEST_DELAY = 0.5  # seconds between lot-page fetches
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def hibid_safe_id(catalog_id: str | int) -> str:
     return f"hibid_{catalog_id}"
 
@@ -112,6 +113,7 @@ def parse_relative_close_time(text: str, scraped_at: datetime) -> str:
 # Discovery
 # ---------------------------------------------------------------------------
 
+
 def discover_company_catalogs(
     session: requests.Session, company_id: int, html: str | None = None
 ) -> list[dict]:
@@ -156,18 +158,25 @@ def discover_company_catalogs(
         if not title:
             title = a.get_text(strip=True)
         # Strip trailing platform/status noise (e.g. "Online Only Auction", "Live Webcast")
-        title = re.sub(r"\s*(Online Only|Live Webcast|Webcast|Timed)\s*Auction\s*$", "", title, flags=re.IGNORECASE).strip()
+        title = re.sub(
+            r"\s*(Online Only|Live Webcast|Webcast|Timed)\s*Auction\s*$",
+            "",
+            title,
+            flags=re.IGNORECASE,
+        ).strip()
 
         # End date from "M/D/YYYY - M/D/YYYY" in the card text
         end_date_iso = ""
         if parent:
             end_date_iso = parse_date_range_end(parent.get_text(" ", strip=True))
 
-        catalogs.append({
-            "catalog_id": catalog_id,
-            "title": title,
-            "end_date_iso": end_date_iso,
-        })
+        catalogs.append(
+            {
+                "catalog_id": catalog_id,
+                "title": title,
+                "end_date_iso": end_date_iso,
+            }
+        )
 
     return catalogs
 
@@ -197,13 +206,15 @@ def discover_hibid_specs(sources_file: Path | None = None) -> list[dict]:
             print(f"  {name}: using {len(hardcoded_ids)} hardcoded catalog(s)")
             for catalog_id in hardcoded_ids:
                 catalog_url = f"{HIBID_BASE}/catalog/{catalog_id}/"
-                all_specs.append({
-                    "catalog_url": catalog_url,
-                    "safe_id": hibid_safe_id(catalog_id),
-                    "source_slug": slug,
-                    "company_name": name,
-                    "title": "",
-                })
+                all_specs.append(
+                    {
+                        "catalog_url": catalog_url,
+                        "safe_id": hibid_safe_id(catalog_id),
+                        "source_slug": slug,
+                        "company_name": name,
+                        "title": "",
+                    }
+                )
         else:
             needs_discovery.append(company)
 
@@ -220,13 +231,15 @@ def discover_hibid_specs(sources_file: Path | None = None) -> list[dict]:
                     print(f"    Skipping real estate: {cat['title'][:60]}")
                     continue
                 catalog_url = f"{HIBID_BASE}/catalog/{cat['catalog_id']}/"
-                all_specs.append({
-                    "catalog_url": catalog_url,
-                    "safe_id": hibid_safe_id(cat["catalog_id"]),
-                    "source_slug": slug,
-                    "company_name": name,
-                    "title": cat["title"],
-                })
+                all_specs.append(
+                    {
+                        "catalog_url": catalog_url,
+                        "safe_id": hibid_safe_id(cat["catalog_id"]),
+                        "source_slug": slug,
+                        "company_name": name,
+                        "title": cat["title"],
+                    }
+                )
                 print(f"    Found: {cat['title'][:60]}")
 
     return all_specs
@@ -235,6 +248,7 @@ def discover_hibid_specs(sources_file: Path | None = None) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Catalog pagination
 # ---------------------------------------------------------------------------
+
 
 def _parse_apollo_state(html: str) -> dict:
     """Extract the hibid-state Apollo cache JSON from a page."""
@@ -324,6 +338,7 @@ def fetch_catalog_lot_links(
 # Lot detail page parsing
 # ---------------------------------------------------------------------------
 
+
 def fetch_lot_details(
     session: requests.Session,
     lot_url: str,
@@ -356,7 +371,9 @@ def fetch_lot_details(
     h1 = soup.find("h1")
     if h1:
         title = h1.get_text(strip=True)
-        title = re.sub(r"^Lot\s*#\s*[:\-]?\s*\d+\s*[-–]\s*", "", title, flags=re.IGNORECASE).strip()
+        title = re.sub(
+            r"^Lot\s*#\s*[:\-]?\s*\d+\s*[-–]\s*", "", title, flags=re.IGNORECASE
+        ).strip()
     if not title:
         og = soup.find("meta", property="og:title")
         if og:
@@ -381,13 +398,16 @@ def fetch_lot_details(
             description = el.get_text(strip=True)
             break
     if not description:
-        desc_m = re.search(
-            r"Description[:\s]+([^\n]{10,400})", text, re.IGNORECASE
-        )
+        desc_m = re.search(r"Description[:\s]+([^\n]{10,400})", text, re.IGNORECASE)
         if desc_m:
             description = desc_m.group(1).strip()
     # Strip boilerplate that follows the actual description
-    for marker in ("Auction Information", "Bidding Opens", "Auction Closing", "Terms & Conditions"):
+    for marker in (
+        "Auction Information",
+        "Bidding Opens",
+        "Auction Closing",
+        "Terms & Conditions",
+    ):
         idx = description.find(marker)
         if idx > 0:
             description = description[:idx].strip()
@@ -432,7 +452,14 @@ def fetch_lot_details(
     ]:
         nav = soup.select_one(nav_sel)
         if nav:
-            skip_lower = {"home", "auctions", "lots", "catalog", "all auctions", "virginia"}
+            skip_lower = {
+                "home",
+                "auctions",
+                "lots",
+                "catalog",
+                "all auctions",
+                "virginia",
+            }
             cat_crumbs = [
                 a.get_text(strip=True)
                 for a in nav.find_all("a")
@@ -450,7 +477,9 @@ def fetch_lot_details(
         images.append(og_img["content"])
     # Also check og:image:secure_url and twitter:image as fallbacks
     for prop in ("og:image:secure_url", "twitter:image"):
-        meta = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
+        meta = soup.find("meta", property=prop) or soup.find(
+            "meta", attrs={"name": prop}
+        )
         if meta and meta.get("content") and meta["content"] not in images:
             images.append(meta["content"])
             break
@@ -459,7 +488,9 @@ def fetch_lot_details(
     end_date = auction_end_date
     rel_m = re.search(r"(\d+d\s*)?(\d+h\s*)?\d+m\s*[-–]", text)
     if rel_m:
-        parsed = parse_relative_close_time(rel_m.group(0).replace("-", "").replace("–", ""), scraped_at)
+        parsed = parse_relative_close_time(
+            rel_m.group(0).replace("-", "").replace("–", ""), scraped_at
+        )
         if parsed:
             end_date = parsed
 
@@ -474,7 +505,9 @@ def fetch_lot_details(
         "endDate": end_date,
         "images": images,
         "category": normalize_category(raw_cat, combined, source="hibid"),
-        "rawCategory": normalize_raw_with_description(raw_cat, combined, source="hibid"),
+        "rawCategory": normalize_raw_with_description(
+            raw_cat, combined, source="hibid"
+        ),
         "detailUrl": lot_url,
     }
 
@@ -482,6 +515,7 @@ def fetch_lot_details(
 # ---------------------------------------------------------------------------
 # Main scrape function
 # ---------------------------------------------------------------------------
+
 
 def scrape_hibid_auction(
     catalog_url: str,
@@ -548,7 +582,9 @@ def scrape_hibid_auction(
 
     # Pass the already-fetched HTML so fetch_catalog_lot_links skips a second request.
     print("  Fetching lot links...")
-    lot_specs = fetch_catalog_lot_links(session, full_catalog_url, html=catalog_html or None)
+    lot_specs = fetch_catalog_lot_links(
+        session, full_catalog_url, html=catalog_html or None
+    )
     print(f"  Found {len(lot_specs)} lots")
 
     if not lot_specs:
@@ -606,6 +642,7 @@ def scrape_hibid_auction(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Scrape a HiBid auction catalog")
     parser.add_argument(
@@ -615,7 +652,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--source", default="hibid", help="Company slug")
     parser.add_argument("--company", default="", help="Display name of the company")
-    parser.add_argument("--discover-only", action="store_true", help="Print what would be scraped and exit")
+    parser.add_argument(
+        "--discover-only",
+        action="store_true",
+        help="Print what would be scraped and exit",
+    )
     parser.add_argument("--motherduck", action="store_true")
     return parser.parse_args(argv)
 
@@ -633,7 +674,10 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if not args.catalog_url:
-        print("Error: catalog_url is required unless --discover-only is used", file=sys.stderr)
+        print(
+            "Error: catalog_url is required unless --discover-only is used",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     scrape_hibid_auction(

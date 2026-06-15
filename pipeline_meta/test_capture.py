@@ -51,7 +51,7 @@ def test_parse_run_results_shapes_each_node():
     assert passed_test["resource_type"] == "test"
     assert passed_test["status"] == "pass"
     assert passed_test["rows_affected"] is None  # no rows_affected in adapter_response
-    assert passed_test["message"] == ""           # None message → ""
+    assert passed_test["message"] == ""  # None message → ""
 
     failed_test = rows[2]
     assert failed_test["resource_type"] == "test"
@@ -67,7 +67,9 @@ def test_parse_run_results_empty():
 def test_message_truncated():
     doc = {
         "metadata": {"invocation_id": "i", "generated_at": "t"},
-        "results": [{"unique_id": "model.p.m", "status": "error", "message": "x" * 999}],
+        "results": [
+            {"unique_id": "model.p.m", "status": "error", "message": "x" * 999}
+        ],
     }
     assert len(capture.parse_run_results(doc)[0]["message"]) == 500
 

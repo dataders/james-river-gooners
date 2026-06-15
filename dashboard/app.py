@@ -59,9 +59,9 @@ from prefab_ui.components import (
 from prefab_ui.components.charts import AreaChart, BarChart, ChartSeries, LineChart
 
 # Mart schemas in MotherDuck my_db (see dbt/dbt_project.yml).
-ENG = "gooners_engineering"   # github_stats-derived CI/PR health
-OPS = "gooners_operations"    # supabase perf + scrape SLA + API spend
-MARTS = "gooners"             # resale + product marts (default schema)
+ENG = "gooners_engineering"  # github_stats-derived CI/PR health
+OPS = "gooners_operations"  # supabase perf + scrape SLA + API spend
+MARTS = "gooners"  # resale + product marts (default schema)
 
 # Brand-ish palette (Arsenal-red leaning, since these are the "Gooners").
 RED = "#ef4444"
@@ -73,7 +73,9 @@ SLATE = "#64748b"
 
 
 def _connect() -> duckdb.DuckDBPyConnection:
-    token = os.environ.get("MOTHERDUCK_TOKEN") or os.environ.get("MOTHERDUCK_READ_TOKEN")
+    token = os.environ.get("MOTHERDUCK_TOKEN") or os.environ.get(
+        "MOTHERDUCK_READ_TOKEN"
+    )
     if not token:
         sys.exit("MOTHERDUCK_TOKEN (or MOTHERDUCK_READ_TOKEN) required")
     return duckdb.connect(f"md:my_db?motherduck_token={token}", read_only=True)
@@ -98,9 +100,15 @@ def q(sql: str) -> list[dict]:
     try:
         cur = _CON.execute(sql)
         cols = [d[0] for d in cur.description]
-        return [{c: _coerce(v) for c, v in zip(cols, row, strict=True)} for row in cur.fetchall()]
+        return [
+            {c: _coerce(v) for c, v in zip(cols, row, strict=True)}
+            for row in cur.fetchall()
+        ]
     except Exception as exc:  # noqa: BLE001 — intentional: degrade, don't crash
-        print(f"  [warn] query failed ({exc.__class__.__name__}): {str(exc)[:120]}", file=sys.stderr)
+        print(
+            f"  [warn] query failed ({exc.__class__.__name__}): {str(exc)[:120]}",
+            file=sys.stderr,
+        )
         return []
 
 
@@ -125,7 +133,7 @@ def fmt_dur(seconds) -> str:
     if seconds is None:
         return "—"
     s = float(seconds)
-    return f"{s/60:.1f}m" if s >= 90 else f"{s:.0f}s"
+    return f"{s / 60:.1f}m" if s >= 90 else f"{s:.0f}s"
 
 
 def metric_card(label, value, description=None, delta=None, trend=None, sentiment=None):
@@ -159,22 +167,42 @@ def section(title: str, subtitle: str | None = None):
 # --------------------------------------------------------------------------- #
 def tab_engineering():
     ov = one(f"select * from {ENG}.fct_repo_overview")
-    section("Repo health", "GitHub issues, PRs, commits and CI, loaded hourly via dlt → MotherDuck.")
+    section(
+        "Repo health",
+        "GitHub issues, PRs, commits and CI, loaded hourly via dlt → MotherDuck.",
+    )
     if not ov:
         empty_note()
     else:
         with Grid(min_column_width="170px", gap=4, css_class="mb-4"):
-            metric_card("Open issues", fmt_int(ov.get("open_issues")),
-                        description=f"{fmt_int(ov.get('closed_issues'))} closed")
-            metric_card("Open PRs", fmt_int(ov.get("open_prs")),
-                        description=f"{fmt_int(ov.get('merged_prs'))} merged")
-            metric_card("Avg time to merge", f"{ov.get('avg_hours_to_merge', 0):.1f}h"
-                        if ov.get("avg_hours_to_merge") is not None else "—")
-            metric_card("CI failure rate", fmt_pct(ov.get("overall_failure_rate_pct")),
-                        description=f"{fmt_int(ov.get('workflow_runs_tracked'))} runs tracked",
-                        trend="down", sentiment="positive")
-            metric_card("Commits tracked", fmt_int(ov.get("commits_tracked")),
-                        description=f"{fmt_int(ov.get('distinct_authors'))} authors")
+            metric_card(
+                "Open issues",
+                fmt_int(ov.get("open_issues")),
+                description=f"{fmt_int(ov.get('closed_issues'))} closed",
+            )
+            metric_card(
+                "Open PRs",
+                fmt_int(ov.get("open_prs")),
+                description=f"{fmt_int(ov.get('merged_prs'))} merged",
+            )
+            metric_card(
+                "Avg time to merge",
+                f"{ov.get('avg_hours_to_merge', 0):.1f}h"
+                if ov.get("avg_hours_to_merge") is not None
+                else "—",
+            )
+            metric_card(
+                "CI failure rate",
+                fmt_pct(ov.get("overall_failure_rate_pct")),
+                description=f"{fmt_int(ov.get('workflow_runs_tracked'))} runs tracked",
+                trend="down",
+                sentiment="positive",
+            )
+            metric_card(
+                "Commits tracked",
+                fmt_int(ov.get("commits_tracked")),
+                description=f"{fmt_int(ov.get('distinct_authors'))} authors",
+            )
 
     # Per-workflow reliability table
     Separator(spacing=4)
@@ -194,19 +222,43 @@ def tab_engineering():
         DataTable(
             columns=[
                 DataTableColumn(key="workflow_name", header="Workflow", sortable=True),
-                DataTableColumn(key="total_runs", header="Runs", sortable=True, align="right"),
-                DataTableColumn(key="failed_runs", header="Failed", sortable=True, align="right"),
-                DataTableColumn(key="failure_rate_pct", header="Fail %", sortable=True, align="right"),
-                DataTableColumn(key="avg_duration_seconds", header="Avg", align="right"),
-                DataTableColumn(key="p95_duration_seconds", header="p95", align="right"),
-                DataTableColumn(key="days_since_last_run", header="Days idle", sortable=True, align="right"),
+                DataTableColumn(
+                    key="total_runs", header="Runs", sortable=True, align="right"
+                ),
+                DataTableColumn(
+                    key="failed_runs", header="Failed", sortable=True, align="right"
+                ),
+                DataTableColumn(
+                    key="failure_rate_pct",
+                    header="Fail %",
+                    sortable=True,
+                    align="right",
+                ),
+                DataTableColumn(
+                    key="avg_duration_seconds", header="Avg", align="right"
+                ),
+                DataTableColumn(
+                    key="p95_duration_seconds", header="p95", align="right"
+                ),
+                DataTableColumn(
+                    key="days_since_last_run",
+                    header="Days idle",
+                    sortable=True,
+                    align="right",
+                ),
             ],
-            rows=wf, search=True, paginated=True, page_size=10,
+            rows=wf,
+            search=True,
+            paginated=True,
+            page_size=10,
         )
 
     # CI failure-rate trend (overall, by day)
     Separator(spacing=4)
-    section("CI failure-rate trend", "Daily failure rate across all workflows (last 60 days).")
+    section(
+        "CI failure-rate trend",
+        "Daily failure rate across all workflows (last 60 days).",
+    )
     trend = q(f"""
         select run_date::varchar as day,
                round(100.0 * sum(failures) / nullif(sum(failures)+sum(successes),0), 1) as failure_rate_pct,
@@ -220,8 +272,17 @@ def tab_engineering():
     else:
         with Card():
             with CardContent():
-                LineChart(data=trend, x_axis="day", height=220, curve="smooth",
-                          series=[ChartSeries(data_key="failure_rate_pct", label="Failure %", color=RED)])
+                LineChart(
+                    data=trend,
+                    x_axis="day",
+                    height=220,
+                    curve="smooth",
+                    series=[
+                        ChartSeries(
+                            data_key="failure_rate_pct", label="Failure %", color=RED
+                        )
+                    ],
+                )
 
     # Scraper throughput
     Separator(spacing=4)
@@ -244,18 +305,34 @@ def tab_engineering():
         palette = [GREEN, BLUE, AMBER, VIOLET, RED, SLATE]
         with Card():
             with CardContent():
-                BarChart(data=rows, x_axis="day", height=240, stacked=True,
-                         series=[ChartSeries(data_key=m, label=m, color=palette[i % len(palette)])
-                                 for i, m in enumerate(metrics)])
+                BarChart(
+                    data=rows,
+                    x_axis="day",
+                    height=240,
+                    stacked=True,
+                    series=[
+                        ChartSeries(
+                            data_key=m, label=m, color=palette[i % len(palette)]
+                        )
+                        for i, m in enumerate(metrics)
+                    ],
+                )
 
 
 # --------------------------------------------------------------------------- #
 # Operations & Cost
 # --------------------------------------------------------------------------- #
 def tab_operations():
-    section("Supabase platform", "Host load & database reliability from the privileged Prometheus endpoint.")
-    host = one(f"select * from {OPS}.fct_supabase_host_load order by scraped_hour desc limit 1")
-    db = one(f"select * from {OPS}.fct_supabase_db_reliability order by scraped_hour desc limit 1")
+    section(
+        "Supabase platform",
+        "Host load & database reliability from the privileged Prometheus endpoint.",
+    )
+    host = one(
+        f"select * from {OPS}.fct_supabase_host_load order by scraped_hour desc limit 1"
+    )
+    db = one(
+        f"select * from {OPS}.fct_supabase_db_reliability order by scraped_hour desc limit 1"
+    )
     if not host and not db:
         empty_note()
     else:
@@ -263,10 +340,16 @@ def tab_operations():
             metric_card("CPU busy", fmt_pct(host.get("cpu_busy_pct")))
             metric_card("Memory used", fmt_pct(host.get("mem_used_pct")))
             metric_card("Disk used", fmt_pct(host.get("disk_used_pct")))
-            metric_card("Load (1m)", f"{host.get('load1'):.2f}" if host.get("load1") is not None else "—")
+            metric_card(
+                "Load (1m)",
+                f"{host.get('load1'):.2f}" if host.get("load1") is not None else "—",
+            )
             metric_card("Cache hit", fmt_pct(db.get("cache_hit_pct")))
-            metric_card("Connections", fmt_pct(db.get("connection_used_pct")),
-                        description=f"{db.get('connections_avg','—')} avg")
+            metric_card(
+                "Connections",
+                fmt_pct(db.get("connection_used_pct")),
+                description=f"{db.get('connections_avg', '—')} avg",
+            )
             metric_card("Rollback %", fmt_pct(db.get("rollback_pct")))
             metric_card("Deadlocks", fmt_int(db.get("deadlocks")))
 
@@ -280,13 +363,27 @@ def tab_operations():
                 with CardHeader():
                     CardTitle(content="Host load — last 48h")
                 with CardContent():
-                    AreaChart(data=load_series, x_axis="hour", height=200, curve="smooth",
-                              series=[ChartSeries(data_key="cpu_busy_pct", label="CPU %", color=BLUE),
-                                      ChartSeries(data_key="mem_used_pct", label="Mem %", color=VIOLET)])
+                    AreaChart(
+                        data=load_series,
+                        x_axis="hour",
+                        height=200,
+                        curve="smooth",
+                        series=[
+                            ChartSeries(
+                                data_key="cpu_busy_pct", label="CPU %", color=BLUE
+                            ),
+                            ChartSeries(
+                                data_key="mem_used_pct", label="Mem %", color=VIOLET
+                            ),
+                        ],
+                    )
 
     # Scrape SLA
     Separator(spacing=4)
-    section("Scrape pipeline SLA", "Per-source enrichment / eBay / Cannon's coverage and silent-failure watch.")
+    section(
+        "Scrape pipeline SLA",
+        "Per-source enrichment / eBay / Cannon's coverage and silent-failure watch.",
+    )
     sla = q(f"""
         select source, scrape_date::varchar as day, lots_scraped, enrichment_rate_pct,
                ebay_match_rate_pct, cannons_coverage_pct,
@@ -302,19 +399,33 @@ def tab_operations():
             r["enrichment_rate_pct"] = fmt_pct(r.get("enrichment_rate_pct"))
             r["ebay_match_rate_pct"] = fmt_pct(r.get("ebay_match_rate_pct"))
             r["cannons_coverage_pct"] = fmt_pct(r.get("cannons_coverage_pct"))
-        DataTable(columns=[
-            DataTableColumn(key="source", header="Source", sortable=True),
-            DataTableColumn(key="day", header="Last scrape"),
-            DataTableColumn(key="lots_scraped", header="Lots", align="right"),
-            DataTableColumn(key="enrichment_rate_pct", header="Enrich %", align="right"),
-            DataTableColumn(key="ebay_match_rate_pct", header="eBay %", align="right"),
-            DataTableColumn(key="cannons_coverage_pct", header="Cannon's %", align="right"),
-            DataTableColumn(key="days_since_enrichment", header="Idle enrich (d)", align="right"),
-        ], rows=sla)
+        DataTable(
+            columns=[
+                DataTableColumn(key="source", header="Source", sortable=True),
+                DataTableColumn(key="day", header="Last scrape"),
+                DataTableColumn(key="lots_scraped", header="Lots", align="right"),
+                DataTableColumn(
+                    key="enrichment_rate_pct", header="Enrich %", align="right"
+                ),
+                DataTableColumn(
+                    key="ebay_match_rate_pct", header="eBay %", align="right"
+                ),
+                DataTableColumn(
+                    key="cannons_coverage_pct", header="Cannon's %", align="right"
+                ),
+                DataTableColumn(
+                    key="days_since_enrichment", header="Idle enrich (d)", align="right"
+                ),
+            ],
+            rows=sla,
+        )
 
     # API spend
     Separator(spacing=4)
-    section("API spend", "Anthropic enrichment + eBay comp budget (cumulative & 30-day burn).")
+    section(
+        "API spend",
+        "Anthropic enrichment + eBay comp budget (cumulative & 30-day burn).",
+    )
     spend_latest = one(f"""
         select cumulative_total_cost_usd, cumulative_anthropic_cost_usd, cumulative_ebay_cost_usd,
                rolling_30d_total_cost_usd, anthropic_cost_per_enriched_lot
@@ -324,10 +435,20 @@ def tab_operations():
         empty_note()
     else:
         with Grid(min_column_width="180px", gap=4, css_class="mb-4"):
-            metric_card("Total spend (all-time)", fmt_usd(spend_latest.get("cumulative_total_cost_usd")))
-            metric_card("Anthropic (all-time)", fmt_usd(spend_latest.get("cumulative_anthropic_cost_usd")))
-            metric_card("eBay (all-time)", fmt_usd(spend_latest.get("cumulative_ebay_cost_usd")))
-            metric_card("Last 30 days", fmt_usd(spend_latest.get("rolling_30d_total_cost_usd")))
+            metric_card(
+                "Total spend (all-time)",
+                fmt_usd(spend_latest.get("cumulative_total_cost_usd")),
+            )
+            metric_card(
+                "Anthropic (all-time)",
+                fmt_usd(spend_latest.get("cumulative_anthropic_cost_usd")),
+            )
+            metric_card(
+                "eBay (all-time)", fmt_usd(spend_latest.get("cumulative_ebay_cost_usd"))
+            )
+            metric_card(
+                "Last 30 days", fmt_usd(spend_latest.get("rolling_30d_total_cost_usd"))
+            )
         burn = q(f"""
             select activity_date::varchar as day, total_api_cost_usd, cumulative_total_cost_usd
             from {OPS}.fct_api_spend
@@ -338,15 +459,29 @@ def tab_operations():
                 with CardHeader():
                     CardTitle(content="Cumulative API cost")
                 with CardContent():
-                    AreaChart(data=burn, x_axis="day", height=200, curve="smooth",
-                              series=[ChartSeries(data_key="cumulative_total_cost_usd", label="Cumulative $", color=AMBER)])
+                    AreaChart(
+                        data=burn,
+                        x_axis="day",
+                        height=200,
+                        curve="smooth",
+                        series=[
+                            ChartSeries(
+                                data_key="cumulative_total_cost_usd",
+                                label="Cumulative $",
+                                color=AMBER,
+                            )
+                        ],
+                    )
 
 
 # --------------------------------------------------------------------------- #
 # Resale Intelligence
 # --------------------------------------------------------------------------- #
 def tab_resale():
-    section("Enrichment coverage", "How many active lots Claude identified a product for, by auction.")
+    section(
+        "Enrichment coverage",
+        "How many active lots Claude identified a product for, by auction.",
+    )
     enr = q(f"""
         select auction_title, source, total_lots, enriched_lots, enrichment_coverage_pct,
                pct_high_confidence, pct_brand_extracted, pct_model_extracted
@@ -368,19 +503,40 @@ def tab_resale():
             r["enrichment_coverage_pct"] = fmt_pct(r.get("enrichment_coverage_pct"))
             r["pct_high_confidence"] = fmt_pct(r.get("pct_high_confidence"))
             r["pct_brand_extracted"] = fmt_pct(r.get("pct_brand_extracted"))
-        DataTable(columns=[
-            DataTableColumn(key="auction_title", header="Auction", sortable=True),
-            DataTableColumn(key="source", header="Src", sortable=True),
-            DataTableColumn(key="total_lots", header="Lots", align="right", sortable=True),
-            DataTableColumn(key="enriched_lots", header="Enriched", align="right", sortable=True),
-            DataTableColumn(key="enrichment_coverage_pct", header="Coverage", align="right", sortable=True),
-            DataTableColumn(key="pct_high_confidence", header="High-conf", align="right"),
-            DataTableColumn(key="pct_brand_extracted", header="Brand", align="right"),
-        ], rows=enr, search=True, paginated=True, page_size=8)
+        DataTable(
+            columns=[
+                DataTableColumn(key="auction_title", header="Auction", sortable=True),
+                DataTableColumn(key="source", header="Src", sortable=True),
+                DataTableColumn(
+                    key="total_lots", header="Lots", align="right", sortable=True
+                ),
+                DataTableColumn(
+                    key="enriched_lots", header="Enriched", align="right", sortable=True
+                ),
+                DataTableColumn(
+                    key="enrichment_coverage_pct",
+                    header="Coverage",
+                    align="right",
+                    sortable=True,
+                ),
+                DataTableColumn(
+                    key="pct_high_confidence", header="High-conf", align="right"
+                ),
+                DataTableColumn(
+                    key="pct_brand_extracted", header="Brand", align="right"
+                ),
+            ],
+            rows=enr,
+            search=True,
+            paginated=True,
+            page_size=8,
+        )
 
     # eBay comp coverage
     Separator(spacing=4)
-    section("eBay comp coverage", "Share of lots with at least one eBay sold-listing comp.")
+    section(
+        "eBay comp coverage", "Share of lots with at least one eBay sold-listing comp."
+    )
     comp = one(f"""
         select sum(total_lots) as lots, sum(items_with_comp) as with_comp,
                round(100.0*sum(items_with_comp)/nullif(sum(total_lots),0),1) as coverage
@@ -396,7 +552,10 @@ def tab_resale():
 
     # Price accuracy
     Separator(spacing=4)
-    section("Comp accuracy", "How close our comps were to the realised hammer price (sold lots).")
+    section(
+        "Comp accuracy",
+        "How close our comps were to the realised hammer price (sold lots).",
+    )
     acc = one(f"""
         select
           round(median(ebay_comp_abs_error_pct),1)    as ebay_med_err,
@@ -406,23 +565,37 @@ def tab_resale():
         from {MARTS}.fct_price_accuracy
         where has_ebay_comp or has_cannons_comp
     """)
-    if not acc or (acc.get("ebay_med_err") is None and acc.get("cannons_med_err") is None):
+    if not acc or (
+        acc.get("ebay_med_err") is None and acc.get("cannons_med_err") is None
+    ):
         empty_note()
     else:
         with Grid(min_column_width="190px", gap=4):
-            metric_card("eBay median error", fmt_pct(acc.get("ebay_med_err")),
-                        description="abs % vs hammer price")
-            metric_card("Cannon's median error", fmt_pct(acc.get("cannons_med_err")),
-                        description="abs % vs hammer price")
-            metric_card("eBay closer", fmt_int(acc.get("ebay_closer")),
-                        description=f"vs {fmt_int(acc.get('cannons_closer'))} Cannon's")
+            metric_card(
+                "eBay median error",
+                fmt_pct(acc.get("ebay_med_err")),
+                description="abs % vs hammer price",
+            )
+            metric_card(
+                "Cannon's median error",
+                fmt_pct(acc.get("cannons_med_err")),
+                description="abs % vs hammer price",
+            )
+            metric_card(
+                "eBay closer",
+                fmt_int(acc.get("ebay_closer")),
+                description=f"vs {fmt_int(acc.get('cannons_closer'))} Cannon's",
+            )
 
 
 # --------------------------------------------------------------------------- #
 # Product & Users
 # --------------------------------------------------------------------------- #
 def tab_product():
-    section("Engagement (PostHog)", "Anonymous, cookieless product analytics — daily aggregates.")
+    section(
+        "Engagement (PostHog)",
+        "Anonymous, cookieless product analytics — daily aggregates.",
+    )
     eng_latest = one(f"""
         select daily_active_users, pageviews, item_opens, total_searches, swipe_deck_opens
         from {MARTS}.fct_posthog_engagement order by day desc limit 1
@@ -446,10 +619,23 @@ def tab_product():
                 with CardHeader():
                     CardTitle(content="Activity — last 60 days")
                 with CardContent():
-                    LineChart(data=series, x_axis="day", height=220, curve="smooth",
-                              series=[ChartSeries(data_key="daily_active_users", label="DAU", color=GREEN),
-                                      ChartSeries(data_key="item_opens", label="Item opens", color=BLUE),
-                                      ChartSeries(data_key="total_searches", label="Searches", color=AMBER)])
+                    LineChart(
+                        data=series,
+                        x_axis="day",
+                        height=220,
+                        curve="smooth",
+                        series=[
+                            ChartSeries(
+                                data_key="daily_active_users", label="DAU", color=GREEN
+                            ),
+                            ChartSeries(
+                                data_key="item_opens", label="Item opens", color=BLUE
+                            ),
+                            ChartSeries(
+                                data_key="total_searches", label="Searches", color=AMBER
+                            ),
+                        ],
+                    )
 
     # User engagement tiers
     Separator(spacing=4)
@@ -475,12 +661,18 @@ def tab_product():
         tiers.sort(key=lambda r: order.get(r["tier"], 9))
         with Card():
             with CardContent():
-                BarChart(data=tiers, x_axis="tier", height=200,
-                         series=[ChartSeries(data_key="users", label="Users", color=VIOLET)])
+                BarChart(
+                    data=tiers,
+                    x_axis="tier",
+                    height=200,
+                    series=[ChartSeries(data_key="users", label="Users", color=VIOLET)],
+                )
 
     # Most-loved items
     Separator(spacing=4)
-    section("Top items", "Highest net engagement (favorites − ignores) across all lots.")
+    section(
+        "Top items", "Highest net engagement (favorites − ignores) across all lots."
+    )
     items = q(f"""
         select coalesce(title,'(lot '||item_id||')') as title, category, source,
                favorited_by, ignored_by, net_score, final_bid
@@ -492,22 +684,39 @@ def tab_product():
         empty_note()
     else:
         for r in items:
-            r["final_bid"] = fmt_usd(r.get("final_bid")) if r.get("final_bid") is not None else "—"
-        DataTable(columns=[
-            DataTableColumn(key="title", header="Item", sortable=True),
-            DataTableColumn(key="category", header="Category", sortable=True),
-            DataTableColumn(key="favorited_by", header="❤", align="right", sortable=True),
-            DataTableColumn(key="ignored_by", header="✕", align="right", sortable=True),
-            DataTableColumn(key="net_score", header="Net", align="right", sortable=True),
-            DataTableColumn(key="final_bid", header="Sold", align="right"),
-        ], rows=items, search=True, paginated=True, page_size=8)
+            r["final_bid"] = (
+                fmt_usd(r.get("final_bid")) if r.get("final_bid") is not None else "—"
+            )
+        DataTable(
+            columns=[
+                DataTableColumn(key="title", header="Item", sortable=True),
+                DataTableColumn(key="category", header="Category", sortable=True),
+                DataTableColumn(
+                    key="favorited_by", header="❤", align="right", sortable=True
+                ),
+                DataTableColumn(
+                    key="ignored_by", header="✕", align="right", sortable=True
+                ),
+                DataTableColumn(
+                    key="net_score", header="Net", align="right", sortable=True
+                ),
+                DataTableColumn(key="final_bid", header="Sold", align="right"),
+            ],
+            rows=items,
+            search=True,
+            paginated=True,
+            page_size=8,
+        )
 
 
 # --------------------------------------------------------------------------- #
 # Pipeline health (the analytics pipeline monitoring itself)
 # --------------------------------------------------------------------------- #
 def tab_pipeline():
-    section("Last build", "Most recent dbt build (run_results) captured to MotherDuck after each refresh.")
+    section(
+        "Last build",
+        "Most recent dbt build (run_results) captured to MotherDuck after each refresh.",
+    )
     latest = one("""
         select invocation_id, max(captured_at)::varchar as captured_at
         from meta.dbt_run_results
@@ -528,14 +737,26 @@ def tab_pipeline():
             from meta.dbt_run_results where invocation_id = '{inv}'
         """)
         tp, tf = s.get("tests_pass") or 0, s.get("tests_fail") or 0
-        pass_rate = f"{100.0*tp/(tp+tf):.0f}%" if (tp + tf) else "—"
+        pass_rate = f"{100.0 * tp / (tp + tf):.0f}%" if (tp + tf) else "—"
         with Grid(min_column_width="150px", gap=4, css_class="mb-4"):
-            metric_card("Models built", fmt_int(s.get("models_ok")),
-                        description=(f"{fmt_int(s.get('models_err'))} errored" if s.get("models_err") else "all green"))
-            metric_card("Tests passed", fmt_int(tp), description=f"{fmt_int(tf)} failed")
+            metric_card(
+                "Models built",
+                fmt_int(s.get("models_ok")),
+                description=(
+                    f"{fmt_int(s.get('models_err'))} errored"
+                    if s.get("models_err")
+                    else "all green"
+                ),
+            )
+            metric_card(
+                "Tests passed", fmt_int(tp), description=f"{fmt_int(tf)} failed"
+            )
             metric_card("Test pass rate", pass_rate)
             metric_card("Skipped", fmt_int(s.get("skipped")))
-            metric_card("Build time", f"{s.get('runtime_s')}s" if s.get("runtime_s") is not None else "—")
+            metric_card(
+                "Build time",
+                f"{s.get('runtime_s')}s" if s.get("runtime_s") is not None else "—",
+            )
 
         # Anything not green in the latest build.
         problems = q(f"""
@@ -546,12 +767,18 @@ def tab_pipeline():
         """)
         if problems:
             section("Needs attention", "Models / tests not green in the last build.")
-            DataTable(columns=[
-                DataTableColumn(key="resource_type", header="Type", sortable=True),
-                DataTableColumn(key="name", header="Node", sortable=True),
-                DataTableColumn(key="status", header="Status", sortable=True),
-                DataTableColumn(key="message", header="Message"),
-            ], rows=problems, search=True, paginated=True, page_size=8)
+            DataTable(
+                columns=[
+                    DataTableColumn(key="resource_type", header="Type", sortable=True),
+                    DataTableColumn(key="name", header="Node", sortable=True),
+                    DataTableColumn(key="status", header="Status", sortable=True),
+                    DataTableColumn(key="message", header="Message"),
+                ],
+                rows=problems,
+                search=True,
+                paginated=True,
+                page_size=8,
+            )
 
     # Test pass/fail trend
     Separator(spacing=4)
@@ -569,13 +796,23 @@ def tab_pipeline():
     else:
         with Card():
             with CardContent():
-                BarChart(data=trend, x_axis="day", height=200, stacked=True,
-                         series=[ChartSeries(data_key="passed", label="Passed", color=GREEN),
-                                 ChartSeries(data_key="failed", label="Failed", color=RED)])
+                BarChart(
+                    data=trend,
+                    x_axis="day",
+                    height=200,
+                    stacked=True,
+                    series=[
+                        ChartSeries(data_key="passed", label="Passed", color=GREEN),
+                        ChartSeries(data_key="failed", label="Failed", color=RED),
+                    ],
+                )
 
     # Rows per source table (latest snapshot)
     Separator(spacing=4)
-    section("Rows processed", "Row count per warehouse-native source table (latest snapshot).")
+    section(
+        "Rows processed",
+        "Row count per warehouse-native source table (latest snapshot).",
+    )
     rows = q("""
         select schema_name as schema, table_name as table, row_count
         from meta.source_row_counts
@@ -587,11 +824,19 @@ def tab_pipeline():
     else:
         for r in rows:
             r["row_count"] = fmt_int(r.get("row_count"))
-        DataTable(columns=[
-            DataTableColumn(key="schema", header="Schema", sortable=True),
-            DataTableColumn(key="table", header="Table", sortable=True),
-            DataTableColumn(key="row_count", header="Rows", align="right", sortable=True),
-        ], rows=rows, search=True, paginated=True, page_size=10)
+        DataTable(
+            columns=[
+                DataTableColumn(key="schema", header="Schema", sortable=True),
+                DataTableColumn(key="table", header="Table", sortable=True),
+                DataTableColumn(
+                    key="row_count", header="Rows", align="right", sortable=True
+                ),
+            ],
+            rows=rows,
+            search=True,
+            paginated=True,
+            page_size=10,
+        )
 
     # Slowest models
     Separator(spacing=4)
@@ -600,15 +845,22 @@ def tab_pipeline():
         slow = q(f"""
             select name, round(execution_time,2) as seconds, coalesce(rows_affected,0) as rows
             from meta.dbt_run_results
-            where invocation_id = '{latest['invocation_id']}' and resource_type='model'
+            where invocation_id = '{latest["invocation_id"]}' and resource_type='model'
             order by execution_time desc limit 12
         """)
         if slow:
-            DataTable(columns=[
-                DataTableColumn(key="name", header="Model", sortable=True),
-                DataTableColumn(key="seconds", header="Seconds", align="right", sortable=True),
-                DataTableColumn(key="rows", header="Rows", align="right", sortable=True),
-            ], rows=slow)
+            DataTable(
+                columns=[
+                    DataTableColumn(key="name", header="Model", sortable=True),
+                    DataTableColumn(
+                        key="seconds", header="Seconds", align="right", sortable=True
+                    ),
+                    DataTableColumn(
+                        key="rows", header="Rows", align="right", sortable=True
+                    ),
+                ],
+                rows=slow,
+            )
         else:
             empty_note()
 
@@ -630,13 +882,17 @@ DOMAINS = [
 
 def render() -> str:
     generated = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
-    with PrefabApp(title="Gooners · Admin", css_class="max-w-7xl mx-auto p-6 space-y-4") as app:
+    with PrefabApp(
+        title="Gooners · Admin", css_class="max-w-7xl mx-auto p-6 space-y-4"
+    ) as app:
         with Row(justify="between", align="center"):
             H2(content="James River Gooners — Admin")
             with Badge(variant="secondary"):
                 Text(content=f"Generated {generated}")
-        Muted(content="Operational, engineering, resale and product metrics. "
-                      "Built from the dbt marts in MotherDuck; visible only to the signed-in owner.")
+        Muted(
+            content="Operational, engineering, resale and product metrics. "
+            "Built from the dbt marts in MotherDuck; visible only to the signed-in owner."
+        )
         for i, (title, fn) in enumerate(DOMAINS):
             if i:
                 Separator(spacing=8)

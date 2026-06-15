@@ -73,6 +73,7 @@ try:
     from telemetry import capture as _telemetry_capture
     from telemetry import flush as _telemetry_flush
 except Exception:  # pragma: no cover - telemetry is best-effort
+
     def _telemetry_capture(event, properties=None):
         return None
 
@@ -99,7 +100,10 @@ def _record_enrich_run(payload: dict) -> None:
     try:
         record_enrich_run(payload)
     except Exception as exc:  # noqa: BLE001 - ledger is best-effort
-        print(f"  WARNING: failed to record enrich_runs ledger row: {exc}", file=sys.stderr)
+        print(
+            f"  WARNING: failed to record enrich_runs ledger row: {exc}",
+            file=sys.stderr,
+        )
 
 
 # Haiku is plenty for structured extraction and the cheapest option; overridable
@@ -132,10 +136,16 @@ ENRICHMENT_RPM = float(os.environ.get("GOONERS_ENRICHMENT_RPM", "45"))
 BATCH_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_SIZE", "10000"))
 # Inlined images make each request far larger, so inline batches cap at a lower
 # count and a payload budget well under the 256 MB hard limit.
-BATCH_INLINE_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_SIZE", "2000"))
-BATCH_MAX_BYTES = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024)))
+BATCH_INLINE_MAX_REQUESTS = int(
+    os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_SIZE", "2000")
+)
+BATCH_MAX_BYTES = int(
+    os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024))
+)
 BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
-BATCH_MAX_WAIT = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600)))
+BATCH_MAX_WAIT = float(
+    os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600))
+)
 # Downscale inlined images for the batch payload. We extract product identity +
 # attributes (mostly from the lot's text), not tiny model/SKU plate text, so a
 # modest 512px is plenty and keeps the payload + token cost down. Fetched
@@ -153,8 +163,12 @@ MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
 # max_tokens, so a small constant covers it. All overridable for other models.
 PRICE_IN_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_IN", "1.0"))
 PRICE_OUT_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_OUT", "5.0"))
-ESTIMATE_SAMPLE = max(1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30")))
-ESTIMATE_OUTPUT_TOKENS = int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300"))
+ESTIMATE_SAMPLE = max(
+    1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30"))
+)
+ESTIMATE_OUTPUT_TOKENS = int(
+    os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300")
+)
 
 
 def _text_only() -> bool:
@@ -163,6 +177,7 @@ def _text_only() -> bool:
     text-derivable field across history without re-paying the image tokens. Read
     at call time (not import) so the CLI flag can set it before any enrichment."""
     return os.environ.get("GOONERS_ENRICHMENT_TEXT_ONLY") == "1"
+
 
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
 # reusing a now-stale cached row (the fingerprint folds this in). v5: adds a
@@ -198,16 +213,38 @@ ENRICHMENT_SCHEMA_VERSION = "6"
 # style/artist clears the display+comp bar even with no brand. The model composes
 # `searchQuery` from these keys when brand is empty. "" / "{}" when not applicable.
 ENRICHMENT_FIELDS = (
-    "brand", "modelOrSku", "productType", "searchQuery", "condition", "productUrl",
-    "quantity", "isMixedLot", "conditionFlags", "keyAttributes", "secondaryItems",
-    "notes", "detailCategory", "details",
-    "brandConfidence", "modelConfidence", "detailConfidence", "enrichmentConfidence",
-    "enrichmentModel", "enrichmentSchemaVersion", "enrichmentInputHash",
+    "brand",
+    "modelOrSku",
+    "productType",
+    "searchQuery",
+    "condition",
+    "productUrl",
+    "quantity",
+    "isMixedLot",
+    "conditionFlags",
+    "keyAttributes",
+    "secondaryItems",
+    "notes",
+    "detailCategory",
+    "details",
+    "brandConfidence",
+    "modelConfidence",
+    "detailConfidence",
+    "enrichmentConfidence",
+    "enrichmentModel",
+    "enrichmentSchemaVersion",
+    "enrichmentInputHash",
 )
 CONDITION_VALUES = ("new", "open box", "used", "for parts", "unknown")
 CONFIDENCE_VALUES = ("low", "medium", "high")
 # Closed set of resale-risk flags the model may tag a lot with (any subset).
-CONDITION_FLAG_VALUES = ("untested", "damaged", "missing parts", "repaired", "incomplete")
+CONDITION_FLAG_VALUES = (
+    "untested",
+    "damaged",
+    "missing parts",
+    "repaired",
+    "incomplete",
+)
 # Cap on stored key attributes (the model is asked for the few most identifying).
 MAX_KEY_ATTRIBUTES = 6
 # Cap on stored secondary products (multi-brand lots — the rest beyond the primary).
@@ -227,7 +264,16 @@ DETAIL_KEYS_BY_CATEGORY = {
 # Superset of every detail key, in stable order — the `details` schema object
 # carries all of them (so json_schema stays additionalProperties:false with every
 # key required); parsing prunes to the chosen category's keys and drops empties.
-DETAIL_SUPERSET_KEYS = ("style", "material", "form", "artist", "medium", "subject", "maker", "pattern")
+DETAIL_SUPERSET_KEYS = (
+    "style",
+    "material",
+    "form",
+    "artist",
+    "medium",
+    "subject",
+    "maker",
+    "pattern",
+)
 # Rank for taking the max of the per-field confidences.
 _CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
@@ -245,7 +291,10 @@ OUTPUT_SCHEMA = {
         "quantity": {"type": "integer"},
         "is_mixed_lot": {"type": "boolean"},
         "condition": {"type": "string", "enum": list(CONDITION_VALUES)},
-        "condition_flags": {"type": "array", "items": {"type": "string", "enum": list(CONDITION_FLAG_VALUES)}},
+        "condition_flags": {
+            "type": "array",
+            "items": {"type": "string", "enum": list(CONDITION_FLAG_VALUES)},
+        },
         "key_attributes": {"type": "array", "items": {"type": "string"}},
         # Other identifiable products in a multi-brand lot (the primary fields
         # above describe the single most prominent/valuable item).
@@ -279,10 +328,25 @@ OUTPUT_SCHEMA = {
         "brand_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
         "model_confidence": {"type": "string", "enum": list(CONFIDENCE_VALUES)},
     },
-    "required": ["brand", "model_name", "product_type", "search_query", "quantity",
-                 "is_mixed_lot", "condition", "condition_flags", "key_attributes",
-                 "secondary_items", "notes", "detail_category", "details", "detail_confidence",
-                 "product_url", "brand_confidence", "model_confidence"],
+    "required": [
+        "brand",
+        "model_name",
+        "product_type",
+        "search_query",
+        "quantity",
+        "is_mixed_lot",
+        "condition",
+        "condition_flags",
+        "key_attributes",
+        "secondary_items",
+        "notes",
+        "detail_category",
+        "details",
+        "detail_confidence",
+        "product_url",
+        "brand_confidence",
+        "model_confidence",
+    ],
     "additionalProperties": False,
 }
 
@@ -290,25 +354,25 @@ SYSTEM_PROMPT = (
     "You identify consumer products from auction-lot listings and write the best "
     "eBay *sold-listing* search for each, so resale buyers can see comps. You are "
     "given the lot's text and up to a few photos. Extract:\n"
-    "- brand: the manufacturer or brand (e.g. \"DeWalt\", \"KitchenAid\"). Empty "
+    '- brand: the manufacturer or brand (e.g. "DeWalt", "KitchenAid"). Empty '
     "string if none is identifiable.\n"
-    "- model_name: the product line or model name — e.g. \"Artisan\", \"SawStop "
-    "PCS\", \"Speedmaster\". Prefer a recognizable name over a raw SKU; a precise "
+    '- model_name: the product line or model name — e.g. "Artisan", "SawStop '
+    'PCS", "Speedmaster". Prefer a recognizable name over a raw SKU; a precise '
     "model number is great when clearly present, but don't strain for one. Empty "
     "string if not identifiable.\n"
-    "- product_type: the general product noun (e.g. \"stand mixer\", \"table "
-    "saw\", \"dive watch\", \"humidor\"). Almost always fillable from the text.\n"
+    '- product_type: the general product noun (e.g. "stand mixer", "table '
+    'saw", "dive watch", "humidor"). Almost always fillable from the text.\n'
     "- search_query: the search phrase you would type into eBay sold listings to "
     "find this exact item's comps. Compose it from brand + model_name + "
     "product_type plus the one or two most identifying attributes (size, "
-    "capacity, material, wattage, era) — e.g. \"KitchenAid Artisan 5 qt stand "
-    "mixer\", \"Craftsman 20V cordless drill\". Keep it short (3-7 words), no lot "
-    "numbers or filler. If the lot is generic/mixed (e.g. \"box of assorted "
-    "hardware\"), return an empty string.\n"
+    'capacity, material, wattage, era) — e.g. "KitchenAid Artisan 5 qt stand '
+    'mixer", "Craftsman 20V cordless drill". Keep it short (3-7 words), no lot '
+    'numbers or filler. If the lot is generic/mixed (e.g. "box of assorted '
+    'hardware"), return an empty string.\n'
     "- quantity: how many items the lot contains, as a whole number. A single "
     "photo often shows several items — count them. Use the count when the lot is "
     "multiple of the *same* item (e.g. 12 identical mugs -> 12) or a stated set "
-    "(\"set of 4\" -> 4). Use 1 for a single item. Use 0 only when the count truly "
+    '("set of 4" -> 4). Use 1 for a single item. Use 0 only when the count truly '
     "can't be determined.\n"
     "- is_mixed_lot: true when the lot is an assortment of *different* items (a "
     "junk drawer, a box of unrelated goods) rather than one item or many identical "
@@ -324,12 +388,12 @@ SYSTEM_PROMPT = (
     "comping on their own; skip filler.\n"
     "- condition: one of new, open box, used, for parts, unknown.\n"
     "- condition_flags: any of untested, damaged, missing parts, repaired, "
-    "incomplete that the listing states or the photos clearly show (e.g. \"AS-IS, "
-    "untested\", a visible crack). Empty array if none are indicated — do not "
+    'incomplete that the listing states or the photos clearly show (e.g. "AS-IS, '
+    'untested", a visible crack). Empty array if none are indicated — do not '
     "guess.\n"
     "- key_attributes: up to the few most search-identifying specs (size, "
-    "capacity, material, color, dimensions, wattage, era) — e.g. [\"5 qt\", "
-    "\"stainless steel\"]. Empty array if nothing distinctive.\n"
+    'capacity, material, color, dimensions, wattage, era) — e.g. ["5 qt", '
+    '"stainless steel"]. Empty array if nothing distinctive.\n'
     "- notes: a brief freeform line capturing any other identifying or "
     "resale-relevant detail not already in the fields above — maker's marks, "
     "signatures, stamps, hallmarks, serial/pattern numbers, provenance, era cues, "
@@ -337,25 +401,25 @@ SYSTEM_PROMPT = (
     "to one sentence. Empty string if there's nothing to add.\n"
     "- detail_category: the lot's kind, one of: furniture, art, ceramics_glass, "
     "other. Pick the one whose descriptive identity (not its brand) is what a "
-    "resale buyer would search on. Use \"other\" for branded consumer goods, "
+    'resale buyer would search on. Use "other" for branded consumer goods, '
     "tools, electronics, jewelry, collectibles, or anything that doesn't fit.\n"
     "- details: an object. Fill ONLY the keys for the detail_category you chose, "
-    "leave the rest empty strings. furniture -> style (e.g. \"mid-century "
-    "modern\", \"Victorian\", \"Art Deco\"), material (e.g. \"walnut\", "
-    "\"brass\"), form (the piece, e.g. \"credenza\", \"side chair\"). art -> "
+    'leave the rest empty strings. furniture -> style (e.g. "mid-century '
+    'modern", "Victorian", "Art Deco"), material (e.g. "walnut", '
+    '"brass"), form (the piece, e.g. "credenza", "side chair"). art -> '
     "artist (the signed/attributed name if legible, else empty), medium (e.g. "
-    "\"oil on canvas\", \"watercolor\"), subject (e.g. \"winter landscape\"). "
-    "ceramics_glass -> maker (e.g. \"Lladro\", \"Delft\"), pattern (e.g. \"Olde "
-    "England\"), material (e.g. \"transferware\", \"cut crystal\"). other -> "
+    '"oil on canvas", "watercolor"), subject (e.g. "winter landscape"). '
+    'ceramics_glass -> maker (e.g. "Lladro", "Delft"), pattern (e.g. "Olde '
+    'England"), material (e.g. "transferware", "cut crystal"). other -> '
     "leave all keys empty. Only fill a key from what the text/photos actually "
     "show — do NOT guess an artist, an era, or a maker.\n"
     "- detail_confidence: high when the detail keys clearly capture the lot's "
     "identity, medium when reasonably sure, low for vague/generic. Score "
     "independently of brand/model. For an unbranded furniture/art/ceramics lot "
     "this is what carries the identification, so when you fill details "
-    "confidently, also compose search_query from those keys (e.g. \"mid-century "
-    "walnut credenza\", \"Helen Lord watercolor winter landscape\", \"Delft blue "
-    "transferware plate\") even though brand/model are empty.\n"
+    'confidently, also compose search_query from those keys (e.g. "mid-century '
+    'walnut credenza", "Helen Lord watercolor winter landscape", "Delft blue '
+    'transferware plate") even though brand/model are empty.\n'
     "- product_url: a canonical manufacturer/major-retailer product page URL ONLY "
     "if you are certain it is real; otherwise an empty string (a hallucinated URL "
     "is worse than none).\n"
@@ -370,7 +434,9 @@ SYSTEM_PROMPT = (
 def is_enrichment_enabled() -> bool:
     """True only when the user opted in AND a key is present. The opt-in keeps
     enrichment off by default (no surprise API spend on every scrape)."""
-    return os.environ.get("GOONERS_ENRICHMENT") == "1" and bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return os.environ.get("GOONERS_ENRICHMENT") == "1" and bool(
+        os.environ.get("ANTHROPIC_API_KEY")
+    )
 
 
 def _empty_enrichment() -> dict:
@@ -383,7 +449,10 @@ def _make_client():
     try:
         import anthropic
     except ImportError:
-        print("  enrich: anthropic SDK not installed; skipping enrichment", file=sys.stderr)
+        print(
+            "  enrich: anthropic SDK not installed; skipping enrichment",
+            file=sys.stderr,
+        )
         return None
     return anthropic.Anthropic(max_retries=MAX_RETRIES)
 
@@ -478,7 +547,13 @@ def enrichment_fingerprint(item: dict) -> str:
     # same lot, so a later with-images run re-enriches rather than reusing it.
     mode = "text" if _text_only() else f"img{MAX_IMAGE_PX}"
     payload = "\x1f".join(
-        (ENRICHMENT_SCHEMA_VERSION, MODEL, mode, item_prompt_text(item), *item_image_urls(item))
+        (
+            ENRICHMENT_SCHEMA_VERSION,
+            MODEL,
+            mode,
+            item_prompt_text(item),
+            *item_image_urls(item),
+        )
     )
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
@@ -523,7 +598,10 @@ def build_content_inline(item: dict, images: list[tuple[str, str]]) -> list:
     """User content with the photos inlined as base64 (text-only when none could
     be fetched). The batch counterpart to ``build_content``."""
     content = [
-        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}}
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": data},
+        }
         for media_type, data in images
     ]
     content.append({"type": "text", "text": item_prompt_text(item)})
@@ -541,14 +619,21 @@ def build_request_params(item: dict, content: list | None = None) -> dict:
         # Deterministic extraction — we want the same lot to score the same way.
         "temperature": 0,
         "system": SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": content if content is not None else build_content(item)}],
+        "messages": [
+            {
+                "role": "user",
+                "content": content if content is not None else build_content(item),
+            }
+        ],
         "output_config": {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
     }
 
 
 def _response_text(content) -> str:
     """The first text block's text from a message's content list, or ""."""
-    return next((block.text for block in content if getattr(block, "type", None) == "text"), "")
+    return next(
+        (block.text for block in content if getattr(block, "type", None) == "text"), ""
+    )
 
 
 def _valid_confidence(raw_value) -> str:
@@ -603,7 +688,9 @@ def _parse_secondary_items(raw_value) -> str:
             continue
         item = {
             "brand": str(entry.get("brand") or "").strip(),
-            "modelOrSku": str(entry.get("model_name") or entry.get("model_or_sku") or "").strip(),
+            "modelOrSku": str(
+                entry.get("model_name") or entry.get("model_or_sku") or ""
+            ).strip(),
             "productType": str(entry.get("product_type") or "").strip(),
             "searchQuery": str(entry.get("search_query") or "").strip(),
         }
@@ -656,29 +743,40 @@ def parse_enrichment(raw: dict) -> dict:
     out["brand"] = str(raw.get("brand") or "").strip()
     # `model_name` (v3) supersedes the old `model_or_sku`; accept either so older
     # cached payloads still parse. Stored under modelOrSku for read-model continuity.
-    out["modelOrSku"] = str(raw.get("model_name") or raw.get("model_or_sku") or "").strip()
+    out["modelOrSku"] = str(
+        raw.get("model_name") or raw.get("model_or_sku") or ""
+    ).strip()
     out["productType"] = str(raw.get("product_type") or "").strip()
     out["searchQuery"] = str(raw.get("search_query") or "").strip()
     out["quantity"] = _parse_quantity(raw.get("quantity"))
     out["isMixedLot"] = "true" if bool(raw.get("is_mixed_lot")) else "false"
-    out["conditionFlags"] = _parse_enum_list(raw.get("condition_flags"), CONDITION_FLAG_VALUES)
-    out["keyAttributes"] = _parse_str_list(raw.get("key_attributes"), MAX_KEY_ATTRIBUTES)
+    out["conditionFlags"] = _parse_enum_list(
+        raw.get("condition_flags"), CONDITION_FLAG_VALUES
+    )
+    out["keyAttributes"] = _parse_str_list(
+        raw.get("key_attributes"), MAX_KEY_ATTRIBUTES
+    )
     out["secondaryItems"] = _parse_secondary_items(raw.get("secondary_items"))
     out["notes"] = str(raw.get("notes") or "").strip()
     out["condition"] = condition if condition in CONDITION_VALUES else ""
-    out["productUrl"] = product_url if product_url.startswith(("http://", "https://")) else ""
+    out["productUrl"] = (
+        product_url if product_url.startswith(("http://", "https://")) else ""
+    )
     out["brandConfidence"] = brand_conf
     out["modelConfidence"] = model_conf
     # Category-aware detail (v6): only kept at medium/high, which clears the bag +
     # category to "" when low — so the saved detail is always display-confident.
     detail_conf = _valid_confidence(raw.get("detail_confidence"))
     out["detailCategory"], out["details"] = _parse_details(
-        raw.get("detail_category"), raw.get("details"), detail_conf)
+        raw.get("detail_category"), raw.get("details"), detail_conf
+    )
     out["detailConfidence"] = detail_conf if out["detailCategory"] else ""
     # The overall bar is the max of brand/model/detail — a confident style or
     # artist surfaces an unbranded antique just as a confident brand surfaces a tool.
     out["enrichmentConfidence"] = max(
-        (brand_conf, model_conf, out["detailConfidence"]), key=lambda c: _CONFIDENCE_RANK[c])
+        (brand_conf, model_conf, out["detailConfidence"]),
+        key=lambda c: _CONFIDENCE_RANK[c],
+    )
     return out
 
 
@@ -704,7 +802,9 @@ def enrich_item(client, item: dict) -> dict:
     error — the caller isolates per-lot failures."""
     _limiter.acquire()
     response = client.messages.create(**build_request_params(item))
-    result = _finalize_result(item, parse_enrichment(json.loads(_response_text(response.content))))
+    result = _finalize_result(
+        item, parse_enrichment(json.loads(_response_text(response.content)))
+    )
     # Stash usage for the run's cost ledger. These private keys are not in
     # ENRICHMENT_FIELDS, so apply_enrichment never copies them onto the item.
     usage = getattr(response, "usage", None)
@@ -801,7 +901,9 @@ def _resolve_client(client):
     return _make_client()
 
 
-def _partition_for_enrichment(items: list[dict], prior_by_id: dict | None) -> tuple[list[dict], int]:
+def _partition_for_enrichment(
+    items: list[dict], prior_by_id: dict | None
+) -> tuple[list[dict], int]:
     """Seed every lot with empty enrichment fields (consistent Parquet schema),
     then split into the lots that must hit the API vs. those reused unchanged
     from ``prior_by_id``. Returns ``(to_enrich, reused_count)``."""
@@ -820,7 +922,9 @@ def _partition_for_enrichment(items: list[dict], prior_by_id: dict | None) -> tu
     return to_enrich, reused
 
 
-def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None) -> int:
+def enrich_items(
+    items: list[dict], client=None, prior_by_id: dict | None = None
+) -> int:
     """Enrich every lot in place; return the count that got any field populated.
 
     A no-op (returns 0) unless enrichment is enabled and a client can be built —
@@ -857,7 +961,9 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
             try:
                 result = future.result()
             except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
-                print(f"  enrich: skipped lot {item.get('id')} ({exc})", file=sys.stderr)
+                print(
+                    f"  enrich: skipped lot {item.get('id')} ({exc})", file=sys.stderr
+                )
                 continue
             input_tokens += int(result.pop("_input_tokens", 0) or 0)
             output_tokens += int(result.pop("_output_tokens", 0) or 0)
@@ -867,36 +973,48 @@ def enrich_items(items: list[dict], client=None, prior_by_id: dict | None = None
 
     # Sync path is the standard (non-batch) per-token rate — no 50% discount.
     est_cost_usd = round(
-        input_tokens / 1e6 * PRICE_IN_PER_MTOK + output_tokens / 1e6 * PRICE_OUT_PER_MTOK, 4)
+        input_tokens / 1e6 * PRICE_IN_PER_MTOK
+        + output_tokens / 1e6 * PRICE_OUT_PER_MTOK,
+        4,
+    )
     reused_note = f" (reused {reused} unchanged)" if reused else ""
     print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL}{reused_note}")
     if to_enrich:
-        print(f"  enrich: sync cost ~${est_cost_usd:.4f} "
-              f"({input_tokens} in + {output_tokens} out tok, standard rate, {MODEL})")
-    _telemetry_capture("enrich_sync_completed", {
-        "lots": len(to_enrich),
-        "enriched": enriched,
-        "reused": reused,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "est_cost_usd": est_cost_usd,
-        "model": MODEL,
-    })
-    _record_enrich_run({
-        "mode": "sync",
-        "model": MODEL,
-        "schema_version": ENRICHMENT_SCHEMA_VERSION,
-        "auction_safe_id": _chunk_safe_id(to_enrich),
-        "lots_submitted": len(to_enrich),
-        "lots_enriched": enriched,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "est_cost_usd": est_cost_usd,
-    })
+        print(
+            f"  enrich: sync cost ~${est_cost_usd:.4f} "
+            f"({input_tokens} in + {output_tokens} out tok, standard rate, {MODEL})"
+        )
+    _telemetry_capture(
+        "enrich_sync_completed",
+        {
+            "lots": len(to_enrich),
+            "enriched": enriched,
+            "reused": reused,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "est_cost_usd": est_cost_usd,
+            "model": MODEL,
+        },
+    )
+    _record_enrich_run(
+        {
+            "mode": "sync",
+            "model": MODEL,
+            "schema_version": ENRICHMENT_SCHEMA_VERSION,
+            "auction_safe_id": _chunk_safe_id(to_enrich),
+            "lots_submitted": len(to_enrich),
+            "lots_enriched": enriched,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "est_cost_usd": est_cost_usd,
+        }
+    )
     return enriched
 
 
-def _wait_for_batch(client, batch_id: str, poll_interval: float, max_wait: float) -> str:
+def _wait_for_batch(
+    client, batch_id: str, poll_interval: float, max_wait: float
+) -> str:
     """Poll a Message Batch until it ends; return its final processing status
     (``"ended"`` on success, or the last-seen status / ``"timed_out"`` if the
     deadline passes first)."""
@@ -928,16 +1046,22 @@ def _fetch_chunk_images(chunk: list[dict]) -> dict[int, list[tuple[str, str]]]:
     fetched: dict[tuple[int, str], tuple[str, str] | None] = {}
     tasks = {(key, url) for key, urls in order.items() for url in urls}
     with concurrent.futures.ThreadPoolExecutor(max_workers=IMAGE_FETCH_WORKERS) as pool:
-        futures = {pool.submit(fetch_image_base64, url): (key, url) for key, url in tasks}
+        futures = {
+            pool.submit(fetch_image_base64, url): (key, url) for key, url in tasks
+        }
         for future in concurrent.futures.as_completed(futures):
             fetched[futures[future]] = future.result()
     images: dict[int, list[tuple[str, str]]] = {}
     for key, urls in order.items():
-        images[key] = [img for url in urls if (img := fetched.get((key, url))) is not None]
+        images[key] = [
+            img for url in urls if (img := fetched.get((key, url))) is not None
+        ]
     return images
 
 
-def _build_batch_requests(chunk: list[dict], inline_images: bool) -> tuple[list[dict], dict[str, dict]]:
+def _build_batch_requests(
+    chunk: list[dict], inline_images: bool
+) -> tuple[list[dict], dict[str, dict]]:
     """Build the batch requests for ``chunk`` and the ``custom_id`` → item map.
 
     Index-based ``custom_id`` (``lot-N``) so the lot's own id never has to satisfy
@@ -949,34 +1073,58 @@ def _build_batch_requests(chunk: list[dict], inline_images: bool) -> tuple[list[
     for i, item in enumerate(chunk):
         custom_id = f"lot-{i}"
         by_custom_id[custom_id] = item
-        content = build_content_inline(item, images.get(id(item), [])) if inline_images else None
-        requests.append({"custom_id": custom_id, "params": build_request_params(item, content=content)})
+        content = (
+            build_content_inline(item, images.get(id(item), []))
+            if inline_images
+            else None
+        )
+        requests.append(
+            {
+                "custom_id": custom_id,
+                "params": build_request_params(item, content=content),
+            }
+        )
     return requests, by_custom_id
 
 
-def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: float, inline_images: bool) -> int:
+def _run_one_batch(
+    client,
+    chunk: list[dict],
+    poll_interval: float,
+    max_wait: float,
+    inline_images: bool,
+) -> int:
     """Submit one Message Batch for ``chunk`` and apply the results in place.
     Returns the count of lots that got any field populated."""
     requests, by_custom_id = _build_batch_requests(chunk, inline_images)
     batch = client.messages.batches.create(requests=requests)
     batch_id = getattr(batch, "id", None) or batch["id"]
     print(f"  enrich: submitted batch {batch_id} ({len(requests)} lots); polling…")
-    _telemetry_capture("enrich_batch_submitted", {
-        "batch_id": batch_id,
-        "lots": len(requests),
-        "transport": "inline" if inline_images else "url",
-        "model": MODEL,
-    })
+    _telemetry_capture(
+        "enrich_batch_submitted",
+        {
+            "batch_id": batch_id,
+            "lots": len(requests),
+            "transport": "inline" if inline_images else "url",
+            "model": MODEL,
+        },
+    )
 
     status = _wait_for_batch(client, batch_id, poll_interval, max_wait)
     if status != "ended":
-        print(f"  enrich: batch {batch_id} did not finish (status={status}); skipping", file=sys.stderr)
-        _telemetry_capture("enrich_batch_failed", {
-            "batch_id": batch_id,
-            "lots": len(requests),
-            "status": status,
-            "model": MODEL,
-        })
+        print(
+            f"  enrich: batch {batch_id} did not finish (status={status}); skipping",
+            file=sys.stderr,
+        )
+        _telemetry_capture(
+            "enrich_batch_failed",
+            {
+                "batch_id": batch_id,
+                "lots": len(requests),
+                "status": status,
+                "model": MODEL,
+            },
+        )
         return 0
 
     enriched = 0
@@ -994,7 +1142,9 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
             # errored / expired / canceled — leave the seeded empty fields and no
             # fingerprint, so the lot is retried on the next backfill (like sync).
             errored += 1
-            print(f"  enrich: batch lot {item.get('id')} {outcome_type}", file=sys.stderr)
+            print(
+                f"  enrich: batch lot {item.get('id')} {outcome_type}", file=sys.stderr
+            )
             continue
         usage = getattr(getattr(outcome, "message", None), "usage", None)
         if usage is not None:
@@ -1003,42 +1153,59 @@ def _run_one_batch(client, chunk: list[dict], poll_interval: float, max_wait: fl
             input_tokens += in_tok if isinstance(in_tok, int) else 0
             output_tokens += out_tok if isinstance(out_tok, int) else 0
         try:
-            applied = _finalize_result(item, parse_enrichment(json.loads(_response_text(outcome.message.content))))
+            applied = _finalize_result(
+                item,
+                parse_enrichment(json.loads(_response_text(outcome.message.content))),
+            )
         except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
-            print(f"  enrich: batch parse failed for lot {item.get('id')} ({exc})", file=sys.stderr)
+            print(
+                f"  enrich: batch parse failed for lot {item.get('id')} ({exc})",
+                file=sys.stderr,
+            )
             continue
         apply_enrichment(item, applied)
         if any(applied.get(field) for field in ENRICHMENT_FIELDS):
             enriched += 1
     # Batch pricing is 50% of the per-token list rate.
     est_cost_usd = round(
-        (input_tokens / 1e6 * PRICE_IN_PER_MTOK + output_tokens / 1e6 * PRICE_OUT_PER_MTOK) * 0.5,
+        (
+            input_tokens / 1e6 * PRICE_IN_PER_MTOK
+            + output_tokens / 1e6 * PRICE_OUT_PER_MTOK
+        )
+        * 0.5,
         4,
     )
-    print(f"  enrich: batch {batch_id} cost ~${est_cost_usd:.4f} "
-          f"({input_tokens} in + {output_tokens} out tok, batch 50%-off rate, {MODEL})")
-    _telemetry_capture("enrich_batch_completed", {
-        "batch_id": batch_id,
-        "lots": len(requests),
-        "succeeded": enriched,
-        "errored": errored,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "est_cost_usd": est_cost_usd,
-        "model": MODEL,
-    })
-    _record_enrich_run({
-        "mode": "batch",
-        "model": MODEL,
-        "schema_version": ENRICHMENT_SCHEMA_VERSION,
-        "auction_safe_id": _chunk_safe_id(chunk),
-        "lots_submitted": len(requests),
-        "lots_enriched": enriched,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "est_cost_usd": est_cost_usd,
-        "raw": {"batch_id": batch_id, "errored": errored},
-    })
+    print(
+        f"  enrich: batch {batch_id} cost ~${est_cost_usd:.4f} "
+        f"({input_tokens} in + {output_tokens} out tok, batch 50%-off rate, {MODEL})"
+    )
+    _telemetry_capture(
+        "enrich_batch_completed",
+        {
+            "batch_id": batch_id,
+            "lots": len(requests),
+            "succeeded": enriched,
+            "errored": errored,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "est_cost_usd": est_cost_usd,
+            "model": MODEL,
+        },
+    )
+    _record_enrich_run(
+        {
+            "mode": "batch",
+            "model": MODEL,
+            "schema_version": ENRICHMENT_SCHEMA_VERSION,
+            "auction_safe_id": _chunk_safe_id(chunk),
+            "lots_submitted": len(requests),
+            "lots_enriched": enriched,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "est_cost_usd": est_cost_usd,
+            "raw": {"batch_id": batch_id, "errored": errored},
+        }
+    )
     return enriched
 
 
@@ -1076,16 +1243,22 @@ def enrich_items_batch(
     to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
     if not to_enrich:
         if reused:
-            print(f"  enriched 0/0 lots via {MODEL} (batch) (reused {reused} unchanged)")
+            print(
+                f"  enriched 0/0 lots via {MODEL} (batch) (reused {reused} unchanged)"
+            )
         return 0
 
     max_count = BATCH_INLINE_MAX_REQUESTS if inline_images else BATCH_MAX_REQUESTS
     enriched = 0
     for chunk in _chunk_for_batch(to_enrich, max_count, inline_images):
-        enriched += _run_one_batch(client, chunk, poll_interval, max_wait, inline_images)
+        enriched += _run_one_batch(
+            client, chunk, poll_interval, max_wait, inline_images
+        )
 
     reused_note = f" (reused {reused} unchanged)" if reused else ""
-    print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL} (batch){reused_note}")
+    print(
+        f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL} (batch){reused_note}"
+    )
     return enriched
 
 
@@ -1102,7 +1275,10 @@ def _chunk_for_batch(to_enrich: list[dict], max_count: int, inline_images: bool)
             # base64 of the downscaled JPEGs; cap per-photo so one big source
             # image doesn't over-inflate the budget (we downscale before send).
             est += min(_estimated_image_bytes(item), 400 * 1024 * MAX_IMAGES)
-        if chunk and (len(chunk) >= max_count or (inline_images and chunk_bytes + est > BATCH_MAX_BYTES)):
+        if chunk and (
+            len(chunk) >= max_count
+            or (inline_images and chunk_bytes + est > BATCH_MAX_BYTES)
+        ):
             yield chunk
             chunk, chunk_bytes = [], 0
         chunk.append(item)
@@ -1130,7 +1306,11 @@ def _write_rows(items_dir, safe_id: str, rows: list[dict]) -> None:
     for row in rows:
         if isinstance(row.get("images"), list):
             row["images"] = json.dumps(row["images"])
-    pq.write_table(pa.Table.from_pylist(rows), items_dir / f"{safe_id}.parquet", compression="snappy")
+    pq.write_table(
+        pa.Table.from_pylist(rows),
+        items_dir / f"{safe_id}.parquet",
+        compression="snappy",
+    )
 
 
 def _backfill_dirs():
@@ -1138,9 +1318,11 @@ def _backfill_dirs():
     sold-price corpus) is the bulk of a historical backfill, so it must be
     reachable — but importing lazily keeps the module import light."""
     from scrape import ITEMS_DIR
+
     dirs = [ITEMS_DIR]
     try:
         from rescrape_all import ARCHIVE_ITEMS_DIR
+
         dirs.append(ARCHIVE_ITEMS_DIR)
     except ImportError:
         pass
@@ -1170,11 +1352,16 @@ def _resolve_backfill_targets(safe_ids: list[str], include_all: bool) -> list[tu
                 targets.append((items_dir, safe_id))
                 break
         else:
-            print(f"skip {safe_id}: no NDJSON sidecar (active or archive)", file=sys.stderr)
+            print(
+                f"skip {safe_id}: no NDJSON sidecar (active or archive)",
+                file=sys.stderr,
+            )
     return targets
 
 
-def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = False) -> int:
+def _backfill(
+    safe_ids: list[str], use_batch: bool = False, include_all: bool = False
+) -> int:
     """Enrich already-scraped auctions, rewriting NDJSON + Parquet, then mirror
     the identified lots into Supabase.
 
@@ -1190,7 +1377,10 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     are not re-billed. The Supabase mirror is the resilient ``maybe_export_enrichment``
     hook (a no-op without ``SUPABASE_SECRET_KEY``; warns rather than raising)."""
     if not is_enrichment_enabled():
-        print("Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.", file=sys.stderr)
+        print(
+            "Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.",
+            file=sys.stderr,
+        )
         return 1
     client = _make_client()
     if client is None:
@@ -1237,8 +1427,13 @@ def _backfill(safe_ids: list[str], use_batch: bool = False, include_all: bool = 
     return 0
 
 
-def estimate_enrichment_cost(client, to_enrich: list[dict], *, batch: bool = True,
-                             sample_size: int = ESTIMATE_SAMPLE) -> dict:
+def estimate_enrichment_cost(
+    client,
+    to_enrich: list[dict],
+    *,
+    batch: bool = True,
+    sample_size: int = ESTIMATE_SAMPLE,
+) -> dict:
     """Pre-flight cost estimate for enriching ``to_enrich`` — counts input tokens
     on a spread sample (real content incl. inlined images, via ``count_tokens``)
     and extrapolates to the full set. Output tokens are a small bounded constant
@@ -1253,15 +1448,25 @@ def estimate_enrichment_cost(client, to_enrich: list[dict], *, batch: bool = Tru
     counts = []
     for item in sample:
         try:
-            params = build_request_params(item, content=build_content_inline(item, images.get(id(item), [])))
+            params = build_request_params(
+                item, content=build_content_inline(item, images.get(id(item), []))
+            )
             ct = client.messages.count_tokens(
-                model=params["model"], system=params["system"], messages=params["messages"]
+                model=params["model"],
+                system=params["system"],
+                messages=params["messages"],
             )
             counts.append(int(ct.input_tokens))
         except Exception as exc:  # noqa: BLE001 — estimate is best-effort
-            print(f"  enrich: token count failed for a sample lot ({exc})", file=sys.stderr)
+            print(
+                f"  enrich: token count failed for a sample lot ({exc})",
+                file=sys.stderr,
+            )
     if not counts:
-        print("  enrich: cost estimate unavailable (token counting failed)", file=sys.stderr)
+        print(
+            "  enrich: cost estimate unavailable (token counting failed)",
+            file=sys.stderr,
+        )
         return {"lots": n, "avg_input_tokens": 0, "est_cost_usd": 0.0}
     avg_in = sum(counts) / len(counts)
     discount = 0.5 if batch else 1.0
@@ -1274,11 +1479,19 @@ def estimate_enrichment_cost(client, to_enrich: list[dict], *, batch: bool = Tru
         f"(sampled {len(counts)}); ~${total:.2f} at {rate} rate "
         f"(input ${in_cost:.2f} + output ${out_cost:.2f}, {MODEL})"
     )
-    return {"lots": n, "avg_input_tokens": round(avg_in), "est_cost_usd": round(total, 2)}
+    return {
+        "lots": n,
+        "avg_input_tokens": round(avg_in),
+        "est_cost_usd": round(total, 2),
+    }
 
 
-def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
-                            estimate_only: bool = False, limit: int | None = None) -> int:
+def _backfill_from_supabase(
+    safe_ids: list[str] | None,
+    use_batch: bool = False,
+    estimate_only: bool = False,
+    limit: int | None = None,
+) -> int:
     """Enrich lots fetched from the Supabase ``lots`` table (no NDJSON needed).
 
     Prior enrichment hashes are loaded from ``lot_enrichment`` so unchanged lots
@@ -1286,15 +1499,22 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
     back to ``lot_enrichment`` via ``maybe_export_enrichment``.
     """
     if not is_enrichment_enabled():
-        print("Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.", file=sys.stderr)
+        print(
+            "Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.",
+            file=sys.stderr,
+        )
         return 1
     client = _make_client()
     if client is None:
         return 1
 
     import os as _os
+
     if not _os.environ.get("SUPABASE_SECRET_KEY"):
-        print("error: SUPABASE_SECRET_KEY is required for --from-supabase", file=sys.stderr)
+        print(
+            "error: SUPABASE_SECRET_KEY is required for --from-supabase",
+            file=sys.stderr,
+        )
         return 1
 
     from supabase_enrichment import (
@@ -1317,7 +1537,9 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
     else:
         active_ids = list_auction_safe_ids(archived=False)
         archive_ids = list_auction_safe_ids(archived=True)
-        work = [(sid, False, []) for sid in active_ids] + [(sid, True, []) for sid in archive_ids]
+        work = [(sid, False, []) for sid in active_ids] + [
+            (sid, True, []) for sid in archive_ids
+        ]
 
     if not work:
         print("No auctions found in Supabase lots table.")
@@ -1328,10 +1550,16 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
     if estimate_only:
         all_to_enrich: list[dict] = []
         for safe_id, archived, prefetched in work:
-            rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
+            rows = (
+                prefetched
+                if prefetched
+                else fetch_lots_for_auction(safe_id, archived=archived)
+            )
             if not rows:
                 continue
-            to_enrich, _reused = _partition_for_enrichment(rows, load_prior_enrichment_from_supabase(safe_id))
+            to_enrich, _reused = _partition_for_enrichment(
+                rows, load_prior_enrichment_from_supabase(safe_id)
+            )
             all_to_enrich.extend(to_enrich)
         estimate_enrichment_cost(client, all_to_enrich, batch=use_batch)
         return 0
@@ -1339,7 +1567,11 @@ def _backfill_from_supabase(safe_ids: list[str] | None, use_batch: bool = False,
     remaining = limit  # None = no cap; otherwise stop once this many lots enriched
     all_rows = []
     for safe_id, archived, prefetched in work:
-        rows = prefetched if prefetched else fetch_lots_for_auction(safe_id, archived=archived)
+        rows = (
+            prefetched
+            if prefetched
+            else fetch_lots_for_auction(safe_id, archived=archived)
+        )
         if not rows:
             continue
         if remaining is not None:
@@ -1380,25 +1612,30 @@ def main(argv: list[str] | None = None) -> int:
         i = argv.index("--enrich")
         if i + 1 < len(argv) and argv[i + 1] in ("0", "1"):
             os.environ["GOONERS_ENRICHMENT"] = argv[i + 1]
-            argv = argv[:i] + argv[i + 2:]
+            argv = argv[:i] + argv[i + 2 :]
         else:
             os.environ["GOONERS_ENRICHMENT"] = "1"
-            argv = argv[:i] + argv[i + 1:]
+            argv = argv[:i] + argv[i + 1 :]
     # --limit N caps how many lots are enriched (a small validation slice).
     limit = None
     if "--limit" in argv:
         i = argv.index("--limit")
         if i + 1 < len(argv) and argv[i + 1].isdigit():
             limit = int(argv[i + 1])
-            argv = argv[:i] + argv[i + 2:]
+            argv = argv[:i] + argv[i + 2 :]
         else:
             print("error: --limit requires a positive integer", file=sys.stderr)
             return 1
-    argv = [arg for arg in argv
-            if arg not in ("--batch", "--all", "--from-supabase", "--estimate-only", "--text-only")]
+    argv = [
+        arg
+        for arg in argv
+        if arg
+        not in ("--batch", "--all", "--from-supabase", "--estimate-only", "--text-only")
+    ]
     if from_supabase:
-        return _backfill_from_supabase(argv or None, use_batch=use_batch,
-                                       estimate_only=estimate_only, limit=limit)
+        return _backfill_from_supabase(
+            argv or None, use_batch=use_batch, estimate_only=estimate_only, limit=limit
+        )
     if not argv and not include_all:
         print(__doc__)
         return 1

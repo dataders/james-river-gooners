@@ -30,6 +30,9 @@ Better browsing UI for Cannon's Auctions (Richmond VA). Scraper fetches Maxanet 
 ## Commands
 
 ```bash
+# Pre-commit hooks (ruff + eslint) — run once after cloning:
+pip install pre-commit && pre-commit install
+
 # Frontend
 npm run dev       # dev server
 npm run build     # production build → dist/

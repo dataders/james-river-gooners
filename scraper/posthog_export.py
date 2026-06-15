@@ -30,7 +30,9 @@ try:
     import duckdb
     import requests
 except ImportError:
-    sys.exit("Install with: uv run --with requests --with duckdb python3 posthog_export.py")
+    sys.exit(
+        "Install with: uv run --with requests --with duckdb python3 posthog_export.py"
+    )
 
 POSTHOG_BASE = "https://us.posthog.com"
 PROJECT_ID = 454922
@@ -40,7 +42,10 @@ def ph_query(api_key: str, hogql: str) -> list[dict]:
     """Run a HogQL query via the PostHog query API and return rows as dicts."""
     resp = requests.post(
         f"{POSTHOG_BASE}/api/projects/{PROJECT_ID}/query/",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
         json={"query": {"kind": "HogQLQuery", "query": hogql}},
         timeout=60,
     )
@@ -51,7 +56,9 @@ def ph_query(api_key: str, hogql: str) -> list[dict]:
 
 
 def export_events_daily(api_key: str, days: int) -> list[dict]:
-    return ph_query(api_key, f"""
+    return ph_query(
+        api_key,
+        f"""
         SELECT
             toDate(timestamp)               AS day,
             event,
@@ -63,11 +70,14 @@ def export_events_daily(api_key: str, days: int) -> list[dict]:
         GROUP BY day, event
         ORDER BY day DESC, cnt DESC
         LIMIT 500
-    """)
+    """,
+    )
 
 
 def export_search_stats(api_key: str, days: int) -> list[dict]:
-    return ph_query(api_key, f"""
+    return ph_query(
+        api_key,
+        f"""
         SELECT
             toDate(timestamp)               AS day,
             properties.semantic             AS semantic,
@@ -80,11 +90,14 @@ def export_search_stats(api_key: str, days: int) -> list[dict]:
         GROUP BY day, semantic
         ORDER BY day DESC
         LIMIT 500
-    """)
+    """,
+    )
 
 
 def export_toggle_stats(api_key: str, days: int) -> list[dict]:
-    return ph_query(api_key, f"""
+    return ph_query(
+        api_key,
+        f"""
         SELECT
             toDate(timestamp)               AS day,
             event,
@@ -98,10 +111,13 @@ def export_toggle_stats(api_key: str, days: int) -> list[dict]:
         GROUP BY day, event, adding, signed_in
         ORDER BY day DESC
         LIMIT 500
-    """)
+    """,
+    )
 
 
-def load_to_motherduck(rows: list[dict], schema: str, table: str, motherduck_token: str) -> None:
+def load_to_motherduck(
+    rows: list[dict], schema: str, table: str, motherduck_token: str
+) -> None:
     if not rows:
         print(f"  {schema}.{table}: no rows to load")
         return
@@ -122,6 +138,7 @@ def load_to_motherduck(rows: list[dict], schema: str, table: str, motherduck_tok
     ) if False else None  # skip — use register+CREATE AS SELECT instead
 
     import pandas as pd  # noqa: PLC0415 — optional, keeps top-level imports minimal
+
     df = pd.DataFrame(rows)
     con.register("_tmp", df)
     con.execute(f"CREATE OR REPLACE TABLE {schema}.{table} AS SELECT * FROM _tmp")
@@ -137,7 +154,9 @@ def main() -> None:
 
     api_key = os.environ.get("POSTHOG_PERSONAL_KEY")
     if not api_key:
-        sys.exit("Set POSTHOG_PERSONAL_KEY to your phx_... personal API key from posthog.com/settings")
+        sys.exit(
+            "Set POSTHOG_PERSONAL_KEY to your phx_... personal API key from posthog.com/settings"
+        )
     motherduck_token = os.environ.get("MOTHERDUCK_TOKEN")
     if not motherduck_token:
         sys.exit("Set MOTHERDUCK_TOKEN")

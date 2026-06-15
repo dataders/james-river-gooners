@@ -42,7 +42,9 @@ class ListingToItemTest(unittest.TestCase):
         self.assertIn("quarter sawn", item["description"])
 
     def test_tolerates_absent_raw_json(self):
-        item = esl.listing_to_item({"ebay_item_id": "1", "title": "T", "thumbnail_url": "https://x/y.jpg"})
+        item = esl.listing_to_item(
+            {"ebay_item_id": "1", "title": "T", "thumbnail_url": "https://x/y.jpg"}
+        )
         self.assertEqual(item["id"], "1")
         self.assertEqual(item["images"], ["https://x/y.jpg"])
 
@@ -65,7 +67,9 @@ class RerankRowsTest(unittest.TestCase):
         return base
 
     def test_shapes_visual_comp_rows(self):
-        rows = esl.rerank_rows_for_auction([self._match()], "auction-1", "2026-06-14T00:00:00+00:00")
+        rows = esl.rerank_rows_for_auction(
+            [self._match()], "auction-1", "2026-06-14T00:00:00+00:00"
+        )
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["auction_safe_id"], "auction-1")

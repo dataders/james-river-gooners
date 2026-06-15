@@ -69,9 +69,13 @@ def existing_safe_ids() -> set[str]:
     return ids
 
 
-def _cannons_jobs(limit: int, include_existing: bool) -> list[tuple[str, str, Callable[..., object]]]:
+def _cannons_jobs(
+    limit: int, include_existing: bool
+) -> list[tuple[str, str, Callable[..., object]]]:
     # Over-fetch so skipped (already-scraped) auctions don't starve the limit.
-    urls = discover_past_auction_urls(limit=None if include_existing else max(limit * 4, limit))
+    urls = discover_past_auction_urls(
+        limit=None if include_existing else max(limit * 4, limit)
+    )
     jobs: list[tuple[str, str, Callable[..., object]]] = []
     for url in urls:
         try:
@@ -96,7 +100,9 @@ def _rasmus_jobs(days: int) -> list[tuple[str, str, Callable[..., object]]]:
     ]
 
 
-def _hibid_jobs(sources_file: Path | None = None) -> list[tuple[str, str, Callable[..., object]]]:
+def _hibid_jobs(
+    sources_file: Path | None = None,
+) -> list[tuple[str, str, Callable[..., object]]]:
     with open(sources_file or HIBID_SOURCES_FILE) as f:
         config = yaml.safe_load(f) or {}
     jobs: list[tuple[str, str, Callable[..., object]]] = []
@@ -105,11 +111,15 @@ def _hibid_jobs(sources_file: Path | None = None) -> list[tuple[str, str, Callab
         name = company["name"]
         for catalog_id in company.get("closed_catalog_ids") or []:
             url = f"{HIBID_BASE}/catalog/{catalog_id}/"
-            jobs.append((
-                hibid_safe_id(catalog_id),
-                f"{name} #{catalog_id}",
-                lambda url=url, slug=slug, name=name: scrape_hibid_auction(url, slug, name),
-            ))
+            jobs.append(
+                (
+                    hibid_safe_id(catalog_id),
+                    f"{name} #{catalog_id}",
+                    lambda url=url, slug=slug, name=name: scrape_hibid_auction(
+                        url, slug, name
+                    ),
+                )
+            )
     return jobs
 
 

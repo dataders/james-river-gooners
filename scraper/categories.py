@@ -18,9 +18,11 @@ from build_category_table import load as _load_canonical
 
 _MAPPINGS_PATH = Path(__file__).resolve().parent / "category_mappings.yml"
 
+
 def _load_mappings():
     with open(_MAPPINGS_PATH) as f:
         return yaml.safe_load(f)
+
 
 _config = _load_mappings()
 _RESOLVER = Resolver(_load_canonical())
@@ -67,7 +69,9 @@ def infer_from_description(description: str) -> tuple[str, str] | None:
     return None
 
 
-def normalize_category(raw_category: str, description: str = "", source: str = "") -> str:
+def normalize_category(
+    raw_category: str, description: str = "", source: str = ""
+) -> str:
     """Map a raw category string to a broad group name.
 
     When *source* is supplied ("cannons", "hibid", or "rasmus"), resolution goes
@@ -98,7 +102,9 @@ def normalize_category(raw_category: str, description: str = "", source: str = "
     return "Other"
 
 
-def normalize_raw_with_description(raw_category: str, description: str = "", source: str = "") -> str:
+def normalize_raw_with_description(
+    raw_category: str, description: str = "", source: str = ""
+) -> str:
     """Normalize raw category, falling back to description inference.
 
     Returns the canonical subcategory name when *source* is supplied and the

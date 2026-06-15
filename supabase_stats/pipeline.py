@@ -148,7 +148,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Capture every series (incl. uncurated service metrics), not just the curated core",
     )
     parser.add_argument(
-        "--skip-views", action="store_true", help="Load the raw table but don't (re)create the views"
+        "--skip-views",
+        action="store_true",
+        help="Load the raw table but don't (re)create the views",
     )
     return parser.parse_args(argv)
 

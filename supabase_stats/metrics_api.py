@@ -46,9 +46,13 @@ def _derive_metrics_url(explicit: str | None, supabase_url: str | None) -> str |
         return explicit
     if not supabase_url:
         return None
-    parsed = urlparse(supabase_url if "//" in supabase_url else f"https://{supabase_url}")
+    parsed = urlparse(
+        supabase_url if "//" in supabase_url else f"https://{supabase_url}"
+    )
     # Replace whatever path was on SUPABASE_URL with the privileged metrics path.
-    return urlunparse(parsed._replace(path=PRIVILEGED_METRICS_PATH, params="", query="", fragment=""))
+    return urlunparse(
+        parsed._replace(path=PRIVILEGED_METRICS_PATH, params="", query="", fragment="")
+    )
 
 
 def make_session() -> _Session:
@@ -56,7 +60,9 @@ def make_session() -> _Session:
     import requests
 
     session = requests.Session()
-    session.headers.update({"Accept": "text/plain", "User-Agent": "gooners-supabase-stats/1.0"})
+    session.headers.update(
+        {"Accept": "text/plain", "User-Agent": "gooners-supabase-stats/1.0"}
+    )
     return session
 
 
@@ -76,7 +82,9 @@ class SupabaseMetricsClient:
             url or os.environ.get("SUPABASE_METRICS_URL"),
             os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL"),
         )
-        self.username = username or os.environ.get("SUPABASE_METRICS_USERNAME") or DEFAULT_USERNAME
+        self.username = (
+            username or os.environ.get("SUPABASE_METRICS_USERNAME") or DEFAULT_USERNAME
+        )
         self.password = (
             password
             or os.environ.get("SUPABASE_METRICS_PASSWORD")

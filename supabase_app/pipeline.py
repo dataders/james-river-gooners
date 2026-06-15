@@ -97,13 +97,17 @@ def _motherduck_credentials() -> str | None:
 def _rest_config() -> tuple[str, str] | None:
     """Return (rest_base_url, service_key) or None if unconfigured."""
     url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get(
+        "SUPABASE_SERVICE_ROLE_KEY"
+    )
     if not url or not key:
         return None
     return f"{url.rstrip('/')}/rest/v1", key
 
 
-def iter_rows(base: str, key: str, table: str, page_size: int = PAGE_SIZE, session=None):
+def iter_rows(
+    base: str, key: str, table: str, page_size: int = PAGE_SIZE, session=None
+):
     """Yield every row of a table via paginated PostgREST GETs (service key)."""
     sess = session or requests.Session()
     headers = {
@@ -117,7 +121,11 @@ def iter_rows(base: str, key: str, table: str, page_size: int = PAGE_SIZE, sessi
     while True:
         resp = sess.get(
             f"{base}/{table}",
-            headers={**headers, "Range-Unit": "items", "Range": f"{offset}-{offset + page_size - 1}"},
+            headers={
+                **headers,
+                "Range-Unit": "items",
+                "Range": f"{offset}-{offset + page_size - 1}",
+            },
             params={"select": "*"},
             timeout=60,
         )
@@ -159,7 +167,9 @@ def run(tables: list[str] | None = None):
     import dlt
 
     tables = tables or APP_TABLES
-    print(f"Copying {len(tables)} Supabase tables → MotherDuck {MD_DATABASE}.{APP_DATASET} (via PostgREST)")
+    print(
+        f"Copying {len(tables)} Supabase tables → MotherDuck {MD_DATABASE}.{APP_DATASET} (via PostgREST)"
+    )
 
     @dlt.source(name="supabase_app")
     def source():
@@ -182,7 +192,9 @@ def run(tables: list[str] | None = None):
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Copy Supabase app tables into MotherDuck via dlt (PostgREST)")
+    parser = argparse.ArgumentParser(
+        description="Copy Supabase app tables into MotherDuck via dlt (PostgREST)"
+    )
     parser.add_argument(
         "--tables",
         nargs="*",

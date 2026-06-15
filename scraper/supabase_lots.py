@@ -192,6 +192,7 @@ def upsert_lots(
 
     if session is None:
         from http_client import supabase_session
+
         session = supabase_session("lots")
 
     if skip_unchanged:
@@ -242,6 +243,7 @@ def archive_lots(
 
     if session is None:
         from http_client import supabase_session
+
         session = supabase_session("lots")
 
     rows = [_lot_row(item, archived=True) for item in final_items]
@@ -300,7 +302,10 @@ def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[
         page_headers = {**headers, "Range": f"{offset}-{offset + PAGE - 1}"}
         resp = _request_with_retry(
             lambda h=page_headers: session.get(
-                endpoint, headers=h, params=params, timeout=READ_TIMEOUT,
+                endpoint,
+                headers=h,
+                params=params,
+                timeout=READ_TIMEOUT,
             ),
             f"Supabase GET {endpoint}",
         )
@@ -325,6 +330,7 @@ def list_auction_safe_ids(
         return []
     if session is None:
         from http_client import supabase_session
+
         session = supabase_session("lots")
     headers = {
         "apikey": key,
@@ -361,6 +367,7 @@ def fetch_lots_for_auction(
         return []
     if session is None:
         from http_client import supabase_session
+
         session = supabase_session("lots")
     headers = {
         "apikey": key,
@@ -400,6 +407,7 @@ def backfill(
 
     if session is None:
         from http_client import supabase_session
+
         session = supabase_session("lots")
 
     active_total = 0
@@ -407,10 +415,18 @@ def backfill(
         paths = sorted(ITEMS_DIR.glob("*.ndjson"))
         print(f"Backfilling {len(paths)} active auction file(s)…")
         for ndjson_path in paths:
-            items = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+            items = [
+                json.loads(line)
+                for line in ndjson_path.read_text().splitlines()
+                if line.strip()
+            ]
             if items:
                 active_total += upsert_lots(
-                    items, ndjson_path.stem, url=url, key=key, session=session,
+                    items,
+                    ndjson_path.stem,
+                    url=url,
+                    key=key,
+                    session=session,
                     skip_unchanged=False,
                 )
 
@@ -419,9 +435,15 @@ def backfill(
         paths = sorted(ARCHIVE_ITEMS_DIR.glob("*.ndjson"))
         print(f"Backfilling {len(paths)} archived auction file(s)…")
         for ndjson_path in paths:
-            items = [json.loads(line) for line in ndjson_path.read_text().splitlines() if line.strip()]
+            items = [
+                json.loads(line)
+                for line in ndjson_path.read_text().splitlines()
+                if line.strip()
+            ]
             if items:
-                archived_total += archive_lots(ndjson_path.stem, items, url=url, key=key, session=session)
+                archived_total += archive_lots(
+                    ndjson_path.stem, items, url=url, key=key, session=session
+                )
 
     return active_total, archived_total
 
@@ -431,8 +453,12 @@ def _parse_args(argv=None) -> argparse.Namespace:
         description="Backfill existing NDJSON files into the Supabase lots table"
     )
     parser.add_argument("--backfill", action="store_true", help="Run the backfill")
-    parser.add_argument("--active-only", action="store_true", help="Backfill active lots only")
-    parser.add_argument("--archived-only", action="store_true", help="Backfill archived lots only")
+    parser.add_argument(
+        "--active-only", action="store_true", help="Backfill active lots only"
+    )
+    parser.add_argument(
+        "--archived-only", action="store_true", help="Backfill archived lots only"
+    )
     return parser.parse_args(argv)
 
 
@@ -446,4 +472,6 @@ if __name__ == "__main__":
         do_active=not args.archived_only,
         do_archived=not args.active_only,
     )
-    print(f"Backfill complete: {active_count} active lots, {archived_count} archived lots")
+    print(
+        f"Backfill complete: {active_count} active lots, {archived_count} archived lots"
+    )

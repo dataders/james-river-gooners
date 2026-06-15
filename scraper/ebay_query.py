@@ -80,6 +80,7 @@ def ebay_item_condition(item: dict) -> str:
     condition = str(item.get("condition") or "").strip().lower()
     return _EBAY_CONDITION_MAP.get(condition, "")
 
+
 STOP_WORDS = {
     "and",
     "as",
@@ -133,7 +134,9 @@ def compact_item_text(item: dict) -> str:
         str(part)
         for part in (
             item.get("description"),
-            "" if re.match(r"^lot\s*-", str(item.get("title", "")), re.IGNORECASE) else item.get("title"),
+            ""
+            if re.match(r"^lot\s*-", str(item.get("title", "")), re.IGNORECASE)
+            else item.get("title"),
             item.get("rawCategory"),
         )
         if part
@@ -177,7 +180,9 @@ def enriched_exact_phrase(item: dict, max_words: int = 8) -> str:
     # Legacy fallback: quoted brand + model exact phrase.
     brand = clean_comp_text(str(item.get("brand") or ""))
     model = clean_comp_text(str(item.get("modelOrSku") or ""))
-    words = [word for word in normalize_spaces(f"{brand} {model}").split(" ") if word][:max_words]
+    words = [word for word in normalize_spaces(f"{brand} {model}").split(" ") if word][
+        :max_words
+    ]
     if len(words) < 2:
         return ""
     return '"' + " ".join(words) + '"'
@@ -204,34 +209,33 @@ def dedupe_words(words: list[str]) -> list[str]:
     return deduped
 
 
-def build_ebay_sold_search_url(query: str, category_id: str = "") -> str:
-    params: dict[str, str] = {
-        "_nkw": query,
-        "LH_Sold": "1",
-        "LH_Complete": "1",
-        "_sop": "13",
-        "LH_ItemLocation": "1",
-    }
-    if category_id and category_id != "0":
-        params["_sacat"] = category_id
-    return f"{EBAY_SEARCH_URL}?{urlencode(params)}"
+def build_ebay_sold_search_url(query: str) -> str:
+    params = urlencode(
+        {
+            "_nkw": query,
+            "LH_Sold": "1",
+            "LH_Complete": "1",
+            "_sop": "13",
+        }
+    )
+    return f"{EBAY_SEARCH_URL}?{params}"
 
 
-def build_ebay_sold_searches(
-    item: dict,
-    leaf_category_id: str | None = None,
-) -> list[dict]:
+def build_ebay_sold_searches(item: dict) -> list[dict]:
     text = compact_item_text(item)
     tokens = meaningful_tokens(text)
     model_tokens = [
-        token for token in tokens
+        token
+        for token in tokens
         if re.search(r"[A-Za-z]\d|\d[A-Za-z]|[-/]\d", token) and len(token) >= 4
     ]
     # Keep queries short — eBay sold-listing searches return nothing for long,
     # over-specific keyword strings. Funnel from precise down to broad fallbacks.
     broad_tokens = [token for token in tokens if not re.match(r"^\d+$", token)][:3]
     specific_tokens = dedupe_words(tokens[:4] + model_tokens)[:5]
-    category_tokens = meaningful_tokens(f"{item.get('rawCategory') or item.get('category') or ''} {text}")[:4]
+    category_tokens = meaningful_tokens(
+        f"{item.get('rawCategory') or item.get('category') or ''} {text}"
+    )[:4]
 
     # Primary: quoted exact phrase (enrichment-derived or title/description).
     # Broad/category recover recall when the exact phrase returns nothing.
@@ -244,7 +248,11 @@ def build_ebay_sold_searches(
     candidates = [
         {"kind": "specific", "label": "Specific match", "query": specific_query},
         {"kind": "broad", "label": "Broader match", "query": " ".join(broad_tokens)},
-        {"kind": "category", "label": "Category match", "query": " ".join(dedupe_words(category_tokens))},
+        {
+            "kind": "category",
+            "label": "Category match",
+            "query": " ".join(dedupe_words(category_tokens)),
+        },
     ]
     warning = (
         "eBay may return limited results for restricted categories."
@@ -271,9 +279,7 @@ def build_ebay_sold_searches(
         "item_location": _EBAY_ITEM_LOCATION,
         "count": _env_int("GOONERS_EBAY_COMPS_COUNT", _EBAY_DEFAULT_COUNT),
     }
-    # Prefer the caller-supplied leaf categoryId (Phase 2 inc 4) over the L1
-    # YAML fallback; fall back when no leaf was found (empty string).
-    category_id = (leaf_category_id if leaf_category_id else "") or ebay_category_id(item)
+    category_id = ebay_category_id(item)
     item_condition = ebay_item_condition(item)
     specific_filters = {}
     if category_id and category_id != "0":
@@ -289,16 +295,14 @@ def build_ebay_sold_searches(
         if not query or key in seen:
             continue
         seen.add(key)
-        is_specific = candidate["kind"] == "specific"
-        searches.append({
-            **candidate,
-            "query": query,
-            "url": build_ebay_sold_search_url(
-                query,
-                category_id=category_id if is_specific else "",
-            ),
-            "warning": warning,
-            **safe_filters,
-            **(specific_filters if is_specific else {}),
-        })
+        searches.append(
+            {
+                **candidate,
+                "query": query,
+                "url": build_ebay_sold_search_url(query),
+                "warning": warning,
+                **safe_filters,
+                **(specific_filters if candidate["kind"] == "specific" else {}),
+            }
+        )
     return searches

@@ -109,7 +109,13 @@ def _get_all(session, endpoint: str, headers: dict, params: dict) -> list[dict]:
     while True:
         page_headers = {**headers, "Range": f"{offset}-{offset + READ_PAGE_SIZE - 1}"}
         resp = _request_with_retry(
-            partial(session.get, endpoint, headers=page_headers, params=params, timeout=(10, 90)),
+            partial(
+                session.get,
+                endpoint,
+                headers=page_headers,
+                params=params,
+                timeout=(10, 90),
+            ),
             "sold-listing-embeddings read",
         )
         batch = resp.json() or []
@@ -125,19 +131,27 @@ def fetch_unembedded_listings(session, url: str, key: str) -> list[dict]:
     embedded = {
         r["ebay_item_id"]
         for r in _get_all(
-            session, f"{base}/rest/v1/{EMBEDDING_TABLE}", _headers(key),
+            session,
+            f"{base}/rest/v1/{EMBEDDING_TABLE}",
+            _headers(key),
             {"select": "ebay_item_id"},
         )
         if r.get("ebay_item_id")
     }
     corpus = _get_all(
-        session, f"{base}/rest/v1/{CORPUS_TABLE}", _headers(key),
+        session,
+        f"{base}/rest/v1/{CORPUS_TABLE}",
+        _headers(key),
         {"select": "ebay_item_id,title,condition,thumbnail_url,raw_json"},
     )
-    return [r for r in corpus if r.get("ebay_item_id") and r["ebay_item_id"] not in embedded]
+    return [
+        r for r in corpus if r.get("ebay_item_id") and r["ebay_item_id"] not in embedded
+    ]
 
 
-def upsert_listing_embeddings(embeddings, ids, n_images_used, url, key, session, batch_size=100) -> int:
+def upsert_listing_embeddings(
+    embeddings, ids, n_images_used, url, key, session, batch_size=100
+) -> int:
     """Upsert vectors into ``sold_listing_embeddings`` (keyed ebay_item_id)."""
     from embed_nomic import NOMIC_TEXT_MODEL, NOMIC_VISION_MODEL, _vec_to_pg
 
@@ -154,7 +168,9 @@ def upsert_listing_embeddings(embeddings, ids, n_images_used, url, key, session,
     headers = _headers(key, write=True)
 
     def _post(batch: list[dict]) -> int:
-        resp = session.post(endpoint, headers=headers, data=json.dumps(batch), timeout=120)
+        resp = session.post(
+            endpoint, headers=headers, data=json.dumps(batch), timeout=120
+        )
         if resp.status_code < 400:
             return len(batch)
         # HNSW index pressure → statement timeout (57014); split and retry.
@@ -164,7 +180,9 @@ def upsert_listing_embeddings(embeddings, ids, n_images_used, url, key, session,
         if is_timeout and len(batch) > 1:
             mid = len(batch) // 2
             return _post(batch[:mid]) + _post(batch[mid:])
-        raise RuntimeError(f"sold-listing embeddings upsert failed ({resp.status_code}): {resp.text[:300]}")
+        raise RuntimeError(
+            f"sold-listing embeddings upsert failed ({resp.status_code}): {resp.text[:300]}"
+        )
 
     written = 0
     for start in range(0, len(rows), batch_size):
@@ -180,6 +198,7 @@ def embed_corpus(session=None) -> int:
         return 0
     if session is None:
         import requests
+
         session = requests.Session()
 
     rows = fetch_unembedded_listings(session, url, key)
@@ -192,7 +211,9 @@ def embed_corpus(session=None) -> int:
     items = [listing_to_item(r) for r in rows]
     print(f"[sold-embed] embedding {len(items)} new sold listings...")
     embeddings, ids, n_images_used = embed_items(items, session=session)
-    written = upsert_listing_embeddings(embeddings, ids, n_images_used, url, key, session)
+    written = upsert_listing_embeddings(
+        embeddings, ids, n_images_used, url, key, session
+    )
     print(f"[sold-embed] upserted {written} listing embeddings → {EMBEDDING_TABLE}")
     return written
 
@@ -201,7 +222,9 @@ def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def rerank_rows_for_auction(matches: list[dict], safe_id: str, fetched_at: str) -> list[dict]:
+def rerank_rows_for_auction(
+    matches: list[dict], safe_id: str, fetched_at: str
+) -> list[dict]:
     """Shape ``match_sold_listings`` RPC rows into ebay_comp_snapshots rows.
 
     Tagged ``source_query='visual'`` so they slot into the existing
@@ -214,24 +237,26 @@ def rerank_rows_for_auction(matches: list[dict], safe_id: str, fetched_at: str) 
         if not item_id or not match.get("item_web_url"):
             continue
         sim = match.get("similarity") or 0
-        rows.append({
-            "auction_safe_id": safe_id,
-            "item_id": str(item_id),
-            "status": "ok",
-            "query": "",
-            "fetched_at": fetched_at,
-            "ebay_item_id": match.get("ebay_item_id"),
-            "title": match.get("title"),
-            "price_value": match.get("sold_price"),
-            "price_currency": "USD",
-            "sold_date": match.get("sold_date"),
-            "sold_date_label": match.get("sold_date_label"),
-            "thumbnail_url": match.get("thumbnail_url"),
-            "item_web_url": match.get("item_web_url"),
-            "condition": match.get("condition"),
-            "source_query": "visual",
-            "match_confidence": "high" if sim >= _HIGH_SIM else "medium",
-        })
+        rows.append(
+            {
+                "auction_safe_id": safe_id,
+                "item_id": str(item_id),
+                "status": "ok",
+                "query": "",
+                "fetched_at": fetched_at,
+                "ebay_item_id": match.get("ebay_item_id"),
+                "title": match.get("title"),
+                "price_value": match.get("sold_price"),
+                "price_currency": "USD",
+                "sold_date": match.get("sold_date"),
+                "sold_date_label": match.get("sold_date_label"),
+                "thumbnail_url": match.get("thumbnail_url"),
+                "item_web_url": match.get("item_web_url"),
+                "condition": match.get("condition"),
+                "source_query": "visual",
+                "match_confidence": "high" if sim >= _HIGH_SIM else "medium",
+            }
+        )
     return rows
 
 
@@ -240,12 +265,16 @@ def rerank_auction(safe_id: str, url: str, key: str, session, fetched_at: str) -
     endpoint = f"{url.rstrip('/')}/rest/v1/rpc/match_sold_listings"
     resp = _request_with_retry(
         partial(
-            session.post, endpoint, headers=_headers(key, write=True),
-            data=json.dumps({
-                "active_auction": safe_id,
-                "match_count": _RERANK_MATCH_COUNT,
-                "min_sim": _RERANK_MIN_SIM,
-            }),
+            session.post,
+            endpoint,
+            headers=_headers(key, write=True),
+            data=json.dumps(
+                {
+                    "active_auction": safe_id,
+                    "match_count": _RERANK_MATCH_COUNT,
+                    "min_sim": _RERANK_MIN_SIM,
+                }
+            ),
             timeout=WRITE_TIMEOUT,
         ),
         f"match_sold_listings({safe_id})",
@@ -264,6 +293,7 @@ def rerank_all_active(session=None) -> int:
         return 0
     if session is None:
         import requests
+
         session = requests.Session()
 
     from supabase_lots import list_auction_safe_ids
@@ -276,14 +306,20 @@ def rerank_all_active(session=None) -> int:
             total += rerank_auction(safe_id, url, key, session, fetched_at)
         except RuntimeError as exc:
             print(f"[sold-rerank] {safe_id}: {exc}")
-    print(f"[sold-rerank] wrote {total} visual comp row(s) across {len(safe_ids)} auction(s)")
+    print(
+        f"[sold-rerank] wrote {total} visual comp row(s) across {len(safe_ids)} auction(s)"
+    )
     return total
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Embed + visually re-rank the sold-listings corpus")
+    parser = argparse.ArgumentParser(
+        description="Embed + visually re-rank the sold-listings corpus"
+    )
     parser.add_argument(
-        "--step", choices=["embed", "rerank", "all"], default="all",
+        "--step",
+        choices=["embed", "rerank", "all"],
+        default="all",
         help="embed = generate listing embeddings; rerank = write visual comps; all = both (default).",
     )
     args = parser.parse_args(argv or sys.argv[1:])

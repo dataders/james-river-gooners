@@ -40,6 +40,7 @@ SOURCES_FILE = Path(__file__).resolve().parent / "hibid_sources.yml"
 def fetch_page_playwright(url: str) -> str | None:
     """Fetch a page with a real Chromium browser to bypass bot protection."""
     from playwright.sync_api import sync_playwright
+
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         try:

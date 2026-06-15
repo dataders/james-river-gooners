@@ -33,11 +33,13 @@ class WriteContext:
     auction_id: str
     auction_title: str
     auction_end_date: str
-    source: str                 # source slug stamped onto each lot ("cannons", "hibid", a HiBid company slug, …)
-    source_url: str             # canonical auction URL, recorded with MotherDuck snapshots
-    scraped_at: str             # ISO-8601 string stamped onto each lot
-    session: requests.Session | None = None        # reused for Nomic image downloads
-    snapshot_to_motherduck: bool | None = None      # None → defer to should_snapshot_to_motherduck()
+    source: str  # source slug stamped onto each lot ("cannons", "hibid", a HiBid company slug, …)
+    source_url: str  # canonical auction URL, recorded with MotherDuck snapshots
+    scraped_at: str  # ISO-8601 string stamped onto each lot
+    session: requests.Session | None = None  # reused for Nomic image downloads
+    snapshot_to_motherduck: bool | None = (
+        None  # None → defer to should_snapshot_to_motherduck()
+    )
     # Cannon's closed lots carry no live countdown, so their per-lot endDate is
     # blank; fall back to the auction end date so the UI shows "Ended" rather
     # than an empty countdown. The other sources always have a per-lot endDate.
@@ -95,6 +97,7 @@ def _enrich_items(items: list[dict], ctx: WriteContext, ndjson_path: Path) -> No
 
     if os.environ.get("SUPABASE_SECRET_KEY"):
         from supabase_enrichment import load_prior_enrichment_from_supabase
+
         prior_by_id = load_prior_enrichment_from_supabase(ctx.safe_id)
     else:
         prior_by_id = load_prior_enrichment(ndjson_path)
@@ -108,6 +111,7 @@ def _enrich_items(items: list[dict], ctx: WriteContext, ndjson_path: Path) -> No
     # Mirror enriched lots into Supabase so they're queryable via the API (#104).
     # No-op without SUPABASE_SECRET_KEY or enriched lots.
     from supabase_enrichment import maybe_export_enrichment
+
     maybe_export_enrichment(items)
 
 
@@ -121,6 +125,7 @@ def _write_ndjson(items: list[dict], ndjson_path: Path) -> None:
 def _upsert_supabase_lots(items: list[dict], safe_id: str) -> None:
     if os.environ.get("SUPABASE_SECRET_KEY"):
         from supabase_lots import upsert_lots
+
         upsert_lots(items, safe_id)
 
 
@@ -132,6 +137,7 @@ def _generate_embeddings(items: list[dict], ctx: WriteContext) -> None:
     are embedded.
     """
     from embed_nomic import maybe_generate_and_upsert
+
     maybe_generate_and_upsert(items, ctx.safe_id, ctx.session)
 
 
@@ -153,10 +159,12 @@ def _snapshot_motherduck(items: list[dict], ctx: WriteContext) -> None:
     snapshot = ctx.snapshot_to_motherduck
     if snapshot is None:
         from motherduck import should_snapshot_to_motherduck
+
         snapshot = should_snapshot_to_motherduck()
     if not snapshot:
         return
     from warehouse import get_sink
+
     sink = get_sink()
     if sink is not None:
         count = sink.append_listing_snapshots(items, ctx.source_url)

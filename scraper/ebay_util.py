@@ -16,7 +16,12 @@ def utc_now_text() -> str:
 
 def json_value(value):
     if isinstance(value, datetime):
-        return value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        return (
+            value.astimezone(UTC)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):

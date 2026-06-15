@@ -145,10 +145,12 @@ class LoadExistingBidsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "auction.parquet"
             pq.write_table(
-                pa.Table.from_pylist([
-                    {"id": "item-1", "currentBid": 50.0, "totalBids": 5},
-                    {"id": "item-2", "currentBid": 100.0, "totalBids": 12},
-                ]),
+                pa.Table.from_pylist(
+                    [
+                        {"id": "item-1", "currentBid": 50.0, "totalBids": 5},
+                        {"id": "item-2", "currentBid": 100.0, "totalBids": 12},
+                    ]
+                ),
                 path,
             )
             result = load_existing_bids(path)
