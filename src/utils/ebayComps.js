@@ -3,6 +3,32 @@ import { isDisplayConfidence } from './enrichment.js'
 
 const EBAY_SEARCH_URL = 'https://www.ebay.com/sch/i.html'
 
+// Mirrors ebay_category_ids.yml — Cannon's broad group → eBay L1 categoryId.
+// Used to scope the "Search eBay" browse link to the right department.
+const EBAY_CATEGORY_IDS = {
+  'Art': '550',
+  'China & Glass': '870',
+  'Collectibles': '1',
+  'Coins & Currency': '11116',
+  'Jewelry & Watches': '281',
+  'Silver & Metal': '20081',
+  'Furniture': '11700',
+  'Home & Kitchen': '11700',
+  'Lawn & Garden': '11700',
+  'Fashion': '11450',
+  'Toys & Games': '220',
+  'Books & Media': '267',
+  'Sporting Goods': '888',
+  'Electronics': '293',
+  'Industrial & Equipment': '12576',
+  'Stamps': '260',
+}
+
+function ebayCategoryId(item) {
+  const group = (item && item.category) || ''
+  return EBAY_CATEGORY_IDS[group] || ''
+}
+
 const STOP_WORDS = new Set([
   'and',
   'as',
@@ -95,13 +121,15 @@ function dedupeWords(words) {
   })
 }
 
-export function buildEbaySoldSearchUrl(query) {
+export function buildEbaySoldSearchUrl(query, { categoryId = '' } = {}) {
   const params = new URLSearchParams({
     _nkw: query,
     LH_Sold: '1',
     LH_Complete: '1',
     _sop: '13',
+    LH_ItemLocation: '1',
   })
+  if (categoryId && categoryId !== '0') params.set('_sacat', categoryId)
   return `${EBAY_SEARCH_URL}?${params.toString()}`
 }
 
@@ -254,6 +282,8 @@ export function buildEbaySoldSearches(item) {
     ? 'eBay may return limited results for restricted categories.'
     : ''
 
+  const categoryId = ebayCategoryId(item)
+
   return candidates.filter(candidate => {
     const key = candidate.query.toLowerCase()
     if (seen.has(key)) return false
@@ -261,7 +291,10 @@ export function buildEbaySoldSearches(item) {
     return true
   }).map(candidate => ({
     ...candidate,
-    url: buildEbaySoldSearchUrl(candidate.query),
+    url: buildEbaySoldSearchUrl(
+      candidate.query,
+      { categoryId: candidate.kind === 'specific' ? categoryId : '' },
+    ),
     warning,
   }))
 }

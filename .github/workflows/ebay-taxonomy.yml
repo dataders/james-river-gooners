@@ -1,0 +1,36 @@
+name: Refresh eBay Category Tree
+
+# Fetches the full eBay US category tree via the Taxonomy API and upserts
+# all ~16k categories into the Supabase `ebay_categories` table.  The stored
+# tree is consumed by the comps pipeline (GOONERS_EBAY_LEAF_CATEGORIES=1)
+# to tighten the per-lot categoryId from a coarse L1 to a matching leaf,
+# improving comp precision without touching recall (L1 is the fallback).
+#
+# The eBay category tree is stable — eBay rarely restructures it — so a
+# weekly refresh is sufficient. Re-run manually after adding new categories
+# to ebay_category_ids.yml or after an eBay category restructure.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 5 * * 1'  # Monday 05:00 UTC
+
+jobs:
+  fetch-taxonomy:
+    name: Fetch + upsert eBay category tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Fetch eBay category tree and upsert to Supabase
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          cd scraper
+          uv run --with requests ebay_taxonomy.py

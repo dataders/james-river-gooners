@@ -121,7 +121,21 @@ def load_sample(session, url, key, n):
     return sample
 
 
-def arm_search(item, arm):
+_leaf_candidate_cache: dict[str, list[dict]] = {}
+
+
+def _leaf_candidates_for_group(group: str, url: str, key: str) -> list[dict]:
+    """Fetch leaf candidates for one group (cached per process)."""
+    if group not in _leaf_candidate_cache:
+        try:
+            import ebay_taxonomy
+            _leaf_candidate_cache[group] = ebay_taxonomy._fetch_leaf_candidates(group, url, key)
+        except Exception:
+            _leaf_candidate_cache[group] = []
+    return _leaf_candidate_cache[group]
+
+
+def arm_search(item, arm, url="", key=""):
     title_q = eq.item_exact_phrase(item) or " ".join(eq.meaningful_tokens(eq.compact_item_text(item))[:5])
     enr_q = eq.enriched_exact_phrase(item) or title_q
     filt = {"count": _COUNT, "sort_order": "endedRecently", "ebay_site": "ebay.com", "item_location": "domestic"}
@@ -130,6 +144,24 @@ def arm_search(item, arm):
         filt["category_id"] = cat
     if cond:
         filt["item_condition"] = cond
+    if arm == "leaf_category":
+        # Same as filters but with a leaf-level categoryId instead of L1.
+        # Falls back to L1 when the ebay_categories table is empty/unavailable.
+        leaf_filt = {**filt}
+        if url and key:
+            group = str(item.get("category") or "")
+            candidates = _leaf_candidates_for_group(group, url, key)
+            leaf_id = ""
+            try:
+                import ebay_taxonomy
+                leaf_id = ebay_taxonomy.best_leaf_from_candidates(
+                    candidates, str(item.get("productType") or "")
+                )
+            except Exception:
+                pass
+            if leaf_id:
+                leaf_filt["category_id"] = leaf_id
+        return {"kind": "leaf_category", "query": title_q, **leaf_filt}
     if arm == "baseline":
         return {"kind": "baseline", "query": title_q, "count": _COUNT}
     if arm == "filters":
@@ -184,21 +216,26 @@ def main(argv=None):
     print(f"  {len(sample)} lots with enrichment + embedding")
 
     from ebay_fetch import soldcomps_sold_matches
-    arm_sims = {a: [] for a in ("baseline", "filters", "enrichment", "rerank")}
+    arm_sims = {a: [] for a in ("baseline", "filters", "leaf_category", "enrichment", "rerank")}
     eval_rows = []
 
     for n, item in enumerate(sample, 1):
         lot_emb = item["_embedding"]
-        # Fetch the three distinct query arms (rerank reuses enrichment's pool).
+        # Fetch four distinct query arms (rerank reuses enrichment's pool;
+        # leaf_category is a separate fetch that may differ from filters only
+        # when ebay_categories is populated and a leaf match is found).
         fetched = {}
-        for arm in ("baseline", "filters", "enrichment"):
-            result = soldcomps_sold_matches(session, arm_search(item, arm), api_key=api_key, max_matches=_COUNT)
+        for arm in ("baseline", "filters", "leaf_category", "enrichment"):
+            result = soldcomps_sold_matches(
+                session, arm_search(item, arm, url=url, key=key),
+                api_key=api_key, max_matches=_COUNT,
+            )
             fetched[arm] = (result or {}).get("all_candidates") or []
             if args.sleep:
                 time.sleep(args.sleep)
 
         # Embed every unique candidate across arms (reuse corpus where possible).
-        all_cands = [c for arm in fetched.values() for c in arm]
+        all_cands = [c for arm_cands in fetched.values() for c in arm_cands]
         vecs = candidate_vectors(session, url, key, all_cands)
 
         def scored(cands, vecs=vecs, lot_emb=lot_emb):
@@ -209,11 +246,12 @@ def main(argv=None):
                     out.append((c, _cos(lot_emb, v)))
             return out
 
-        for arm in ("baseline", "filters", "enrichment"):
+        for arm in ("baseline", "filters", "leaf_category", "enrichment"):
             ranked = scored(fetched[arm])  # native order (recency / default)
+            arm_q = arm_search(item, arm, url=url, key=key)["query"]
             for rank, (c, sim) in enumerate(ranked, 1):
                 eval_rows.append((run_id, item["auctionSafeId"], item["id"], arm, c.get("ebay_item_id"),
-                                  rank, sim, arm_search(item, arm)["query"], c.get("title"),
+                                  rank, sim, arm_q, c.get("title"),
                                   c.get("price_value"), c.get("sold_date")))
             top = [s for _, s in ranked[:_TOP_K]]
             if top:
@@ -221,9 +259,10 @@ def main(argv=None):
 
         # rerank: enrichment pool, ordered by similarity.
         rr = sorted(scored(fetched["enrichment"]), key=lambda x: x[1], reverse=True)
+        enr_q = arm_search(item, "enrichment", url=url, key=key)["query"]
         for rank, (c, sim) in enumerate(rr, 1):
             eval_rows.append((run_id, item["auctionSafeId"], item["id"], "rerank", c.get("ebay_item_id"),
-                              rank, sim, arm_search(item, "enrichment")["query"], c.get("title"),
+                              rank, sim, enr_q, c.get("title"),
                               c.get("price_value"), c.get("sold_date")))
         rtop = [s for _, s in rr[:_TOP_K]]
         if rtop:
@@ -247,7 +286,7 @@ def main(argv=None):
 
     print(f"\n=== AB run {run_id}: mean top-{_TOP_K} lot↔comp similarity ===")
     base = np.mean(arm_sims["baseline"]) if arm_sims["baseline"] else float("nan")
-    for arm in ("baseline", "filters", "enrichment", "rerank"):
+    for arm in ("baseline", "filters", "leaf_category", "enrichment", "rerank"):
         vals = arm_sims[arm]
         if vals:
             m = np.mean(vals)
