@@ -221,7 +221,7 @@ def build_ebay_sold_search_url(query: str) -> str:
     return f"{EBAY_SEARCH_URL}?{params}"
 
 
-def build_ebay_sold_searches(item: dict) -> list[dict]:
+def build_ebay_sold_searches(item: dict, leaf_category_id: str = "") -> list[dict]:
     text = compact_item_text(item)
     tokens = meaningful_tokens(text)
     model_tokens = [
@@ -279,7 +279,7 @@ def build_ebay_sold_searches(item: dict) -> list[dict]:
         "item_location": _EBAY_ITEM_LOCATION,
         "count": _env_int("GOONERS_EBAY_COMPS_COUNT", _EBAY_DEFAULT_COUNT),
     }
-    category_id = ebay_category_id(item)
+    category_id = leaf_category_id or ebay_category_id(item)
     item_condition = ebay_item_condition(item)
     specific_filters = {}
     if category_id and category_id != "0":
