@@ -204,17 +204,23 @@ def dedupe_words(words: list[str]) -> list[str]:
     return deduped
 
 
-def build_ebay_sold_search_url(query: str) -> str:
-    params = urlencode({
+def build_ebay_sold_search_url(query: str, category_id: str = "") -> str:
+    params: dict[str, str] = {
         "_nkw": query,
         "LH_Sold": "1",
         "LH_Complete": "1",
         "_sop": "13",
-    })
-    return f"{EBAY_SEARCH_URL}?{params}"
+        "LH_ItemLocation": "1",
+    }
+    if category_id and category_id != "0":
+        params["_sacat"] = category_id
+    return f"{EBAY_SEARCH_URL}?{urlencode(params)}"
 
 
-def build_ebay_sold_searches(item: dict) -> list[dict]:
+def build_ebay_sold_searches(
+    item: dict,
+    leaf_category_id: str | None = None,
+) -> list[dict]:
     text = compact_item_text(item)
     tokens = meaningful_tokens(text)
     model_tokens = [
@@ -265,7 +271,9 @@ def build_ebay_sold_searches(item: dict) -> list[dict]:
         "item_location": _EBAY_ITEM_LOCATION,
         "count": _env_int("GOONERS_EBAY_COMPS_COUNT", _EBAY_DEFAULT_COUNT),
     }
-    category_id = ebay_category_id(item)
+    # Prefer the caller-supplied leaf categoryId (Phase 2 inc 4) over the L1
+    # YAML fallback; fall back when no leaf was found (empty string).
+    category_id = (leaf_category_id if leaf_category_id else "") or ebay_category_id(item)
     item_condition = ebay_item_condition(item)
     specific_filters = {}
     if category_id and category_id != "0":
@@ -281,12 +289,16 @@ def build_ebay_sold_searches(item: dict) -> list[dict]:
         if not query or key in seen:
             continue
         seen.add(key)
+        is_specific = candidate["kind"] == "specific"
         searches.append({
             **candidate,
             "query": query,
-            "url": build_ebay_sold_search_url(query),
+            "url": build_ebay_sold_search_url(
+                query,
+                category_id=category_id if is_specific else "",
+            ),
             "warning": warning,
             **safe_filters,
-            **(specific_filters if candidate["kind"] == "specific" else {}),
+            **(specific_filters if is_specific else {}),
         })
     return searches

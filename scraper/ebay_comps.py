@@ -287,6 +287,29 @@ def fetch_direct(
     )
     candidates = sorted(loaded, key=auction_end_sort_key)
 
+    # Leaf category scoping (Phase 2 inc 4, #329): pre-load eBay leaf
+    # candidates for all distinct category groups in this run — one Supabase
+    # read per group, not per lot — so the specific-tier categoryId can be
+    # tightened from the coarse L1 to a matching leaf. No-op unless
+    # GOONERS_EBAY_LEAF_CATEGORIES=1 + Supabase is active.
+    _leaf_candidates_by_group: dict[str, list[dict]] = {}
+    _best_leaf_fn = None
+    if use_supabase and not dry_run:
+        try:
+            import ebay_taxonomy
+            if ebay_taxonomy.leaf_categories_enabled():
+                all_groups = {
+                    str(item.get("category") or "")
+                    for item in candidates
+                    if item.get("category")
+                }
+                _leaf_candidates_by_group = ebay_taxonomy.load_leaf_candidates_by_group(
+                    all_groups
+                )
+                _best_leaf_fn = ebay_taxonomy.best_leaf_from_candidates
+        except Exception as exc:
+            print(f"ebay_taxonomy: leaf category lookup failed (continuing): {exc}")
+
     for item in candidates:
         safe_id = text_value(item.get("auctionSafeId"))
         item_id = text_value(item.get("id"))
@@ -295,7 +318,13 @@ def fetch_direct(
         if skip_categories and item.get("category") in skip_categories:
             continue
 
-        searches = build_ebay_sold_searches(item)[:queries_per_item]
+        leaf_id = ""
+        if _best_leaf_fn:
+            group_candidates = _leaf_candidates_by_group.get(
+                str(item.get("category") or ""), []
+            )
+            leaf_id = _best_leaf_fn(group_candidates, str(item.get("productType") or ""))
+        searches = build_ebay_sold_searches(item, leaf_category_id=leaf_id)[:queries_per_item]
         if not searches:
             continue
 
