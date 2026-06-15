@@ -1,0 +1,53 @@
+name: A/B Comp Quality Eval
+
+# Measures comp quality across pipeline factors (RFC #290 follow-up), including
+# the new leaf_category arm that isolates the gain from eBay leaf-level category
+# scoping vs the coarse L1 baseline.  Results are stored to comp_quality_eval
+# in Supabase for offline analysis.  Run manually; not scheduled.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of lots to evaluate (costs 4 SoldComps calls each)'
+        required: false
+        type: string
+        default: '30'
+      sleep:
+        description: 'Sleep between SoldComps requests (seconds)'
+        required: false
+        type: string
+        default: '1.3'
+
+permissions:
+  contents: read
+
+jobs:
+  ab-eval:
+    name: A/B comp quality eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SOLDCOMPS_API_KEY: ${{ secrets.SOLDCOMPS_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Cache HuggingFace models (Nomic)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-nomic-embed-v1.5
+
+      - name: Run A/B comp quality eval
+        run: |
+          cd scraper
+          uv run --with requests \
+            --with sentence-transformers --with 'transformers==4.49.0' \
+            --with torchvision --with pillow --with einops --with numpy \
+            python ab_comp_quality.py \
+              --limit "${{ inputs.limit || '30' }}" \
+              --sleep "${{ inputs.sleep || '1.3' }}"
