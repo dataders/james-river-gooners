@@ -109,6 +109,11 @@ jobs:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
           AGENT_BROWSER_SESSION: gooners-ebay-comps
+          # Leaf category scoping (Phase 2 inc 4, #329): tighten each lot's
+          # eBay categoryId from the coarse L1 to a matching leaf via the
+          # Supabase `ebay_categories` table (populated by ebay-taxonomy.yml).
+          # L1 stays the fallback, so this only improves precision.
+          GOONERS_EBAY_LEAF_CATEGORIES: '1'
           GOONERS_EBAY_COMPS_SKIP_CATEGORIES: ${{ inputs.skip_categories }}
           # Raw sold-listings corpus (#290/#294): opt-in capture of the full
           # candidate set per query. No-op unless on.
