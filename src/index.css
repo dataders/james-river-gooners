@@ -111,11 +111,58 @@ body {
 .header-banner .account-button {
   margin-left: auto;
 }
+
+/* Mobile hamburger — hidden on desktop, revealed in the mobile media query.
+   It's the first child of .header-banner (far left, matching the left drawer). */
+.header-menu-button {
+  display: none;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.header-menu-button:hover { background: var(--chip-bg); }
+.header-menu-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.header-menu-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
 @media (max-width: 700px) {
   .header-banner {
     flex-basis: 100%;
     order: 0;
   }
+  /* Reveal the hamburger; the utility cluster + inline account move into the
+     drawer it opens, so hide them here. */
+  .header-menu-button { display: inline-flex; }
+  .header-banner > .account-menu,
+  .header-banner > .account-button { display: none; }
 }
 
 .header-title {
@@ -149,52 +196,8 @@ body {
   margin-left: auto;
 }
 @media (max-width: 700px) {
-  .header-actions {
-    order: 5;
-    flex-basis: 100%;
-    margin-left: 0;
-    justify-content: center;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 2px;
-    gap: 0;
-  }
-  /* Strip individual borders — the row container provides the frame */
-  .header-actions .swipe-banner-button,
-  .header-actions .help-button,
-  .header-actions .whatsnew-button,
-  .header-actions .trivia-button,
-  .header-actions .account-icon-btn,
-  .header-actions .theme-toggle {
-    flex: 1;
-    border: none;
-    background: transparent;
-    border-radius: calc(var(--radius) - 2px);
-    justify-content: center;
-    padding: 6px 4px;
-    min-height: 36px;
-    font-size: 1rem;
-  }
-  .header-actions .swipe-banner-button:hover,
-  .header-actions .help-button:hover,
-  .header-actions .whatsnew-button:hover,
-  .header-actions .trivia-button:hover,
-  .header-actions .account-icon-btn:hover,
-  .header-actions .theme-toggle:hover {
-    background: var(--chip-bg);
-    border-color: transparent;
-  }
-  /* Account and trivia wrappers should also stretch */
-  .header-actions .account-menu,
-  .header-actions .trivia-menu {
-    flex: 1;
-    display: flex;
-  }
-  .header-actions .account-menu .account-icon-btn,
-  .header-actions .trivia-menu .trivia-button {
-    width: 100%;
-  }
+  /* The utility cluster lives in the hamburger drawer on mobile. */
+  .header-actions { display: none; }
 }
 
 /* Controls row: Filters + layout toggle + Sort grouped together */
@@ -1974,6 +1977,75 @@ body {
 @keyframes slide-in {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+
+/* Mobile hamburger drawer — left slide-in, modeled on .detail-overlay. */
+.nav-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 400; /* above the sticky header + detail panel */
+  display: flex;
+  justify-content: flex-start;
+}
+.nav-drawer-panel {
+  position: relative;
+  width: 280px;
+  max-width: 85vw;
+  height: 100vh;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  animation: nav-slide-in 0.22s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+@keyframes nav-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.nav-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.nav-drawer-title { font-weight: 600; }
+.nav-drawer-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: inherit;
+  padding: 4px 8px;
+}
+.nav-drawer-body { padding: 6px; }
+.nav-drawer-section { display: flex; flex-direction: column; }
+.nav-drawer-divider { border: none; border-top: 1px solid var(--border); margin: 6px 10px; }
+.nav-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.nav-drawer-item:hover { background: var(--chip-bg); }
+.nav-drawer-icon { width: 20px; text-align: center; flex-shrink: 0; }
+.nav-drawer-new-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  background: var(--chip-bg);
+  color: var(--accent);
 }
 
 .detail-close {
