@@ -8,6 +8,13 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-16',
+    title: 'A tidier toolbar on phones',
+    changes: [
+      { id: 'mobile-hamburger-menu', icon: '☰', text: 'On phones, the toolbar buttons (photo search, swipe, help, what\'s new, trivia, dark mode) and your account now live in a tidy menu — tap the ☰ in the top-left to open it. Your bid alerts show right on the menu button, so you still see at a glance when you\'ve been outbid.' },
+    ],
+  },
+  {
     date: '2026-06-14',
     title: 'Lot details right on the grid',
     changes: [

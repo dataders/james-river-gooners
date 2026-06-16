@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-16 — A tidier toolbar on phones
+
+- ☰ **Toolbar tucked into a menu (phones)** — on phones, the toolbar buttons (photo search, swipe, help, what's new, trivia, dark mode) and your account now live in a tidy menu — tap the ☰ in the top-left to open it. Your bid alerts show right on the menu button, so you still see at a glance when you've been outbid.
+
 ## 2026-06-14 — Lot details right on the grid
 
 - 🏷️ **Lot details on the cards** — quantity, condition warnings (like "untested" or "missing parts"), and key specs (like "20V" or "brushless") now show right on the lot cards as you browse, so you can size up a lot at a glance without opening it.
