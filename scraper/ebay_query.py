@@ -209,16 +209,19 @@ def dedupe_words(words: list[str]) -> list[str]:
     return deduped
 
 
-def build_ebay_sold_search_url(query: str) -> str:
-    params = urlencode(
-        {
-            "_nkw": query,
-            "LH_Sold": "1",
-            "LH_Complete": "1",
-            "_sop": "13",
-        }
-    )
-    return f"{EBAY_SEARCH_URL}?{params}"
+def build_ebay_sold_search_url(query: str, category_id: str = "") -> str:
+    params = {
+        "_nkw": query,
+        "LH_Sold": "1",
+        "LH_Complete": "1",
+        "_sop": "13",
+    }
+    # Scope the human-facing "View on eBay" link to the same leaf category the
+    # fetch is filtered to. "0" is the sentinel for "no category" — never emit
+    # _sacat=0 (eBay treats it as a real, empty category).
+    if category_id and category_id != "0":
+        params["_sacat"] = category_id
+    return f"{EBAY_SEARCH_URL}?{urlencode(params)}"
 
 
 def build_ebay_sold_searches(item: dict, leaf_category_id: str = "") -> list[dict]:
@@ -295,14 +298,18 @@ def build_ebay_sold_searches(item: dict, leaf_category_id: str = "") -> list[dic
         if not query or key in seen:
             continue
         seen.add(key)
+        is_specific = candidate["kind"] == "specific"
+        # Only the specific tier carries the categoryId filter, so only its URL
+        # gets _sacat — broad/category fallbacks stay unscoped to recover recall.
+        url_category = category_id if is_specific else ""
         searches.append(
             {
                 **candidate,
                 "query": query,
-                "url": build_ebay_sold_search_url(query),
+                "url": build_ebay_sold_search_url(query, url_category),
                 "warning": warning,
                 **safe_filters,
-                **(specific_filters if candidate["kind"] == "specific" else {}),
+                **(specific_filters if is_specific else {}),
             }
         )
     return searches

@@ -195,6 +195,20 @@ class ScorePathTest(unittest.TestCase):
         score = et._score_path("Art > Paintings", "PAINTINGS")
         self.assertGreater(score, 0.0)
 
+    def test_length_weighting_favors_the_more_specific_token(self):
+        # "casserole dish": the specific token ("casserole", 9 chars) should
+        # outweigh the generic one ("dish", 4), so a Casseroles leaf scores
+        # higher than a Dishes leaf for the same productType.
+        casseroles = et._score_path(
+            "Pottery & Glass > Decorative Cookware, Dinnerware & Serveware > Casseroles",
+            "casserole dish",
+        )
+        dishes = et._score_path(
+            "Pottery & Glass > Decorative Cookware, Dinnerware & Serveware > Dishes",
+            "casserole dish",
+        )
+        self.assertGreater(casseroles, dishes)
+
 
 class BestLeafFromCandidatesTest(unittest.TestCase):
     _CANDIDATES = [
@@ -221,6 +235,96 @@ class BestLeafFromCandidatesTest(unittest.TestCase):
 
     def test_returns_empty_when_only_short_tokens(self):
         self.assertEqual(et.best_leaf_from_candidates(self._CANDIDATES, "an in"), "")
+
+    def test_casserole_dish_prefers_vintage_casseroles_leaf(self):
+        # The Corning Ware regression: "casserole dish" must land on the
+        # Pottery & Glass Casseroles leaf, not the Dishes leaf and not the
+        # modern Home & Garden "Casserole Pans" leaf. Length-weighting breaks
+        # the casserole/dish overlap; priority order (Pottery & Glass first)
+        # breaks the Casseroles-vs-Casserole-Pans tie.
+        candidates = [
+            {
+                "category_id": "262369",
+                "full_path": "Pottery & Glass > Decorative Cookware, Dinnerware & Serveware > Casseroles",
+            },
+            {
+                "category_id": "262374",
+                "full_path": "Pottery & Glass > Decorative Cookware, Dinnerware & Serveware > Dishes",
+            },
+            {
+                "category_id": "98844",
+                "full_path": "Home & Garden > Kitchen, Dining & Bar > Cookware > Casserole Pans",
+            },
+        ]
+        self.assertEqual(
+            et.best_leaf_from_candidates(candidates, "casserole dish"), "262369"
+        )
+
+
+class GroupToL1NamesTest(unittest.TestCase):
+    def test_kitchenware_group_reaches_pottery_and_glass_first(self):
+        names = et._GROUP_TO_L1_NAMES["Home & Kitchen"]
+        # Estate kitchenware skews vintage, so Pottery & Glass leads and the
+        # modern Home & Garden subtree is only the fallback.
+        self.assertEqual(names[0], "Pottery & Glass")
+        self.assertIn("Home & Garden", names)
+
+    def test_legacy_single_subtree_groups_unchanged(self):
+        self.assertEqual(et._GROUP_TO_L1_NAMES["Art"], ["Art"])
+        self.assertEqual(et._GROUP_TO_L1_NAMES["China & Glass"], ["Pottery & Glass"])
+
+
+class FetchLeafCandidatesOrderTest(unittest.TestCase):
+    def test_subtrees_queried_in_priority_order_and_concatenated(self):
+        rows_by_like = {
+            "like.Pottery & Glass%": [
+                {"category_id": "PG", "full_path": "Pottery & Glass > X"}
+            ],
+            "like.Collectibles%": [
+                {"category_id": "CO", "full_path": "Collectibles > Y"}
+            ],
+            "like.Home & Garden%": [
+                {"category_id": "HG", "full_path": "Home & Garden > Z"}
+            ],
+        }
+        calls = []
+
+        def fake_get(endpoint, headers=None, params=None, timeout=None):
+            like = params["full_path"]
+            calls.append(like)
+            return MagicMock(status_code=200, json=lambda: rows_by_like[like])
+
+        with patch("requests.get", side_effect=fake_get):
+            out = et._fetch_leaf_candidates(
+                "Home & Kitchen", "https://x.supabase.co", "sb_secret_x"
+            )
+
+        self.assertEqual(
+            calls,
+            ["like.Pottery & Glass%", "like.Collectibles%", "like.Home & Garden%"],
+        )
+        self.assertEqual([c["category_id"] for c in out], ["PG", "CO", "HG"])
+
+    def test_one_failing_subtree_does_not_sink_the_rest(self):
+        def fake_get(endpoint, headers=None, params=None, timeout=None):
+            like = params["full_path"]
+            if like == "like.Pottery & Glass%":
+                return MagicMock(status_code=500, json=lambda: None)
+            if like == "like.Home & Garden%":
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: [
+                        {"category_id": "HG", "full_path": "Home & Garden > Z"}
+                    ],
+                )
+            return MagicMock(status_code=200, json=lambda: [])  # Collectibles: empty
+
+        with patch("requests.get", side_effect=fake_get):
+            out = et._fetch_leaf_candidates(
+                "Home & Kitchen", "https://x.supabase.co", "sb_secret_x"
+            )
+
+        self.assertEqual([c["category_id"] for c in out], ["HG"])
 
 
 class LoadLeafCandidatesByGroupTest(unittest.TestCase):

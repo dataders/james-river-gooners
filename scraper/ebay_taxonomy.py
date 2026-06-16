@@ -49,27 +49,35 @@ EBAY_CATEGORIES_TABLE = "ebay_categories"
 _READ_TIMEOUT = (5, 30)
 _LEAF_QUERY_LIMIT = 500
 
-# Maps Cannon's internal category group to the eBay L1 category *name* as it
-# appears as the first segment of ``full_path`` in the ``ebay_categories``
-# table. Used to scope leaf candidate queries to the right subtree.
-# Cross-reference with the id map in ebay_category_ids.yml.
-_GROUP_TO_L1_NAME: dict[str, str] = {
-    "Art": "Art",
-    "China & Glass": "Pottery & Glass",
-    "Collectibles": "Collectibles",
-    "Coins & Currency": "Coins & Paper Money",
-    "Jewelry & Watches": "Jewelry & Watches",
-    "Silver & Metal": "Antiques",
-    "Furniture": "Home & Garden",
-    "Home & Kitchen": "Home & Garden",
-    "Lawn & Garden": "Home & Garden",
-    "Fashion": "Clothing, Shoes & Accessories",
-    "Toys & Games": "Toys & Hobbies",
-    "Books & Media": "Books & Magazines",
-    "Sporting Goods": "Sporting Goods",
-    "Electronics": "Consumer Electronics",
-    "Industrial & Equipment": "Business & Industrial",
-    "Stamps": "Stamps",
+# Maps Cannon's internal category group to an ordered list of eBay L1 category
+# *names* (the first segment of ``full_path`` in the ``ebay_categories`` table).
+# Used to scope leaf candidate queries to the right subtree(s).
+#
+# Priority matters: leaf candidates are fetched and concatenated in this order,
+# and the scorer keeps the FIRST candidate on a score tie — so list the subtree
+# where this group's lots most often belong first. eBay and Cannon's taxonomies
+# disagree on vintage kitchenware: Corning/Pyrex/Fire-King casseroles sell under
+# Pottery & Glass, not the modern Home & Garden cookware subtree. Cannon's is an
+# estate-auction house, so its "Home & Kitchen" (and "Furniture") lots skew
+# vintage — hence Pottery & Glass / Collectibles / Antiques outrank Home &
+# Garden. Cross-reference the L1 id map in ebay_category_ids.yml.
+_GROUP_TO_L1_NAMES: dict[str, list[str]] = {
+    "Art": ["Art"],
+    "China & Glass": ["Pottery & Glass"],
+    "Collectibles": ["Collectibles"],
+    "Coins & Currency": ["Coins & Paper Money"],
+    "Jewelry & Watches": ["Jewelry & Watches"],
+    "Silver & Metal": ["Antiques"],
+    "Furniture": ["Home & Garden", "Antiques"],
+    "Home & Kitchen": ["Pottery & Glass", "Collectibles", "Home & Garden"],
+    "Lawn & Garden": ["Home & Garden"],
+    "Fashion": ["Clothing, Shoes & Accessories"],
+    "Toys & Games": ["Toys & Hobbies"],
+    "Books & Media": ["Books & Magazines"],
+    "Sporting Goods": ["Sporting Goods"],
+    "Electronics": ["Consumer Electronics"],
+    "Industrial & Equipment": ["Business & Industrial"],
+    "Stamps": ["Stamps"],
 }
 
 
@@ -203,10 +211,14 @@ def leaf_categories_enabled() -> bool:
 
 
 def _score_path(full_path: str, product_type: str) -> float:
-    """Word-overlap score between an eBay ``full_path`` and enrichment ``productType``.
+    """Length-weighted word-overlap between an eBay ``full_path`` and ``productType``.
 
-    Counts how many space-split tokens from ``product_type`` (length > 3)
-    appear case-insensitively in ``full_path``, normalised to [0, 1].
+    Each token from ``product_type`` (split on non-word chars, length > 3)
+    contributes its own character length when it appears case-insensitively in
+    ``full_path``; the sum is normalised by the total token length to [0, 1].
+    Weighting by length lets a specific token ("casserole", 9) outrank a generic
+    one ("dish", 4), so "casserole dish" scores a Casseroles leaf above a Dishes
+    leaf instead of tying.
     """
     if not product_type:
         return 0.0
@@ -214,40 +226,50 @@ def _score_path(full_path: str, product_type: str) -> float:
     tokens = [t for t in re.split(r"\W+", product_type.lower()) if len(t) > 3]
     if not tokens:
         return 0.0
-    return sum(1 for t in tokens if t in path_lower) / len(tokens)
+    total = sum(len(t) for t in tokens)
+    matched = sum(len(t) for t in tokens if t in path_lower)
+    return matched / total
 
 
 def _fetch_leaf_candidates(group: str, url: str, key: str) -> list[dict]:
-    """Query Supabase for leaf categories in the given Cannon's group's L1 subtree.
+    """Query Supabase for leaf categories across the group's L1 subtree(s).
 
-    Returns a list of ``{category_id, full_path}`` dicts, or ``[]`` when the
-    group has no L1 mapping, Supabase is unreachable, or the table is empty.
+    A group may map to several L1 subtrees (e.g. estate kitchenware spans
+    Pottery & Glass, Collectibles and Home & Garden). The subtrees are queried
+    in priority order and the results concatenated, so the scorer's first-wins
+    tie-break keeps the higher-priority subtree. Returns a list of
+    ``{category_id, full_path}`` dicts, or ``[]`` when the group has no mapping,
+    Supabase is unreachable, or every subtree is empty. A single failing
+    subtree is skipped rather than sinking the rest.
     """
-    l1_name = _GROUP_TO_L1_NAME.get(group, "")
-    if not l1_name:
+    l1_names = _GROUP_TO_L1_NAMES.get(group, [])
+    if not l1_names:
         return []
 
     endpoint = f"{url.rstrip('/')}/rest/v1/{EBAY_CATEGORIES_TABLE}"
-    params = {
-        "select": "category_id,full_path",
-        "leaf": "eq.true",
-        "full_path": f"like.{l1_name}%",
-        "limit": str(_LEAF_QUERY_LIMIT),
-    }
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
         "Accept": "application/json",
     }
-    try:
-        resp = requests.get(
-            endpoint, headers=headers, params=params, timeout=_READ_TIMEOUT
-        )
-        if resp.status_code != 200:
-            return []
-        return resp.json() or []
-    except Exception:
-        return []
+    candidates: list[dict] = []
+    for l1_name in l1_names:
+        params = {
+            "select": "category_id,full_path",
+            "leaf": "eq.true",
+            "full_path": f"like.{l1_name}%",
+            "limit": str(_LEAF_QUERY_LIMIT),
+        }
+        try:
+            resp = requests.get(
+                endpoint, headers=headers, params=params, timeout=_READ_TIMEOUT
+            )
+            if resp.status_code != 200:
+                continue
+            candidates.extend(resp.json() or [])
+        except Exception:
+            continue
+    return candidates
 
 
 def best_leaf_from_candidates(candidates: list[dict], product_type: str) -> str:
@@ -263,7 +285,6 @@ def best_leaf_from_candidates(candidates: list[dict], product_type: str) -> str:
     tokens = [t for t in re.split(r"\W+", product_type.lower()) if len(t) > 3]
     if not tokens:
         return ""
-    min_score = 1.0 / len(tokens)
     best_id = ""
     best_score = 0.0
     for row in candidates:
@@ -271,7 +292,9 @@ def best_leaf_from_candidates(candidates: list[dict], product_type: str) -> str:
         if score > best_score:
             best_score = score
             best_id = row["category_id"]
-    return best_id if best_score >= min_score else ""
+    # Any meaningful token appearing in the path is enough to prefer the leaf
+    # over the coarse L1 fallback; if nothing matched, keep the L1.
+    return best_id if best_score > 0.0 else ""
 
 
 def load_leaf_candidates_by_group(

@@ -100,6 +100,44 @@ class ExactPhraseSearchTests(unittest.TestCase):
         self.assertEqual(searches[0]["query"], '"Pair of brass candlesticks"')
 
 
+class SoldSearchUrlCategoryTests(unittest.TestCase):
+    """The stored 'View on eBay' URL is scoped to the leaf category (#329)."""
+
+    def test_url_includes_sacat_when_category_present(self):
+        from ebay_query import build_ebay_sold_search_url
+
+        url = build_ebay_sold_search_url("Corning Cornflower casserole", "262369")
+        self.assertIn("_sacat=262369", url)
+        self.assertIn("_nkw=Corning", url)
+        self.assertIn("LH_Sold=1", url)
+
+    def test_url_omits_sacat_when_category_blank_or_zero(self):
+        from ebay_query import build_ebay_sold_search_url
+
+        self.assertNotIn("_sacat", build_ebay_sold_search_url("x", ""))
+        # "0" is the sentinel for "no category filter" — never emit _sacat=0.
+        self.assertNotIn("_sacat", build_ebay_sold_search_url("x", "0"))
+        self.assertNotIn("_sacat", build_ebay_sold_search_url("x"))
+
+    def test_specific_tier_url_carries_leaf_but_broad_does_not(self):
+        searches = build_ebay_sold_searches(
+            {
+                "title": "Lot - 132",
+                "description": "Large lot of vintage Corning Cornflower casserole dishes",
+                "category": "Home & Kitchen",
+                "rawCategory": "Kitchenware",
+            },
+            leaf_category_id="262369",
+        )
+        specific = next(s for s in searches if s["kind"] == "specific")
+        self.assertIn("_sacat=262369", specific["url"])
+        # Broad/category fallbacks stay unscoped so they can recover recall —
+        # mirroring the filter behaviour, the URL must match.
+        for s in searches:
+            if s["kind"] != "specific":
+                self.assertNotIn("_sacat", s["url"])
+
+
 class Phase1QueryFilterTests(unittest.TestCase):
     """Phase 1 structured /v1/scrape filters attached to the search funnel."""
 
