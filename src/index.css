@@ -2039,6 +2039,12 @@ body {
 }
 .nav-drawer-item:hover { background: var(--chip-bg); }
 .nav-drawer-icon { width: 20px; text-align: center; flex-shrink: 0; }
+/* Trivia reuses the shared ArsenalTrivia component; in the drawer it's a
+   full-width labeled row (its popover still anchors below, relative to this). */
+.nav-drawer-trivia { display: block; }
+/* The header popover is right-anchored + up to 320px wide; inside the narrow
+   drawer that overflows the left edge, so span the drawer width instead. */
+.nav-drawer-trivia .trivia-popover { left: 0; right: 0; width: auto; }
 .nav-drawer-new-badge {
   margin-left: auto;
   font-size: 0.7rem;

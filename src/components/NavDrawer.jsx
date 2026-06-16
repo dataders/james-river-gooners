@@ -71,10 +71,11 @@ export function NavDrawer({
               <span className="nav-drawer-icon" aria-hidden="true">✨</span> What's new
               {whatsNewUnseen && <span className="nav-drawer-new-badge">New</span>}
             </button>
-            <div className="nav-drawer-item nav-drawer-item--trivia">
-              <span className="nav-drawer-icon" aria-hidden="true">⚽</span>
-              <ArsenalTrivia />
-            </div>
+            <ArsenalTrivia
+              className="nav-drawer-item"
+              menuClassName="trivia-menu nav-drawer-trivia"
+              triggerContent={<><span className="nav-drawer-icon" aria-hidden="true">⚽</span> Arsenal trivia</>}
+            />
           </section>
 
           <hr className="nav-drawer-divider" />
