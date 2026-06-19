@@ -58,7 +58,7 @@ export async function fetchWithRetry(url, {
 /**
  * @param {string} url
  * @param {RetryOptions} [options]
- * @returns {Promise<any>}
+ * @returns {Promise<unknown>}
  */
 export async function fetchJsonWithRetry(url, options) {
   const resp = await fetchWithRetry(url, options)

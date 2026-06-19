@@ -10,6 +10,6 @@
     "functions": 97
   },
   "nocheckCeiling": 73,
-  "explicitAnyCeiling": 2,
-  "deadExportsCeiling": 9
+  "explicitAnyCeiling": 0,
+  "deadExportsCeiling": 0
 }

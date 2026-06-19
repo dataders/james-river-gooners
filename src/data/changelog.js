@@ -190,6 +190,3 @@ export const CHANGELOG = [
   },
 ]
 
-// Newest entry's date — handy for display; the unseen dot uses per-change ids
-// (see src/utils/whatsNew.js), not this.
-export const LATEST_CHANGELOG_DATE = CHANGELOG[0]?.date ?? ''

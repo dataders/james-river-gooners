@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { itemKey } from './itemKey.js'
 
-export const FAVORITES_COOKIE = 'gooners-favorites'
-export const FAVORITES_MAX_AGE_SECONDS = 31536000
+const FAVORITES_COOKIE = 'gooners-favorites'
+const FAVORITES_MAX_AGE_SECONDS = 31536000
 
 export function favoriteKey(item) {
   return itemKey(item)
