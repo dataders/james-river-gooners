@@ -205,7 +205,8 @@ jobs:
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-            --with 'duckdb==1.5.2' --with numpy --with pytest python -m pytest -q
+            --with 'duckdb==1.5.2' --with numpy --with 'pydantic-settings>=2,<3' \
+            --with pytest python -m pytest -q
 
   github-stats:
     name: GitHub-stats tests (pytest)

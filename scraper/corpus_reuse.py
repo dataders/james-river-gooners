@@ -26,20 +26,19 @@ RPC = "match_sold_listings_for_item"
 # stays in the lightweight comp-fetch env — no numpy / embedding stack needed.
 _SUPABASE_UA = "gooners-corpus-reuse/1.0 (+scraper)"
 
-# RFC #290 D3 (tighter reuse): need >= MIN_FRESH listings above MIN_SIM whose sale
-# is within MAX_AGE_DAYS to trust the corpus enough to skip the paid call.
-_MIN_FRESH = int(os.environ.get("GOONERS_CORPUS_MIN_FRESH", "3"))
-_MAX_AGE_DAYS = int(os.environ.get("GOONERS_CORPUS_MAX_AGE_DAYS", "60"))
-_MIN_SIM = float(os.environ.get("GOONERS_CORPUS_MIN_SIM", "0.85"))
-_HIGH_SIM = float(os.environ.get("GOONERS_SOLD_RERANK_HIGH_SIM", "0.85"))
-# How many corpus comps to keep per reused lot (mirrors the curated top-3).
-_MATCH_COUNT = int(os.environ.get("GOONERS_CORPUS_MATCH_COUNT", "5"))
-_KEEP = int(os.environ.get("GOONERS_CORPUS_KEEP", "3"))
+# RFC #290 D3 thresholds — internal quality parameters, not CI operator knobs.
+# Tune these in code (with tests), not at runtime via env vars.
+_MIN_FRESH = 3
+_MAX_AGE_DAYS = 60
+_MIN_SIM = 0.85
+_HIGH_SIM = 0.85
+_MATCH_COUNT = 5
+_KEEP = 3
 
 
 def corpus_first_enabled() -> bool:
     """Whether to try corpus-first reuse before spending the API (opt-in)."""
-    return os.environ.get("GOONERS_CORPUS_FIRST", "").strip() in {"1", "true", "True"}
+    return os.environ.get("GOONERS_CORPUS_FIRST", "").lower() in {"1", "true", "yes", "on"}
 
 
 def _parse_date(value) -> date | None:
