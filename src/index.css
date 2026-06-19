@@ -1576,7 +1576,7 @@ body {
    Signals "multiple photos" without requiring the full image set to be loaded. */
 .carousel-gallery-hint {
   position: absolute;
-  top: 7px;
+  bottom: 7px;
   right: 8px;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(2px);
