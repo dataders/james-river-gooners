@@ -27,19 +27,33 @@ permissions:
 jobs:
   rerank:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      # CPU-only torch wheel index: avoids downloading ~3 GB of CUDA packages
+      # that the GitHub-hosted runner can't use anyway, keeping the install
+      # under ~250 MB and well inside the runner's disk budget.
+      UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
     steps:
       - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v6
 
+      - name: Cache uv packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-embed-sold-cpu-${{ runner.os }}-${{ hashFiles('scraper/embed_sold_listings.py') }}
+          restore-keys: uv-embed-sold-cpu-${{ runner.os }}-
+
       - name: Cache HuggingFace models (Nomic)
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: huggingface-nomic-embed-v1.5
+          # Shared key with nomic-backfill.yml so the two jobs reuse the same
+          # cached model weights rather than each downloading 1 GB separately.
+          key: huggingface-clip-vit-b-32-nomic-embed-v1.5
 
       - name: Embed + re-rank the sold-listings corpus
         run: |
