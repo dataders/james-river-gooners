@@ -46,6 +46,7 @@ import os
 import random
 import sys
 from pathlib import Path
+from time import monotonic
 
 import telemetry
 from corpus_reuse import CorpusReuser, corpus_first_enabled
@@ -289,6 +290,12 @@ def fetch_direct(
         )
     )
     candidates = sorted(loaded, key=auction_end_sort_key)
+    print(
+        f"eBay comp fetch starting: {len(candidates)} lots loaded, "
+        f"{len(known_fresh)} already fresh"
+        + (f", budget cap {query_limit} queries" if cap_active else "")
+    )
+    _run_start = monotonic()
 
     # Leaf category scoping (Phase 2 inc 4, #329): pre-load eBay leaf
     # candidates for all distinct category groups in this run — one Supabase
@@ -341,6 +348,27 @@ def fetch_direct(
         if cap_active and summary["queries_attempted"] >= query_limit:
             break
         summary["items_attempted"] += 1
+        if summary["items_attempted"] % 100 == 0:
+            _elapsed = monotonic() - _run_start
+            _rate = summary["items_attempted"] / _elapsed * 60 if _elapsed > 0 else 0
+            print(
+                f"  … {summary['items_attempted']} items attempted, "
+                f"{summary['queries_attempted']} queries, {summary['matches']} matches, "
+                f"{summary['reused_items']} reused "
+                f"({_elapsed:.0f}s elapsed, {_rate:.0f} items/min)"
+            )
+            telemetry.capture(
+                "soldcomps_progress",
+                {
+                    "items_attempted": summary["items_attempted"],
+                    "queries_attempted": summary["queries_attempted"],
+                    "matches": summary["matches"],
+                    "reused_items": summary["reused_items"],
+                    "elapsed_seconds": round(_elapsed),
+                    "items_per_minute": round(_rate, 1),
+                    "provider_remaining": summary.get("provider_remaining"),
+                },
+            )
 
         # Corpus-first reuse: when the corpus already covers this lot, use those
         # comps and skip the paid API queries entirely (no-op unless enabled).
