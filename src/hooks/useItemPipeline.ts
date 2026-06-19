@@ -189,10 +189,13 @@ export function useItemPipeline({
   // Apply favorites filter only when active. When inactive, return the stable
   // decisionFilteredItems reference so downstream memos don't recalculate and
   // ItemGrid's scroll position is preserved across favorite toggles.
+  // For You sort excludes already-favorited items — the view is for discovery,
+  // not reviewing items you've already saved.
   const finalItems = useMemo(() => {
     if (showFavoritesOnly) return decisionFilteredItems.filter(isFavorite)
+    if (sort === 'foryou') return decisionFilteredItems.filter((item: Item) => !isFavorite(item))
     return decisionFilteredItems
-  }, [decisionFilteredItems, showFavoritesOnly, isFavorite])
+  }, [decisionFilteredItems, showFavoritesOnly, sort, isFavorite])
 
   // Count bids against loaded listings only — don't count seeded bids for
   // auctions not in the read model. Computed from filteredItems (respects
