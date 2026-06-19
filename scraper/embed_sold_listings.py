@@ -15,8 +15,8 @@ path (the two ~550 MB Nomic models load here, not in the scrape):
      ``embed_nomic.embed_items``. Each listing becomes a pseudo-item
      ``{id, title, description, images}`` so the encoding (fused text + thumbnail,
      ``search_document:`` prefix, mean-pool + renormalise) is identical to lots.
-     The text folds in the listing's title + condition + all the text in its
-     ``raw_json`` (per the D2 decision: embed more than the thumbnail). Incremental
+     The text folds in the listing's title + condition into the embedded text.
+     Incremental
      — only listings not yet embedded.
 
   2. **rerank** — for each active auction, call the ``match_sold_listings`` RPC
@@ -58,29 +58,22 @@ _HIGH_SIM = 0.85
 def listing_to_item(row: dict) -> dict:
     """Map a ``sold_listings`` row to an embed_nomic pseudo-item.
 
-    `description` folds the listing's condition and every non-URL string in its
-    `raw_json` (subtitle, condition, etc.) into the embedded text, so the vector
-    captures more than the title — per the D2 decision to embed the JSON text,
-    not just the thumbnail. The thumbnail is the lone image.
+    Uses only semantically useful normalized columns — condition is the one
+    meaningful text field beyond the title (the SoldComps API carries no
+    subtitle or item specifics). Avoids dumping raw_json into the embedding,
+    which pulled in seller names, feedback scores, shipping strings, and eBay
+    category breadcrumbs as noise.
+
+    Image: prefers the higher-resolution ``full_res_thumbnail_url`` when
+    available so the visual vector captures more detail.
     """
-    raw = row.get("raw_json") or {}
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except Exception:
-            raw = {}
-    text_bits = [row.get("condition") or ""]
-    if isinstance(raw, dict):
-        for value in raw.values():
-            if isinstance(value, str) and value and not value.startswith("http"):
-                text_bits.append(value)
-    description = " ".join(bit for bit in text_bits if bit).strip()[:2000]
-    thumbnail = row.get("thumbnail_url")
+    description = (row.get("condition") or "").strip()
+    image = row.get("full_res_thumbnail_url") or row.get("thumbnail_url") or ""
     return {
         "id": row["ebay_item_id"],
         "title": row.get("title") or "",
         "description": description,
-        "images": [thumbnail] if thumbnail else [],
+        "images": [image] if image else [],
     }
 
 
@@ -123,6 +116,21 @@ def _get_all(session, endpoint: str, headers: dict, params: dict) -> list[dict]:
         offset += READ_PAGE_SIZE
 
 
+def fetch_listings_by_ids(session, url: str, key: str, item_ids: list[str]) -> list[dict]:
+    """Fetch specific sold_listings rows by ebay_item_id (force-embed by ID)."""
+    base = url.rstrip("/")
+    rows = _get_all(
+        session,
+        f"{base}/rest/v1/{CORPUS_TABLE}",
+        _headers(key),
+        {
+            "select": "ebay_item_id,title,condition,thumbnail_url,full_res_thumbnail_url",
+            "ebay_item_id": f"in.({','.join(item_ids)})",
+        },
+    )
+    return [r for r in rows if r.get("ebay_item_id")]
+
+
 def fetch_unembedded_listings(session, url: str, key: str) -> list[dict]:
     """Return corpus rows that have no embedding yet (incremental)."""
     base = url.rstrip("/")
@@ -140,7 +148,7 @@ def fetch_unembedded_listings(session, url: str, key: str) -> list[dict]:
         session,
         f"{base}/rest/v1/{CORPUS_TABLE}",
         _headers(key),
-        {"select": "ebay_item_id,title,condition,thumbnail_url,raw_json"},
+        {"select": "ebay_item_id,title,condition,thumbnail_url,full_res_thumbnail_url"},
     )
     return [
         r for r in corpus if r.get("ebay_item_id") and r["ebay_item_id"] not in embedded
@@ -188,8 +196,24 @@ def upsert_listing_embeddings(
     return written
 
 
-def embed_corpus(session=None) -> int:
-    """Embed every not-yet-embedded corpus listing. Returns rows written."""
+# Max listings to embed per run. CPU runners take ~8-15 min per 500 (text + images).
+# Incremental: each run embeds the next GOONERS_SOLD_EMBED_LIMIT unembedded listings
+# and commits them; the next run skips what's already in sold_listing_embeddings.
+_EMBED_LIMIT = int(os.environ.get("GOONERS_SOLD_EMBED_LIMIT", "500"))
+# Sub-batch size for embed+upsert: commit to Supabase every N items so a preempted
+# runner preserves partial progress and the next run skips what's already committed.
+_EMBED_CHUNK = int(os.environ.get("GOONERS_SOLD_EMBED_CHUNK", "50"))
+
+
+def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:
+    """Embed corpus listings in small committed chunks.
+
+    If item_ids is given, embeds exactly those listings (force-mode, ignores the
+    incremental filter — useful for targeted re-embedding after cleanup).
+    Otherwise, fetches all unembedded listings, caps to _EMBED_LIMIT per run,
+    and processes in _EMBED_CHUNK sub-batches so a preempted runner preserves
+    partial progress.
+    """
     url, key = resolve_credentials()
     if not url or not key:
         print("[sold-embed] Supabase unconfigured — skipping")
@@ -199,21 +223,54 @@ def embed_corpus(session=None) -> int:
 
         session = requests.Session()
 
-    rows = fetch_unembedded_listings(session, url, key)
-    if not rows:
-        print("[sold-embed] no new listings to embed")
-        return 0
+    if item_ids:
+        rows = fetch_listings_by_ids(session, url, key, item_ids)
+        if not rows:
+            print(f"[sold-embed] none of the {len(item_ids)} requested IDs found in corpus")
+            return 0
+        print(f"[sold-embed] targeted: {len(rows)}/{len(item_ids)} listings fetched by ID")
+    else:
+        all_rows = fetch_unembedded_listings(session, url, key)
+        if not all_rows:
+            print("[sold-embed] no new listings to embed")
+            return 0
+        rows = all_rows[:_EMBED_LIMIT]
+        if len(all_rows) > _EMBED_LIMIT:
+            print(
+                f"[sold-embed] {len(all_rows)} unembedded — processing {_EMBED_LIMIT} "
+                f"this run (set GOONERS_SOLD_EMBED_LIMIT to change)"
+            )
+
+    n_with_images = sum(
+        1 for r in rows if r.get("full_res_thumbnail_url") or r.get("thumbnail_url")
+    )
+    print(f"[sold-embed] {len(rows)} to embed ({n_with_images} with images)")
 
     from embed_nomic import embed_items
 
-    items = [listing_to_item(r) for r in rows]
-    print(f"[sold-embed] embedding {len(items)} new sold listings...")
-    embeddings, ids, n_images_used = embed_items(items, session=session)
-    written = upsert_listing_embeddings(
-        embeddings, ids, n_images_used, url, key, session
-    )
-    print(f"[sold-embed] upserted {written} listing embeddings → {EMBEDDING_TABLE}")
-    return written
+    total = 0
+    for start in range(0, len(rows), _EMBED_CHUNK):
+        chunk = rows[start : start + _EMBED_CHUNK]
+        items = [listing_to_item(r) for r in chunk]
+        n_img = sum(1 for it in items if it.get("images"))
+        print(
+            f"[sold-embed] chunk {start // _EMBED_CHUNK + 1}/"
+            f"{(len(rows) + _EMBED_CHUNK - 1) // _EMBED_CHUNK}: "
+            f"{len(chunk)} listings ({n_img} with images)..."
+        )
+        embeddings, ids, n_images_used = embed_items(items, session=session)
+        written = upsert_listing_embeddings(
+            embeddings, ids, n_images_used, url, key, session
+        )
+        total += written
+        print(f"[sold-embed]   → committed {written} embeddings ({total} total so far)")
+
+    if not item_ids:
+        remaining = len(all_rows) - len(rows)
+        if remaining:
+            print(f"[sold-embed] {remaining} listings still unembedded — re-run to continue")
+    print(f"[sold-embed] done: {total} listing embeddings → {EMBEDDING_TABLE}")
+    return total
 
 
 def _utc_now_iso() -> str:
@@ -320,9 +377,14 @@ def main(argv=None) -> int:
         default="all",
         help="embed = generate listing embeddings; rerank = write visual comps; all = both (default).",
     )
+    parser.add_argument(
+        "--item-ids",
+        help="Comma-separated ebay_item_ids to embed (targeted mode — skips the unembedded-only filter).",
+    )
     args = parser.parse_args(argv or sys.argv[1:])
+    item_ids = [i.strip() for i in args.item_ids.split(",") if i.strip()] if args.item_ids else None
     if args.step in ("embed", "all"):
-        embed_corpus()
+        embed_corpus(item_ids=item_ids)
     if args.step in ("rerank", "all"):
         rerank_all_active()
     return 0

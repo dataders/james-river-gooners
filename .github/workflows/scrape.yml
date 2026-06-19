@@ -173,7 +173,7 @@ jobs:
               python ebay_comps.py fetch-direct \
                 --skip-attempted \
                 --queries-per-item 2 \
-                --monthly-budget "${GOONERS_EBAY_COMPS_MONTHLY_BUDGET:-5000}" \
+                --monthly-budget "${GOONERS_EBAY_COMPS_MONTHLY_BUDGET:-50000}" \
                 --limit "${GOONERS_EBAY_COMPS_LIMIT:-2000}"
           fi
 
