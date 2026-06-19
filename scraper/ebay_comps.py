@@ -138,7 +138,7 @@ from ebay_util import (
 
 DEFAULT_LIMIT = 50
 DEFAULT_STALE_HOURS = 7 * 24
-DEFAULT_MONTHLY_BUDGET = 5000
+DEFAULT_MONTHLY_BUDGET = 50000
 
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
