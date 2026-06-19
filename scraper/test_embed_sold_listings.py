@@ -5,31 +5,26 @@ import embed_sold_listings as esl
 
 
 class ListingToItemTest(unittest.TestCase):
-    def test_folds_condition_and_raw_json_text_into_description(self):
+    def test_uses_condition_as_description_image_from_thumbnail(self):
         row = {
             "ebay_item_id": "123456789012",
             "title": "Stickley Maple Ladder Back Chair",
             "condition": "Used",
             "thumbnail_url": "https://i.ebayimg.com/thumb.jpg",
+            # raw_json is ignored — only condition + image are used for clean embeddings
             "raw_json": {
-                "title": "Stickley Maple Ladder Back Chair",
                 "subtitle": "Early American primitive style",
-                "imageUrl": "https://i.ebayimg.com/full.jpg",  # URL — excluded
-                "soldPrice": 879.0,  # non-string — excluded
+                "soldPrice": 879.0,
             },
         }
         item = esl.listing_to_item(row)
         self.assertEqual(item["id"], "123456789012")
         self.assertEqual(item["title"], "Stickley Maple Ladder Back Chair")
         self.assertEqual(item["images"], ["https://i.ebayimg.com/thumb.jpg"])
-        # condition + the non-URL string values fold into the embedded text...
-        self.assertIn("Used", item["description"])
-        self.assertIn("Early American primitive style", item["description"])
-        # ...but URLs and non-strings do not.
-        self.assertNotIn("http", item["description"])
-        self.assertNotIn("879", item["description"])
+        self.assertEqual(item["description"], "Used")
+        self.assertNotIn("Early American primitive style", item["description"])
 
-    def test_handles_string_raw_json_and_missing_thumbnail(self):
+    def test_empty_condition_and_missing_thumbnail(self):
         row = {
             "ebay_item_id": "9",
             "title": "Oak Cabinet",
@@ -39,7 +34,16 @@ class ListingToItemTest(unittest.TestCase):
         }
         item = esl.listing_to_item(row)
         self.assertEqual(item["images"], [])  # no thumbnail -> text-only embed
-        self.assertIn("quarter sawn", item["description"])
+        self.assertEqual(item["description"], "")  # no condition -> empty
+
+    def test_prefers_full_res_thumbnail_url(self):
+        item = esl.listing_to_item({
+            "ebay_item_id": "5",
+            "title": "Chair",
+            "full_res_thumbnail_url": "https://i.ebayimg.com/full.jpg",
+            "thumbnail_url": "https://i.ebayimg.com/thumb.jpg",
+        })
+        self.assertEqual(item["images"], ["https://i.ebayimg.com/full.jpg"])
 
     def test_tolerates_absent_raw_json(self):
         item = esl.listing_to_item(
