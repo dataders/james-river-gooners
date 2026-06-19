@@ -252,6 +252,24 @@ class EmbeddingSettings(_Base):
             "Smaller batches keep each request under the PostgREST row cap on busy instances."
         ),
     )
+    sold_embed_limit: int = Field(
+        default=500,
+        validation_alias="GOONERS_SOLD_EMBED_LIMIT",
+        ge=1,
+        description=(
+            "Max sold-listings to embed per run (embed_sold_listings.py). "
+            "CPU runners take ~8-15 min per 500; incremental runs pick up where the last left off."
+        ),
+    )
+    sold_embed_chunk: int = Field(
+        default=50,
+        validation_alias="GOONERS_SOLD_EMBED_CHUNK",
+        ge=1,
+        description=(
+            "Sub-batch size for embed+upsert in embed_sold_listings.py. "
+            "Commits to Supabase every N items so a preempted runner preserves partial progress."
+        ),
+    )
 
 
 class CannonsCompsSettings(_Base):
