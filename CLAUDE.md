@@ -59,6 +59,20 @@ GOONERS_ENRICHMENT=1 uv run --with anthropic --with pillow enrich.py "<safeId>" 
 uv run --with anthropic --with pillow enrich.py --enrich 1 "<safeId>"   # same, gate via flag instead of env var (bare --enrich = 1; --enrich 0 = off)
 ```
 
+## Workflow Dispatch Quick Reference
+
+Use `gh workflow run <file> --repo dataders/james-river-gooners [--ref <branch>]`. Scraper secrets live in the Actions environment — not in the Claude session.
+
+| Goal | Workflow | Key inputs / toggles |
+|---|---|---|
+| Scrape all sources + refresh everything | `scrape.yml` | `source` (maxanet/hibid/rasmus/all), `enrichment` toggle |
+| Refresh eBay comps only | `ebay-comps.yml` | `monthly_budget`, `limit`, `skip_categories` |
+| LLM enrichment backfill (batch, 50% cost) | `enrich-backfill.yml` | auction safe IDs |
+| Rebuild Cannon's comps (pgvector) | `cannons-comps.yml` | — |
+| Re-embed active listings (Nomic text+vision) | `nomic-backfill.yml` | — |
+| Re-embed sold-listings corpus | `embed-sold-listings.yml` | — |
+| Deploy frontend to GitHub Pages | `deploy.yml` | auto-triggered on `main`; manual to force |
+
 ## UI Changes — Screenshot Before Merging
 
 For any change that affects the visual layout (CSS, component structure, new controls), **take a Playwright screenshot of the affected area at mobile (375×667) and desktop (1280×800) viewports** using the dev server, send it to the user, and **wait for explicit approval before merging**. Use `npm run dev` + Playwright to capture the screenshot — do not rely on CI or the deployed site. The screenshot shows what the change actually looks like, not what you think it looks like.
@@ -83,6 +97,7 @@ For any change that affects the visual layout (CSS, component structure, new con
 - The browser reads JSON (Supabase rows in prod, NDJSON in the offline fallback), so numeric fields (`lotNumber`, `totalBids`, `currentBid`) arrive as plain JS numbers — no Arrow/BigInt conversion needed. (The old `parquet-wasm` loader was removed in #52.)
 - Network reads from the read model go through `src/utils/net.js` (`fetchWithRetry` / `fetchJsonWithRetry` / `fetchTextWithRetry`): retries 5xx + network errors with exponential backoff, returns 4xx as-is so the comps loader can treat 404 as "no comps yet"
 - A top-level `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx`) keeps a render error in one item/component from blanking the whole page
+- **Offline fallback must stay intact.** The Supabase-backed prod path and the NDJSON static fallback must stay in sync — every feature that moves data to Supabase must still no-op gracefully when `isSupabaseConfigured` is false, so the static site and local dev work without credentials
 
 ## Environment variables
 
@@ -119,7 +134,11 @@ Two hard rules: anything prefixed **`VITE_`** is inlined into the public browser
 | `POSTHOG_PERSONAL_KEY` | PostHog personal/admin key for analytics export (`scraper/posthog_export.py`, admin-dashboard). | ❌ |
 | `GITHUB_TOKEN` | Auto-provided by Actions; not a stored secret. | n/a |
 
-Runtime **feature toggles** (not secrets, opt-in behavior) live alongside the commands above: `GOONERS_ENRICHMENT`, `GOONERS_NOMIC_EMBEDDINGS`, `GOONERS_WAREHOUSE`, `GOONERS_MOTHERDUCK_SNAPSHOTS`, `GOONERS_EMBED_DEVICE`, and the various `GOONERS_ENRICHMENT_*` knobs — see the Architecture notes and `## Commands`.
+Runtime **feature toggles** (not secrets, opt-in behavior) live alongside the commands above: `GOONERS_ENRICHMENT`, `GOONERS_NOMIC_EMBEDDINGS`, `GOONERS_WAREHOUSE`, `GOONERS_MOTHERDUCK_SNAPSHOTS`, `GOONERS_EMBED_DEVICE`, and the various `GOONERS_ENRICHMENT_*` knobs — see the Architecture notes and `## Commands`. eBay-comps-specific toggles used in `ebay-comps.yml` / `scrape.yml`: `GOONERS_EBAY_COMPS_MONTHLY_BUDGET` (spend cap in USD), `GOONERS_EBAY_COMPS_LIMIT` (max lots per run), `GOONERS_EBAY_COMPS_SKIP_CATEGORIES` (comma-separated category names to skip), `GOONERS_SOLD_LISTINGS_CORPUS` (which archive corpus to use for comp ranking), `GOONERS_CORPUS_FIRST` (rank corpus matches before live eBay results).
+
+## Migration conventions
+
+Migrations live in `supabase/migrations/` named `NNNN_description.sql` (zero-padded sequential integer, snake_case description). Always **additive** in the forward direction — never drop a column, table, or policy in a migration without a coordinated frontend deploy that has already stopped reading it. Apply early (Supabase MCP `apply_migration`) — new tables are invisible to the old frontend, so applying before merge is safe and lets you populate data before the UI ships.
 
 ## Rolling out data-backed migrations
 
@@ -143,6 +162,8 @@ CI enforces **ratchets** — baselines that may only move the good direction, so
 - **Ruff (`ruff.toml`, every `*-lint` / package CI job)** — beyond ruff's defaults (E4/E7/E9 + F) the shared root config `extend-select`s **`B`** (flake8-bugbear), **`UP`** (pyupgrade, `target-version = py311`), **`I`** (isort import ordering), and **`C4`** (comprehension cleanups). `ruff check .` from any package dir discovers it. All seven Python packages are ruff-clean at this rule set.
 - **`npm run advisors:ratchet`** (`scripts/supabase-advisors-ratchet.mjs`, `supabase-advisors.yml` — scheduled + migration PRs) — fails if the live project gains a NEW Supabase security/perf advisor finding vs `scripts/supabase-advisors-baseline.json` (keyed on each lint's `cache_key`, so it catches a regression even behind an unrelated fix). Needs `SUPABASE_ACCESS_TOKEN`; skips cleanly without it.
 - The **usability benchmark** (`tests/usability`, `USABILITY_GATE=85`) is the same idea for UX.
+
+**TypeScript direction:** prefer `.ts`/`.tsx` for all new source files — the ratchets enforce the typed-file floor and `@ts-nocheck` ceiling, so lean into TypeScript rather than around it. `checkJs` is on, meaning every `.js` is type-checked too; new business logic belongs in `.ts`. Beat a ratchet baseline? Commit the new number in the same PR.
 
 ## Session Integrations (what Claude can do without asking)
 
