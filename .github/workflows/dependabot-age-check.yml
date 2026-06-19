@@ -1,0 +1,120 @@
+name: Dependabot Age Check
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  age-check:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Check minimum release age
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          MIN_AGE_DAYS: "7"
+        run: |
+          python3 << 'EOF'
+          import re, json, sys, os
+          from datetime import datetime, timezone
+          import urllib.request
+
+          title = os.environ["PR_TITLE"]
+          body = os.environ["PR_BODY"]
+          branch = os.environ["PR_HEAD_REF"]
+          min_age = int(os.environ["MIN_AGE_DAYS"])
+
+          # GitHub Actions use tags/SHAs, not semver releases from a registry
+          if branch.startswith("dependabot/github_actions/"):
+              print("GitHub Actions bump — age check not applicable, skipping.")
+              sys.exit(0)
+
+          if "npm_and_yarn" in branch:
+              ecosystem = "npm"
+          elif "/pip/" in branch:
+              ecosystem = "pip"
+          else:
+              print(f"Unknown ecosystem for branch {branch!r} — skipping.")
+              sys.exit(0)
+
+          # Single-package title: "bump js-yaml from 4.1.1 to 4.2.0"
+          bumps = re.findall(
+              r"\bbump\s+`?([^\s`]+)`?\s+from\s+\S+\s+to\s+([^\s,]+)",
+              title, re.IGNORECASE
+          )
+          # Group PR body: "Updates `js-yaml` from 4.1.1 to 4.2.0"
+          if not bumps:
+              bumps = re.findall(
+                  r"\bUpdates?\s+`([^`]+)`\s+from\s+\S+\s+to\s+([^\s\n,]+)",
+                  body, re.IGNORECASE
+              )
+
+          if not bumps:
+              print(f"Could not parse package bumps from PR — skipping age check.")
+              sys.exit(0)
+
+          def get_npm_publish_time(pkg, ver):
+              url = f"https://registry.npmjs.org/{pkg}"
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as r:
+                      data = json.loads(r.read())
+                  ts = data.get("time", {}).get(ver)
+                  return datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else None
+              except Exception as e:
+                  print(f"  Warning: npm registry error for {pkg}: {e}")
+                  return None
+
+          def get_pypi_publish_time(pkg, ver):
+              url = f"https://pypi.org/pypi/{pkg}/{ver}/json"
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as r:
+                      data = json.loads(r.read())
+                  urls = data.get("urls", [])
+                  if not urls:
+                      return None
+                  ts = urls[0].get("upload_time_iso_8601") or urls[0].get("upload_time")
+                  return datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else None
+              except Exception as e:
+                  print(f"  Warning: PyPI error for {pkg}: {e}")
+                  return None
+
+          now = datetime.now(timezone.utc)
+          failures = []
+
+          for pkg, ver in bumps:
+              pkg = pkg.strip()
+              ver = ver.strip().rstrip(".,;")
+              print(f"Checking {ecosystem}:{pkg}@{ver}")
+
+              publish_time = (
+                  get_npm_publish_time(pkg, ver)
+                  if ecosystem == "npm"
+                  else get_pypi_publish_time(pkg, ver)
+              )
+
+              if publish_time is None:
+                  print(f"  Could not determine publish time — skipping {pkg}")
+                  continue
+
+              age_days = (now - publish_time).days
+              if age_days < min_age:
+                  print(f"  FAIL: published {publish_time.date()} ({age_days}d ago, minimum {min_age}d)")
+                  failures.append(f"{pkg}@{ver} ({age_days}d old, minimum {min_age}d)")
+              else:
+                  print(f"  PASS: published {publish_time.date()} ({age_days}d ago)")
+
+          if failures:
+              print("\nAge check FAILED — too new to trust:")
+              for f in failures:
+                  print(f"  - {f}")
+              print(f"\nMerge after the package(s) have been public for {min_age}+ days.")
+              sys.exit(1)
+
+          print(f"\nAll packages pass the {min_age}-day minimum age check.")
+          EOF
