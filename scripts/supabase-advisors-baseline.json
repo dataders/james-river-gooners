@@ -43,6 +43,8 @@
     "unindexed_foreign_keys_public_cannons_comp_snapshots_cannons_comp_snapshots_lot_fkey",
     "unused_index_public_comp_quality_eval_comp_quality_eval_lot",
     "unused_index_public_comp_quality_eval_comp_quality_eval_run",
-    "unused_index_public_eval_embeddings_eval_embeddings_hnsw"
+    "unused_index_public_eval_embeddings_eval_embeddings_hnsw",
+    "unused_index_public_ebay_categories_idx_ebay_categories_leaf",
+    "unused_index_public_sold_listings_sold_listings_epid"
   ]
 }
