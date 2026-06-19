@@ -2893,7 +2893,15 @@ body {
   justify-content: center;
   z-index: 2;
   padding: 0;
-  transition: background 0.15s;
+  /* Hidden by default; shown via CSS :hover so the button stays in the DOM
+     and never detaches between Playwright retry attempts. */
+  opacity: 0;
+  pointer-events: none;
+  transition: background 0.15s, opacity 0.1s;
+}
+.item-image:hover .card-carousel-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 .card-carousel-prev { left: 6px; }
 .card-carousel-next { right: 6px; }
