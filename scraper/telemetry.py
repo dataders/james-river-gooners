@@ -23,6 +23,8 @@ from __future__ import annotations
 import atexit
 import os
 
+from config import TelemetrySettings as _TelCfg
+
 # These are infrastructure events, not user analytics, so they share one
 # constant identity and never create a person profile.
 _DISTINCT_ID = "gooners-scraper"
@@ -33,7 +35,8 @@ _init_attempted = False
 
 
 def _api_key() -> str:
-    return (os.environ.get("GOONERS_POSTHOG_KEY") or "").strip()
+    from secrets import posthog_key  # scraper/secrets.py
+    return posthog_key() or ""
 
 
 def is_telemetry_configured() -> bool:
@@ -57,7 +60,7 @@ def _get_client():
     try:
         _client = Posthog(
             project_api_key=key,
-            host=(os.environ.get("GOONERS_POSTHOG_HOST") or _DEFAULT_HOST).strip(),
+            host=_TelCfg().posthog_host or _DEFAULT_HOST,
         )
     except Exception:
         _client = None

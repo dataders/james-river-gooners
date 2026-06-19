@@ -34,12 +34,12 @@ CLI::
 
 import base64
 import json
-import os
 import re
 import secrets
 import sys
 
 import requests
+from config import EbayCompsSettings as _CfgEbay
 
 _EBAY_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
 _EBAY_TREE_URL = "https://api.ebay.com/commerce/taxonomy/v1/category_tree/0"
@@ -196,11 +196,7 @@ def upsert_categories(
 
 def leaf_categories_enabled() -> bool:
     """Whether to use Supabase leaf-level categoryIds (opt-in, default off)."""
-    return os.environ.get("GOONERS_EBAY_LEAF_CATEGORIES", "").strip() in {
-        "1",
-        "true",
-        "True",
-    }
+    return _CfgEbay().leaf_categories
 
 
 def _score_path(full_path: str, product_type: str) -> float:

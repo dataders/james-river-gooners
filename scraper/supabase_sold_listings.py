@@ -18,8 +18,9 @@ is validated — the same posture as enrichment/Nomic embeddings.
 """
 
 import json
-import os
 from functools import partial
+
+from config import EbayCompsSettings as _CfgEbay
 
 # Reuse the comp sink's credential resolution, JSON coercion, and retry loop so
 # the two sinks stay byte-for-byte consistent on PostgREST mechanics.
@@ -80,11 +81,7 @@ SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json", *_RAW_JSON_C
 
 def sold_listings_corpus_enabled() -> bool:
     """Whether to capture + persist the raw sold-listings corpus (opt-in)."""
-    return os.environ.get("GOONERS_SOLD_LISTINGS_CORPUS", "").strip() in {
-        "1",
-        "true",
-        "True",
-    }
+    return _CfgEbay().sold_listings_corpus
 
 
 def build_sold_listing_rows(records: list[dict]) -> list[dict]:

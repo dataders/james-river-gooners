@@ -14,10 +14,10 @@ default. Thresholds (RFC D3, env-tunable): ``MIN_FRESH=3``, ``MAX_AGE_DAYS=60``,
 """
 
 import json
-import os
 from datetime import UTC, date, datetime
 from functools import partial
 
+from config import EbayCompsSettings as _CfgEbay
 from supabase_comps import WRITE_TIMEOUT, _request_with_retry, resolve_credentials
 
 RPC = "match_sold_listings_for_item"
@@ -38,7 +38,7 @@ _KEEP = 3
 
 def corpus_first_enabled() -> bool:
     """Whether to try corpus-first reuse before spending the API (opt-in)."""
-    return os.environ.get("GOONERS_CORPUS_FIRST", "").lower() in {"1", "true", "yes", "on"}
+    return _CfgEbay().corpus_first
 
 
 def _parse_date(value) -> date | None:

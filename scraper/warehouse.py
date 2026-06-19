@@ -17,6 +17,8 @@ import os
 import secrets
 from abc import ABC, abstractmethod
 
+from config import WarehouseSettings as _CfgWarehouse
+
 DEFAULT_DATABASE = "md:"
 
 
@@ -78,7 +80,7 @@ def reset_cached_connection(database: str | None = None) -> None:
 
 def warehouse_kind() -> str:
     """Which warehouse implementation to use (``GOONERS_WAREHOUSE``)."""
-    return os.environ.get("GOONERS_WAREHOUSE", "motherduck").strip().lower()
+    return _CfgWarehouse().warehouse
 
 
 class SnapshotSink(ABC):

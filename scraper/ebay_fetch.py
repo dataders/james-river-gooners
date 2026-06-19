@@ -642,12 +642,7 @@ def fetch_sold_matches(
 
     if response.status_code in {403, 429, 503}:
         browser_warning = ""
-        if os.environ.get("GOONERS_EBAY_BROWSER_FALLBACK", "1").lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
+        if _EbayCfg().browser_fallback:
             result = browser_sold_matches(
                 search, max_matches=max_matches, browser_runner=browser_runner
             )
