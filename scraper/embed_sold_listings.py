@@ -267,9 +267,10 @@ def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:
         total += written
         print(f"[sold-embed]   → committed {written} embeddings ({total} total so far)")
 
-    remaining = len(all_rows) - len(rows)
-    if remaining:
-        print(f"[sold-embed] {remaining} listings still unembedded — re-run to continue")
+    if not item_ids:
+        remaining = len(all_rows) - len(rows)
+        if remaining:
+            print(f"[sold-embed] {remaining} listings still unembedded — re-run to continue")
     print(f"[sold-embed] done: {total} listing embeddings → {EMBEDDING_TABLE}")
     return total
 
