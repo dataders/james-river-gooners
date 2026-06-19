@@ -6,6 +6,7 @@
 #     "beautifulsoup4",
 #     "pyarrow",
 #     "pyyaml",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """
@@ -49,6 +50,7 @@ from pathlib import Path
 from time import monotonic
 
 import telemetry
+from config import EbayCompsSettings as _CfgEbay
 from corpus_reuse import CorpusReuser, corpus_first_enabled
 
 # Apify backend — re-export for external callers and expose via the CLI.
@@ -508,6 +510,7 @@ def fetch_direct(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    _cfg = _CfgEbay()
     parser = argparse.ArgumentParser(
         description="Fetch eBay sold comps into the static read model"
     )
@@ -522,27 +525,24 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--limit",
         type=int,
-        default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT)),
+        default=_cfg.limit,
+        help=f"Max lots to fetch comps for (env: GOONERS_EBAY_COMPS_LIMIT, default {_cfg.limit}).",
     )
     fetch_parser.add_argument("--queries-per-item", type=int, default=3)
     fetch_parser.add_argument("--max-matches", type=int, default=3)
     fetch_parser.add_argument(
         "--max-queries",
         type=int,
-        default=int(os.environ.get("GOONERS_EBAY_COMPS_MAX_QUERIES", "0")),
-        help="Hard cap on SoldComps requests this run (1 query = 1 request). "
-        "0 disables this per-run cap; the monthly budget still applies.",
+        default=_cfg.max_queries,
+        help=f"Hard cap on SoldComps requests this run (0 = unlimited; monthly budget still applies). "
+        f"env: GOONERS_EBAY_COMPS_MAX_QUERIES, default {_cfg.max_queries}.",
     )
     fetch_parser.add_argument(
         "--monthly-budget",
         type=int,
-        default=int(
-            os.environ.get(
-                "GOONERS_EBAY_COMPS_MONTHLY_BUDGET", str(DEFAULT_MONTHLY_BUDGET)
-            )
-        ),
-        help="Shared monthly request ceiling across all runs (derived from the "
-        "read model). 0 disables it.",
+        default=_cfg.monthly_budget,
+        help=f"Shared monthly request ceiling across all runs (0 = off). "
+        f"env: GOONERS_EBAY_COMPS_MONTHLY_BUDGET, default {_cfg.monthly_budget}.",
     )
     fetch_parser.add_argument(
         "--no-daily-pacing",
@@ -560,10 +560,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument("--auction-safe-id", default=None)
     fetch_parser.add_argument(
         "--skip-categories",
-        default=os.environ.get("GOONERS_EBAY_COMPS_SKIP_CATEGORIES", ""),
+        default=_cfg.skip_categories,
         help="Comma-separated broad category groups to skip entirely "
-        "(e.g. 'Collectibles,Jewelry & Watches,Coins & Currency,China & Glass'). "
-        "Also reads GOONERS_EBAY_COMPS_SKIP_CATEGORIES env var.",
+        "(e.g. 'Collectibles,Jewelry & Watches'). "
+        "env: GOONERS_EBAY_COMPS_SKIP_CATEGORIES.",
     )
     fetch_parser.add_argument("--include-archived", action="store_true")
     fetch_parser.add_argument(
@@ -576,9 +576,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--corpus-first",
         action="store_true",
-        help="Before spending the API on a lot, reuse the sold-listings corpus "
-        "when it already covers the lot with fresh, similar listings (#290 inc 3). "
-        "Also reads GOONERS_CORPUS_FIRST=1.",
+        default=_cfg.corpus_first,
+        help=f"Reuse the sold-listings corpus when it already covers a lot, "
+        f"skipping the paid SoldComps API call. "
+        f"env: GOONERS_CORPUS_FIRST, default {_cfg.corpus_first}.",
     )
     fetch_parser.add_argument("--dry-run", action="store_true")
     fetch_parser.add_argument(
@@ -589,10 +590,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--provider-min-remaining",
         type=int,
-        default=int(os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"),
-        help="Stop the run when the SoldComps provider's reported remaining "
-        "quota (its X-Usage-* response header) reaches this floor. The "
-        "authoritative meter, independent of the comp ledger.",
+        default=_cfg.soldcomps_min_remaining,
+        help=f"Stop the run when the SoldComps provider's reported remaining "
+        f"quota (its X-Usage-* response header) reaches this floor. "
+        f"env: GOONERS_SOLDCOMPS_MIN_REMAINING, default {_cfg.soldcomps_min_remaining}.",
     )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
 
@@ -607,8 +608,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apify_parser.add_argument(
         "--max-listings-per-search",
         type=int,
-        default=int(os.environ.get("GOONERS_APIFY_MAX_LISTINGS", "10")),
-        help="Results to request from Apify per search query (more = higher cost).",
+        default=_cfg.apify_max_listings,
+        help=f"Results to request from Apify per search query (more = higher cost). "
+        f"env: GOONERS_APIFY_MAX_LISTINGS, default {_cfg.apify_max_listings}.",
     )
     apify_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
     apify_parser.add_argument(
@@ -618,7 +620,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     apify_parser.add_argument(
         "--skip-categories",
-        default=os.environ.get("GOONERS_EBAY_COMPS_SKIP_CATEGORIES", ""),
+        default=_cfg.skip_categories,
     )
     apify_parser.add_argument("--include-archived", action="store_true")
     apify_parser.add_argument("--auction-safe-id", default=None)
@@ -631,10 +633,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apify_parser.add_argument(
         "--concurrency",
         type=int,
-        default=int(
-            os.environ.get("GOONERS_APIFY_CONCURRENCY", str(APIFY_CONCURRENCY))
-        ),
-        help="Max parallel Apify actor runs.",
+        default=_cfg.apify_concurrency,
+        help=f"Max parallel Apify actor runs. "
+        f"env: GOONERS_APIFY_CONCURRENCY, default {_cfg.apify_concurrency}.",
     )
     apify_parser.add_argument(
         "--api-key",

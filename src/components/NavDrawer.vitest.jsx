@@ -15,6 +15,7 @@ function baseProps(over = {}) {
     onTutorial: vi.fn(),
     onWhatsNew: vi.fn(),
     whatsNewUnseen: false,
+    onFeedback: vi.fn(),
     theme: 'light',
     onToggleTheme: vi.fn(),
     auth: loggedOutAuth,
@@ -68,6 +69,14 @@ describe('NavDrawer', () => {
     rerender(<NavDrawer {...baseProps({ onClose: p.onClose })} />)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(p.onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('Send feedback fires onFeedback and closes the drawer', () => {
+    const p = baseProps()
+    render(<NavDrawer {...p} />)
+    fireEvent.click(screen.getByRole('button', { name: /send feedback/i }))
+    expect(p.onFeedback).toHaveBeenCalledOnce()
+    expect(p.onClose).toHaveBeenCalledOnce()
   })
 
   it("What's new shows the New badge only when unseen", () => {

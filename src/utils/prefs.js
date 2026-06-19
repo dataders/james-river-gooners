@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 export const STORAGE_KEY = 'gooners-preferences'
 
 // Normalized category groups hidden out of the box. These are noise for this
@@ -9,6 +9,31 @@ export const STORAGE_KEY = 'gooners-preferences'
 // "Basketball Trading Cards", …) that all normalize to the Firearms group.
 export const DEFAULT_EXCLUDED_GROUPS = ['Firearms', 'Vehicles']
 
+/**
+ * @typedef {{
+ *   includedCategories: string[],
+ *   excludedCategories: string[],
+ *   excludedGroups: string[],
+ *   searchQuery: string,
+ *   minPrice: number | null,
+ *   maxPrice: number | null,
+ *   minBids: number | null,
+ *   maxBids: number | null,
+ *   minBidders: number | null,
+ *   maxBidders: number | null,
+ *   minHours: number | null,
+ *   maxHours: number | null,
+ *   minProfit: number | null,
+ *   localOnly: boolean,
+ *   hasComp: boolean,
+ *   hasCannonsComp: boolean,
+ *   sort: string,
+ *   viewMode: string,
+ *   margin: number,
+ * }} Prefs
+ */
+
+/** @type {Prefs} */
 export const DEFAULT_PREFS = {
   includedCategories: [],
   excludedCategories: [],
@@ -35,6 +60,7 @@ export const DEFAULT_PREFS = {
   margin: 30,
 }
 
+/** @type {ReadonlyArray<keyof Prefs>} */
 export const PERSISTED_KEYS = [
   'includedCategories',
   'excludedCategories',
@@ -61,6 +87,7 @@ export const PERSISTED_KEYS = [
 // so it silently hides the entire grid. It's never a useful filter, and because
 // maxHours persists to localStorage and the maxHrs URL param, a stray 0 stays
 // stuck across reloads. Normalize it back to null ("no upper bound").
+/** @param {Prefs} prefs */
 export function sanitizePrefs(prefs) {
   if (prefs.maxHours != null && !(prefs.maxHours > 0)) {
     return { ...prefs, maxHours: null }
@@ -71,12 +98,9 @@ export function sanitizePrefs(prefs) {
 // Project a full prefs object down to just the persisted slice — the exact
 // shape that round-trips through localStorage and the cloud `filter_preferences`
 // row. searchQuery and other non-persisted fields are dropped.
+/** @param {Prefs} prefs */
 export function pickPersistedPrefs(prefs) {
-  const out = {}
-  for (const key of PERSISTED_KEYS) {
-    out[key] = prefs[key]
-  }
-  return out
+  return /** @type {Prefs} */ (Object.fromEntries(PERSISTED_KEYS.map(k => [k, prefs[k]])))
 }
 
 // Normalize an arbitrary (e.g. cloud-loaded, possibly stale-schema) prefs blob
@@ -84,10 +108,13 @@ export function pickPersistedPrefs(prefs) {
 // are dropped, and sanitizePrefs strips a stuck maxHours. Used when applying a
 // cloud preferences row so a new field added since the row was written takes
 // its default rather than going undefined.
+/** @param {Partial<Prefs> | null | undefined} incoming */
 export function normalizePersistedPrefs(incoming) {
   const merged = { ...DEFAULT_PREFS }
-  for (const key of PERSISTED_KEYS) {
-    if (incoming && incoming[key] !== undefined) merged[key] = incoming[key]
+  if (incoming) {
+    Object.assign(merged, Object.fromEntries(
+      PERSISTED_KEYS.filter(k => incoming[k] !== undefined).map(k => [k, incoming[k]])
+    ))
   }
   return pickPersistedPrefs(sanitizePrefs(merged))
 }
@@ -104,13 +131,10 @@ export function loadPrefs() {
   return { ...DEFAULT_PREFS }
 }
 
+/** @param {Prefs} prefs */
 export function savePrefs(prefs) {
   try {
-    const toSave = {}
-    for (const key of PERSISTED_KEYS) {
-      toSave[key] = prefs[key]
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(PERSISTED_KEYS.map(k => [k, prefs[k]]))))
   } catch {
     // ignore
   }

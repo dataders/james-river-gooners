@@ -49,7 +49,7 @@ export function detailLabel(item) {
 // array of non-empty strings. The scraper stores these as a JSON string ("" when
 // empty) so the Parquet column stays a uniform string; the browser parses them
 // here. Returns [] on anything unparseable.
-export function parseStringList(raw) {
+function parseStringList(raw) {
   const s = (raw || '').trim()
   if (!s) return []
   let parsed
@@ -67,7 +67,7 @@ export function parseStringList(raw) {
 // own {brand, modelOrSku, productType, searchQuery}; we derive a `label`
 // ("Brand Model" or the product type) and keep `searchQuery` so the UI can offer
 // a per-product eBay search. Entries with nothing identifiable are dropped.
-export function parseSecondaryItems(raw) {
+function parseSecondaryItems(raw) {
   const s = (raw || '').trim()
   if (!s) return []
   let parsed

@@ -32,7 +32,6 @@ einops) plus requests.
 
 import argparse
 import json
-import os
 import sys
 from datetime import UTC, datetime
 from functools import partial
@@ -48,13 +47,12 @@ EMBEDDING_TABLE = "sold_listing_embeddings"
 CORPUS_TABLE = "sold_listings"
 READ_PAGE_SIZE = 1000
 
-# Visual-match thresholds for the re-rank writeback (env-tunable). match_count
-# mirrors the curated comps' top-3; min_sim is the quality floor for a listing to
-# be shown as a visually-confident comp.
-_RERANK_MATCH_COUNT = int(os.environ.get("GOONERS_SOLD_RERANK_COUNT", "3"))
-_RERANK_MIN_SIM = float(os.environ.get("GOONERS_SOLD_RERANK_MIN_SIM", "0.80"))
-# A listing this similar reads as a "high"-confidence visual match (vs medium).
-_HIGH_SIM = float(os.environ.get("GOONERS_SOLD_RERANK_HIGH_SIM", "0.85"))
+# Visual-match thresholds for the re-rank writeback. match_count mirrors the
+# curated comps' top-3; min_sim is the quality floor for a visually-confident comp.
+# Internal tuning parameters — adjust in code with tests, not at runtime.
+_RERANK_MATCH_COUNT = 3
+_RERANK_MIN_SIM = 0.80
+_HIGH_SIM = 0.85
 
 
 def listing_to_item(row: dict) -> dict:

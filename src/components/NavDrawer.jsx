@@ -6,6 +6,7 @@ import { ArsenalTrivia } from './ArsenalTrivia.jsx'
 export function NavDrawer({
   open, onClose,
   onImageSearch, onSwipe, onTutorial, onWhatsNew, whatsNewUnseen,
+  onFeedback,
   theme, onToggleTheme,
   auth, cannonBids, onSignInClick, onCannonLinkClick,
 }) {
@@ -76,6 +77,9 @@ export function NavDrawer({
               menuClassName="trivia-menu nav-drawer-trivia"
               triggerContent={<><span className="nav-drawer-icon" aria-hidden="true">⚽</span> Arsenal trivia</>}
             />
+            <button type="button" className="nav-drawer-item" onClick={act(onFeedback)}>
+              <span className="nav-drawer-icon" aria-hidden="true">✉</span> Send feedback
+            </button>
           </section>
 
           <hr className="nav-drawer-divider" />

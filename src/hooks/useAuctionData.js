@@ -1,43 +1,17 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { itemKey } from '../utils/itemKey'
-import { normalizeManifest } from '../utils/manifest'
 import { isPastDeadline } from '../utils/dates'
 import { syncUrlParam, readListParam, URL_PARAMS } from '../utils/urlState'
-import { fetchJsonWithRetry, fetchTextWithRetry } from '../utils/net'
-import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { captureEvent } from '../lib/telemetry'
-import {
-  normalizeRowsNdjson,
-  normalizeRowsSupabase,
-} from '../utils/auctionNormalize'
+import { normalizeRowsSupabase } from '../utils/auctionNormalize'
 import { validateItems } from '../utils/readModelSchema'
 
 // How often to re-check active auctions for a passed deadline (ms). Auctions
 // rarely turn over second-to-second, so a coarse tick keeps the page reactive
 // without re-deriving the item list on every render.
 const DEADLINE_TICK_MS = 60000
-
-const BASE = import.meta.env.BASE_URL
-
-function dataUrl(path) {
-  return `${BASE}${path.replace(/^\//, '')}`
-}
-
-async function fetchNdjson(url) {
-  const text = await fetchTextWithRetry(url)
-  const rows = []
-  for (const line of text.trim().split('\n')) {
-    if (!line) continue
-    try {
-      rows.push(JSON.parse(line))
-    } catch (err) {
-      // One malformed line shouldn't sink the whole auction — skip it.
-      console.warn(`Skipping malformed NDJSON line in ${url}:`, err)
-    }
-  }
-  return rows
-}
 
 // --- Supabase dataset fetch ---
 
@@ -125,24 +99,6 @@ async function fetchSupabaseDataset({ archived = false, onPartial } = {}) {
   return { items, auctions, invalidCount, loadTimeMs: Math.round(performance.now() - t0) }
 }
 
-// --- Shared dataset fetch ---
-
-async function fetchDataset(manifestPath, { archived = false } = {}) {
-  const t0 = performance.now()
-  const manifest = await fetchJsonWithRetry(dataUrl(manifestPath))
-  const entries = normalizeManifest(manifest, { archived })
-
-  const results = await Promise.all(entries.map(entry => {
-    const path = entry.ndjsonPath || entry.itemsPath.replace('.parquet', '.ndjson')
-    return fetchNdjson(dataUrl(path))
-  }))
-  const { items, auctions, invalidCount } = applyValidation(
-    normalizeRowsNdjson(results, entries, archived),
-    { warn: true, label: archived ? 'archive (ndjson)' : 'active (ndjson)' }
-  )
-  return { items, auctions, invalidCount, loadTimeMs: Math.round(performance.now() - t0) }
-}
-
 // archiveMode: 'active' (active auctions only), 'both' (active + archived),
 // or 'archived' (archived only). Archived data is loaded whenever the mode
 // isn't 'active'; 'archived' then filters the merged set down to archived
@@ -179,23 +135,18 @@ export function useAuctionData(archiveMode = 'active') {
 
   useEffect(() => {
     let cancelled = false
-    // Paint the first page the moment it lands (Supabase path only — the NDJSON
-    // path resolves its file fetches in one shot, so there's nothing partial to
-    // show). The final `.then` below replaces this with the complete set. This
-    // matters because the Micro-compute DB serves the full ~6.5K-row set slowly
-    // (~10-20s); progressive render shows lots in ~2s regardless.
-    const onPartial = isSupabaseConfigured
-      ? ({ items, auctions }) => {
-          if (cancelled) return
-          setActiveItems(items)
-          setActiveAuctions(auctions)
-          setLoading(false)
-        }
-      : undefined
-    const source = isSupabaseConfigured ? 'supabase' : 'ndjson'
-    const activeLoader = isSupabaseConfigured
-      ? () => fetchSupabaseDataset({ archived: false, onPartial })
-      : () => fetchDataset('data/manifest.json')
+    // Paint the first page the moment it lands. The final `.then` below
+    // replaces this with the complete set. This matters because the
+    // Micro-compute DB serves the full ~6.5K-row set slowly (~10-20s);
+    // progressive render shows lots in ~2s regardless.
+    const onPartial = ({ items, auctions }) => {
+      if (cancelled) return
+      setActiveItems(items)
+      setActiveAuctions(auctions)
+      setLoading(false)
+    }
+    const source = 'supabase'
+    const activeLoader = () => fetchSupabaseDataset({ archived: false, onPartial })
     const startedAt = performance.now()
     activeLoader()
       .then(({ items, auctions, loadTimeMs, invalidCount = 0 }) => {
@@ -237,10 +188,8 @@ export function useAuctionData(archiveMode = 'active') {
     if (!includeArchived || archiveLoaded || archiveError || archiveLoadingRef.current) return
     let cancelled = false
     archiveLoadingRef.current = true
-    const source = isSupabaseConfigured ? 'supabase' : 'ndjson'
-    const archiveLoader = isSupabaseConfigured
-      ? () => fetchSupabaseDataset({ archived: true })
-      : () => fetchDataset('data/archive-manifest.json', { archived: true })
+    const source = 'supabase'
+    const archiveLoader = () => fetchSupabaseDataset({ archived: true })
     const startedAt = performance.now()
     archiveLoader()
       .then(({ items, auctions, loadTimeMs, invalidCount = 0 }) => {
@@ -339,9 +288,8 @@ export function useAuctionData(archiveMode = 'active') {
         : [...active, ...archiveOnly]
     }
 
-    // De-dupe by composite key — a data-source bug (duplicate NDJSON row or
-    // Supabase view returning the same lot twice) would otherwise crash the
-    // MiniSearch index with "duplicate ID".
+    // De-dupe by composite key — the Supabase view can return a lot twice
+    // during scrape transitions, which would crash the MiniSearch index.
     const seen = new Set()
     return merged.filter(item => {
       const k = itemKey(item)

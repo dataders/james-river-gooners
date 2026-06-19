@@ -18,7 +18,7 @@
 import * as v from 'valibot'
 import type { Item } from '../types.ts'
 
-export const ItemSchema = v.looseObject({
+const ItemSchema = v.looseObject({
   // The two halves of itemKey — both must be present and non-empty or the lot
   // gets a broken/colliding key. This is the invariant that actually matters.
   id: v.pipe(v.string(), v.nonEmpty()),

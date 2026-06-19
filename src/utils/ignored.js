@@ -4,8 +4,8 @@ import { itemKey } from './itemKey.js'
 // Mirrors src/utils/favorites.js — the "not interested" list. Same composite
 // item key, same cookie shape, just a different cookie name so favorites and
 // ignores never collide in storage.
-export const IGNORED_COOKIE = 'gooners-ignored'
-export const IGNORED_MAX_AGE_SECONDS = 31536000
+const IGNORED_COOKIE = 'gooners-ignored'
+const IGNORED_MAX_AGE_SECONDS = 31536000
 
 export function ignoredKey(item) {
   return itemKey(item)

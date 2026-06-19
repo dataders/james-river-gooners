@@ -19,8 +19,105 @@ permissions:
   contents: read
 
 jobs:
+  # Detects which parts of the repo a PR touches so downstream jobs can skip
+  # work that's irrelevant to the diff. On push to main every job runs
+  # unconditionally (safety net), so the gating only fast-paths PRs.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+      scraper: ${{ steps.filter.outputs.scraper }}
+      github_stats: ${{ steps.filter.outputs.github_stats }}
+      supabase_stats: ${{ steps.filter.outputs.supabase_stats }}
+      supabase_app: ${{ steps.filter.outputs.supabase_app }}
+      pipeline_meta: ${{ steps.filter.outputs.pipeline_meta }}
+      mcp: ${{ steps.filter.outputs.mcp }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Each scope lists every path whose change should force that scope's
+      # jobs to run. `.github/workflows/test.yml` appears in all of them so
+      # a change to this gating logic is itself validated by every job.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - '.github/workflows/test.yml'
+              - 'src/**'
+              - 'public/**'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.js'
+              - 'vitest.config.js'
+              - 'vitest.setup.js'
+              - 'eslint.config.js'
+              - 'tsconfig.json'
+              - 'scripts/ratchets.mjs'
+              - 'scripts/ratchets.json'
+              - 'scripts/bundle-size.mjs'
+              - 'scripts/coverage-check.mjs'
+              - 'scripts/dead-exports-ratchet.mjs'
+              - 'scripts/lib-ratchet.mjs'
+            e2e:
+              - '.github/workflows/test.yml'
+              - 'src/**'
+              - 'public/**'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.js'
+              - 'eslint.config.js'
+              - 'tsconfig.json'
+              - 'playwright.config.js'
+              - 'playwright.usability.config.js'
+              - 'tests/e2e/**'
+              - 'tests/usability/**'
+            scraper:
+              - '.github/workflows/test.yml'
+              - 'scraper/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+            github_stats:
+              - '.github/workflows/test.yml'
+              - 'github_stats/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+            supabase_stats:
+              - '.github/workflows/test.yml'
+              - 'supabase_stats/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+            supabase_app:
+              - '.github/workflows/test.yml'
+              - 'supabase_app/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+            pipeline_meta:
+              - '.github/workflows/test.yml'
+              - 'pipeline_meta/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+            mcp:
+              - '.github/workflows/test.yml'
+              - 'mcp/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+            dashboard:
+              - '.github/workflows/test.yml'
+              - 'dashboard/**'
+              - 'ruff.toml'
+              - 'scripts/ty-ratchet.sh'
+
   build:
     name: Production build
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,6 +135,8 @@ jobs:
 
   lint:
     name: Lint
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -53,6 +152,8 @@ jobs:
 
   type-check:
     name: Type check
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -65,11 +166,15 @@ jobs:
 
       - run: npm ci
       - run: npm run type-check
-      # One-way guards: typed-file floor, untyped-file ceiling, suppression ceiling.
+      # One-way guards: typed-file floor, untyped-file ceiling, suppression/any ceilings.
       - run: npm run ratchets
+      # Dead-exports ceiling: unused exports can only go down, never up.
+      - run: npm run dead-exports:ratchet
 
   unit:
     name: Unit tests
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -85,6 +190,8 @@ jobs:
 
   scraper:
     name: Scraper tests (pytest)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.scraper == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -98,10 +205,13 @@ jobs:
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
-            --with 'duckdb==1.5.2' --with numpy --with pytest python -m pytest -q
+            --with 'duckdb==1.5.2' --with numpy --with 'pydantic-settings>=2,<3' \
+            --with pytest python -m pytest -q
 
   github-stats:
     name: GitHub-stats tests (pytest)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.github_stats == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -126,6 +236,8 @@ jobs:
 
   supabase-stats:
     name: Supabase-stats tests (pytest)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.supabase_stats == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -150,6 +262,8 @@ jobs:
 
   supabase-app:
     name: Supabase-app tests (pytest)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.supabase_app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -174,6 +288,8 @@ jobs:
 
   pipeline-meta:
     name: Pipeline-meta tests (pytest)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.pipeline_meta == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -198,6 +314,8 @@ jobs:
 
   mcp:
     name: MCP tests (pytest)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.mcp == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -222,6 +340,8 @@ jobs:
 
   dashboard:
     name: Dashboard lint + type check
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.dashboard == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -241,6 +361,8 @@ jobs:
 
   scraper-lint:
     name: Scraper lint (ruff)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.scraper == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -260,6 +382,8 @@ jobs:
 
   scraper-type-check:
     name: Scraper type check (ty)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.scraper == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -275,6 +399,8 @@ jobs:
 
   e2e:
     name: E2E tests (Playwright)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     # Hard ceiling backstop. The suite runs against the in-process Supabase mock
     # (no slow prod DB), so a healthy run is ~1-2 minutes; anything past 10 means
@@ -317,6 +443,8 @@ jobs:
 
   usability:
     name: Usability benchmark
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     # Hard ceiling backstop. Against the in-process mock (no live DB) a healthy
     # benchmark is ~1-2 minutes; past 10 the runner is wedged, not slow.

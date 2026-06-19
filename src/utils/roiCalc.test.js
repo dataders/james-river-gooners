@@ -1,4 +1,3 @@
-// @ts-nocheck
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
@@ -11,9 +10,9 @@ import {
   meetsMinProfit,
   COST_MULTIPLIER,
   DEAL_MARGIN_THRESHOLD,
-  DEFAULT_MARGIN,
 } from './roiCalc.js'
 
+/** @param {number} price */
 const compsAt = (price) => ({
   matches: [{ title: 'Item', price: { value: String(price), currency: 'USD' }, itemWebUrl: 'https://www.ebay.com/itm/111111111111' }],
 })
@@ -169,7 +168,8 @@ test('isDeal boundary: bid exactly at threshold margin is true', () => {
 
 test('estimatedProfit is comp median minus all-in cost, null without comps', () => {
   // median $300, bid $100 → all-in $127.20 → profit $172.80
-  assert.ok(Math.abs(estimatedProfit(100, compsAt(300)) - (300 - 100 * COST_MULTIPLIER)) < 0.0001)
+  const profit = estimatedProfit(100, compsAt(300))
+  assert.ok(profit !== null && Math.abs(profit - (300 - 100 * COST_MULTIPLIER)) < 0.0001)
   assert.equal(estimatedProfit(100, undefined), null)
   assert.equal(estimatedProfit(100, { matches: [] }), null)
 })

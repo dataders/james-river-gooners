@@ -1398,12 +1398,23 @@ body {
 .item-card.compact .item-image {
   width: 140px;
   flex: none;
-  display: flex;
+}
+/* Compact thumbnail: show image naturally sized and centred */
+.item-card.compact .carousel-track {
   align-items: center;
   justify-content: center;
 }
+.item-card.compact .carousel-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+}
 .item-card.compact .item-image img {
   max-height: 132px;
+  height: auto;
+  width: auto;
+  max-width: 100%;
 }
 .item-card.compact .item-info {
   flex: 1;
@@ -1524,16 +1535,58 @@ body {
 }
 
 .item-image {
+  position: relative;
   width: 100%;
-  aspect-ratio: auto;
-  max-height: 380px;
   overflow: hidden;
   background: var(--border);
+}
+/* Fixed square viewport so image size never changes between slides */
+.item-card:not(.compact) .item-image {
+  aspect-ratio: 1 / 1;
 }
 .item-image img {
   width: 100%;
   display: block;
   object-fit: contain;
+}
+/* In the square viewport, images fill the full height */
+.item-card:not(.compact) .item-image img {
+  height: 100%;
+}
+
+/* Sliding carousel track */
+.carousel-track {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  touch-action: pan-y; /* let browser handle vertical scroll; we handle horizontal */
+}
+.carousel-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+}
+/* Gray placeholder for off-screen slides (loaded lazily when neighbour comes into view) */
+.carousel-slide-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--border);
+}
+/* Gallery badge: shown in the top-right corner before the user has interacted with the card.
+   Signals "multiple photos" without requiring the full image set to be loaded. */
+.carousel-gallery-hint {
+  position: absolute;
+  bottom: 7px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  border-radius: 4px;
+  padding: 3px 4px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 2;
 }
 .item-placeholder {
   width: 100%;
@@ -2614,6 +2667,69 @@ body {
   opacity: 0.85;
 }
 
+/* Feedback modal (reuses auth-overlay / auth-panel shell) */
+.feedback-panel {
+  max-width: 440px;
+}
+
+.feedback-textarea {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 9px 10px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+.feedback-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.feedback-char-count {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.feedback-optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.feedback-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 20px 28px;
+  text-align: center;
+}
+
+.feedback-done-icon {
+  font-size: 2rem;
+  color: var(--accent);
+}
+
+.feedback-issue-link {
+  margin: 8px 0 4px;
+  font-size: 0.875rem;
+}
+
+.feedback-issue-link a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.feedback-done p {
+  color: var(--text);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
 /* Cannon's link modal body (reuses auth-panel shell) */
 .cannon-linked-body {
   display: flex;
@@ -2755,6 +2871,55 @@ body {
   cursor: pointer;
 }
 .carousel-dot.active {
+  background: #fff;
+}
+
+/* Card-level image carousel — arrows (desktop hover) + dots (mobile swipe) */
+.card-carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  padding: 0;
+  transition: background 0.15s;
+}
+.card-carousel-prev { left: 6px; }
+.card-carousel-next { right: 6px; }
+.card-carousel-btn:hover {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.card-carousel-dots {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 2;
+  pointer-events: none;
+}
+.card-carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.card-carousel-dot.active {
   background: #fff;
 }
 
