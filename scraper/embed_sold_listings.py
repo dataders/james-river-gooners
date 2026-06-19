@@ -32,11 +32,11 @@ einops) plus requests.
 
 import argparse
 import json
-import os
 import sys
 from datetime import UTC, datetime
 from functools import partial
 
+from config import EmbeddingSettings as _EmbedCfg
 from supabase_comps import (
     WRITE_TIMEOUT,
     _request_with_retry,
@@ -197,13 +197,9 @@ def upsert_listing_embeddings(
     return written
 
 
-# Max listings to embed per run. CPU runners take ~8-15 min per 500 (text + images).
-# Incremental: each run embeds the next GOONERS_SOLD_EMBED_LIMIT unembedded listings
-# and commits them; the next run skips what's already in sold_listing_embeddings.
-_EMBED_LIMIT = int(os.environ.get("GOONERS_SOLD_EMBED_LIMIT", "500"))
-# Sub-batch size for embed+upsert: commit to Supabase every N items so a preempted
-# runner preserves partial progress and the next run skips what's already committed.
-_EMBED_CHUNK = int(os.environ.get("GOONERS_SOLD_EMBED_CHUNK", "50"))
+_cfg = _EmbedCfg()
+_EMBED_LIMIT = _cfg.sold_embed_limit
+_EMBED_CHUNK = _cfg.sold_embed_chunk
 
 
 def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:

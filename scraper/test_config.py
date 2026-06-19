@@ -233,6 +233,8 @@ class EmbeddingDefaultsTest(unittest.TestCase):
         self.assertEqual(cfg.device, "")
         self.assertEqual(cfg.max_images, 3)
         self.assertEqual(cfg.upsert_batch, 100)
+        self.assertEqual(cfg.sold_embed_limit, 500)
+        self.assertEqual(cfg.sold_embed_chunk, 50)
 
 
 class EmbeddingEnvOverrideTest(unittest.TestCase):
@@ -256,6 +258,18 @@ class EmbeddingEnvOverrideTest(unittest.TestCase):
 
     def test_upsert_batch_validation_ge1(self):
         with self.assertRaises(ValidationError), _env(GOONERS_NOMIC_UPSERT_BATCH="0"):
+            EmbeddingSettings()
+
+    def test_sold_embed_limit_via_env(self):
+        with _env(GOONERS_SOLD_EMBED_LIMIT="250"):
+            self.assertEqual(EmbeddingSettings().sold_embed_limit, 250)
+
+    def test_sold_embed_chunk_via_env(self):
+        with _env(GOONERS_SOLD_EMBED_CHUNK="25"):
+            self.assertEqual(EmbeddingSettings().sold_embed_chunk, 25)
+
+    def test_sold_embed_limit_validation_ge1(self):
+        with self.assertRaises(ValidationError), _env(GOONERS_SOLD_EMBED_LIMIT="0"):
             EmbeddingSettings()
 
 
@@ -466,6 +480,8 @@ class DescribeTest(unittest.TestCase):
             "GOONERS_MAX_IMAGES",
             "GOONERS_EBAY_COMPS_LIMIT",
             "GOONERS_NOMIC_EMBEDDINGS",
+            "GOONERS_SOLD_EMBED_LIMIT",
+            "GOONERS_SOLD_EMBED_CHUNK",
             "GOONERS_CANNONS_COMPS_TOP_K",
             "GOONERS_WAREHOUSE",
             "GOONERS_POSTHOG_HOST",
