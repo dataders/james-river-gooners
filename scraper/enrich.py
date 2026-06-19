@@ -4,6 +4,7 @@
 # dependencies = [
 #     "requests",
 #     "pyarrow",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """
@@ -65,6 +66,8 @@ import threading
 import time
 from pathlib import Path
 
+from config import EnrichmentSettings as _EnrichmentSettings
+
 # Server-side PostHog telemetry for the enrichment runs (batch + sync). Reuses the
 # shared scraper helper (scraper/telemetry.py) — itself a silent no-op unless
 # GOONERS_POSTHOG_KEY is set AND the posthog SDK imports, and it never raises into
@@ -106,69 +109,38 @@ def _record_enrich_run(payload: dict) -> None:
         )
 
 
-# Haiku is plenty for structured extraction and the cheapest option; overridable
-# for experiments. Note Haiku 4.5 rejects the `effort` parameter, so we don't
-# set one — extraction needs neither effort nor extended thinking.
-MODEL = os.environ.get("GOONERS_ENRICHMENT_MODEL", "claude-haiku-4-5")
-MAX_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_WORKERS", "8"))
-# Concurrent workers blow through a low per-minute org rate limit (e.g. the
-# 50 RPM entry tier), so lean on the SDK's built-in 429 handling: it honors the
-# `retry-after` header and backs off. A generous retry count lets a lot ride out
-# the rate-limit window instead of being dropped. Overridable for higher tiers.
-MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
-# Proactively cap the request rate so the worker pool doesn't thrash the org's
-# per-minute limit. Relying on the SDK's reactive 429 backoff alone meant every
-# worker fired immediately, drew a 429, then slept on `retry-after` — thousands
-# of wasted round-trips that dragged a full enrichment past its CI step budget.
-# Spacing calls just under the limit (default 45 RPM, below the 50 RPM entry
-# tier) makes the run as fast as the limit allows and all but eliminates 429s.
-# Set to 0 to disable client-side throttling (e.g. on a higher tier).
-ENRICHMENT_RPM = float(os.environ.get("GOONERS_ENRICHMENT_RPM", "45"))
+# Runtime-tunable knobs — read from EnrichmentSettings (config.py) so env vars,
+# types, and defaults are centralised and documented. Accessed at module load so
+# the values are available as module-level constants (e.g. for `_make_client`),
+# while functions that need call-time reads (is_enrichment_enabled, _text_only)
+# construct a fresh EnrichmentSettings() inline.
 
-# Message Batches API knobs (the backfill path — `enrich_items_batch`). Batches
-# run async at 50% cost with no per-minute *message* rate limit. But an image
-# sent by URL is fetched server-side, and URL Content Fetching has its own
-# org-wide limit (~100 RPM) that batches do NOT lift — a large batch of URL
-# images blows through it and nearly every request returns rate_limit_error. So
-# the batch path **inlines images as base64** (we download + downscale them
-# ourselves): no server-side fetch, no URL-fetch limit. The tradeoff is request
-# size, so inline batches are chunked by both count and a byte budget.
-BATCH_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_SIZE", "10000"))
-# Inlined images make each request far larger, so inline batches cap at a lower
-# count and a payload budget well under the 256 MB hard limit.
-BATCH_INLINE_MAX_REQUESTS = int(
-    os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_SIZE", "2000")
-)
-BATCH_MAX_BYTES = int(
-    os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024))
-)
-BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
-BATCH_MAX_WAIT = float(
-    os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600))
-)
-# Downscale inlined images for the batch payload. We extract product identity +
-# attributes (mostly from the lot's text), not tiny model/SKU plate text, so a
-# modest 512px is plenty and keeps the payload + token cost down. Fetched
-# concurrently. (768px gave no measurable lift in testing.)
-MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "512"))
-IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16"))
-# How many photos to feed the model (#152). The identifying detail — a brand
-# label, a model/SKU plate, the back of a tag — is often on photo 2 or 3, not
-# photo 1, so the first N images materially lift the model/SKU hit rate. One
-# shared knob (intended to also govern embeddings) keeps the passes in lockstep.
-MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
+_ecfg = _EnrichmentSettings()
+MODEL = _ecfg.model
+MAX_WORKERS = _ecfg.workers
+ENRICHMENT_RPM = _ecfg.rpm
+MAX_IMAGES = max(1, _ecfg.max_images)
+BATCH_MAX_REQUESTS = _ecfg.batch_max_requests
+BATCH_INLINE_MAX_REQUESTS = _ecfg.batch_inline_size
+BATCH_MAX_BYTES = _ecfg.batch_max_bytes
 
+# Concurrent workers blow through a low per-minute org rate limit, so lean on
+# the SDK's built-in 429 handling (honors retry-after). A generous retry count
+# lets a lot ride out the rate-limit window without being dropped.
+MAX_RETRIES = 8
+# Batch API polling / wait budget — implementation details, not operator knobs.
+BATCH_POLL_INTERVAL = 30.0
+BATCH_MAX_WAIT = float(24 * 3600)
+# Downscale inlined images for the batch payload. 512px is plenty for product
+# identity extraction; 768px gave no measurable lift in testing.
+MAX_IMAGE_PX = 512
+IMAGE_FETCH_WORKERS = 16
 # Pre-flight cost estimation (--estimate-only). Haiku 4.5 list price per million
-# tokens; the Batches API is 50% off. The output is small + bounded by
-# max_tokens, so a small constant covers it. All overridable for other models.
-PRICE_IN_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_IN", "1.0"))
-PRICE_OUT_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_OUT", "5.0"))
-ESTIMATE_SAMPLE = max(
-    1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30"))
-)
-ESTIMATE_OUTPUT_TOKENS = int(
-    os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300")
-)
+# tokens; the Batches API is 50% off.
+PRICE_IN_PER_MTOK = 1.0
+PRICE_OUT_PER_MTOK = 5.0
+ESTIMATE_SAMPLE = 30
+ESTIMATE_OUTPUT_TOKENS = 300
 
 
 def _text_only() -> bool:
@@ -176,7 +148,7 @@ def _text_only() -> bool:
     photos and enrich from the lot's text alone — much cheaper, for backfilling a
     text-derivable field across history without re-paying the image tokens. Read
     at call time (not import) so the CLI flag can set it before any enrichment."""
-    return os.environ.get("GOONERS_ENRICHMENT_TEXT_ONLY") == "1"
+    return _EnrichmentSettings().text_only
 
 
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
@@ -433,10 +405,11 @@ SYSTEM_PROMPT = (
 
 def is_enrichment_enabled() -> bool:
     """True only when the user opted in AND a key is present. The opt-in keeps
-    enrichment off by default (no surprise API spend on every scrape)."""
-    return os.environ.get("GOONERS_ENRICHMENT") == "1" and bool(
-        os.environ.get("ANTHROPIC_API_KEY")
-    )
+    enrichment off by default (no surprise API spend on every scrape).
+
+    Reads from EnrichmentSettings so "1"/"true"/"yes"/"on" all work (previously
+    only "1" was accepted, silently treating GOONERS_ENRICHMENT=true as OFF)."""
+    return _EnrichmentSettings().enabled and bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
 def _empty_enrichment() -> dict:

@@ -3,6 +3,7 @@
 # dependencies = [
 #     "requests",
 #     "numpy",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """Nomic Embed (text + vision) generation → Supabase pgvector table.
@@ -57,8 +58,9 @@ from pathlib import Path
 
 import numpy as np
 import requests as _req
+from config import EnrichmentSettings as _EmbedEnrichCfg
 
-_MAX_IMAGES = int(os.environ.get("GOONERS_MAX_IMAGES", "3"))
+_MAX_IMAGES = max(1, _EmbedEnrichCfg().max_images)
 
 _ACTIVE_ITEMS_DIR = Path(__file__).resolve().parent.parent / "public" / "data" / "items"
 _ARCHIVE_ITEMS_DIR = (
