@@ -49,9 +49,9 @@ jobs:
       # submitted/completed/failed events to PostHog. No-op without the key.
       GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
 
       - name: Run enrichment backfill
         run: |
