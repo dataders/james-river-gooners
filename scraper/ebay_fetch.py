@@ -8,7 +8,6 @@ import json
 import os
 import random
 import re
-import secrets
 import shlex
 import subprocess
 from datetime import datetime
@@ -18,6 +17,7 @@ from time import monotonic, sleep
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+import env_secrets as secrets
 import telemetry
 from config import EbayCompsSettings as _EbayCfg
 from ebay_util import normalize_spaces, text_value

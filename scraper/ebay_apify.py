@@ -15,13 +15,13 @@ Public API used by ebay_comps.py:
   fetch_comps_apify()
 """
 
-import secrets
 import time as _time_module
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from time import sleep
 
+import env_secrets as secrets
 import requests
 from ebay_export import (
     DATA_DIR,

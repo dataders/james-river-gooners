@@ -45,11 +45,11 @@ See docs/data-architecture.md.
 import argparse
 import os
 import random
-import secrets
 import sys
 from pathlib import Path
 from time import monotonic
 
+import env_secrets as secrets
 import telemetry
 from config import EbayCompsSettings as _CfgEbay
 from corpus_reuse import CorpusReuser, corpus_first_enabled

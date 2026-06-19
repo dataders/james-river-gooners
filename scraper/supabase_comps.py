@@ -12,12 +12,12 @@ so no comp-fetch call sites change.
 """
 
 import json
-import secrets
 import time
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 
+import env_secrets as secrets
 from config import SupabaseSettings as _SupaCfg
 from ebay_ledger import CompLedger
 

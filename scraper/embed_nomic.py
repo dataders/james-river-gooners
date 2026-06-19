@@ -52,10 +52,10 @@ already embedded):
 import argparse
 import io
 import json
-import secrets
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import env_secrets as secrets
 import numpy as np
 import requests as _req
 from config import EmbeddingSettings as _EmbedCfg
