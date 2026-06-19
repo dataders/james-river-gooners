@@ -2,6 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "dlt[motherduck]",
+#     "duckdb==1.5.3",
 #     "requests",
 # ]
 # ///
