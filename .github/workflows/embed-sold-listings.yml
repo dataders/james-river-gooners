@@ -35,6 +35,9 @@ jobs:
       # that the GitHub-hosted runner can't use anyway, keeping the install
       # under ~250 MB and well inside the runner's disk budget.
       UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
+      # Force unbuffered stdout so progress prints appear immediately in CI
+      # logs rather than being batched and lost if the runner cancels the job.
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v5
 

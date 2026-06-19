@@ -202,7 +202,11 @@ def embed_corpus(session=None) -> int:
     from embed_nomic import embed_items
 
     items = [listing_to_item(r) for r in rows]
-    print(f"[sold-embed] embedding {len(items)} new sold listings...")
+    n_with_images = sum(1 for it in items if it.get("images"))
+    print(
+        f"[sold-embed] embedding {len(items)} new sold listings "
+        f"({n_with_images} with images) — CPU inference may take 5-20 min..."
+    )
     embeddings, ids, n_images_used = embed_items(items, session=session)
     written = upsert_listing_embeddings(
         embeddings, ids, n_images_used, url, key, session
