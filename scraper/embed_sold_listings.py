@@ -118,6 +118,21 @@ def _get_all(session, endpoint: str, headers: dict, params: dict) -> list[dict]:
         offset += READ_PAGE_SIZE
 
 
+def fetch_listings_by_ids(session, url: str, key: str, item_ids: list[str]) -> list[dict]:
+    """Fetch specific sold_listings rows by ebay_item_id (force-embed by ID)."""
+    base = url.rstrip("/")
+    rows = _get_all(
+        session,
+        f"{base}/rest/v1/{CORPUS_TABLE}",
+        _headers(key),
+        {
+            "select": "ebay_item_id,title,condition,thumbnail_url,full_res_thumbnail_url",
+            "ebay_item_id": f"in.({','.join(item_ids)})",
+        },
+    )
+    return [r for r in rows if r.get("ebay_item_id")]
+
+
 def fetch_unembedded_listings(session, url: str, key: str) -> list[dict]:
     """Return corpus rows that have no embedding yet (incremental)."""
     base = url.rstrip("/")
@@ -192,12 +207,14 @@ _EMBED_LIMIT = int(os.environ.get("GOONERS_SOLD_EMBED_LIMIT", "500"))
 _EMBED_CHUNK = int(os.environ.get("GOONERS_SOLD_EMBED_CHUNK", "50"))
 
 
-def embed_corpus(session=None) -> int:
-    """Embed not-yet-embedded corpus listings in small committed chunks.
+def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:
+    """Embed corpus listings in small committed chunks.
 
-    Incremental: fetches all unembedded listings, caps to _EMBED_LIMIT per run,
-    then processes in _EMBED_CHUNK sub-batches — each chunk is upserted before
-    the next is started so a preempted runner doesn't lose its work.
+    If item_ids is given, embeds exactly those listings (force-mode, ignores the
+    incremental filter — useful for targeted re-embedding after cleanup).
+    Otherwise, fetches all unembedded listings, caps to _EMBED_LIMIT per run,
+    and processes in _EMBED_CHUNK sub-batches so a preempted runner preserves
+    partial progress.
     """
     url, key = resolve_credentials()
     if not url or not key:
@@ -208,22 +225,28 @@ def embed_corpus(session=None) -> int:
 
         session = requests.Session()
 
-    all_rows = fetch_unembedded_listings(session, url, key)
-    if not all_rows:
-        print("[sold-embed] no new listings to embed")
-        return 0
-
-    rows = all_rows[:_EMBED_LIMIT]
-    if len(all_rows) > _EMBED_LIMIT:
-        print(
-            f"[sold-embed] {len(all_rows)} unembedded — processing {_EMBED_LIMIT} "
-            f"this run (set GOONERS_SOLD_EMBED_LIMIT to change)"
-        )
+    if item_ids:
+        rows = fetch_listings_by_ids(session, url, key, item_ids)
+        if not rows:
+            print(f"[sold-embed] none of the {len(item_ids)} requested IDs found in corpus")
+            return 0
+        print(f"[sold-embed] targeted: {len(rows)}/{len(item_ids)} listings fetched by ID")
     else:
-        n_with_images = sum(
-            1 for r in rows if r.get("full_res_thumbnail_url") or r.get("thumbnail_url")
-        )
-        print(f"[sold-embed] {len(rows)} to embed ({n_with_images} with images)")
+        all_rows = fetch_unembedded_listings(session, url, key)
+        if not all_rows:
+            print("[sold-embed] no new listings to embed")
+            return 0
+        rows = all_rows[:_EMBED_LIMIT]
+        if len(all_rows) > _EMBED_LIMIT:
+            print(
+                f"[sold-embed] {len(all_rows)} unembedded — processing {_EMBED_LIMIT} "
+                f"this run (set GOONERS_SOLD_EMBED_LIMIT to change)"
+            )
+
+    n_with_images = sum(
+        1 for r in rows if r.get("full_res_thumbnail_url") or r.get("thumbnail_url")
+    )
+    print(f"[sold-embed] {len(rows)} to embed ({n_with_images} with images)")
 
     from embed_nomic import embed_items
 
@@ -355,9 +378,14 @@ def main(argv=None) -> int:
         default="all",
         help="embed = generate listing embeddings; rerank = write visual comps; all = both (default).",
     )
+    parser.add_argument(
+        "--item-ids",
+        help="Comma-separated ebay_item_ids to embed (targeted mode — skips the unembedded-only filter).",
+    )
     args = parser.parse_args(argv or sys.argv[1:])
+    item_ids = [i.strip() for i in args.item_ids.split(",") if i.strip()] if args.item_ids else None
     if args.step in ("embed", "all"):
-        embed_corpus()
+        embed_corpus(item_ids=item_ids)
     if args.step in ("rerank", "all"):
         rerank_all_active()
     return 0

@@ -20,6 +20,10 @@ on:
         type: choice
         options: [all, embed, rerank]
         default: all
+      item_ids:
+        description: 'Comma-separated ebay_item_ids to embed (targeted mode; leave blank for incremental)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -64,7 +68,9 @@ jobs:
           # Same Nomic stack as the lot embeddings (#165): einops for nomic_bert's
           # trust_remote_code, transformers==4.49.0 for the vision config, torchvision
           # for the image processor.
+          ITEM_IDS="${{ inputs.item_ids }}"
           uv run --with requests \
             --with sentence-transformers --with 'transformers==4.49.0' \
             --with torchvision --with pillow --with einops \
-            python embed_sold_listings.py --step "${{ inputs.step || 'all' }}"
+            python embed_sold_listings.py --step "${{ inputs.step || 'all' }}" \
+            ${ITEM_IDS:+--item-ids "$ITEM_IDS"}
