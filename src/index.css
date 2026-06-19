@@ -1398,12 +1398,23 @@ body {
 .item-card.compact .item-image {
   width: 140px;
   flex: none;
-  display: flex;
+}
+/* Compact thumbnail: show image naturally sized and centred */
+.item-card.compact .carousel-track {
   align-items: center;
   justify-content: center;
 }
+.item-card.compact .carousel-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+}
 .item-card.compact .item-image img {
   max-height: 132px;
+  height: auto;
+  width: auto;
+  max-width: 100%;
 }
 .item-card.compact .item-info {
   flex: 1;
@@ -1526,15 +1537,56 @@ body {
 .item-image {
   position: relative;
   width: 100%;
-  aspect-ratio: auto;
-  max-height: 380px;
   overflow: hidden;
   background: var(--border);
+}
+/* Fixed square viewport so image size never changes between slides */
+.item-card:not(.compact) .item-image {
+  aspect-ratio: 1 / 1;
 }
 .item-image img {
   width: 100%;
   display: block;
   object-fit: contain;
+}
+/* In the square viewport, images fill the full height */
+.item-card:not(.compact) .item-image img {
+  height: 100%;
+}
+
+/* Sliding carousel track */
+.carousel-track {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  touch-action: pan-y; /* let browser handle vertical scroll; we handle horizontal */
+}
+.carousel-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+}
+/* Gray placeholder for off-screen slides (loaded lazily when neighbour comes into view) */
+.carousel-slide-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--border);
+}
+/* Gallery badge: shown in the top-right corner before the user has interacted with the card.
+   Signals "multiple photos" without requiring the full image set to be loaded. */
+.carousel-gallery-hint {
+  position: absolute;
+  bottom: 7px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  border-radius: 4px;
+  padding: 3px 4px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 2;
 }
 .item-placeholder {
   width: 100%;

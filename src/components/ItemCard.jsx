@@ -19,6 +19,8 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
   const [imgIndex, setImgIndex] = useState(0)
   const [fetchTriggered, setFetchTriggered] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const touchStartRef = useRef(null)
   const didSwipeRef = useRef(false)
 
@@ -31,18 +33,22 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
     setPrevItemKey(itemKey)
     setImgIndex(0)
     setFetchTriggered(false)
+    setDragOffset(0)
+    setIsDragging(false)
   }
 
   // Lazily fetched full image set (Supabase card views only carry images[0]).
   // useFullImages is reused here with triggered:false until first hover/touch.
   const images = useFullImages(item, { triggered: fetchTriggered })
   const clampedIndex = images.length > 0 ? Math.min(imgIndex, images.length - 1) : 0
-  const currentImgSrc = images[clampedIndex] || null
 
   const hasMultiple = images.length > 1
-  // Arrows visible on desktop hover only; dots visible on all touch/desktop after fetch
+  // Arrows visible on desktop hover only; dots + sliding carousel suppressed in compact (thumbnail row)
   const showArrows = !compact && hovered && hasMultiple
-  const showDots = hasMultiple
+  const showDots = !compact && hasMultiple
+  // Gallery badge: shown before first touch/hover (before we know if there are multiple images).
+  // Replaced by dots once the user engages and images load.
+  const showGalleryHint = !compact && !fetchTriggered
 
   const prevImage = (e) => {
     e.stopPropagation()
@@ -69,6 +75,23 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
     if (!fetchTriggered) setFetchTriggered(true)
   }
 
+  const handleTouchMove = (e) => {
+    if (!touchStartRef.current || images.length <= 1 || compact) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - touchStartRef.current.x
+    const dy = touch.clientY - touchStartRef.current.y
+    // Only activate horizontal drag when clearly horizontal (suppress during vertical scroll)
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Rubber-band resistance at the first and last image
+      let offset = dx
+      if ((clampedIndex === 0 && dx > 0) || (clampedIndex === images.length - 1 && dx < 0)) {
+        offset = dx / 3
+      }
+      setIsDragging(true)
+      setDragOffset(offset)
+    }
+  }
+
   const handleTouchEnd = (e) => {
     if (!touchStartRef.current) return
     const touch = e.changedTouches[0]
@@ -76,13 +99,16 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
     const dy = touch.clientY - touchStartRef.current.y
     const dt = Date.now() - touchStartRef.current.t
     touchStartRef.current = null
+    // Re-enable CSS transition before resetting position so the snap-to-image animates
+    setIsDragging(false)
+    setDragOffset(0)
 
     // Horizontal swipe: must be faster than 500ms, more horizontal than vertical
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 500 && images.length > 1) {
       didSwipeRef.current = true
       setImgIndex(i => {
         const n = images.length
-        return dx < 0 ? (i + 1) % n : (i - 1 + n) % n
+        return dx < 0 ? Math.min(i + 1, n - 1) : Math.max(i - 1, 0)
       })
     }
   }
@@ -134,18 +160,43 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setHovered(false)}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {currentImgSrc ? (
-          <img src={currentImgSrc} alt={item.title} loading="lazy" />
-        ) : (
-          <div className="item-placeholder">{item.title}</div>
-        )}
+        <div
+          className="carousel-track"
+          style={hasMultiple ? {
+            transform: `translateX(calc(-${clampedIndex * 100}% + ${dragOffset}px))`,
+            transition: isDragging ? 'none' : 'transform 220ms ease',
+          } : undefined}
+        >
+          {images.length > 0 ? images.map((src, i) => (
+            <div key={i} className="carousel-slide">
+              {!hasMultiple || Math.abs(i - clampedIndex) <= 1 ? (
+                <img src={src} alt={item.title} loading="lazy" />
+              ) : (
+                <div className="carousel-slide-placeholder" />
+              )}
+            </div>
+          )) : (
+            <div className="carousel-slide">
+              <div className="item-placeholder">{item.title}</div>
+            </div>
+          )}
+        </div>
         {showArrows && (
           <>
             <button className="card-carousel-btn card-carousel-prev" onClick={prevImage} aria-label="Previous image">&lsaquo;</button>
             <button className="card-carousel-btn card-carousel-next" onClick={nextImage} aria-label="Next image">&rsaquo;</button>
           </>
+        )}
+        {showGalleryHint && (
+          <div className="carousel-gallery-hint" aria-hidden="true">
+            <svg viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
+              <rect x="0.75" y="3.75" width="12.5" height="10.5" rx="1.25" stroke="currentColor" strokeWidth="1.5"/>
+              <rect x="4.75" y="0.75" width="12.5" height="10.5" rx="1.25" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+          </div>
         )}
         {showDots && (
           <div className="card-carousel-dots">
