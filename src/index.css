@@ -2667,6 +2667,69 @@ body {
   opacity: 0.85;
 }
 
+/* Feedback modal (reuses auth-overlay / auth-panel shell) */
+.feedback-panel {
+  max-width: 440px;
+}
+
+.feedback-textarea {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 9px 10px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+.feedback-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.feedback-char-count {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.feedback-optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.feedback-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 20px 28px;
+  text-align: center;
+}
+
+.feedback-done-icon {
+  font-size: 2rem;
+  color: var(--accent);
+}
+
+.feedback-issue-link {
+  margin: 8px 0 4px;
+  font-size: 0.875rem;
+}
+
+.feedback-issue-link a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.feedback-done p {
+  color: var(--text);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
 /* Cannon's link modal body (reuses auth-panel shell) */
 .cannon-linked-body {
   display: flex;

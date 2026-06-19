@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-19',
+    title: 'Send feedback from the menu',
+    changes: [
+      { id: 'feedback-menu-option', icon: '✉', text: 'Tap ☰ → Send feedback to report a bug or share an idea. Your message goes straight to the team.' },
+    ],
+  },
+  {
+    date: '2026-06-19',
     title: 'Better link previews when sharing',
     changes: [
       { id: 'og-link-preview', icon: '🔗', text: 'Sharing a lot via the Share button now generates a rich preview in Slack, Discord, iMessage, and other apps — showing the lot photo, title, category, and current bid instead of the generic site icon.' },

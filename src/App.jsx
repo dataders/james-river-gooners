@@ -46,6 +46,7 @@ const AuthModal = lazyDefault(() => import('./components/AuthModal'), 'AuthModal
 const CannonLinkModal = lazyDefault(() => import('./components/CannonLinkModal'), 'CannonLinkModal')
 const MyBidsPanel = lazyDefault(() => import('./components/MyBidsPanel'), 'MyBidsPanel')
 const ImageSearchModal = lazyDefault(() => import('./components/ImageSearchModal'), 'ImageSearchModal')
+const FeedbackModal = lazyDefault(() => import('./components/FeedbackModal.tsx'), 'FeedbackModal')
 
 export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
@@ -190,6 +191,7 @@ export default function App() {
   // small screens). The hamburger mirrors the account bid-alert count, falling
   // back to the What's-new unseen dot.
   const [navOpen, setNavOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const bidAlertCount = auth.user ? (cannonBids?.unseenAlertCount ?? 0) : 0
   const menuBadge = headerBadge(bidAlertCount, hasUnseen)
   const [filterOpen, setFilterOpen] = useState(() => {
@@ -587,6 +589,7 @@ export default function App() {
         onTutorial={openTutorial}
         onWhatsNew={() => { captureEvent('whats_new_opened', { hasUnseen }); openWhatsNew() }}
         whatsNewUnseen={hasUnseen}
+        onFeedback={() => setFeedbackOpen(true)}
         theme={theme}
         onToggleTheme={toggleTheme}
         auth={auth}
@@ -801,6 +804,13 @@ export default function App() {
           onFavorite={handleToggleFavorite}
           onIgnore={handleToggleIgnored}
           onClose={() => setSwipeOpen(false)}
+        />
+      )}
+
+      {feedbackOpen && (
+        <FeedbackModal
+          onClose={() => setFeedbackOpen(false)}
+          user={auth.user}
         />
       )}
       </Suspense>
