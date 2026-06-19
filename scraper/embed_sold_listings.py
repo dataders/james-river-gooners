@@ -183,8 +183,22 @@ def upsert_listing_embeddings(
     return written
 
 
+# Max listings to embed per run. CPU runners take ~8-15 min per 500 (text + images).
+# Incremental: each run embeds the next GOONERS_SOLD_EMBED_LIMIT unembedded listings
+# and commits them; the next run skips what's already in sold_listing_embeddings.
+_EMBED_LIMIT = int(os.environ.get("GOONERS_SOLD_EMBED_LIMIT", "500"))
+# Sub-batch size for embed+upsert: commit to Supabase every N items so a preempted
+# runner preserves partial progress and the next run skips what's already committed.
+_EMBED_CHUNK = int(os.environ.get("GOONERS_SOLD_EMBED_CHUNK", "50"))
+
+
 def embed_corpus(session=None) -> int:
-    """Embed every not-yet-embedded corpus listing. Returns rows written."""
+    """Embed not-yet-embedded corpus listings in small committed chunks.
+
+    Incremental: fetches all unembedded listings, caps to _EMBED_LIMIT per run,
+    then processes in _EMBED_CHUNK sub-batches — each chunk is upserted before
+    the next is started so a preempted runner doesn't lose its work.
+    """
     url, key = resolve_credentials()
     if not url or not key:
         print("[sold-embed] Supabase unconfigured — skipping")
@@ -194,25 +208,47 @@ def embed_corpus(session=None) -> int:
 
         session = requests.Session()
 
-    rows = fetch_unembedded_listings(session, url, key)
-    if not rows:
+    all_rows = fetch_unembedded_listings(session, url, key)
+    if not all_rows:
         print("[sold-embed] no new listings to embed")
         return 0
 
+    rows = all_rows[:_EMBED_LIMIT]
+    if len(all_rows) > _EMBED_LIMIT:
+        print(
+            f"[sold-embed] {len(all_rows)} unembedded — processing {_EMBED_LIMIT} "
+            f"this run (set GOONERS_SOLD_EMBED_LIMIT to change)"
+        )
+    else:
+        n_with_images = sum(
+            1 for r in rows if r.get("full_res_thumbnail_url") or r.get("thumbnail_url")
+        )
+        print(f"[sold-embed] {len(rows)} to embed ({n_with_images} with images)")
+
     from embed_nomic import embed_items
 
-    items = [listing_to_item(r) for r in rows]
-    n_with_images = sum(1 for it in items if it.get("images"))
-    print(
-        f"[sold-embed] embedding {len(items)} new sold listings "
-        f"({n_with_images} with images) — CPU inference may take 5-20 min..."
-    )
-    embeddings, ids, n_images_used = embed_items(items, session=session)
-    written = upsert_listing_embeddings(
-        embeddings, ids, n_images_used, url, key, session
-    )
-    print(f"[sold-embed] upserted {written} listing embeddings → {EMBEDDING_TABLE}")
-    return written
+    total = 0
+    for start in range(0, len(rows), _EMBED_CHUNK):
+        chunk = rows[start : start + _EMBED_CHUNK]
+        items = [listing_to_item(r) for r in chunk]
+        n_img = sum(1 for it in items if it.get("images"))
+        print(
+            f"[sold-embed] chunk {start // _EMBED_CHUNK + 1}/"
+            f"{(len(rows) + _EMBED_CHUNK - 1) // _EMBED_CHUNK}: "
+            f"{len(chunk)} listings ({n_img} with images)..."
+        )
+        embeddings, ids, n_images_used = embed_items(items, session=session)
+        written = upsert_listing_embeddings(
+            embeddings, ids, n_images_used, url, key, session
+        )
+        total += written
+        print(f"[sold-embed]   → committed {written} embeddings ({total} total so far)")
+
+    remaining = len(all_rows) - len(rows)
+    if remaining:
+        print(f"[sold-embed] {remaining} listings still unembedded — re-run to continue")
+    print(f"[sold-embed] done: {total} listing embeddings → {EMBEDDING_TABLE}")
+    return total
 
 
 def _utc_now_iso() -> str:
