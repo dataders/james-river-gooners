@@ -10,12 +10,7 @@ function makeLocalStorage() {
     getItem: (k) => (k in store ? store[k] : null),
     /** @param {string} k @param {string} v */
     setItem: (k, v) => { store[k] = v },
-    /** @param {string} k */
-    removeItem: (k) => { delete store[k] },
     clear: () => { for (const k in store) delete store[k] },
-    get length() { return Object.keys(store).length },
-    /** @param {number} i */
-    key: (i) => Object.keys(store)[i] ?? null,
   }
 }
 
