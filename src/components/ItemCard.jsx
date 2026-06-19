@@ -46,6 +46,9 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
   // Arrows visible on desktop hover only; dots + sliding carousel suppressed in compact (thumbnail row)
   const showArrows = !compact && hovered && hasMultiple
   const showDots = !compact && hasMultiple
+  // Gallery badge: shown before first touch/hover (before we know if there are multiple images).
+  // Replaced by dots once the user engages and images load.
+  const showGalleryHint = !compact && !fetchTriggered
 
   const prevImage = (e) => {
     e.stopPropagation()
@@ -186,6 +189,14 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
             <button className="card-carousel-btn card-carousel-prev" onClick={prevImage} aria-label="Previous image">&lsaquo;</button>
             <button className="card-carousel-btn card-carousel-next" onClick={nextImage} aria-label="Next image">&rsaquo;</button>
           </>
+        )}
+        {showGalleryHint && (
+          <div className="carousel-gallery-hint" aria-hidden="true">
+            <svg viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
+              <rect x="0.75" y="3.75" width="12.5" height="10.5" rx="1.25" stroke="currentColor" strokeWidth="1.5"/>
+              <rect x="4.75" y="0.75" width="12.5" height="10.5" rx="1.25" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+          </div>
         )}
         {showDots && (
           <div className="card-carousel-dots">
