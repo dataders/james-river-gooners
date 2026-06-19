@@ -95,9 +95,16 @@ def _headers(key: str, *, write: bool = False) -> dict:
 
 
 def _get_all(session, endpoint: str, headers: dict, params: dict) -> list[dict]:
-    """Paginate a PostgREST GET via Range headers, retrying transient failures."""
+    """Paginate a PostgREST GET via Range headers, retrying transient failures.
+
+    ``order=ebay_item_id`` is injected unconditionally so every multi-page read
+    sees a stable sort order — without it PostgreSQL can return rows in any order
+    across pages, causing skips or duplicates at page boundaries.
+    """
     rows: list[dict] = []
     offset = 0
+    # Merge a stable sort key; caller params take precedence on everything else.
+    params = {"order": "ebay_item_id", **params}
     while True:
         page_headers = {**headers, "Range": f"{offset}-{offset + READ_PAGE_SIZE - 1}"}
         resp = _request_with_retry(
