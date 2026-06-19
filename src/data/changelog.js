@@ -15,6 +15,14 @@ export const CHANGELOG = [
     ],
   },
   {
+    date: '2026-06-19',
+    title: 'Browse listing photos without opening the lot',
+    changes: [
+      { id: 'card-image-carousel-swipe', icon: '👆', text: 'On mobile you can now swipe left or right on any listing photo to flip through all its images without tapping to open the lot.' },
+      { id: 'card-image-carousel-arrows', icon: '◀▶', text: 'On desktop, hover over a listing photo and semi-transparent arrows appear on the sides so you can quickly scan through multiple images from the grid.' },
+    ],
+  },
+  {
     date: '2026-06-16',
     title: 'A tidier toolbar on phones',
     changes: [
