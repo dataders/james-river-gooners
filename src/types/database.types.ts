@@ -2066,6 +2066,9 @@ export type Database = {
         Args: {
           history_auction_ids: string[]
           history_item_ids: string[]
+          ignored_auction_ids?: string[]
+          ignored_item_ids?: string[]
+          ignored_weight?: number
           target_auction_ids: string[]
         }
         Returns: {

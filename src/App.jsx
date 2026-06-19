@@ -17,6 +17,7 @@ import { useItemPipeline } from './hooks/useItemPipeline'
 import { useFilterBounds } from './hooks/useFilterBounds'
 import { useForYou } from './hooks/useForYou'
 import { itemKey } from './utils/itemKey'
+import { sortByForYou } from './utils/sort'
 import { overlayEnrichment } from './utils/enrichment'
 import { syncUrlParam, pushUrlParam, readParam, readBoolParam, URL_PARAMS, ITEM_PANEL_STATE } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
@@ -336,12 +337,16 @@ export default function App() {
   )
   const hasForYouSignal = favoriteItems.length > 0 || bidItems.length > 0
 
+  // Compute the taste ranking whenever the user has any signal — not just while
+  // the For You sort is active — so the scores are already in hand when the
+  // swipe deck opens (it snapshots a frozen order) and so switching to the For
+  // You sort is instant rather than waiting on a fetch.
   const { scoreByKey: forYouScores } = useForYou(
     favoriteItems,
     bidItems,
     ignoredItems,
     auctions,
-    sort === 'foryou' && hasForYouSignal,
+    hasForYouSignal,
   )
 
   // If the user's history disappears (logout / clears all favorites), fall back.
@@ -407,13 +412,17 @@ export default function App() {
   }, [searchQuery, searchIds, semanticStatus])
 
   // Snapshot the not-yet-decided items when the swipe deck opens so the deck
-  // doesn't reshuffle as the user favorites/ignores its way through.
+  // doesn't reshuffle as the user favorites/ignores its way through. Rank that
+  // snapshot by the user's "For You" taste score (when we have signal) so the
+  // most-likely-to-love lots come up first; fall back to the current grid order
+  // when there's no signal (or scores haven't loaded yet).
   const openSwipe = useCallback(() => {
     const deck = displayItems.filter(item => !isIgnored(item) && !isFavorite(item))
-    setSwipeItems(deck)
+    const ranked = forYouScores.size > 0 ? sortByForYou(deck, forYouScores) : deck
+    setSwipeItems(ranked)
     setSwipeOpen(true)
-    captureEvent('swipe_deck_opened', { count: deck.length })
-  }, [displayItems, isIgnored, isFavorite])
+    captureEvent('swipe_deck_opened', { count: ranked.length, ranked: forYouScores.size > 0 })
+  }, [displayItems, isIgnored, isFavorite, forYouScores])
 
   const activeFilterCount = useMemo(() => {
     let n = 0
