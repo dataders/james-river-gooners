@@ -46,7 +46,7 @@ const AuthModal = lazyDefault(() => import('./components/AuthModal'), 'AuthModal
 const CannonLinkModal = lazyDefault(() => import('./components/CannonLinkModal'), 'CannonLinkModal')
 const MyBidsPanel = lazyDefault(() => import('./components/MyBidsPanel'), 'MyBidsPanel')
 const ImageSearchModal = lazyDefault(() => import('./components/ImageSearchModal'), 'ImageSearchModal')
-const FeedbackModal = lazyDefault(() => import('./components/FeedbackModal'), 'FeedbackModal')
+const FeedbackModal = lazyDefault(() => import('./components/FeedbackModal.tsx'), 'FeedbackModal')
 
 export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
