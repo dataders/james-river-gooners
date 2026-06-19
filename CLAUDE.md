@@ -155,6 +155,7 @@ In a remote Claude Code session (claude.ai/code) these integrations are always a
 | **Supabase** | `mcp__Supabase__*` MCP tools | Apply migrations, execute SQL (service-role, bypasses RLS), list tables/extensions/migrations, get logs, generate TypeScript types, get advisors |
 | **PostHog** | `mcp__PostHog__exec` | Run HogQL queries against project "Default project" (id 454922) in org "James River Gooners" |
 | **Git** | Local repo | Commit, push to feature branches, create PRs after every push |
+| **Scraper secrets** (`SOLDCOMPS_API_KEY`, `APIFY_API_KEY`, `MOTHERDUCK_TOKEN`, `ANTHROPIC_API_KEY`, etc.) | GitHub Actions secrets — not available in the session directly | Claude cannot call SoldComps/eBay/MotherDuck/Anthropic APIs directly. The lever is `gh workflow run <workflow>.yml --repo dataders/james-river-gooners --ref <branch>` to dispatch the workflow that holds those keys. |
 
 **Still confirm before doing:** dropping tables/columns, force-pushing any branch, merging a PR without explicit go-ahead, posting external comments on the user's behalf, any action with significant blast radius outside the repo.
 
