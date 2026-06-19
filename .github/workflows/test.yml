@@ -65,8 +65,10 @@ jobs:
 
       - run: npm ci
       - run: npm run type-check
-      # One-way guards: typed-file floor, untyped-file ceiling, suppression ceiling.
+      # One-way guards: typed-file floor, untyped-file ceiling, suppression/any ceilings.
       - run: npm run ratchets
+      # Dead-exports ceiling: unused exports can only go down, never up.
+      - run: npm run dead-exports:ratchet
 
   unit:
     name: Unit tests

@@ -29,7 +29,7 @@ const OBJECT = 'latest.html'
 // posthog-js bundle), which this owner-only page has no use for. Keeping the
 // admin bundle lean is a real load-time win on the sign-in gate.
 function useOwnerSession() {
-  const [session, setSession] = useState(/** @type {any} */ (null))
+  const [session, setSession] = useState(/** @type {import('@supabase/supabase-js').Session | null} */ (null))
   const [loading, setLoading] = useState(() => Boolean(supabase))
 
   useEffect(() => {

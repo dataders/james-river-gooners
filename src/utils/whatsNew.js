@@ -1,7 +1,13 @@
-// @ts-nocheck
+// @ts-check
 import { CHANGELOG } from '../data/changelog.js'
 
+/**
+ * @typedef {{ id: string, [key: string]: unknown }} ChangeEntry
+ * @typedef {{ date: string, title: string, changes: ChangeEntry[] }} Release
+ */
+
 // Every change id across the changelog, in display order.
+/** @param {Release[]} [changelog] */
 export function allChangeIds(changelog = CHANGELOG) {
   return changelog.flatMap(release => release.changes.map(change => change.id))
 }
@@ -14,11 +20,15 @@ const LEGACY_DATE = /^\d{4}-\d{2}-\d{2}$/
 //   - a legacy "YYYY-MM-DD" date (the old per-release marker) → every change
 //     from releases dated on or before it, so already-seen lines stay seen
 //   - empty / unparseable → nothing seen (everything shows "New" once)
+/**
+ * @param {string | null | undefined} raw
+ * @param {Release[]} [changelog]
+ */
 export function parseSeen(raw, changelog = CHANGELOG) {
   if (!raw) return new Set()
   try {
     const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return new Set(parsed)
+    if (Array.isArray(parsed)) return new Set(/** @type {string[]} */ (parsed))
   } catch {
     // not JSON — fall through to the legacy-date check
   }
@@ -31,11 +41,16 @@ export function parseSeen(raw, changelog = CHANGELOG) {
   return new Set()
 }
 
+/** @param {Set<string>} seen */
 export function serializeSeen(seen) {
   return JSON.stringify([...seen])
 }
 
 // True when any change hasn't been seen yet — drives the header dot.
+/**
+ * @param {Set<string>} seen
+ * @param {Release[]} [changelog]
+ */
 export function hasUnseenChanges(seen, changelog = CHANGELOG) {
   return allChangeIds(changelog).some(id => !seen.has(id))
 }
