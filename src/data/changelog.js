@@ -9,6 +9,13 @@
 export const CHANGELOG = [
   {
     date: '2026-06-19',
+    title: 'For You learns from what you skip',
+    changes: [
+      { id: 'foryou-ignored-signal', icon: '🎯', text: 'The “For You” sort now pays attention to your Not interested list, not just your favorites. Lots that look like ones you\'ve dismissed get pushed down the ranking, so the more you swipe, the sharper your recommendations get.' },
+    ],
+  },
+  {
+    date: '2026-06-19',
     title: 'Send feedback from the menu',
     changes: [
       { id: 'feedback-menu-option', icon: '✉', text: 'Tap ☰ → Send feedback to report a bug or share an idea. Your message goes straight to the team.' },

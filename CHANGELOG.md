@@ -4,6 +4,10 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-19 — For You learns from what you skip
+
+- 🎯 **Not interested shapes For You** — the “For You” sort now pays attention to your Not interested list, not just your favorites. Lots that look like ones you've dismissed get pushed down the ranking, so the more you swipe, the sharper your recommendations get.
+
 ## 2026-06-19 — Better link previews when sharing
 
 - 🔗 **Rich link previews** — sharing a lot via the Share button now generates a rich preview in Slack, Discord, iMessage, and other apps — showing the lot photo, title, category, and current bid instead of the generic site icon.

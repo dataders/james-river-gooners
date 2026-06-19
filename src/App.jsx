@@ -339,6 +339,7 @@ export default function App() {
   const { scoreByKey: forYouScores } = useForYou(
     favoriteItems,
     bidItems,
+    ignoredItems,
     auctions,
     sort === 'foryou' && hasForYouSignal,
   )
