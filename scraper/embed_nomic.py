@@ -93,7 +93,7 @@ def _get_device() -> str:
     """
     global _device
     if _device is None:
-        forced = os.environ.get("GOONERS_EMBED_DEVICE")
+        forced = _EmbedCfg().device
         if forced:
             _device = forced
         else:
@@ -606,7 +606,7 @@ def maybe_generate_and_upsert(items: list[dict], safe_id: str, session=None) -> 
     Failures warn rather than aborting the scrape (the local read model is
     primary).
     """
-    if os.environ.get("GOONERS_NOMIC_EMBEDDINGS") != "1":
+    if not _EmbedCfg().enabled:
         return
     if not secrets.supabase_secret_key():
         print("[nomic] SUPABASE_SECRET_KEY not set — skipping Nomic embeddings")

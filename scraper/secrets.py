@@ -63,6 +63,11 @@ def motherduck_token() -> str | None:
     return os.environ.get("MOTHERDUCK_TOKEN") or None
 
 
+def motherduck_database() -> str:
+    """MotherDuck database name for the listing_snapshots warehouse (default: my_db)."""
+    return os.environ.get("MOTHERDUCK_DATABASE") or "my_db"
+
+
 def posthog_key() -> str | None:
     """Server-side PostHog ingestion key (write-only, same value as VITE_POSTHOG_KEY)."""
     return (os.environ.get("GOONERS_POSTHOG_KEY") or "").strip() or None

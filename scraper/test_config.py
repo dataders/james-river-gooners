@@ -24,6 +24,7 @@ from config import (
     EmbeddingSettings,
     EnrichmentSettings,
     SupabaseSettings,
+    TelemetrySettings,
     WarehouseSettings,
     describe,
 )
@@ -365,6 +366,27 @@ class WarehouseValidationTest(unittest.TestCase):
         with self.assertRaises(ValidationError), _env(GOONERS_WAREHOUSE="redshift"):
             WarehouseSettings()
 
+    def test_warehouse_case_and_whitespace_normalised(self):
+        with _env(GOONERS_WAREHOUSE="  Supabase "):
+            self.assertEqual(WarehouseSettings().warehouse, "supabase")
+
+
+# ---------------------------------------------------------------------------
+# TelemetrySettings
+# ---------------------------------------------------------------------------
+
+class TelemetryDefaultsTest(unittest.TestCase):
+    def test_defaults(self):
+        with _env():
+            cfg = TelemetrySettings()
+        self.assertEqual(cfg.posthog_host, "")
+
+
+class TelemetryEnvOverrideTest(unittest.TestCase):
+    def test_posthog_host_via_env(self):
+        with _env(GOONERS_POSTHOG_HOST="https://eu.i.posthog.com"):
+            self.assertEqual(TelemetrySettings().posthog_host, "https://eu.i.posthog.com")
+
 
 # ---------------------------------------------------------------------------
 # Argparse default pattern: CLI > env > default
@@ -430,6 +452,7 @@ class DescribeTest(unittest.TestCase):
             "EmbeddingSettings",
             "CannonsCompsSettings",
             "WarehouseSettings",
+            "TelemetrySettings",
         ]:
             self.assertIn(header, output, f"Missing section: {header}")
 
@@ -445,6 +468,7 @@ class DescribeTest(unittest.TestCase):
             "GOONERS_NOMIC_EMBEDDINGS",
             "GOONERS_CANNONS_COMPS_TOP_K",
             "GOONERS_WAREHOUSE",
+            "GOONERS_POSTHOG_HOST",
         ]:
             self.assertIn(alias, output, f"Missing env var: {alias}")
 
@@ -570,6 +594,14 @@ class SecretsTest(unittest.TestCase):
     def test_ebay_client_secret_present(self):
         with _env(EBAY_CLIENT_SECRET="ebay-secret-456"):
             self.assertEqual(_secrets.ebay_client_secret(), "ebay-secret-456")
+
+    def test_motherduck_database_default(self):
+        with _env():
+            self.assertEqual(_secrets.motherduck_database(), "my_db")
+
+    def test_motherduck_database_via_env(self):
+        with _env(MOTHERDUCK_DATABASE="prod_db"):
+            self.assertEqual(_secrets.motherduck_database(), "prod_db")
 
 
 if __name__ == "__main__":

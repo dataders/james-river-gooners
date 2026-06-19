@@ -35,7 +35,7 @@ from __future__ import annotations
 import sys
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -312,6 +312,23 @@ class WarehouseSettings(_Base):
         description="Snapshot listing data to MotherDuck after each scrape.",
     )
 
+    @field_validator("warehouse", mode="before")
+    @classmethod
+    def _normalise_warehouse(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
+
+
+class TelemetrySettings(_Base):
+    """Server-side PostHog telemetry (scraper/telemetry.py)."""
+
+    posthog_host: str = Field(
+        default="",
+        validation_alias="GOONERS_POSTHOG_HOST",
+        description="PostHog ingestion host. Empty = https://us.i.posthog.com.",
+    )
+
 
 # ── Discovery CLI ──────────────────────────────────────────────────────────────
 
@@ -322,6 +339,7 @@ _SETTINGS_CLASSES: list[tuple[str, type[_Base]]] = [
     ("CannonsCompsSettings", CannonsCompsSettings),
     ("SupabaseSettings", SupabaseSettings),
     ("WarehouseSettings", WarehouseSettings),
+    ("TelemetrySettings", TelemetrySettings),
 ]
 
 

@@ -197,9 +197,7 @@ def fetch_direct(
         return summary
 
     if provider_min_remaining is None:
-        provider_min_remaining = int(
-            os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"
-        )
+        provider_min_remaining = _CfgEbay().soldcomps_min_remaining
 
     if mirror_to_warehouse is None:
         from warehouse import should_mirror
