@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { AccountMenuBody } from './AccountMenuBody.jsx'
 
 function PersonIcon() {
   return (
@@ -11,13 +12,7 @@ function PersonIcon() {
 
 export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkClick }) {
   const [open, setOpen] = useState(false)
-  const [changing, setChanging] = useState(false)
-  const [newPass, setNewPass] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [passError, setPassError] = useState('')
-  const [passNotice, setPassNotice] = useState('')
   const ref = useRef(null)
-  const inputRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
@@ -28,36 +23,7 @@ export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkCli
     return () => document.removeEventListener('mousedown', onOutside)
   }, [open])
 
-  useEffect(() => {
-    if (changing) inputRef.current?.focus()
-  }, [changing])
-
-  const openDropdown = useCallback(() => {
-    setChanging(false)
-    setNewPass('')
-    setPassError('')
-    setPassNotice('')
-    setOpen(v => !v)
-  }, [])
-
-  const handleChangePassword = useCallback(async (e) => {
-    e.preventDefault()
-    setBusy(true)
-    setPassError('')
-    const result = await auth.changePassword(newPass)
-    setBusy(false)
-    if (result?.error) {
-      setPassError(result.error)
-      return
-    }
-    setPassNotice('Password updated.')
-    setNewPass('')
-    setTimeout(() => {
-      setChanging(false)
-      setPassNotice('')
-      setOpen(false)
-    }, 1500)
-  }, [auth, newPass])
+  const openDropdown = useCallback(() => setOpen(v => !v), [])
 
   if (!auth.available) return null
 
@@ -82,64 +48,12 @@ export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkCli
         </button>
         {open && (
           <div className="account-dropdown" role="menu">
-            <div className="account-dropdown-email" title={auth.user.email}>
-              {auth.user.email}
-            </div>
-            <hr className="account-dropdown-divider" />
-            {cannonBids && (
-              <button
-                type="button"
-                className={`account-dropdown-item${cannonBids.linked ? ' account-dropdown-item--cannon-linked' : ''}`}
-                role="menuitem"
-                onClick={() => { setOpen(false); onCannonLinkClick?.() }}
-              >
-                {cannonBids.linked ? `Cannon's ✓ (${cannonBids.username})` : "Link Cannon's account"}
-              </button>
-            )}
-            {changing ? (
-              <form className="account-change-pass-form" onSubmit={handleChangePassword}>
-                <input
-                  ref={inputRef}
-                  type="password"
-                  className="account-change-pass-input"
-                  placeholder="New password"
-                  autoComplete="new-password"
-                  minLength={6}
-                  required
-                  value={newPass}
-                  onChange={e => setNewPass(e.target.value)}
-                />
-                {passError && <p className="account-dropdown-error">{passError}</p>}
-                {passNotice && <p className="account-dropdown-notice">{passNotice}</p>}
-                <div className="account-change-pass-actions">
-                  <button type="submit" className="account-dropdown-item account-dropdown-item--primary" disabled={busy}>
-                    {busy ? 'Saving…' : 'Save'}
-                  </button>
-                  <button type="button" className="account-dropdown-item" onClick={() => setChanging(false)}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="account-dropdown-item"
-                  role="menuitem"
-                  onClick={() => setChanging(true)}
-                >
-                  Change password
-                </button>
-                <button
-                  type="button"
-                  className="account-dropdown-item"
-                  role="menuitem"
-                  onClick={() => { setOpen(false); auth.signOut() }}
-                >
-                  Sign out
-                </button>
-              </>
-            )}
+            <AccountMenuBody
+              auth={auth}
+              cannonBids={cannonBids}
+              onCannonLinkClick={onCannonLinkClick}
+              onAfterAction={() => setOpen(false)}
+            />
           </div>
         )}
       </div>

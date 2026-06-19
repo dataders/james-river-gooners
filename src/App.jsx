@@ -29,6 +29,8 @@ import { ItemGrid } from './components/ItemGrid'
 import { ThemeToggle } from './components/ThemeToggle'
 import { ItemDetail } from './components/ItemDetail'
 import { AccountButton } from './components/AccountButton'
+import { NavDrawer } from './components/NavDrawer'
+import { headerBadge } from './utils/headerBadge'
 import { useTutorial } from './hooks/useTutorial'
 import { useWhatsNew } from './hooks/useWhatsNew'
 
@@ -184,6 +186,12 @@ export default function App() {
   const [swipeOpen, setSwipeOpen] = useState(false)
   const [swipeItems, setSwipeItems] = useState([])
   const [imageSearchOpen, setImageSearchOpen] = useState(false)
+  // Mobile hamburger drawer (the utility cluster + account collapse into it on
+  // small screens). The hamburger mirrors the account bid-alert count, falling
+  // back to the What's-new unseen dot.
+  const [navOpen, setNavOpen] = useState(false)
+  const bidAlertCount = auth.user ? (cannonBids?.unseenAlertCount ?? 0) : 0
+  const menuBadge = headerBadge(bidAlertCount, hasUnseen)
   const [filterOpen, setFilterOpen] = useState(() => {
     if (window.innerWidth < 1024) return false // mobile always starts closed
     const stored = localStorage.getItem('gooners-filter-open')
@@ -455,6 +463,22 @@ export default function App() {
         <div className="header-row">
           <div className="header-banner">
             <button
+              type="button"
+              className="header-menu-button"
+              onClick={() => setNavOpen(true)}
+              aria-label={bidAlertCount > 0 ? `Menu (${bidAlertCount} bid update${bidAlertCount > 1 ? 's' : ''})` : 'Menu'}
+              aria-expanded={navOpen}
+              aria-haspopup="dialog"
+            >
+              <span className="header-menu-icon" aria-hidden="true">☰</span>
+              {menuBadge.kind === 'count' && (
+                <span className="header-menu-badge" aria-hidden="true">{menuBadge.value}</span>
+              )}
+              {menuBadge.kind === 'dot' && (
+                <span className="header-menu-dot" aria-hidden="true" />
+              )}
+            </button>
+            <button
               className="home-button"
               onClick={() => { window.location.href = '/' }}
               title="Go to home"
@@ -554,6 +578,22 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      <NavDrawer
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        onImageSearch={() => setImageSearchOpen(true)}
+        onSwipe={openSwipe}
+        onTutorial={openTutorial}
+        onWhatsNew={() => { captureEvent('whats_new_opened', { hasUnseen }); openWhatsNew() }}
+        whatsNewUnseen={hasUnseen}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        auth={auth}
+        cannonBids={auth.user ? cannonBids : null}
+        onSignInClick={() => setAuthOpen(true)}
+        onCannonLinkClick={() => setCannonLinkOpen(true)}
+      />
 
       <div className={`app-body${filterOpen ? '' : ' app-body--sidebar-closed'}`}>
         <FilterPanel
