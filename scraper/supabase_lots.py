@@ -394,6 +394,7 @@ def backfill(
     session=None,
     do_active: bool = True,
     do_archived: bool = True,
+    batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> tuple[int, int]:
     """Read all existing NDJSON files and upsert into Supabase.
 
@@ -427,6 +428,7 @@ def backfill(
                     url=url,
                     key=key,
                     session=session,
+                    batch_size=batch_size,
                     skip_unchanged=False,
                 )
 
@@ -442,7 +444,12 @@ def backfill(
             ]
             if items:
                 archived_total += archive_lots(
-                    ndjson_path.stem, items, url=url, key=key, session=session
+                    ndjson_path.stem,
+                    items,
+                    url=url,
+                    key=key,
+                    session=session,
+                    batch_size=batch_size,
                 )
 
     return active_total, archived_total
@@ -459,6 +466,13 @@ def _parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument(
         "--archived-only", action="store_true", help="Backfill archived lots only"
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help=f"Rows per PostgREST upsert request (default {DEFAULT_BATCH_SIZE}). "
+        "Lower values reduce per-request latency on a busy Supabase instance.",
+    )
     return parser.parse_args(argv)
 
 
@@ -471,6 +485,7 @@ if __name__ == "__main__":
     active_count, archived_count = backfill(
         do_active=not args.archived_only,
         do_archived=not args.active_only,
+        batch_size=args.batch_size,
     )
     print(
         f"Backfill complete: {active_count} active lots, {archived_count} archived lots"
