@@ -7,7 +7,6 @@ export interface ManifestEntry {
   safeId: string
   itemsPath: string
   archived: boolean
-  ndjsonPath?: string
   // Full entries carry extra auction metadata (id/title/endDate/…) that the
   // loader reads opportunistically; keep them flowing through untouched.
   [key: string]: unknown

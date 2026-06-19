@@ -2,93 +2,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  normalizeRowsNdjson,
   normalizeLotRow,
   normalizeRowsSupabase,
 } from './auctionNormalize.js'
-
-// ── normalizeRowsNdjson: manifest-first contract ──────────────────────────────
-
-test('normalizeRowsNdjson prefers manifest fields over item-row fields', () => {
-  const entries = [{
-    safeId: 'abc',
-    title: 'Manifest Title',
-    endDate: '2026-07-01T00:00:00Z',
-    scrapedAt: '2026-06-15T00:00:00Z',
-    source: 'hibid',
-  }]
-  const rows = [{
-    auctionSafeId: 'abc',
-    id: 'item1',
-    auctionId: 'old-id',
-    auctionTitle: 'Row Title',
-    auctionEndDate: '2026-06-01T00:00:00Z',
-    scrapedAt: '2026-05-01T00:00:00Z',
-    source: 'cannons',
-  }]
-  const { auctions } = normalizeRowsNdjson([rows], entries, false)
-  assert.equal(auctions.length, 1)
-  assert.equal(auctions[0].title, 'Manifest Title')
-  assert.equal(auctions[0].endDate, '2026-07-01T00:00:00Z')
-  assert.equal(auctions[0].scrapedAt, '2026-06-15T00:00:00Z')
-  assert.equal(auctions[0].source, 'hibid')
-})
-
-test('normalizeRowsNdjson falls back to item-row fields when manifest entry is absent', () => {
-  const entries = []
-  const rows = [{
-    auctionSafeId: 'xyz',
-    id: 'item1',
-    auctionTitle: 'Row Title',
-    auctionEndDate: '2026-06-01T00:00:00Z',
-    source: 'rasmus',
-  }]
-  const { auctions } = normalizeRowsNdjson([rows], entries, false)
-  assert.equal(auctions[0].title, 'Row Title')
-  assert.equal(auctions[0].source, 'rasmus')
-})
-
-test('normalizeRowsNdjson counts totalItems per auction', () => {
-  const entries = [{ safeId: 'auction1', title: 'Test', source: 'cannons' }]
-  const rows = [
-    { auctionSafeId: 'auction1', id: 'i1' },
-    { auctionSafeId: 'auction1', id: 'i2' },
-    { auctionSafeId: 'auction1', id: 'i3' },
-  ]
-  const { auctions } = normalizeRowsNdjson([rows], entries, false)
-  assert.equal(auctions[0].totalItems, 3)
-})
-
-test('normalizeRowsNdjson handles multiple auctions from multiple ndjson files', () => {
-  const entries = [
-    { safeId: 'a1', title: 'Auction One', source: 'cannons' },
-    { safeId: 'a2', title: 'Auction Two', source: 'hibid' },
-  ]
-  const file1 = [{ auctionSafeId: 'a1', id: 'i1' }, { auctionSafeId: 'a1', id: 'i2' }]
-  const file2 = [{ auctionSafeId: 'a2', id: 'i3' }]
-  const { auctions, items } = normalizeRowsNdjson([file1, file2], entries, false)
-  assert.equal(auctions.length, 2)
-  assert.equal(items.length, 3)
-  const a1 = auctions.find(a => a.safeId === 'a1')
-  assert.equal(a1.totalItems, 2)
-  assert.equal(a1.title, 'Auction One')
-})
-
-test('normalizeRowsNdjson stamps archived on every item', () => {
-  const rows = [{ auctionSafeId: 'a1', id: 'i1' }]
-  const { items } = normalizeRowsNdjson([rows], [], true)
-  assert.equal(items[0].archived, true)
-})
-
-test('normalizeRowsNdjson silently skips rows with no auctionSafeId', () => {
-  const rows = [
-    { id: 'no-sid' },
-    { auctionSafeId: 'a1', id: 'has-sid' },
-  ]
-  const { auctions, items } = normalizeRowsNdjson([rows], [], false)
-  assert.equal(items.length, 2)
-  assert.equal(auctions.length, 1)
-})
 
 // ── normalizeLotRow: Supabase snake_case → camelCase ─────────────────────────
 
