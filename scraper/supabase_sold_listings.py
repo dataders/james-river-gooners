@@ -57,6 +57,26 @@ _COLUMN_FROM_CANDIDATE = {
 }
 SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json")
 
+# Fields extracted from raw_json (the full SoldComps item dict) into typed
+# columns at insert time. Keys are table column names; values are the raw_json
+# key to read.  Numeric/timestamp casting is handled by Postgres on the
+# jsonb→text extraction side; we pass strings and rely on the typed target
+# column (migration 0035) to coerce. Null raw_json keys produce NULL columns.
+_RAW_JSON_COLUMN_MAP = {
+    "epid":                   "epid",
+    "condition_id":           "conditionId",
+    "shipping_price":         "shippingPrice",
+    "shipping_currency":      "shippingCurrency",
+    "shipping_type":          "shippingType",
+    "total_price":            "totalPrice",
+    "seller_type":            "sellerType",
+    "seller_username":        "sellerUsername",
+    "seller_feedback_score":  "sellerFeedbackScore",
+    "seller_positive_pct":    "sellerPositivePercent",
+    "full_res_thumbnail_url": "fullResThumbnailUrl",
+    "provider_scraped_at":    "scrapedAt",
+}
+
 
 def sold_listings_corpus_enabled() -> bool:
     """Whether to capture + persist the raw sold-listings corpus (opt-in)."""
@@ -88,7 +108,12 @@ def build_sold_listing_rows(records: list[dict]) -> list[dict]:
         }
         # raw_json is already JSON-native (it came from response.json()); store it
         # verbatim into the jsonb column rather than coercing it.
-        row["raw_json"] = record.get("raw_json")
+        raw = record.get("raw_json")
+        row["raw_json"] = raw
+        # Normalize raw_json fields into typed columns (migration 0035).
+        if isinstance(raw, dict):
+            for col, key in _RAW_JSON_COLUMN_MAP.items():
+                row[col] = json_safe(raw.get(key))
         by_id[ebay_item_id] = row
     return list(by_id.values())
 

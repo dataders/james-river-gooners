@@ -15,8 +15,8 @@ path (the two ~550 MB Nomic models load here, not in the scrape):
      ``embed_nomic.embed_items``. Each listing becomes a pseudo-item
      ``{id, title, description, images}`` so the encoding (fused text + thumbnail,
      ``search_document:`` prefix, mean-pool + renormalise) is identical to lots.
-     The text folds in the listing's title + condition + all the text in its
-     ``raw_json`` (per the D2 decision: embed more than the thumbnail). Incremental
+     The text folds in the listing's title + condition into the embedded text.
+     Incremental
      — only listings not yet embedded.
 
   2. **rerank** — for each active auction, call the ``match_sold_listings`` RPC
@@ -60,29 +60,22 @@ _HIGH_SIM = float(os.environ.get("GOONERS_SOLD_RERANK_HIGH_SIM", "0.85"))
 def listing_to_item(row: dict) -> dict:
     """Map a ``sold_listings`` row to an embed_nomic pseudo-item.
 
-    `description` folds the listing's condition and every non-URL string in its
-    `raw_json` (subtitle, condition, etc.) into the embedded text, so the vector
-    captures more than the title — per the D2 decision to embed the JSON text,
-    not just the thumbnail. The thumbnail is the lone image.
+    Uses only semantically useful normalized columns — condition is the one
+    meaningful text field beyond the title (the SoldComps API carries no
+    subtitle or item specifics). Avoids dumping raw_json into the embedding,
+    which pulled in seller names, feedback scores, shipping strings, and eBay
+    category breadcrumbs as noise.
+
+    Image: prefers the higher-resolution ``full_res_thumbnail_url`` when
+    available so the visual vector captures more detail.
     """
-    raw = row.get("raw_json") or {}
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except Exception:
-            raw = {}
-    text_bits = [row.get("condition") or ""]
-    if isinstance(raw, dict):
-        for value in raw.values():
-            if isinstance(value, str) and value and not value.startswith("http"):
-                text_bits.append(value)
-    description = " ".join(bit for bit in text_bits if bit).strip()[:2000]
-    thumbnail = row.get("thumbnail_url")
+    description = (row.get("condition") or "").strip()
+    image = row.get("full_res_thumbnail_url") or row.get("thumbnail_url") or ""
     return {
         "id": row["ebay_item_id"],
         "title": row.get("title") or "",
         "description": description,
-        "images": [thumbnail] if thumbnail else [],
+        "images": [image] if image else [],
     }
 
 
@@ -142,7 +135,7 @@ def fetch_unembedded_listings(session, url: str, key: str) -> list[dict]:
         session,
         f"{base}/rest/v1/{CORPUS_TABLE}",
         _headers(key),
-        {"select": "ebay_item_id,title,condition,thumbnail_url,raw_json"},
+        {"select": "ebay_item_id,title,condition,thumbnail_url,full_res_thumbnail_url"},
     )
     return [
         r for r in corpus if r.get("ebay_item_id") and r["ebay_item_id"] not in embedded
