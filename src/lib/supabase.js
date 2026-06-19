@@ -22,6 +22,7 @@ import { createClient } from '@supabase/supabase-js'
 const url = import.meta.env.VITE_SUPABASE_URL
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
+export const supabaseUrl = url ?? null
 export const isSupabaseConfigured = Boolean(url && publishableKey)
 
 // Gate on `url && publishableKey` (not the derived isSupabaseConfigured) so
