@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 // GitHub Pages / Fastly rejects URLs longer than ~4 KB with 414 URI Too Long.
 // Keep well under that; localStorage carries the overflow state across reloads.
 const MAX_URL_LENGTH = 2000
@@ -34,20 +34,29 @@ export const URL_PARAMS = {
 // detail panel, so closing it can unwind exactly that entry (browser Back too).
 export const ITEM_PANEL_STATE = { goonersItemPanel: true }
 
+/** @param {string} name */
 export function readParam(name) {
   return new URLSearchParams(window.location.search).get(name)
 }
 
+/** @param {string} name */
 export function readListParam(name) {
   return new URLSearchParams(window.location.search).getAll(name)
 }
 
+/** @param {string} name */
 export function readBoolParam(name) {
   return readParam(name) === '1'
 }
 
+/** @typedef {string | string[] | boolean | number | null | undefined} ParamValue */
+
 // Build the next URL for `key=value`, applying the same array/boolean encoding
 // and length guard regardless of whether the caller replaces or pushes history.
+/**
+ * @param {string} key
+ * @param {ParamValue} value
+ */
 function nextUrl(key, value) {
   const p = new URLSearchParams(window.location.search)
   if (Array.isArray(value)) {
@@ -72,6 +81,10 @@ function nextUrl(key, value) {
   return url
 }
 
+/**
+ * @param {string} key
+ * @param {ParamValue} value
+ */
 export function syncUrlParam(key, value) {
   history.replaceState(history.state, '', nextUrl(key, value))
 }
@@ -79,6 +92,11 @@ export function syncUrlParam(key, value) {
 // Push a *new* history entry for `key=value` (vs. syncUrlParam's in-place
 // replace). Used for the item detail panel so browser Back / the close button
 // dismiss it instead of leaving the page. `state` marks the entry as ours.
+/**
+ * @param {string} key
+ * @param {ParamValue} value
+ * @param {unknown} [state]
+ */
 export function pushUrlParam(key, value, state = null) {
   history.pushState(state, '', nextUrl(key, value))
 }
