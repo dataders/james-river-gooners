@@ -22,6 +22,14 @@ function q(sel: string): Element {
   return el
 }
 
+// querySelectorAll + index with a clear throw (noUncheckedIndexedAccess makes
+// NodeList[i] return Element | undefined, so we need an explicit guard).
+function qAt(sel: string, i: number): Element {
+  const el = [...document.querySelectorAll(sel)][i]
+  if (!el) throw new Error(`Element not found: ${sel}[${i}]`)
+  return el
+}
+
 function makeItem(over: Record<string, unknown> = {}) {
   return {
     id: 'test-1',
@@ -83,9 +91,8 @@ describe('ItemCard carousel', () => {
     render(<ItemCard {...baseProps()} />)
     swipe(q('.item-image'), { startX: 200, endX: 50 })
 
-    const dots = document.querySelectorAll('.card-carousel-dot')
-    expect(dots[0].classList.contains('active')).toBe(false)
-    expect(dots[1].classList.contains('active')).toBe(true)
+    expect(qAt('.card-carousel-dot', 0).classList.contains('active')).toBe(false)
+    expect(qAt('.card-carousel-dot', 1).classList.contains('active')).toBe(true)
   })
 
   it('right swipe retreats to the previous image', () => {
@@ -95,8 +102,7 @@ describe('ItemCard carousel', () => {
     swipe(el, { startX: 200, endX: 50 }) // → index 1
     swipe(el, { startX: 50, endX: 200 }) // ← back to index 0
 
-    const dots = document.querySelectorAll('.card-carousel-dot')
-    expect(dots[0].classList.contains('active')).toBe(true)
+    expect(qAt('.card-carousel-dot', 0).classList.contains('active')).toBe(true)
   })
 
   it('clamps at the last image — does not wrap around', () => {
@@ -106,8 +112,7 @@ describe('ItemCard carousel', () => {
     swipe(el, { startX: 200, endX: 50 }) // index 0 → 1
     swipe(el, { startX: 200, endX: 50 }) // attempt past the end → stays at 1
 
-    const dots = document.querySelectorAll('.card-carousel-dot')
-    expect(dots[1].classList.contains('active')).toBe(true)
+    expect(qAt('.card-carousel-dot', 1).classList.contains('active')).toBe(true)
   })
 
   it('clamps at the first image — does not wrap around', () => {
@@ -116,8 +121,7 @@ describe('ItemCard carousel', () => {
     // Swipe right from index 0 — should stay at 0
     swipe(q('.item-image'), { startX: 50, endX: 200 })
 
-    const dots = document.querySelectorAll('.card-carousel-dot')
-    expect(dots[0].classList.contains('active')).toBe(true)
+    expect(qAt('.card-carousel-dot', 0).classList.contains('active')).toBe(true)
   })
 
   it('suppresses the click that fires after a touch swipe', () => {
@@ -204,8 +208,9 @@ describe('ItemCard carousel', () => {
 
     const transform = track.style.transform || ''
     const match = transform.match(/\+\s*(-?[\d.]+)px/)
-    if (match) {
-      expect(parseFloat(match[1])).toBe(0)
+    const group = match?.[1]
+    if (group !== undefined) {
+      expect(parseFloat(group)).toBe(0)
     } else {
       expect(transform).not.toMatch(/\d+px/)
     }
@@ -213,12 +218,10 @@ describe('ItemCard carousel', () => {
 
   it('dot click navigates to the correct image', () => {
     render(<ItemCard {...baseProps()} />)
-    const dots = screen.getAllByRole('button', { name: /image/i })
 
-    fireEvent.click(dots[2]) // jump directly to index 2
+    fireEvent.click(qAt('.card-carousel-dot', 2)) // jump directly to index 2
 
-    const allDots = document.querySelectorAll('.card-carousel-dot')
-    expect(allDots[2].classList.contains('active')).toBe(true)
-    expect(allDots[0].classList.contains('active')).toBe(false)
+    expect(qAt('.card-carousel-dot', 2).classList.contains('active')).toBe(true)
+    expect(qAt('.card-carousel-dot', 0).classList.contains('active')).toBe(false)
   })
 })
