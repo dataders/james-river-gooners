@@ -343,8 +343,21 @@ class SupabaseCompLedger(CompLedger):
             return None
 
     def provider_remaining(self, now=None) -> int | None:
-        """Most recent provider-reported remaining quota, or None if none cached."""
-        return self._usage_remaining({"order": "observed_at.desc"})
+        """Most recent provider-reported remaining quota in the current billing period.
+
+        Scoped to readings from this calendar month so a previous period's
+        exhausted-quota reading (remaining=0) doesn't block the new period's
+        first run. Returns None when no reading exists yet this period, letting
+        the budget gate fall back to the coarse attempt count.
+        """
+        now = (now or datetime.now(UTC)).astimezone(UTC)
+        period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return self._usage_remaining(
+            {
+                "observed_at": f"gte.{period_start.isoformat()}",
+                "order": "observed_at.desc",
+            }
+        )
 
     def provider_used_today(self, now=None) -> int:
         """Billed requests spent today per the provider meter.
