@@ -53,14 +53,25 @@ jobs:
           else
             git push -u origin "$BRANCH"
           fi
-          # Only open a PR if one isn't already open for this branch; otherwise the
-          # force-push above has already updated the existing PR.
-          if [ "$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')" != "0" ]; then
-            echo "An open PR for $BRANCH already exists — updated it via push, skipping create."
+          # If a PR for today's branch is already open (same-day re-run), just ensure
+          # auto-merge is armed and skip creating a duplicate.
+          CURRENT_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$CURRENT_PR" ]; then
+            echo "PR #$CURRENT_PR for $BRANCH already exists — updated via force-push."
+            gh pr merge --auto --merge "$CURRENT_PR" || echo "Auto-merge not available; PR updated and ready for manual merge."
           else
-            gh pr create \
+            # Close any open PRs from previous days before opening a fresh one —
+            # they're redundant because each run discovers all new IDs since the last merge.
+            STALE=$(gh pr list --state open --json number,headRefName \
+              --jq '.[] | select(.headRefName | startswith("bot/hibid-discovery-")) | .number')
+            for PR_NUM in $STALE; do
+              gh pr close "$PR_NUM" --comment "Superseded by incoming PR for $BRANCH."
+            done
+            PR_URL=$(gh pr create \
               --title "chore: update HiBid catalog IDs (daily discovery)" \
               --body "Automated PR: new HiBid catalog IDs added to \`scraper/hibid_sources.yml\` by the daily discovery workflow." \
               --base main \
-              --head "$BRANCH"
+              --head "$BRANCH")
+            echo "Opened $PR_URL"
+            gh pr merge --auto --merge "$BRANCH" || echo "Auto-merge not available; PR ready for manual merge."
           fi
