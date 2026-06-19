@@ -35,13 +35,13 @@ Stores every (lot, arm, candidate) row (with similarity + rank) to the
 
 import argparse
 import json
-import env_secrets as secrets
 import sys
 import time
 import uuid
 from functools import partial
 
 import ebay_query as eq
+import env_secrets as secrets
 import numpy as np
 import requests
 from embed_sold_listings import listing_to_item

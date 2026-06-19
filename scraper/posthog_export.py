@@ -22,9 +22,10 @@ Usage:
 """
 
 import argparse
-import env_secrets as secrets
 import sys
 from datetime import UTC, datetime
+
+import env_secrets as secrets
 
 try:
     import duckdb

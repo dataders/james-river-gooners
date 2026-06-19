@@ -14,9 +14,9 @@ methods; portable code should depend on those, not on :func:`connect`.
 """
 
 import os
-import env_secrets as secrets
 from abc import ABC, abstractmethod
 
+import env_secrets as secrets
 from config import WarehouseSettings as _CfgWarehouse
 
 DEFAULT_DATABASE = "md:"

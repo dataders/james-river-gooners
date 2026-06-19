@@ -18,7 +18,6 @@ comments are skipped.
 import argparse
 import json
 import os
-import env_secrets as secrets
 import subprocess
 import sys
 import time
@@ -27,6 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import env_secrets as secrets
 import pyarrow.parquet as pq
 from dates import parse_auction_datetime_utc
 from discover import discover_current_auction_urls

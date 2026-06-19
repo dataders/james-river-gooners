@@ -61,12 +61,12 @@ import hashlib
 import json
 import os
 import re
-import env_secrets as secrets
 import sys
 import threading
 import time
 from pathlib import Path
 
+import env_secrets as secrets
 from config import EnrichmentSettings as _EnrichmentSettings
 
 # Server-side PostHog telemetry for the enrichment runs (batch + sync). Reuses the

@@ -15,10 +15,10 @@ varies per source is captured in :class:`WriteContext`.
 """
 
 import json
-import env_secrets as secrets
 from dataclasses import dataclass
 from pathlib import Path
 
+import env_secrets as secrets
 import requests
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "public" / "data"

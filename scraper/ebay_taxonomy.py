@@ -35,9 +35,9 @@ CLI::
 import base64
 import json
 import re
-import env_secrets as secrets
 import sys
 
+import env_secrets as secrets
 import requests
 from config import EbayCompsSettings as _CfgEbay
 

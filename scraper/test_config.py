@@ -14,10 +14,10 @@ Coverage:
 import argparse
 import io
 import os
-import env_secrets as _secrets
 import unittest
 from unittest.mock import patch
 
+import env_secrets as _secrets
 from config import (
     CannonsCompsSettings,
     EbayCompsSettings,
