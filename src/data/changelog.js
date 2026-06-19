@@ -8,6 +8,13 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-19',
+    title: 'Better link previews when sharing',
+    changes: [
+      { id: 'og-link-preview', icon: '🔗', text: 'Sharing a lot via the Share button now generates a rich preview in Slack, Discord, iMessage, and other apps — showing the lot photo, title, category, and current bid instead of the generic site icon.' },
+    ],
+  },
+  {
     date: '2026-06-16',
     title: 'A tidier toolbar on phones',
     changes: [

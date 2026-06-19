@@ -11,6 +11,7 @@ import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
+import { supabaseUrl } from '../lib/supabase'
 
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, cannonBids, bidStatus, user, onCannonLinkClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
@@ -27,18 +28,34 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
     [item, images]
   )
 
+  const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
+
+  // When Supabase is configured, share via the og-item edge function so that
+  // social platforms (Slack, Discord, iMessage) can crawl it and render a
+  // rich preview — item photo, title, category, and current bid. The edge
+  // function immediately redirects human visitors to the SPA deep-link URL.
+  const shareUrl = supabaseUrl && itemKey
+    ? `${supabaseUrl}/functions/v1/og-item?item=${encodeURIComponent(itemKey)}`
+    : window.location.href
+
   const handleShare = () => {
-    const url = window.location.href
     if (navigator.share) {
-      navigator.share({ title: item?.title, url }).catch(() => {})
+      navigator.share({ title: item?.title, url: shareUrl }).catch(() => {})
     } else {
-      navigator.clipboard.writeText(url).then(() => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
         setShareLabel('Copied!')
         setTimeout(() => setShareLabel(null), 2000)
       }).catch(() => {})
     }
   }
-  const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
+
+  // Reflect the open item in the browser tab title (helps history + share sheets).
+  useEffect(() => {
+    if (!item) return
+    const prev = document.title
+    document.title = `${item.title} | James River Gooners`
+    return () => { document.title = prev }
+  }, [item])
 
   // Close on Escape
   useEffect(() => {
