@@ -77,9 +77,9 @@ jobs:
       # Reuses the existing VITE_POSTHOG_KEY secret (same write-only ingestion key).
       GOONERS_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
 
       # One-time #6 cutover: copy the committed JSON read model into Supabase so
       # comps coverage doesn't drop when the frontend flips to Supabase-only.
@@ -90,7 +90,7 @@ jobs:
           cd scraper
           uv run --with requests python backfill_comps_to_supabase.py
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         if: ${{ ! inputs.backfill_from_json }}
         with:
           node-version: '20'
