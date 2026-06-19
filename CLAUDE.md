@@ -144,6 +144,20 @@ CI enforces **ratchets** — baselines that may only move the good direction, so
 - **`npm run advisors:ratchet`** (`scripts/supabase-advisors-ratchet.mjs`, `supabase-advisors.yml` — scheduled + migration PRs) — fails if the live project gains a NEW Supabase security/perf advisor finding vs `scripts/supabase-advisors-baseline.json` (keyed on each lint's `cache_key`, so it catches a regression even behind an unrelated fix). Needs `SUPABASE_ACCESS_TOKEN`; skips cleanly without it.
 - The **usability benchmark** (`tests/usability`, `USABILITY_GATE=85`) is the same idea for UX.
 
+## Session Integrations (what Claude can do without asking)
+
+In a remote Claude Code session (claude.ai/code) these integrations are always active. Claude may use them autonomously — no need to ask for permission or credentials.
+
+| Integration | Access path | What Claude can do |
+|---|---|---|
+| **GitHub** | `mcp__github__*` MCP tools (scoped to `dataders/james-river-gooners`) | Read/search issues, PRs, files, CI status; push files; create/update/merge PRs; post comments; manage labels |
+| **GitHub Actions** | `gh` CLI (PAT authenticated as `dataders`) | Dispatch workflows, list/watch/re-run/cancel runs, read job logs. **Always pass `--repo dataders/james-river-gooners`** — the git remote is a proxy and `gh` can't infer it. MCP token can't dispatch; `gh` can. |
+| **Supabase** | `mcp__Supabase__*` MCP tools | Apply migrations, execute SQL (service-role, bypasses RLS), list tables/extensions/migrations, get logs, generate TypeScript types, get advisors |
+| **PostHog** | `mcp__PostHog__exec` | Run HogQL queries against project "Default project" (id 454922) in org "James River Gooners" |
+| **Git** | Local repo | Commit, push to feature branches, create PRs after every push |
+
+**Still confirm before doing:** dropping tables/columns, force-pushing any branch, merging a PR without explicit go-ahead, posting external comments on the user's behalf, any action with significant blast radius outside the repo.
+
 ## CI / PR Monitoring
 
 **GitHub CLI is available and authenticated** (`gh`, PAT for `dataders`). Use it for GitHub Actions work the MCP can't do — dispatching workflows (`gh workflow run`), watching runs (`gh run list/view/watch`), reading job logs (`gh run view --log`), re-running, cancelling. **Always pass `--repo dataders/james-river-gooners`:** the git remote is a local proxy, so `gh` can't infer the repo and errors with "none of the git remotes … point to a known GitHub host" without it. Prefer the GitHub MCP tools for PR reads/reviews/comments (richer, structured); reach for `gh` for Actions/dispatch and anything the MCP token lacks permission for.
