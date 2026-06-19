@@ -199,6 +199,22 @@ class EbayCompsSettings(_Base):
         validation_alias="GOONERS_EBAY_BROWSER_FALLBACK",
         description="Fall back to browser-based eBay scraping when the HTML parse fails.",
     )
+    user_agent: str = Field(
+        default="",
+        validation_alias="GOONERS_EBAY_USER_AGENT",
+        description=(
+            "Custom User-Agent for eBay HTML requests and agent-browser sessions. "
+            "Empty = rotate randomly (HTML path) / use the code default (agent-browser)."
+        ),
+    )
+    agent_browser_command: str = Field(
+        default="",
+        validation_alias="GOONERS_AGENT_BROWSER_COMMAND",
+        description=(
+            "Shell command to invoke the agent browser. "
+            "Empty = use the built-in default (npm exec --yes agent-browser@0.27.0 --)."
+        ),
+    )
 
 
 class EmbeddingSettings(_Base):
@@ -227,6 +243,15 @@ class EmbeddingSettings(_Base):
         le=10,
         description="Same as EnrichmentSettings.max_images — one shared knob keeps them in lockstep.",
     )
+    upsert_batch: int = Field(
+        default=100,
+        validation_alias="GOONERS_NOMIC_UPSERT_BATCH",
+        ge=1,
+        description=(
+            "Max embedding rows per Supabase upsert batch. "
+            "Smaller batches keep each request under the PostgREST row cap on busy instances."
+        ),
+    )
 
 
 class CannonsCompsSettings(_Base):
@@ -245,6 +270,31 @@ class CannonsCompsSettings(_Base):
         ge=0.0,
         le=1.0,
         description="Minimum Nomic cosine similarity for a Cannon's comp to be kept.",
+    )
+
+
+class SupabaseSettings(_Base):
+    """Supabase client tuning (scraper/supabase_comps.py, scraper/supabase_lots.py)."""
+
+    read_timeout: int = Field(
+        default=90,
+        validation_alias="GOONERS_SUPABASE_READ_TIMEOUT",
+        ge=1,
+        description=(
+            "PostgREST read timeout in seconds. "
+            "Generous because the comp_item_freshness view can take >30s on a cold Micro instance."
+        ),
+    )
+    page_size: int = Field(
+        default=1_000,
+        validation_alias="GOONERS_SUPABASE_PAGE",
+        ge=1,
+        le=1_000,
+        description=(
+            "Rows per paginated PostgREST read. "
+            "Must not exceed the server's max-rows cap (1000 by default) or short pages "
+            "will be mistaken for the last page."
+        ),
     )
 
 
@@ -270,6 +320,7 @@ _SETTINGS_CLASSES: list[tuple[str, type[_Base]]] = [
     ("EbayCompsSettings", EbayCompsSettings),
     ("EmbeddingSettings", EmbeddingSettings),
     ("CannonsCompsSettings", CannonsCompsSettings),
+    ("SupabaseSettings", SupabaseSettings),
     ("WarehouseSettings", WarehouseSettings),
 ]
 

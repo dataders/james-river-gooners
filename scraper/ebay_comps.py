@@ -45,6 +45,7 @@ See docs/data-architecture.md.
 import argparse
 import os
 import random
+import secrets
 import sys
 from pathlib import Path
 from time import monotonic
@@ -639,7 +640,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     apify_parser.add_argument(
         "--api-key",
-        default=os.environ.get("APIFY_API_KEY"),
+        default=secrets.apify_key(),
         help="Apify API token (defaults to APIFY_API_KEY env var).",
     )
 

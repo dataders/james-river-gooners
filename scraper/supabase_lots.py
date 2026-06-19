@@ -27,9 +27,9 @@ CLI usage (one-time backfill of existing NDJSON files):
 
 import argparse
 import json
-import os
 from pathlib import Path
 
+from config import SupabaseSettings as _SupaCfg
 from supabase_comps import (
     READ_TIMEOUT,
     _request_with_retry,
@@ -44,7 +44,7 @@ DEFAULT_BATCH_SIZE = 500
 # ride under the timeout even when the shared compute is busy serving the SPA's
 # heavy full-dataset reads (the dominant DB load). Tunable via env for a backfill
 # against a saturated instance; the default keeps prior behaviour.
-READ_PAGE_SIZE = int(os.environ.get("GOONERS_SUPABASE_PAGE", "1000"))
+READ_PAGE_SIZE = _SupaCfg().page_size
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 ITEMS_DIR = _REPO_ROOT / "public" / "data" / "items"

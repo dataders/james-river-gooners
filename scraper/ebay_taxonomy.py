@@ -36,6 +36,7 @@ import base64
 import json
 import os
 import re
+import secrets
 import sys
 
 import requests
@@ -313,8 +314,8 @@ def _cli() -> None:
     )
     args = parser.parse_args()
 
-    client_id = os.environ.get("EBAY_CLIENT_ID", "")
-    client_secret = os.environ.get("EBAY_CLIENT_SECRET", "")
+    client_id = secrets.ebay_client_id() or ""
+    client_secret = secrets.ebay_client_secret() or ""
     if not client_id or not client_secret:
         print(
             "Error: EBAY_CLIENT_ID and EBAY_CLIENT_SECRET must be set.",

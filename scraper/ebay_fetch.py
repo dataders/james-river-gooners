@@ -8,6 +8,7 @@ import json
 import os
 import random
 import re
+import secrets
 import shlex
 import subprocess
 from datetime import datetime
@@ -18,6 +19,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import telemetry
+from config import EbayCompsSettings as _EbayCfg
 from ebay_util import normalize_spaces, text_value
 
 DEFAULT_USER_AGENT = (
@@ -362,7 +364,7 @@ def soldcomps_sold_matches(
     max_matches: int = 3,
     timeout: int = 30,
 ) -> dict | None:
-    api_key = api_key or os.environ.get("SOLDCOMPS_API_KEY")
+    api_key = api_key or secrets.soldcomps_key()
     if not api_key:
         return None
 
@@ -507,14 +509,14 @@ def agent_browser_env() -> dict:
     env.setdefault("AGENT_BROWSER_SESSION", "gooners-ebay-comps")
     env.setdefault(
         "AGENT_BROWSER_USER_AGENT",
-        os.environ.get("GOONERS_EBAY_USER_AGENT", DEFAULT_USER_AGENT),
+        _EbayCfg().user_agent or DEFAULT_USER_AGENT,
     )
     return env
 
 
 def run_agent_browser(args: list[str], timeout: int = 45) -> str:
     command = shlex.split(
-        os.environ.get("GOONERS_AGENT_BROWSER_COMMAND", DEFAULT_AGENT_BROWSER_COMMAND)
+        _EbayCfg().agent_browser_command or DEFAULT_AGENT_BROWSER_COMMAND
     )
     result = subprocess.run(
         command + args,
@@ -621,7 +623,7 @@ def fetch_sold_matches(
         return provider_result
 
     def _request_headers():
-        ua = os.environ.get("GOONERS_EBAY_USER_AGENT") or random_user_agent(
+        ua = _EbayCfg().user_agent or random_user_agent(
             _choice=_choice
         )
         return {

@@ -35,7 +35,7 @@ Stores every (lot, arm, candidate) row (with similarity + rank) to the
 
 import argparse
 import json
-import os
+import secrets
 import sys
 import time
 import uuid
@@ -225,7 +225,7 @@ def main(argv=None):
     if not url or not key:
         print("Supabase + SUPABASE_SECRET_KEY required")
         return 1
-    api_key = os.environ.get("SOLDCOMPS_API_KEY")
+    api_key = secrets.soldcomps_key()
     if not api_key:
         print("SOLDCOMPS_API_KEY required")
         return 1

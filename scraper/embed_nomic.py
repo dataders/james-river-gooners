@@ -52,12 +52,14 @@ already embedded):
 import io
 import json
 import os
+import secrets
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
 import requests as _req
+from config import EmbeddingSettings as _EmbedCfg
 from config import EnrichmentSettings as _EmbedEnrichCfg
 
 _MAX_IMAGES = max(1, _EmbedEnrichCfg().max_images)
@@ -359,7 +361,7 @@ def upsert_embeddings(
         session = requests.Session()
 
     if batch_size is None:
-        batch_size = int(os.environ.get("GOONERS_NOMIC_UPSERT_BATCH", "100"))
+        batch_size = _EmbedCfg().upsert_batch
 
     rows = [
         {
@@ -600,7 +602,7 @@ def maybe_generate_and_upsert(items: list[dict], safe_id: str, session=None) -> 
     """
     if os.environ.get("GOONERS_NOMIC_EMBEDDINGS") != "1":
         return
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         print("[nomic] SUPABASE_SECRET_KEY not set — skipping Nomic embeddings")
         return
 
@@ -635,7 +637,7 @@ def backfill_from_read_model(
     already carry enrichment fields, so the embedded text folds in the resale
     identity without a separate overlay. Returns total rows written.
     """
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         raise RuntimeError(
             "SUPABASE_SECRET_KEY is required to backfill Nomic embeddings"
         )
@@ -682,7 +684,7 @@ def backfill_from_supabase(
     unless ``force`` re-embeds every lot (use after enrichment changes the text).
     Requires ``SUPABASE_SECRET_KEY`` (reads and writes to Supabase).
     """
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         raise RuntimeError(
             "SUPABASE_SECRET_KEY is required to backfill Nomic embeddings from Supabase"
         )

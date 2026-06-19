@@ -15,7 +15,7 @@ varies per source is captured in :class:`WriteContext`.
 """
 
 import json
-import os
+import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -95,7 +95,7 @@ def _enrich_items(items: list[dict], ctx: WriteContext, ndjson_path: Path) -> No
         load_prior_enrichment,
     )
 
-    if os.environ.get("SUPABASE_SECRET_KEY"):
+    if secrets.supabase_secret_key():
         from supabase_enrichment import load_prior_enrichment_from_supabase
 
         prior_by_id = load_prior_enrichment_from_supabase(ctx.safe_id)
@@ -123,7 +123,7 @@ def _write_ndjson(items: list[dict], ndjson_path: Path) -> None:
 
 
 def _upsert_supabase_lots(items: list[dict], safe_id: str) -> None:
-    if os.environ.get("SUPABASE_SECRET_KEY"):
+    if secrets.supabase_secret_key():
         from supabase_lots import upsert_lots
 
         upsert_lots(items, safe_id)
