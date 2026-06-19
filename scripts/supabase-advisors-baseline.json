@@ -21,6 +21,7 @@
     "function_search_path_mutable_public_lot_enrichment_touch_updated_at_1c4318bee4240d4113d86fad7eb15623",
     "rls_enabled_no_policy_public_cannon_credentials",
     "rls_enabled_no_policy_public_comp_quality_eval",
+    "rls_enabled_no_policy_public_ebay_categories",
     "rls_enabled_no_policy_public_enrich_runs",
     "rls_enabled_no_policy_public_enrichment_seen",
     "rls_enabled_no_policy_public_eval_embeddings",
@@ -29,7 +30,8 @@
     "rls_enabled_no_policy_public_sold_listing_embeddings",
     "rls_enabled_no_policy_public_sold_listings",
     "rls_enabled_no_policy_public_soldcomps_usage",
-    "rls_enabled_no_policy_public_users"
+    "rls_enabled_no_policy_public_users",
+    "rls_policy_always_true_public_user_feedback_Anyone can submit feedback"
   ],
   "performance": [
     "auth_db_connections_absolute",

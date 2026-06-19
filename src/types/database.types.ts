@@ -1,9 +1,3 @@
-// AUTO-GENERATED Supabase database types — do NOT edit by hand.
-// Regenerate with `npm run gen:types` (see scripts/gen-types.sh) whenever a
-// migration under supabase/migrations/ changes the schema. The Supabase view/
-// table/function shapes here are the source of truth the typed browser client
-// (src/lib/supabase.js) flows into the data hooks.
-
 export type Json =
   | string
   | number
@@ -187,6 +181,36 @@ export type Database = {
           sold_date?: string | null
           sold_price?: number | null
           title?: string | null
+        }
+        Relationships: []
+      }
+      ebay_categories: {
+        Row: {
+          category_id: string
+          full_path: string
+          leaf: boolean
+          level: number
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          full_path: string
+          leaf?: boolean
+          level: number
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          full_path?: string
+          leaf?: boolean
+          level?: number
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -939,12 +963,23 @@ export type Database = {
         Row: {
           category_id: string | null
           condition: string | null
+          condition_id: string | null
           ebay_item_id: string
+          epid: string | null
           first_seen_at: string
+          full_res_thumbnail_url: string | null
           item_web_url: string | null
           last_seen_at: string
+          provider_scraped_at: string | null
           raw_json: Json | null
           seen_count: number
+          seller_feedback_score: number | null
+          seller_positive_pct: number | null
+          seller_type: string | null
+          seller_username: string | null
+          shipping_currency: string | null
+          shipping_price: number | null
+          shipping_type: string | null
           sold_currency: string | null
           sold_date: string | null
           sold_date_label: string | null
@@ -952,16 +987,28 @@ export type Database = {
           source_query: string | null
           thumbnail_url: string | null
           title: string | null
+          total_price: number | null
         }
         Insert: {
           category_id?: string | null
           condition?: string | null
+          condition_id?: string | null
           ebay_item_id: string
+          epid?: string | null
           first_seen_at?: string
+          full_res_thumbnail_url?: string | null
           item_web_url?: string | null
           last_seen_at?: string
+          provider_scraped_at?: string | null
           raw_json?: Json | null
           seen_count?: number
+          seller_feedback_score?: number | null
+          seller_positive_pct?: number | null
+          seller_type?: string | null
+          seller_username?: string | null
+          shipping_currency?: string | null
+          shipping_price?: number | null
+          shipping_type?: string | null
           sold_currency?: string | null
           sold_date?: string | null
           sold_date_label?: string | null
@@ -969,16 +1016,28 @@ export type Database = {
           source_query?: string | null
           thumbnail_url?: string | null
           title?: string | null
+          total_price?: number | null
         }
         Update: {
           category_id?: string | null
           condition?: string | null
+          condition_id?: string | null
           ebay_item_id?: string
+          epid?: string | null
           first_seen_at?: string
+          full_res_thumbnail_url?: string | null
           item_web_url?: string | null
           last_seen_at?: string
+          provider_scraped_at?: string | null
           raw_json?: Json | null
           seen_count?: number
+          seller_feedback_score?: number | null
+          seller_positive_pct?: number | null
+          seller_type?: string | null
+          seller_username?: string | null
+          shipping_currency?: string | null
+          shipping_price?: number | null
+          shipping_type?: string | null
           sold_currency?: string | null
           sold_date?: string | null
           sold_date_label?: string | null
@@ -986,6 +1045,7 @@ export type Database = {
           source_query?: string | null
           thumbnail_url?: string | null
           title?: string | null
+          total_price?: number | null
         }
         Relationships: []
       }
@@ -1061,6 +1121,33 @@ export type Database = {
           min_next_bid?: number | null
           status_refreshed_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_feedback: {
+        Row: {
+          github_issue_url: string | null
+          id: string
+          message: string
+          processed_at: string | null
+          submitted_at: string | null
+          user_email: string | null
+        }
+        Insert: {
+          github_issue_url?: string | null
+          id?: string
+          message: string
+          processed_at?: string | null
+          submitted_at?: string | null
+          user_email?: string | null
+        }
+        Update: {
+          github_issue_url?: string | null
+          id?: string
+          message?: string
+          processed_at?: string | null
+          submitted_at?: string | null
+          user_email?: string | null
         }
         Relationships: []
       }
