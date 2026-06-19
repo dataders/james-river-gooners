@@ -9,5 +9,7 @@
     "branches": 91,
     "functions": 97
   },
-  "nocheckCeiling": 73
+  "nocheckCeiling": 73,
+  "explicitAnyCeiling": 2,
+  "deadExportsCeiling": 9
 }

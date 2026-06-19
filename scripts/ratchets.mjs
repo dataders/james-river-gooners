@@ -31,6 +31,11 @@ function walk(dir) {
   return out
 }
 
+// Explicit `any` in JSDoc type positions (@type {any}, @returns {Promise<any>})
+// or as a bare TypeScript annotation (: any, as any). Counts occurrences so
+// each use is visible, not just each file.
+const EXPLICIT_ANY_RE = /@\w+\s+\{[^}]*\bany\b|:\s*any\b|\bas\s+any\b/g
+
 let typed = 0
 let untyped = 0
 let suppressions = 0
@@ -38,6 +43,7 @@ let suppressions = 0
 // out with `// @ts-nocheck`. Count those across all source (tests included) and
 // drive the ceiling to zero as files get typed or migrated to .ts.
 let nocheck = 0
+let explicitAny = 0
 
 for (const f of walk(SRC)) {
   const isTs = f.endsWith('.ts') || f.endsWith('.tsx')
@@ -55,6 +61,7 @@ for (const f of walk(SRC)) {
   else untyped++
 
   suppressions += (text.match(SUPPRESSION_RE) || []).length
+  explicitAny += (text.match(EXPLICIT_ANY_RE) || []).length
 }
 
 // lockIn: these are exact discrete counts, so beating the baseline must commit
@@ -63,4 +70,5 @@ floor('Typed source files', typed, baselines.typedSourceFloor, '', { lockIn: tru
 ceiling('Untyped source files', untyped, baselines.untypedSourceCeiling, '', { lockIn: true })
 ceiling('@ts-nocheck files', nocheck, baselines.nocheckCeiling, '', { lockIn: true })
 ceiling('Lint/type suppressions', suppressions, baselines.suppressionsCeiling, '', { lockIn: true })
+ceiling('Explicit any annotations', explicitAny, baselines.explicitAnyCeiling, '', { lockIn: true })
 finish()
