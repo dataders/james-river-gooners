@@ -1,2 +1,3 @@
 dlt[motherduck]
+duckdb==1.5.3
 requests

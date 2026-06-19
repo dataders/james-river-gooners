@@ -56,5 +56,5 @@ jobs:
           fi
           LOOKBACK="${{ inputs.lookback_days || '180' }}"
           MAX_LOGS="${{ inputs.max_log_runs || '60' }}"
-          uv run --with "dlt[motherduck]" --with requests \
+          uv run --with "dlt[motherduck]" --with 'duckdb==1.5.3' --with requests \
             python pipeline.py --lookback-days "$LOOKBACK" --max-log-runs "$MAX_LOGS"
