@@ -14,6 +14,7 @@ export function FeedbackModal({ onClose, user }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [issueUrl, setIssueUrl] = useState('')
   const overlayRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -43,15 +44,18 @@ export function FeedbackModal({ onClose, user }: Props) {
       return
     }
 
-    const { error: sbError } = await supabase
-      .from('user_feedback')
-      .insert({ message: message.trim(), user_email: email.trim() || null })
+    const fnResult = await supabase.functions.invoke<{ issue_url: string }>(
+      'create-feedback-issue',
+      { body: { message: message.trim(), email: email.trim() || undefined } },
+    )
 
     setBusy(false)
-    if (sbError) {
+    const url = fnResult.data?.issue_url
+    if (fnResult.error != null || url == null) {
       setError('Something went wrong — please try again.')
       return
     }
+    setIssueUrl(url)
     setDone(true)
   }
 
@@ -74,6 +78,13 @@ export function FeedbackModal({ onClose, user }: Props) {
           <div className="feedback-done">
             <span className="feedback-done-icon" aria-hidden="true">✓</span>
             <p>Thanks — your feedback has been received.</p>
+            {issueUrl && (
+              <p className="feedback-issue-link">
+                <a href={issueUrl} target="_blank" rel="noopener noreferrer">
+                  View your issue on GitHub →
+                </a>
+              </p>
+            )}
             <button type="button" className="auth-submit" onClick={onClose}>Done</button>
           </div>
         ) : (
