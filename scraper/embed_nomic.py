@@ -52,7 +52,7 @@ already embedded):
 import argparse
 import io
 import json
-import secrets
+import env_secrets as secrets
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 

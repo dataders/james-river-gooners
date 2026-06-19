@@ -8,7 +8,7 @@ import json
 import os
 import random
 import re
-import secrets
+import env_secrets as secrets
 import shlex
 import subprocess
 from datetime import datetime

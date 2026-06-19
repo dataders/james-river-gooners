@@ -61,7 +61,7 @@ import hashlib
 import json
 import os
 import re
-import secrets
+import env_secrets as secrets
 import sys
 import threading
 import time

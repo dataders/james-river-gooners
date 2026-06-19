@@ -35,7 +35,7 @@ _init_attempted = False
 
 
 def _api_key() -> str:
-    from secrets import posthog_key  # scraper/secrets.py
+    from env_secrets import posthog_key  # scraper/env_secrets.py
     return posthog_key() or ""
 
 

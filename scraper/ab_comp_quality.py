@@ -35,7 +35,7 @@ Stores every (lot, arm, candidate) row (with similarity + rank) to the
 
 import argparse
 import json
-import secrets
+import env_secrets as secrets
 import sys
 import time
 import uuid

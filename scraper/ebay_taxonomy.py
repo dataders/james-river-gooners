@@ -35,7 +35,7 @@ CLI::
 import base64
 import json
 import re
-import secrets
+import env_secrets as secrets
 import sys
 
 import requests

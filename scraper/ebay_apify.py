@@ -15,7 +15,7 @@ Public API used by ebay_comps.py:
   fetch_comps_apify()
 """
 
-import secrets
+import env_secrets as secrets
 import time as _time_module
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed

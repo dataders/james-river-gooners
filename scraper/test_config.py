@@ -14,7 +14,7 @@ Coverage:
 import argparse
 import io
 import os
-import secrets as _secrets
+import env_secrets as _secrets
 import unittest
 from unittest.mock import patch
 

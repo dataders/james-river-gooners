@@ -22,7 +22,7 @@ Usage:
 """
 
 import argparse
-import secrets
+import env_secrets as secrets
 import sys
 from datetime import UTC, datetime
 

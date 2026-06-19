@@ -18,7 +18,7 @@ comments are skipped.
 import argparse
 import json
 import os
-import secrets
+import env_secrets as secrets
 import subprocess
 import sys
 import time

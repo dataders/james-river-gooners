@@ -15,7 +15,7 @@ varies per source is captured in :class:`WriteContext`.
 """
 
 import json
-import secrets
+import env_secrets as secrets
 from dataclasses import dataclass
 from pathlib import Path
 

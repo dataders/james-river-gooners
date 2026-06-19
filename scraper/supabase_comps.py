@@ -12,7 +12,7 @@ so no comp-fetch call sites change.
 """
 
 import json
-import secrets
+import env_secrets as secrets
 import time
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
