@@ -22,7 +22,7 @@ Usage:
 """
 
 import argparse
-import os
+import secrets
 import sys
 from datetime import UTC, datetime
 
@@ -152,12 +152,12 @@ def main() -> None:
     parser.add_argument("--days", type=int, default=90)
     args = parser.parse_args()
 
-    api_key = os.environ.get("POSTHOG_PERSONAL_KEY")
+    api_key = secrets.posthog_personal_key()
     if not api_key:
         sys.exit(
             "Set POSTHOG_PERSONAL_KEY to your phx_... personal API key from posthog.com/settings"
         )
-    motherduck_token = os.environ.get("MOTHERDUCK_TOKEN")
+    motherduck_token = secrets.motherduck_token()
     if not motherduck_token:
         sys.exit("Set MOTHERDUCK_TOKEN")
 

@@ -66,3 +66,18 @@ def motherduck_token() -> str | None:
 def posthog_key() -> str | None:
     """Server-side PostHog ingestion key (write-only, same value as VITE_POSTHOG_KEY)."""
     return (os.environ.get("GOONERS_POSTHOG_KEY") or "").strip() or None
+
+
+def posthog_personal_key() -> str | None:
+    """PostHog personal/admin API key (phx_…) for analytics export."""
+    return os.environ.get("POSTHOG_PERSONAL_KEY") or None
+
+
+def ebay_client_id() -> str | None:
+    """eBay Browse API / OAuth client ID."""
+    return os.environ.get("EBAY_CLIENT_ID") or None
+
+
+def ebay_client_secret() -> str | None:
+    """eBay Browse API / OAuth client secret."""
+    return os.environ.get("EBAY_CLIENT_SECRET") or None

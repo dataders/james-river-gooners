@@ -23,6 +23,7 @@ from config import (
     EbayCompsSettings,
     EmbeddingSettings,
     EnrichmentSettings,
+    SupabaseSettings,
     WarehouseSettings,
     describe,
 )
@@ -201,6 +202,24 @@ class EbayCompsValidationTest(unittest.TestCase):
             EbayCompsSettings()
 
 
+class EbayCompsNewFieldsTest(unittest.TestCase):
+    def test_user_agent_default_empty(self):
+        with _env():
+            self.assertEqual(EbayCompsSettings().user_agent, "")
+
+    def test_user_agent_via_env(self):
+        with _env(GOONERS_EBAY_USER_AGENT="CustomBot/1.0"):
+            self.assertEqual(EbayCompsSettings().user_agent, "CustomBot/1.0")
+
+    def test_agent_browser_command_default_empty(self):
+        with _env():
+            self.assertEqual(EbayCompsSettings().agent_browser_command, "")
+
+    def test_agent_browser_command_via_env(self):
+        with _env(GOONERS_AGENT_BROWSER_COMMAND="npx my-browser --"):
+            self.assertEqual(EbayCompsSettings().agent_browser_command, "npx my-browser --")
+
+
 # ---------------------------------------------------------------------------
 # EmbeddingSettings
 # ---------------------------------------------------------------------------
@@ -212,6 +231,7 @@ class EmbeddingDefaultsTest(unittest.TestCase):
         self.assertFalse(cfg.enabled)
         self.assertEqual(cfg.device, "")
         self.assertEqual(cfg.max_images, 3)
+        self.assertEqual(cfg.upsert_batch, 100)
 
 
 class EmbeddingEnvOverrideTest(unittest.TestCase):
@@ -228,6 +248,50 @@ class EmbeddingEnvOverrideTest(unittest.TestCase):
         with _env(GOONERS_MAX_IMAGES="7"):
             self.assertEqual(EmbeddingSettings().max_images, 7)
             self.assertEqual(EnrichmentSettings().max_images, 7)
+
+    def test_upsert_batch_via_env(self):
+        with _env(GOONERS_NOMIC_UPSERT_BATCH="50"):
+            self.assertEqual(EmbeddingSettings().upsert_batch, 50)
+
+    def test_upsert_batch_validation_ge1(self):
+        with self.assertRaises(ValidationError), _env(GOONERS_NOMIC_UPSERT_BATCH="0"):
+            EmbeddingSettings()
+
+
+# ---------------------------------------------------------------------------
+# SupabaseSettings
+# ---------------------------------------------------------------------------
+
+class SupabaseDefaultsTest(unittest.TestCase):
+    def test_defaults(self):
+        with _env():
+            cfg = SupabaseSettings()
+        self.assertEqual(cfg.read_timeout, 90)
+        self.assertEqual(cfg.page_size, 1_000)
+
+
+class SupabaseEnvOverrideTest(unittest.TestCase):
+    def test_read_timeout_via_env(self):
+        with _env(GOONERS_SUPABASE_READ_TIMEOUT="120"):
+            self.assertEqual(SupabaseSettings().read_timeout, 120)
+
+    def test_page_size_via_env(self):
+        with _env(GOONERS_SUPABASE_PAGE="500"):
+            self.assertEqual(SupabaseSettings().page_size, 500)
+
+
+class SupabaseValidationTest(unittest.TestCase):
+    def test_read_timeout_below_min_raises(self):
+        with self.assertRaises(ValidationError), _env(GOONERS_SUPABASE_READ_TIMEOUT="0"):
+            SupabaseSettings()
+
+    def test_page_size_above_max_raises(self):
+        with self.assertRaises(ValidationError), _env(GOONERS_SUPABASE_PAGE="1001"):
+            SupabaseSettings()
+
+    def test_page_size_below_min_raises(self):
+        with self.assertRaises(ValidationError), _env(GOONERS_SUPABASE_PAGE="0"):
+            SupabaseSettings()
 
 
 # ---------------------------------------------------------------------------
@@ -482,6 +546,30 @@ class SecretsTest(unittest.TestCase):
     def test_posthog_key_whitespace_only_is_none(self):
         with _env(GOONERS_POSTHOG_KEY="   "):
             self.assertIsNone(_secrets.posthog_key())
+
+    def test_posthog_personal_key_absent(self):
+        with _env():
+            self.assertIsNone(_secrets.posthog_personal_key())
+
+    def test_posthog_personal_key_present(self):
+        with _env(POSTHOG_PERSONAL_KEY="phx_admin"):
+            self.assertEqual(_secrets.posthog_personal_key(), "phx_admin")
+
+    def test_ebay_client_id_absent(self):
+        with _env():
+            self.assertIsNone(_secrets.ebay_client_id())
+
+    def test_ebay_client_id_present(self):
+        with _env(EBAY_CLIENT_ID="ebay-id-123"):
+            self.assertEqual(_secrets.ebay_client_id(), "ebay-id-123")
+
+    def test_ebay_client_secret_absent(self):
+        with _env():
+            self.assertIsNone(_secrets.ebay_client_secret())
+
+    def test_ebay_client_secret_present(self):
+        with _env(EBAY_CLIENT_SECRET="ebay-secret-456"):
+            self.assertEqual(_secrets.ebay_client_secret(), "ebay-secret-456")
 
 
 if __name__ == "__main__":

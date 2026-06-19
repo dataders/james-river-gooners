@@ -18,6 +18,7 @@ comments are skipped.
 import argparse
 import json
 import os
+import secrets
 import subprocess
 import sys
 import time
@@ -233,7 +234,7 @@ def update_manifests() -> None:
 
 def _supabase_archive_file(path: Path) -> None:
     """Sync finalized lots to Supabase as archived before the files are moved."""
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         return
     ndjson = path.with_suffix(".ndjson")
     if not ndjson.exists():

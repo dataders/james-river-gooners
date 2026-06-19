@@ -15,7 +15,7 @@ Public API used by ebay_comps.py:
   fetch_comps_apify()
 """
 
-import os
+import secrets
 import time as _time_module
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -230,7 +230,7 @@ def fetch_comps_apify(
     (the actor doesn't include one). Deduplicating queries across all items cuts
     the total run count significantly when multiple items share the same search.
     """
-    api_key = api_key or os.environ.get("APIFY_API_KEY")
+    api_key = api_key or secrets.apify_key()
     if not api_key:
         raise RuntimeError("APIFY_API_KEY is required for the apify backend")
 

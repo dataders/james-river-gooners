@@ -61,6 +61,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import sys
 import threading
 import time
@@ -409,7 +410,7 @@ def is_enrichment_enabled() -> bool:
 
     Reads from EnrichmentSettings so "1"/"true"/"yes"/"on" all work (previously
     only "1" was accepted, silently treating GOONERS_ENRICHMENT=true as OFF)."""
-    return _EnrichmentSettings().enabled and bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return _EnrichmentSettings().enabled and bool(secrets.anthropic_key())
 
 
 def _empty_enrichment() -> dict:
@@ -1481,9 +1482,7 @@ def _backfill_from_supabase(
     if client is None:
         return 1
 
-    import os as _os
-
-    if not _os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         print(
             "error: SUPABASE_SECRET_KEY is required for --from-supabase",
             file=sys.stderr,
