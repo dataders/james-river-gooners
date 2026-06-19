@@ -79,12 +79,7 @@ test.describe('Card carousel', () => {
     const startX = box.x + box.width * 0.8
     const endX = box.x + box.width * 0.2
 
-    // Simulate a left swipe to go to image 2
-    await page.touchscreen.tap(startX, midY)
-    await page.mouse.move(startX, midY)
-    await page.touchscreen.tap(endX, midY)
-
-    // Use JS-driven swipe since Playwright's touchscreen API doesn't support drag
+    // Use JS-driven swipe since Playwright's touchscreen API requires hasTouch context
     await page.evaluate(({ sx, ex, y }) => {
       const el = document.querySelector('.item-image')
       const t = (x, cy) => new Touch({ identifier: 1, target: el, clientX: x, clientY: cy })
