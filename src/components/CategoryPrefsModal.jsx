@@ -8,16 +8,14 @@ function CategoryRow({ c, baselineExcludedCategories, onToggleBaselineCategory }
   const hidden = baselineExcludedCategories.includes(c.name)
   return (
     <label className="catprefs-cat-row">
-      <input
-        type="checkbox"
-        className="catprefs-checkbox"
-        checked={hidden}
-        onChange={() => onToggleBaselineCategory(c.name)}
-      />
       <span className={`catprefs-cat-name${hidden ? ' catprefs-cat-name--hidden' : ''}`}>
         {c.name}
       </span>
       <span className="catprefs-cat-count">{c.count}</span>
+      <span className="catprefs-toggle">
+        <input type="checkbox" checked={hidden} onChange={() => onToggleBaselineCategory(c.name)} />
+        <span className="catprefs-toggle-track"><span className="catprefs-toggle-thumb" /></span>
+      </span>
     </label>
   )
 }
@@ -51,14 +49,16 @@ function GroupSection({ group, baselineExcludedGroups, baselineExcludedCategorie
           </span>
           <span className="catprefs-group-count">{group.totalCount} lots</span>
         </button>
-        <label className="catprefs-group-toggle" title={hidden ? 'Always hidden — click to show' : 'Always shown — click to hide'}>
-          <span className="catprefs-toggle-label">{hidden ? 'Always hidden' : 'Visible'}</span>
+        <label
+          className="catprefs-toggle"
+          title={hidden ? 'Always hidden — click to show' : 'Click to always hide'}
+        >
           <input
             type="checkbox"
-            className="catprefs-checkbox"
             checked={hidden}
             onChange={() => onToggleBaselineGroup(group.group)}
           />
+          <span className="catprefs-toggle-track"><span className="catprefs-toggle-thumb" /></span>
         </label>
       </div>
 
@@ -135,14 +135,14 @@ export function CategoryPrefsModal({
         </div>
 
         <p className="catprefs-description">
-          Categories marked <strong>Always hidden</strong> are excluded by default.
-          &ldquo;Clear filters&rdquo; always restores this list — you can still
-          temporarily show a category from the filter panel without changing these settings.
+          Hidden categories are excluded by default and skipped in your For&nbsp;You rankings.
+          &ldquo;Clear filters&rdquo; always restores this list — you can still temporarily
+          show a group without changing these settings.
         </p>
 
         {hiddenGroupCount > 0 && (
-          <p className="catprefs-hint">
-            {hiddenGroupCount} group{hiddenGroupCount > 1 ? 's' : ''} always hidden &mdash; their items are also excluded from your For&nbsp;You rankings.
+          <p className="catprefs-hidden-count">
+            {hiddenGroupCount} group{hiddenGroupCount > 1 ? 's' : ''} hidden
           </p>
         )}
 
