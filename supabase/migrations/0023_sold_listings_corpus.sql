@@ -3,7 +3,7 @@
 -- Phase 1 (#283) requests up to count=40 sold listings per SoldComps API call
 -- but the curated `ebay_comp_snapshots` keeps only the top ~3 per query. This
 -- table persists the FULL candidate set — deduped by eBay listing id — so the
--- listings we already pay for become a reusable corpus for the Nomic visual
+-- listings we already pay for become a reusable corpus for the Nomic hybrid
 -- re-rank (increment 2) and corpus-first reuse (increment 3).
 --
 -- A sold listing is immutable (its price/date never change once sold), so the

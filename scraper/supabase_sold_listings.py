@@ -4,7 +4,7 @@ SoldComps Phase 2, part 1. Phase 1 (#283) requests up to ``count`` (40) sold
 listings per API call but the curated ``ebay_comp_snapshots`` keeps only the top
 ~3 per query. This module persists the **full** candidate set into the
 ``sold_listings`` table (migration 0023), deduped by ``ebay_item_id``, so the
-listings we already pay for become a reusable corpus for the Nomic visual
+listings we already pay for become a reusable corpus for the Nomic hybrid
 re-rank (part 2) and corpus-first reuse (part 3).
 
 Companion to ``supabase_comps.py``/``supabase_enrichment.py``: writes use the

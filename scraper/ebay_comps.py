@@ -268,7 +268,7 @@ def fetch_direct(
     corpus_records: list[dict] = []
 
     # Corpus-first reuse (#290 inc 3): if the corpus already covers a lot with
-    # fresh, visually-similar sold listings, use those and skip the paid API.
+    # fresh, hybrid-matched sold listings, use those and skip the paid API.
     # No-op unless GOONERS_CORPUS_FIRST=1 (or corpus_first=True) + Supabase.
     reuser = CorpusReuser(
         generated_at,

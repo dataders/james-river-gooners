@@ -15,7 +15,7 @@ query can silently wreck another. The harness gives a single defensible number
 
 | file | what |
 |---|---|
-| `queries.json` | the benchmark queries (3 regimes: `category`, `specific`, `visual`). Stable — add new ones with fresh ids. |
+| `queries.json` | the benchmark queries (3 regimes: `category`, `specific`, `hybrid`). Stable — add new ones with fresh ids. |
 | `seeds.json` | hand-seeded known-relevant lots that the search may *fail* to surface, so recall misses are measurable (avoids pooling bias). |
 | `judgments.jsonl` | `(query id, lot, grade)` where grade is `2` highly / `1` somewhat / `0` not relevant. The ground truth. |
 | `baseline.json` | the committed scores of the current config. **The line you defend.** |
