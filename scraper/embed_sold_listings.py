@@ -22,7 +22,7 @@ path (the two ~550 MB Nomic models load here, not in the scrape):
   2. **rerank** — for each active auction, call the ``match_sold_listings`` RPC
      (the lot's own ``nomic_embeddings`` vector vs each listing's, cosine) and
      write the top-K hybrid matches back into ``ebay_comp_snapshots`` tagged
-     ``source_query='visual'`` (D2 option a: the ``public_auction_comps`` view and
+     ``source_query='hybrid'`` (D2 option a: the ``public_auction_comps`` view and
      the UI are unchanged; the better comps simply appear).
 
 Gated on Supabase being configured; a true no-op otherwise. Needs the same deps
@@ -317,7 +317,7 @@ def rerank_rows_for_auction(
 ) -> list[dict]:
     """Shape ``match_sold_listings`` RPC rows into ebay_comp_snapshots rows.
 
-    Tagged ``source_query='visual'`` (the hybrid path) so they slot into the existing
+    Tagged ``source_query='hybrid'`` so they slot into the existing
     public_auction_comps view as a distinct, hybrid-ranked comp set. The
     similarity is bucketed into the text match_confidence the UI already renders.
 
@@ -348,7 +348,7 @@ def rerank_rows_for_auction(
                 "thumbnail_url": match.get("thumbnail_url"),
                 "item_web_url": match.get("item_web_url"),
                 "condition": match.get("condition"),
-                "source_query": "visual",
+                "source_query": "hybrid",
                 "match_confidence": "high" if sim >= _HIGH_SIM else "medium",
             }
         )

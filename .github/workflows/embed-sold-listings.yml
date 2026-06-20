@@ -1,9 +1,9 @@
-name: Re-rank eBay Comps (visual)
+name: Re-rank eBay Comps (hybrid)
 
 # SoldComps Phase 2 / RFC #290, increment 2. Off the hourly hot path: embeds the
 # sold-listings corpus with the Nomic text+vision models, then re-ranks each
-# active lot's candidate comps by visual+text similarity and writes the best K
-# back into ebay_comp_snapshots (source_query='visual'). Manual-dispatch while
+# active lot's candidate comps by hybrid text+image similarity and writes the best K
+# back into ebay_comp_snapshots (source_query='hybrid'). Manual-dispatch while
 # the corpus is small / being validated; add a schedule once it's proven.
 
 on:

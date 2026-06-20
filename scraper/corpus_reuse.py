@@ -82,7 +82,7 @@ def reuse_comp_rows(
 ) -> list[dict]:
     """Shape per-item corpus matches into ebay_comp_snapshots rows.
 
-    Tagged ``source_query='visual'`` (the hybrid path, same as the batch re-rank),
+    Tagged ``source_query='hybrid'`` (same as the batch re-rank),
     so reused comps slot into ``public_auction_comps`` indistinguishably from freshly-fetched ones.
     """
     rows = []
@@ -106,7 +106,7 @@ def reuse_comp_rows(
                 "thumbnail_url": match.get("thumbnail_url"),
                 "item_web_url": match.get("item_web_url"),
                 "condition": match.get("condition"),
-                "source_query": "visual",
+                "source_query": "hybrid",
                 "match_confidence": "high" if sim >= _HIGH_SIM else "medium",
             }
         )
