@@ -135,7 +135,16 @@ def _generate_embeddings(items: list[dict], ctx: WriteContext) -> None:
     No-op unless GOONERS_NOMIC_EMBEDDINGS=1 AND SUPABASE_SECRET_KEY are set
     (``maybe_generate_and_upsert`` self-gates), and incremental — only new lots
     are embedded.
+
+    The ``embed_nomic`` import (which pulls numpy + the ~550 MB Nomic ML stack) is
+    deferred behind the enabled check, so a scrape with embeddings off does not
+    need numpy installed at all.
     """
+    from config import EmbeddingSettings
+
+    if not EmbeddingSettings().enabled:
+        return
+
     from embed_nomic import maybe_generate_and_upsert
 
     maybe_generate_and_upsert(items, ctx.safe_id, ctx.session)
