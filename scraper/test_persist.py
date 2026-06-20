@@ -103,8 +103,17 @@ class WriteReadModelTest(unittest.TestCase):
         items = [_item()]
         session = mock.Mock()
         ctx = _ctx(Path(self._tmp.name), session=session)
-        write_read_model(items, ctx)
+        with mock.patch.dict("os.environ", {"GOONERS_NOMIC_EMBEDDINGS": "1"}):
+            write_read_model(items, ctx)
         self.embed.assert_called_once_with(items, "src_42", session)
+
+    def test_embeddings_skipped_without_optin(self):
+        """With embeddings off, the tail must not reach embed_nomic at all (so a
+        scrape doesn't need numpy/the ML stack just to write the read model)."""
+        items = [_item()]
+        with mock.patch.dict("os.environ", {"GOONERS_NOMIC_EMBEDDINGS": "0"}):
+            write_read_model(items, _ctx(Path(self._tmp.name)))
+        self.embed.assert_not_called()
 
     def test_fill_blank_end_dates_only_when_requested(self):
         # Without the flag, a blank per-lot endDate is left blank.
