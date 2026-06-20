@@ -36,6 +36,7 @@ import sys
 from datetime import UTC, datetime
 from functools import partial
 
+from config import EmbeddingSettings as _EmbedCfg
 from supabase_comps import (
     WRITE_TIMEOUT,
     _request_with_retry,
@@ -94,9 +95,16 @@ def _headers(key: str, *, write: bool = False) -> dict:
 
 
 def _get_all(session, endpoint: str, headers: dict, params: dict) -> list[dict]:
-    """Paginate a PostgREST GET via Range headers, retrying transient failures."""
+    """Paginate a PostgREST GET via Range headers, retrying transient failures.
+
+    ``order=ebay_item_id`` is injected unconditionally so every multi-page read
+    sees a stable sort order — without it PostgreSQL can return rows in any order
+    across pages, causing skips or duplicates at page boundaries.
+    """
     rows: list[dict] = []
     offset = 0
+    # Merge a stable sort key; caller params take precedence on everything else.
+    params = {"order": "ebay_item_id", **params}
     while True:
         page_headers = {**headers, "Range": f"{offset}-{offset + READ_PAGE_SIZE - 1}"}
         resp = _request_with_retry(
@@ -196,13 +204,9 @@ def upsert_listing_embeddings(
     return written
 
 
-# Max listings to embed per run. CPU runners take ~8-15 min per 500 (text + images).
-# Incremental: each run embeds the next GOONERS_SOLD_EMBED_LIMIT unembedded listings
-# and commits them; the next run skips what's already in sold_listing_embeddings.
-_EMBED_LIMIT = int(os.environ.get("GOONERS_SOLD_EMBED_LIMIT", "500"))
-# Sub-batch size for embed+upsert: commit to Supabase every N items so a preempted
-# runner preserves partial progress and the next run skips what's already committed.
-_EMBED_CHUNK = int(os.environ.get("GOONERS_SOLD_EMBED_CHUNK", "50"))
+_cfg = _EmbedCfg()
+_EMBED_LIMIT = _cfg.sold_embed_limit
+_EMBED_CHUNK = _cfg.sold_embed_chunk
 
 
 def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:
@@ -277,19 +281,55 @@ def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _keyword_item_ids(session, url: str, key: str, safe_id: str) -> set[str]:
+    """Item IDs in this auction that have at least one keyword comp (specific/broad)."""
+    rows = _get_all(
+        session,
+        f"{url.rstrip('/')}/rest/v1/ebay_comp_snapshots",
+        _headers(key),
+        {
+            "select": "item_id",
+            "auction_safe_id": f"eq.{safe_id}",
+            "source_query": "in.(specific,broad)",
+        },
+    )
+    return {r["item_id"] for r in rows if r.get("item_id")}
+
+
+def _enriched_item_ids(session, url: str, key: str, safe_id: str) -> set[str]:
+    """Item IDs with medium/high enrichment confidence (brand/artist identified)."""
+    rows = _get_all(
+        session,
+        f"{url.rstrip('/')}/rest/v1/lot_enrichment",
+        _headers(key),
+        {
+            "select": "item_id",
+            "auction_safe_id": f"eq.{safe_id}",
+            "confidence": "in.(medium,high)",
+        },
+    )
+    return {r["item_id"] for r in rows if r.get("item_id")}
+
+
 def rerank_rows_for_auction(
-    matches: list[dict], safe_id: str, fetched_at: str
+    matches: list[dict], safe_id: str, fetched_at: str,
+    skip_item_ids: set[str] | None = None,
 ) -> list[dict]:
     """Shape ``match_sold_listings`` RPC rows into ebay_comp_snapshots rows.
 
     Tagged ``source_query='visual'`` so they slot into the existing
     public_auction_comps view as a distinct, visually-ranked comp set. The
     similarity is bucketed into the text match_confidence the UI already renders.
+
+    skip_item_ids: lots to exclude — those where keyword comps exist AND enrichment
+    identified a brand/artist (keyword pipeline owns those; visual is redundant).
     """
     rows = []
     for match in matches or []:
         item_id = match.get("item_id")
         if not item_id or not match.get("item_web_url"):
+            continue
+        if skip_item_ids and str(item_id) in skip_item_ids:
             continue
         sim = match.get("similarity") or 0
         rows.append(
@@ -315,7 +355,10 @@ def rerank_rows_for_auction(
     return rows
 
 
-def rerank_auction(safe_id: str, url: str, key: str, session, fetched_at: str) -> int:
+def rerank_auction(
+    safe_id: str, url: str, key: str, session, fetched_at: str,
+    skip_item_ids: set[str] | None = None,
+) -> int:
     """Call match_sold_listings for one auction; write the comps back."""
     endpoint = f"{url.rstrip('/')}/rest/v1/rpc/match_sold_listings"
     resp = _request_with_retry(
@@ -334,7 +377,9 @@ def rerank_auction(safe_id: str, url: str, key: str, session, fetched_at: str) -
         ),
         f"match_sold_listings({safe_id})",
     )
-    rows = rerank_rows_for_auction(resp.json() or [], safe_id, fetched_at)
+    rows = rerank_rows_for_auction(
+        resp.json() or [], safe_id, fetched_at, skip_item_ids=skip_item_ids
+    )
     if not rows:
         return 0
     return append_ebay_comp_snapshots(rows, url=url, key=key, session=session)
@@ -356,13 +401,27 @@ def rerank_all_active(session=None) -> int:
     safe_ids = list_auction_safe_ids(url=url, key=key, archived=False)
     fetched_at = _utc_now_iso()
     total = 0
+    skipped_total = 0
     for safe_id in safe_ids:
         try:
-            total += rerank_auction(safe_id, url, key, session, fetched_at)
+            # Mixture-of-experts gate: skip visual for lots where the keyword
+            # pipeline already found something AND enrichment identified a
+            # brand/artist (those lots get better comps from exact-phrase search).
+            kw_ids = _keyword_item_ids(session, url, key, safe_id)
+            en_ids = _enriched_item_ids(session, url, key, safe_id)
+            skip = kw_ids & en_ids
+            if skip:
+                skipped_total += len(skip)
+            written = rerank_auction(
+                safe_id, url, key, session, fetched_at,
+                skip_item_ids=skip or None,
+            )
+            total += written
         except RuntimeError as exc:
             print(f"[sold-rerank] {safe_id}: {exc}")
     print(
         f"[sold-rerank] wrote {total} visual comp row(s) across {len(safe_ids)} auction(s)"
+        + (f" (skipped {skipped_total} enriched lots with keyword comps)" if skipped_total else "")
     )
     return total
 

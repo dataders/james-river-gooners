@@ -54,4 +54,5 @@ jobs:
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
+            --with 'pydantic-settings>=2,<3' \
             python ebay_comps.py smoke --limit "${{ inputs.limit || '1' }}"

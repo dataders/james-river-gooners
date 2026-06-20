@@ -71,8 +71,9 @@ function swipe(el: Element, { startX = 200, endX = 50, y = 100 } = {}) {
 describe('ItemCard carousel', () => {
   it('renders dots for a multi-image item', () => {
     render(<ItemCard {...baseProps()} />)
-    // 3 images → 3 dot buttons
-    expect(screen.getAllByRole('button', { name: /image/i })).toHaveLength(3)
+    // 3 images → 3 dot buttons (aria-label "Image N"); arrow buttons also present
+    // but excluded by the ^Image anchor so "Next image" / "Previous image" don't match.
+    expect(screen.getAllByRole('button', { name: /^Image \d+/i })).toHaveLength(3)
     // First dot is active on initial render
     expect(document.querySelector('.card-carousel-dot.active')).toBeTruthy()
   })

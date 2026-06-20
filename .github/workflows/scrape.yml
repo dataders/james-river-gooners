@@ -162,6 +162,7 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0
           else
             # Backfill mode: spend only on items without comps yet, soonest-ending
@@ -170,6 +171,7 @@ jobs:
             # draws from the same pool, derived from the read model itself, so
             # the pipeline never exceeds the SoldComps quota.
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct \
                 --skip-attempted \
                 --queries-per-item 2 \

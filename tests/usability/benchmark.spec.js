@@ -51,7 +51,7 @@ test.describe('Usability benchmark', () => {
 
       const tracker = { steps: [], friction: [], step(l) { this.steps.push(l) }, note(l) { this.friction.push(l) } }
       const start = Date.now()
-      let status = 'fail'
+      let status
       try {
         status = await obj.run({ page, tracker, context })
       } catch (e) {

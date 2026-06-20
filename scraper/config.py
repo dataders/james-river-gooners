@@ -35,7 +35,7 @@ from __future__ import annotations
 import sys
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -199,6 +199,22 @@ class EbayCompsSettings(_Base):
         validation_alias="GOONERS_EBAY_BROWSER_FALLBACK",
         description="Fall back to browser-based eBay scraping when the HTML parse fails.",
     )
+    user_agent: str = Field(
+        default="",
+        validation_alias="GOONERS_EBAY_USER_AGENT",
+        description=(
+            "Custom User-Agent for eBay HTML requests and agent-browser sessions. "
+            "Empty = rotate randomly (HTML path) / use the code default (agent-browser)."
+        ),
+    )
+    agent_browser_command: str = Field(
+        default="",
+        validation_alias="GOONERS_AGENT_BROWSER_COMMAND",
+        description=(
+            "Shell command to invoke the agent browser. "
+            "Empty = use the built-in default (npm exec --yes agent-browser@0.27.0 --)."
+        ),
+    )
 
 
 class EmbeddingSettings(_Base):
@@ -227,6 +243,33 @@ class EmbeddingSettings(_Base):
         le=10,
         description="Same as EnrichmentSettings.max_images — one shared knob keeps them in lockstep.",
     )
+    upsert_batch: int = Field(
+        default=100,
+        validation_alias="GOONERS_NOMIC_UPSERT_BATCH",
+        ge=1,
+        description=(
+            "Max embedding rows per Supabase upsert batch. "
+            "Smaller batches keep each request under the PostgREST row cap on busy instances."
+        ),
+    )
+    sold_embed_limit: int = Field(
+        default=500,
+        validation_alias="GOONERS_SOLD_EMBED_LIMIT",
+        ge=1,
+        description=(
+            "Max sold-listings to embed per run (embed_sold_listings.py). "
+            "CPU runners take ~8-15 min per 500; incremental runs pick up where the last left off."
+        ),
+    )
+    sold_embed_chunk: int = Field(
+        default=50,
+        validation_alias="GOONERS_SOLD_EMBED_CHUNK",
+        ge=1,
+        description=(
+            "Sub-batch size for embed+upsert in embed_sold_listings.py. "
+            "Commits to Supabase every N items so a preempted runner preserves partial progress."
+        ),
+    )
 
 
 class CannonsCompsSettings(_Base):
@@ -248,6 +291,31 @@ class CannonsCompsSettings(_Base):
     )
 
 
+class SupabaseSettings(_Base):
+    """Supabase client tuning (scraper/supabase_comps.py, scraper/supabase_lots.py)."""
+
+    read_timeout: int = Field(
+        default=90,
+        validation_alias="GOONERS_SUPABASE_READ_TIMEOUT",
+        ge=1,
+        description=(
+            "PostgREST read timeout in seconds. "
+            "Generous because the comp_item_freshness view can take >30s on a cold Micro instance."
+        ),
+    )
+    page_size: int = Field(
+        default=1_000,
+        validation_alias="GOONERS_SUPABASE_PAGE",
+        ge=1,
+        le=1_000,
+        description=(
+            "Rows per paginated PostgREST read. "
+            "Must not exceed the server's max-rows cap (1000 by default) or short pages "
+            "will be mistaken for the last page."
+        ),
+    )
+
+
 class WarehouseSettings(_Base):
     """Warehouse / MotherDuck snapshot (scraper/warehouse.py, scraper/motherduck.py)."""
 
@@ -262,6 +330,23 @@ class WarehouseSettings(_Base):
         description="Snapshot listing data to MotherDuck after each scrape.",
     )
 
+    @field_validator("warehouse", mode="before")
+    @classmethod
+    def _normalise_warehouse(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
+
+
+class TelemetrySettings(_Base):
+    """Server-side PostHog telemetry (scraper/telemetry.py)."""
+
+    posthog_host: str = Field(
+        default="",
+        validation_alias="GOONERS_POSTHOG_HOST",
+        description="PostHog ingestion host. Empty = https://us.i.posthog.com.",
+    )
+
 
 # ── Discovery CLI ──────────────────────────────────────────────────────────────
 
@@ -270,7 +355,9 @@ _SETTINGS_CLASSES: list[tuple[str, type[_Base]]] = [
     ("EbayCompsSettings", EbayCompsSettings),
     ("EmbeddingSettings", EmbeddingSettings),
     ("CannonsCompsSettings", CannonsCompsSettings),
+    ("SupabaseSettings", SupabaseSettings),
     ("WarehouseSettings", WarehouseSettings),
+    ("TelemetrySettings", TelemetrySettings),
 ]
 
 

@@ -12,12 +12,13 @@ so no comp-fetch call sites change.
 """
 
 import json
-import os
 import time
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 
+import env_secrets as secrets
+from config import SupabaseSettings as _SupaCfg
 from ebay_ledger import CompLedger
 
 COMP_SNAPSHOT_TABLE = "ebay_comp_snapshots"
@@ -80,7 +81,7 @@ DEFAULT_MAX_RETRIES = 4
 # 30s read timeout was firing on every retry and failing the whole hourly scrape
 # (ReadTimeout, not a transient the retry loop could absorb). Override the read
 # ceiling via GOONERS_SUPABASE_READ_TIMEOUT.
-_READ_TIMEOUT_SECONDS = int(os.environ.get("GOONERS_SUPABASE_READ_TIMEOUT", "90"))
+_READ_TIMEOUT_SECONDS = _SupaCfg().read_timeout
 READ_TIMEOUT = (10, _READ_TIMEOUT_SECONDS)
 WRITE_TIMEOUT = (10, 60)
 
@@ -140,8 +141,8 @@ def resolve_credentials(
     Reads ``SUPABASE_URL`` (falling back to ``VITE_SUPABASE_URL``, which the
     deploy/build env already sets) and the backend-only ``SUPABASE_SECRET_KEY``.
     """
-    url = url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
-    key = key or os.environ.get("SUPABASE_SECRET_KEY")
+    url = url or secrets.supabase_url()
+    key = key or secrets.supabase_secret_key()
     return url, key
 
 

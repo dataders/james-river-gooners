@@ -49,6 +49,7 @@ import sys
 from pathlib import Path
 from time import monotonic
 
+import env_secrets as secrets
 import telemetry
 from config import EbayCompsSettings as _CfgEbay
 from corpus_reuse import CorpusReuser, corpus_first_enabled
@@ -196,9 +197,7 @@ def fetch_direct(
         return summary
 
     if provider_min_remaining is None:
-        provider_min_remaining = int(
-            os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"
-        )
+        provider_min_remaining = _CfgEbay().soldcomps_min_remaining
 
     if mirror_to_warehouse is None:
         from warehouse import should_mirror
@@ -596,6 +595,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         f"env: GOONERS_SOLDCOMPS_MIN_REMAINING, default {_cfg.soldcomps_min_remaining}.",
     )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
+    fetch_parser.add_argument(
+        "--user-agent",
+        default=_cfg.user_agent,
+        help="Custom User-Agent header for eBay HTTP requests. Empty = rotate randomly. "
+        "env: GOONERS_EBAY_USER_AGENT.",
+    )
+    fetch_parser.add_argument(
+        "--agent-browser-command",
+        default=_cfg.agent_browser_command,
+        help="Shell command to invoke the agent browser for blocked requests. "
+        "Empty = built-in default (npm exec --yes agent-browser@0.27.0 --). "
+        "env: GOONERS_AGENT_BROWSER_COMMAND.",
+    )
 
     apify_parser = subparsers.add_parser(
         "fetch-apify",
@@ -639,7 +651,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     apify_parser.add_argument(
         "--api-key",
-        default=os.environ.get("APIFY_API_KEY"),
+        default=secrets.apify_key(),
         help="Apify API token (defaults to APIFY_API_KEY env var).",
     )
 
@@ -698,6 +710,12 @@ def smoke(
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     if args.command == "fetch-direct":
+        # Push explicit CLI overrides into the environment so _EbayCfg() instances
+        # constructed inside ebay_fetch.py pick them up without signature changes.
+        if args.user_agent:
+            os.environ["GOONERS_EBAY_USER_AGENT"] = args.user_agent
+        if args.agent_browser_command:
+            os.environ["GOONERS_AGENT_BROWSER_COMMAND"] = args.agent_browser_command
         skip_categories = (
             frozenset(c.strip() for c in args.skip_categories.split(",") if c.strip())
             if args.skip_categories

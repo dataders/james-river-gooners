@@ -18,8 +18,9 @@ is validated — the same posture as enrichment/Nomic embeddings.
 """
 
 import json
-import os
 from functools import partial
+
+from config import EbayCompsSettings as _CfgEbay
 
 # Reuse the comp sink's credential resolution, JSON coercion, and retry loop so
 # the two sinks stay byte-for-byte consistent on PostgREST mechanics.
@@ -55,13 +56,12 @@ _COLUMN_FROM_CANDIDATE = {
     "source_query": "source_query",
     "last_seen_at": "last_seen_at",
 }
-SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json")
 
 # Fields extracted from raw_json (the full SoldComps item dict) into typed
 # columns at insert time. Keys are table column names; values are the raw_json
 # key to read.  Numeric/timestamp casting is handled by Postgres on the
 # jsonb→text extraction side; we pass strings and rely on the typed target
-# column (migration 0035) to coerce. Null raw_json keys produce NULL columns.
+# column (migration 0036) to coerce. Null raw_json keys produce NULL columns.
 _RAW_JSON_COLUMN_MAP = {
     "epid":                   "epid",
     "condition_id":           "conditionId",
@@ -76,15 +76,12 @@ _RAW_JSON_COLUMN_MAP = {
     "full_res_thumbnail_url": "fullResThumbnailUrl",
     "provider_scraped_at":    "scrapedAt",
 }
+SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json", *_RAW_JSON_COLUMN_MAP.keys())
 
 
 def sold_listings_corpus_enabled() -> bool:
     """Whether to capture + persist the raw sold-listings corpus (opt-in)."""
-    return os.environ.get("GOONERS_SOLD_LISTINGS_CORPUS", "").strip() in {
-        "1",
-        "true",
-        "True",
-    }
+    return _CfgEbay().sold_listings_corpus
 
 
 def build_sold_listing_rows(records: list[dict]) -> list[dict]:

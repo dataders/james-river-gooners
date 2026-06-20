@@ -18,7 +18,6 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
   // Carousel state
   const [imgIndex, setImgIndex] = useState(0)
   const [fetchTriggered, setFetchTriggered] = useState(false)
-  const [hovered, setHovered] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const touchStartRef = useRef(null)
@@ -43,8 +42,10 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
   const clampedIndex = images.length > 0 ? Math.min(imgIndex, images.length - 1) : 0
 
   const hasMultiple = images.length > 1
-  // Arrows visible on desktop hover only; dots + sliding carousel suppressed in compact (thumbnail row)
-  const showArrows = !compact && hovered && hasMultiple
+  // Arrows rendered in DOM whenever multiple images exist; CSS :hover shows/hides them.
+  // Keeping them in the DOM avoids "element detached" races when hover state is toggled
+  // rapidly by Playwright (or a fast user) — the arrow buttons never unmount mid-click.
+  const showArrows = !compact && hasMultiple
   const showDots = !compact && hasMultiple
   // Gallery badge: shown before first touch/hover (before we know if there are multiple images).
   // Replaced by dots once the user engages and images load.
@@ -64,7 +65,6 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
   }
 
   const handleMouseEnter = () => {
-    setHovered(true)
     if (!fetchTriggered) setFetchTriggered(true)
   }
 
@@ -158,7 +158,6 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
       <div
         className="item-image"
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setHovered(false)}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

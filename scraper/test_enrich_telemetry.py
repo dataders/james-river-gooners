@@ -49,7 +49,7 @@ class EnrichTelemetryTests(unittest.TestCase):
         props = events["enrich_sync_completed"]
         self.assertEqual(props["lots"], 1)
         self.assertEqual(props["enriched"], 1)
-        self.assertEqual(props["model"], enrich.MODEL)
+        self.assertEqual(props["model"], "claude-haiku-4-5")
 
     def test_batch_path_emits_submitted_and_completed(self):
         client = _FakeBatchClient(
