@@ -168,13 +168,47 @@ export const usePreferencesStore = create((set, get) => {
       savePrefs(get())
     },
 
-    // Bulk "show all" reveals every normally-browsable category but keeps the
-    // standing default-hidden groups (Firearms/Vehicles) hidden.
+    // Reset session category filters to the user's saved baseline (their permanent
+    // "always hide" list). Used by "Clear filters" and the category filter chip
+    // dismiss — so clearing always lands on the user's standing preferences, not
+    // on the hardcoded app defaults.
     showAll: () => {
-      const excludedGroups = [...DEFAULT_EXCLUDED_GROUPS]
-      syncUrlParam(URL_PARAMS.excludedCategories, [])
+      const { baselineExcludedGroups, baselineExcludedCategories } = get()
+      const excludedGroups = [...baselineExcludedGroups]
+      const excludedCategories = [...baselineExcludedCategories]
+      syncUrlParam(URL_PARAMS.excludedCategories, excludedCategories)
       syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
-      set({ excludedCategories: [], excludedGroups })
+      set({ excludedCategories, excludedGroups })
+      savePrefs(get())
+    },
+
+    // Permanently update the baseline excluded groups and sync the active session
+    // filter to match (so the change takes effect immediately in the grid).
+    setBaselineExcludedGroups: (groups) => {
+      set({ baselineExcludedGroups: groups, excludedGroups: groups })
+      syncUrlParam(URL_PARAMS.excludedGroups, groups)
+      savePrefs(get())
+    },
+
+    setBaselineExcludedCategories: (cats) => {
+      set({ baselineExcludedCategories: cats, excludedCategories: cats })
+      syncUrlParam(URL_PARAMS.excludedCategories, cats)
+      savePrefs(get())
+    },
+
+    toggleBaselineGroup: (group) => {
+      const groups = get().baselineExcludedGroups
+      const next = groups.includes(group) ? groups.filter(g => g !== group) : [...groups, group]
+      set({ baselineExcludedGroups: next, excludedGroups: next })
+      syncUrlParam(URL_PARAMS.excludedGroups, next)
+      savePrefs(get())
+    },
+
+    toggleBaselineCategory: (cat) => {
+      const cats = get().baselineExcludedCategories
+      const next = cats.includes(cat) ? cats.filter(c => c !== cat) : [...cats, cat]
+      set({ baselineExcludedCategories: next, excludedCategories: next })
+      syncUrlParam(URL_PARAMS.excludedCategories, next)
       savePrefs(get())
     },
 

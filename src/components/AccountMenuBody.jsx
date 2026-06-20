@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 // (AccountButton) and the mobile NavDrawer. Owns the change-password flow.
 // `onAfterAction` lets the container (popover / drawer) close itself after an
 // action that should dismiss it (sign out, Cannon's link, password saved).
-export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAction }) {
+export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onCategoryPrefsClick, onAfterAction }) {
   const [changing, setChanging] = useState(false)
   const [newPass, setNewPass] = useState('')
   const [busy, setBusy] = useState(false)
@@ -73,6 +73,16 @@ export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAc
         </form>
       ) : (
         <>
+          {onCategoryPrefsClick && (
+            <button
+              type="button"
+              className="account-dropdown-item"
+              role="menuitem"
+              onClick={() => { onAfterAction?.(); onCategoryPrefsClick() }}
+            >
+              Category preferences
+            </button>
+          )}
           <button type="button" className="account-dropdown-item" role="menuitem" onClick={() => setChanging(true)}>
             Change password
           </button>

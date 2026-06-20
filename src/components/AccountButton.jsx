@@ -10,7 +10,7 @@ function PersonIcon() {
   )
 }
 
-export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkClick }) {
+export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkClick, onCategoryPrefsClick }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -52,6 +52,7 @@ export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkCli
               auth={auth}
               cannonBids={cannonBids}
               onCannonLinkClick={onCannonLinkClick}
+              onCategoryPrefsClick={onCategoryPrefsClick}
               onAfterAction={() => setOpen(false)}
             />
           </div>

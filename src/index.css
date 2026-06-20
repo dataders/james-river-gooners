@@ -4877,3 +4877,91 @@ a.cannons-comp-card:hover {
   color: var(--text-muted);
   margin: 0 0 6px;
 }
+
+/* ── Category Preferences Modal ─────────────────────────────────────────── */
+/* Reuses .tutorial-overlay / .tutorial-panel from the tutorial modal.       */
+.catprefs-panel {
+  max-width: 560px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+.catprefs-description {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+  line-height: 1.45;
+}
+.catprefs-hint {
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin: 0 0 12px;
+}
+.catprefs-list {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 2px;
+}
+.catprefs-group {
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.1));
+  padding: 4px 0;
+}
+.catprefs-group:last-child { border-bottom: none; }
+.catprefs-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.catprefs-expand-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.catprefs-expand-btn:hover { background: var(--surface-alt, rgba(0,0,0,0.04)); border-radius: 4px; }
+.catprefs-expand-arrow { font-size: 0.75rem; color: var(--text-muted); width: 12px; flex-shrink: 0; }
+.catprefs-group-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+.catprefs-group-name--hidden { color: var(--text-muted); text-decoration: line-through; }
+.catprefs-group-count { font-size: 0.78rem; color: var(--text-muted); }
+.catprefs-group--hidden .catprefs-group-count { color: var(--text-muted); }
+.catprefs-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+.catprefs-group-toggle:hover { background: var(--surface-alt, rgba(0,0,0,0.04)); }
+.catprefs-group--hidden .catprefs-toggle-label { color: var(--accent); font-weight: 600; }
+.catprefs-checkbox { cursor: pointer; accent-color: var(--accent); width: 15px; height: 15px; }
+.catprefs-cats {
+  padding: 2px 0 6px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.catprefs-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+.catprefs-cat-row:hover { background: var(--surface-alt, rgba(0,0,0,0.04)); }
+.catprefs-cat-name { flex: 1; }
+.catprefs-cat-name--hidden { color: var(--text-muted); text-decoration: line-through; }
+.catprefs-cat-count { font-size: 0.75rem; color: var(--text-muted); }

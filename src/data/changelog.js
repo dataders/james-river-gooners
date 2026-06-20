@@ -8,6 +8,14 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-20',
+    title: 'Permanent category preferences',
+    changes: [
+      { id: 'cat-prefs-baseline', icon: '⚙️', text: 'You can now permanently hide entire categories from your account menu (Category preferences). "Clear filters" now restores your saved preferences instead of resetting everything — your permanent exclusions stick.' },
+      { id: 'cat-prefs-foryou', icon: '🎯', text: 'Your hidden categories also sharpen the "For You" ranking — the types of lots you\'ve permanently excluded pull your taste profile away from similar items, so recommendations get more relevant automatically.' },
+    ],
+  },
+  {
     date: '2026-06-19',
     title: 'Swipe deck deals your For You picks first',
     changes: [

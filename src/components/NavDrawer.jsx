@@ -8,7 +8,7 @@ export function NavDrawer({
   onImageSearch, onSwipe, onTutorial, onWhatsNew, whatsNewUnseen,
   onFeedback,
   theme, onToggleTheme,
-  auth, cannonBids, onSignInClick, onCannonLinkClick,
+  auth, cannonBids, onSignInClick, onCannonLinkClick, onCategoryPrefsClick,
 }) {
   useEffect(() => {
     if (!open) return
@@ -47,6 +47,7 @@ export function NavDrawer({
                 auth={auth}
                 cannonBids={cannonBids}
                 onCannonLinkClick={onCannonLinkClick}
+                onCategoryPrefsClick={onCategoryPrefsClick ? act(onCategoryPrefsClick) : undefined}
                 onAfterAction={onClose}
               />
             ) : (

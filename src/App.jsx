@@ -48,6 +48,7 @@ const CannonLinkModal = lazyDefault(() => import('./components/CannonLinkModal')
 const MyBidsPanel = lazyDefault(() => import('./components/MyBidsPanel'), 'MyBidsPanel')
 const ImageSearchModal = lazyDefault(() => import('./components/ImageSearchModal'), 'ImageSearchModal')
 const FeedbackModal = lazyDefault(() => import('./components/FeedbackModal.tsx'), 'FeedbackModal')
+const CategoryPrefsModal = lazyDefault(() => import('./components/CategoryPrefsModal'), 'CategoryPrefsModal')
 
 export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
@@ -98,6 +99,8 @@ export default function App() {
   const {
     excludedCategories,
     excludedGroups,
+    baselineExcludedGroups,
+    baselineExcludedCategories,
     searchQuery,
     minPrice,
     maxPrice,
@@ -119,6 +122,8 @@ export default function App() {
     hideAll,
     showAll,
     showOnly,
+    toggleBaselineGroup,
+    toggleBaselineCategory,
     setSearchQuery,
     setMinPrice,
     setMaxPrice,
@@ -145,6 +150,7 @@ export default function App() {
   usePreferencesSync(auth.user)
   const [authOpen, setAuthOpen] = useState(false)
   const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
+  const [categoryPrefsOpen, setCategoryPrefsOpen] = useState(false)
   const { favoriteIds, isFavorite, toggleFavorite, removeFavorite } = useFavorites(auth.user)
   const { ignoredIds, isIgnored, toggleIgnored, removeIgnored } = useIgnored(auth.user)
   const cannonBids = useCannonBids(auth.user)
@@ -335,6 +341,17 @@ export default function App() {
     () => items.filter(i => cannonBids.bidItemIds.has(String(i.id))),
     [items, cannonBids.bidItemIds]
   )
+  // Items from the user's permanently-excluded categories: used as a negative
+  // signal in the For You ranking (their embeddings' centroid gets subtracted
+  // from the taste vector, pushing results away from excluded category types).
+  const baselineExcludedItems = useMemo(
+    () => items.filter(item =>
+      baselineExcludedGroups.includes(item.category) ||
+      baselineExcludedCategories.includes(item.rawCategory)
+    ),
+    [items, baselineExcludedGroups, baselineExcludedCategories]
+  )
+
   const hasForYouSignal = favoriteItems.length > 0 || bidItems.length > 0
 
   // Compute the taste ranking whenever the user has any signal — not just while
@@ -345,6 +362,7 @@ export default function App() {
     favoriteItems,
     bidItems,
     ignoredItems,
+    baselineExcludedItems,
     auctions,
     hasForYouSignal,
   )
@@ -437,11 +455,20 @@ export default function App() {
     if (hasComp) n++
     if (hasCannonsComp) n++
     if (showEnrichedOnly) n++
-    if (excludedCategories.length > 0 || excludedGroups.length > 0) n++
+    // Count category filters only when the session differs from the user's
+    // baseline — baseline exclusions are permanent preferences, not transient filters.
+    const baseGroups = new Set(baselineExcludedGroups)
+    const baseCats = new Set(baselineExcludedCategories)
+    const hasCategorySessionOverride =
+      excludedGroups.some(g => !baseGroups.has(g)) ||
+      baselineExcludedGroups.some(g => !excludedGroups.includes(g)) ||
+      excludedCategories.some(c => !baseCats.has(c)) ||
+      baselineExcludedCategories.some(c => !excludedCategories.includes(c))
+    if (hasCategorySessionOverride) n++
     if (excludedAuctions.length > 0) n++
     if (searchQuery.trim()) n++
     return n
-  }, [localOnly, archiveMode, decisionView, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, excludedAuctions, searchQuery])
+  }, [localOnly, archiveMode, decisionView, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, baselineExcludedGroups, baselineExcludedCategories, excludedAuctions, searchQuery])
 
   const clearAllFilters = useCallback(() => {
     setLocalOnly(false)
@@ -509,6 +536,7 @@ export default function App() {
               cannonBids={auth.user ? cannonBids : null}
               onSignInClick={() => setAuthOpen(true)}
               onCannonLinkClick={() => setCannonLinkOpen(true)}
+              onCategoryPrefsClick={auth.user ? () => setCategoryPrefsOpen(true) : undefined}
             />
           </div>
 
@@ -606,6 +634,7 @@ export default function App() {
         cannonBids={auth.user ? cannonBids : null}
         onSignInClick={() => setAuthOpen(true)}
         onCannonLinkClick={() => setCannonLinkOpen(true)}
+        onCategoryPrefsClick={auth.user ? () => setCategoryPrefsOpen(true) : undefined}
       />
 
       <div className={`app-body${filterOpen ? '' : ' app-body--sidebar-closed'}`}>
@@ -821,6 +850,17 @@ export default function App() {
         <FeedbackModal
           onClose={() => setFeedbackOpen(false)}
           user={auth.user}
+        />
+      )}
+
+      {categoryPrefsOpen && (
+        <CategoryPrefsModal
+          groupedCategories={groupedCategories}
+          baselineExcludedGroups={baselineExcludedGroups}
+          baselineExcludedCategories={baselineExcludedCategories}
+          onToggleBaselineGroup={toggleBaselineGroup}
+          onToggleBaselineCategory={toggleBaselineCategory}
+          onClose={() => setCategoryPrefsOpen(false)}
         />
       )}
       </Suspense>
