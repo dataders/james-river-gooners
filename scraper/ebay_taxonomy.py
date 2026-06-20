@@ -34,11 +34,12 @@ CLI::
 
 import base64
 import json
-import os
 import re
 import sys
 
+import env_secrets as secrets
 import requests
+from config import EbayCompsSettings as _CfgEbay
 
 _EBAY_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
 _EBAY_TREE_URL = "https://api.ebay.com/commerce/taxonomy/v1/category_tree/0"
@@ -195,11 +196,7 @@ def upsert_categories(
 
 def leaf_categories_enabled() -> bool:
     """Whether to use Supabase leaf-level categoryIds (opt-in, default off)."""
-    return os.environ.get("GOONERS_EBAY_LEAF_CATEGORIES", "").strip() in {
-        "1",
-        "true",
-        "True",
-    }
+    return _CfgEbay().leaf_categories
 
 
 def _score_path(full_path: str, product_type: str) -> float:
@@ -313,8 +310,8 @@ def _cli() -> None:
     )
     args = parser.parse_args()
 
-    client_id = os.environ.get("EBAY_CLIENT_ID", "")
-    client_secret = os.environ.get("EBAY_CLIENT_SECRET", "")
+    client_id = secrets.ebay_client_id() or ""
+    client_secret = secrets.ebay_client_secret() or ""
     if not client_id or not client_secret:
         print(
             "Error: EBAY_CLIENT_ID and EBAY_CLIENT_SECRET must be set.",

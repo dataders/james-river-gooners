@@ -4,9 +4,22 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-19 — Swipe deck deals your For You picks first
+
+- 🃏 **Swipe in For You order** — the Swipe deck now deals cards in your For You order — the lots it thinks you'll love come up first, instead of whatever order you happened to be browsing in.
+
+## 2026-06-19 — For You learns from what you skip
+
+- 🎯 **Not interested shapes For You** — the “For You” sort now pays attention to your Not interested list, not just your favorites. Lots that look like ones you've dismissed get pushed down the ranking, so the more you swipe, the sharper your recommendations get.
+
 ## 2026-06-19 — Better link previews when sharing
 
 - 🔗 **Rich link previews** — sharing a lot via the Share button now generates a rich preview in Slack, Discord, iMessage, and other apps — showing the lot photo, title, category, and current bid instead of the generic site icon.
+
+## 2026-06-19 — Browse listing photos without opening the lot
+
+- 👆 **Swipe through photos on mobile** — on mobile you can now swipe left or right on any listing photo to flip through all its images without tapping to open the lot.
+- ◀▶ **Arrow buttons on desktop** — on desktop, hover over a listing photo and semi-transparent arrows appear on the sides so you can quickly scan through multiple images from the grid.
 
 ## 2026-06-16 — A tidier toolbar on phones
 

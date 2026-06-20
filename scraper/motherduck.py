@@ -1,8 +1,8 @@
 import json
-import os
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
+from config import WarehouseSettings as _CfgWarehouse
 from dates import parse_auction_datetime
 
 SNAPSHOT_TABLE = "listing_snapshots"
@@ -102,8 +102,7 @@ SNAPSHOT_COLUMN_CASTS = {
 
 
 def should_snapshot_to_motherduck() -> bool:
-    flag = os.environ.get("GOONERS_MOTHERDUCK_SNAPSHOTS", "")
-    return flag.lower() in {"1", "true", "yes", "on"}
+    return _CfgWarehouse().motherduck_snapshots
 
 
 def decimal_text(value) -> str:

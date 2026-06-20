@@ -4,6 +4,7 @@
 # dependencies = [
 #     "requests",
 #     "pyarrow",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """
@@ -65,6 +66,9 @@ import threading
 import time
 from pathlib import Path
 
+import env_secrets as secrets
+from config import EnrichmentSettings as _EnrichmentSettings
+
 # Server-side PostHog telemetry for the enrichment runs (batch + sync). Reuses the
 # shared scraper helper (scraper/telemetry.py) — itself a silent no-op unless
 # GOONERS_POSTHOG_KEY is set AND the posthog SDK imports, and it never raises into
@@ -106,69 +110,28 @@ def _record_enrich_run(payload: dict) -> None:
         )
 
 
-# Haiku is plenty for structured extraction and the cheapest option; overridable
-# for experiments. Note Haiku 4.5 rejects the `effort` parameter, so we don't
-# set one — extraction needs neither effort nor extended thinking.
-MODEL = os.environ.get("GOONERS_ENRICHMENT_MODEL", "claude-haiku-4-5")
-MAX_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_WORKERS", "8"))
-# Concurrent workers blow through a low per-minute org rate limit (e.g. the
-# 50 RPM entry tier), so lean on the SDK's built-in 429 handling: it honors the
-# `retry-after` header and backs off. A generous retry count lets a lot ride out
-# the rate-limit window instead of being dropped. Overridable for higher tiers.
-MAX_RETRIES = int(os.environ.get("GOONERS_ENRICHMENT_MAX_RETRIES", "8"))
-# Proactively cap the request rate so the worker pool doesn't thrash the org's
-# per-minute limit. Relying on the SDK's reactive 429 backoff alone meant every
-# worker fired immediately, drew a 429, then slept on `retry-after` — thousands
-# of wasted round-trips that dragged a full enrichment past its CI step budget.
-# Spacing calls just under the limit (default 45 RPM, below the 50 RPM entry
-# tier) makes the run as fast as the limit allows and all but eliminates 429s.
-# Set to 0 to disable client-side throttling (e.g. on a higher tier).
-ENRICHMENT_RPM = float(os.environ.get("GOONERS_ENRICHMENT_RPM", "45"))
+# Runtime-tunable knobs are read at call time (not import time) via fresh
+# _EnrichmentSettings() calls so patch.dict(os.environ, ...) works in tests.
+# See item_image_urls, enrichment_fingerprint, build_request_params, enrich_items,
+# enrich_items_batch, and _run_one_batch for the per-function reads.
 
-# Message Batches API knobs (the backfill path — `enrich_items_batch`). Batches
-# run async at 50% cost with no per-minute *message* rate limit. But an image
-# sent by URL is fetched server-side, and URL Content Fetching has its own
-# org-wide limit (~100 RPM) that batches do NOT lift — a large batch of URL
-# images blows through it and nearly every request returns rate_limit_error. So
-# the batch path **inlines images as base64** (we download + downscale them
-# ourselves): no server-side fetch, no URL-fetch limit. The tradeoff is request
-# size, so inline batches are chunked by both count and a byte budget.
-BATCH_MAX_REQUESTS = int(os.environ.get("GOONERS_ENRICHMENT_BATCH_SIZE", "10000"))
-# Inlined images make each request far larger, so inline batches cap at a lower
-# count and a payload budget well under the 256 MB hard limit.
-BATCH_INLINE_MAX_REQUESTS = int(
-    os.environ.get("GOONERS_ENRICHMENT_BATCH_INLINE_SIZE", "2000")
-)
-BATCH_MAX_BYTES = int(
-    os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_BYTES", str(180 * 1024 * 1024))
-)
-BATCH_POLL_INTERVAL = float(os.environ.get("GOONERS_ENRICHMENT_BATCH_POLL", "30"))
-BATCH_MAX_WAIT = float(
-    os.environ.get("GOONERS_ENRICHMENT_BATCH_MAX_WAIT", str(24 * 3600))
-)
-# Downscale inlined images for the batch payload. We extract product identity +
-# attributes (mostly from the lot's text), not tiny model/SKU plate text, so a
-# modest 512px is plenty and keeps the payload + token cost down. Fetched
-# concurrently. (768px gave no measurable lift in testing.)
-MAX_IMAGE_PX = int(os.environ.get("GOONERS_ENRICHMENT_MAX_IMAGE_PX", "512"))
-IMAGE_FETCH_WORKERS = int(os.environ.get("GOONERS_ENRICHMENT_IMAGE_WORKERS", "16"))
-# How many photos to feed the model (#152). The identifying detail — a brand
-# label, a model/SKU plate, the back of a tag — is often on photo 2 or 3, not
-# photo 1, so the first N images materially lift the model/SKU hit rate. One
-# shared knob (intended to also govern embeddings) keeps the passes in lockstep.
-MAX_IMAGES = max(1, int(os.environ.get("GOONERS_MAX_IMAGES", "3")))
-
+# Concurrent workers blow through a low per-minute org rate limit, so lean on
+# the SDK's built-in 429 handling (honors retry-after). A generous retry count
+# lets a lot ride out the rate-limit window without being dropped.
+MAX_RETRIES = 8
+# Batch API polling / wait budget — implementation details, not operator knobs.
+BATCH_POLL_INTERVAL = 30.0
+BATCH_MAX_WAIT = float(24 * 3600)
+# Downscale inlined images for the batch payload. 512px is plenty for product
+# identity extraction; 768px gave no measurable lift in testing.
+MAX_IMAGE_PX = 512
+IMAGE_FETCH_WORKERS = 16
 # Pre-flight cost estimation (--estimate-only). Haiku 4.5 list price per million
-# tokens; the Batches API is 50% off. The output is small + bounded by
-# max_tokens, so a small constant covers it. All overridable for other models.
-PRICE_IN_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_IN", "1.0"))
-PRICE_OUT_PER_MTOK = float(os.environ.get("GOONERS_ENRICHMENT_PRICE_OUT", "5.0"))
-ESTIMATE_SAMPLE = max(
-    1, int(os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_SAMPLE", "30"))
-)
-ESTIMATE_OUTPUT_TOKENS = int(
-    os.environ.get("GOONERS_ENRICHMENT_ESTIMATE_OUT_TOK", "300")
-)
+# tokens; the Batches API is 50% off.
+PRICE_IN_PER_MTOK = 1.0
+PRICE_OUT_PER_MTOK = 5.0
+ESTIMATE_SAMPLE = 30
+ESTIMATE_OUTPUT_TOKENS = 300
 
 
 def _text_only() -> bool:
@@ -176,7 +139,7 @@ def _text_only() -> bool:
     photos and enrich from the lot's text alone — much cheaper, for backfilling a
     text-derivable field across history without re-paying the image tokens. Read
     at call time (not import) so the CLI flag can set it before any enrichment."""
-    return os.environ.get("GOONERS_ENRICHMENT_TEXT_ONLY") == "1"
+    return _EnrichmentSettings().text_only
 
 
 # Bump when the prompt/schema changes so every lot re-enriches once instead of
@@ -433,10 +396,11 @@ SYSTEM_PROMPT = (
 
 def is_enrichment_enabled() -> bool:
     """True only when the user opted in AND a key is present. The opt-in keeps
-    enrichment off by default (no surprise API spend on every scrape)."""
-    return os.environ.get("GOONERS_ENRICHMENT") == "1" and bool(
-        os.environ.get("ANTHROPIC_API_KEY")
-    )
+    enrichment off by default (no surprise API spend on every scrape).
+
+    Reads from EnrichmentSettings so "1"/"true"/"yes"/"on" all work (previously
+    only "1" was accepted, silently treating GOONERS_ENRICHMENT=true as OFF)."""
+    return _EnrichmentSettings().enabled and bool(secrets.anthropic_key())
 
 
 def _empty_enrichment() -> dict:
@@ -481,7 +445,7 @@ class _RateLimiter:
             time.sleep(wait)
 
 
-_limiter = _RateLimiter(ENRICHMENT_RPM)
+_limiter = _RateLimiter(_EnrichmentSettings().rpm)
 
 
 def item_images(item: dict) -> list:
@@ -513,13 +477,15 @@ def item_prompt_text(item: dict) -> str:
     return "\n".join(lines) if lines else "(no text provided)"
 
 
-def item_image_urls(item: dict, limit: int = MAX_IMAGES) -> list[str]:
+def item_image_urls(item: dict, limit: int | None = None) -> list[str]:
     """The first ``limit`` http(s) photo URLs (#152). Many lots put the model/SKU
     plate on photo 2 or 3, so enrichment reads several, not just the first. Empty
     in text-only mode — the single chokepoint that makes the sync path, batch
     image-fetch, and fingerprint all drop images at once."""
     if _text_only():
         return []
+    if limit is None:
+        limit = max(1, _EnrichmentSettings().max_images)
     urls = []
     for raw in item_images(item):
         url = str(raw)
@@ -549,7 +515,7 @@ def enrichment_fingerprint(item: dict) -> str:
     payload = "\x1f".join(
         (
             ENRICHMENT_SCHEMA_VERSION,
-            MODEL,
+            _EnrichmentSettings().model,
             mode,
             item_prompt_text(item),
             *item_image_urls(item),
@@ -613,7 +579,7 @@ def build_request_params(item: dict, content: list | None = None) -> dict:
     image-by-URL content (synchronous path); the batch path passes inlined-image
     content. Everything else is identical so both transports score the same."""
     return {
-        "model": MODEL,
+        "model": _EnrichmentSettings().model,
         # Room for the v4 fields (arrays + url); output tokens are tiny regardless.
         "max_tokens": 512,
         # Deterministic extraction — we want the same lot to score the same way.
@@ -785,7 +751,7 @@ def _finalize_result(item: dict, result: dict) -> dict:
     the synchronous and batch paths so both cache identically."""
     # Stamp provenance only on lots that were actually identified.
     if result.get("enrichmentConfidence"):
-        result["enrichmentModel"] = MODEL
+        result["enrichmentModel"] = _EnrichmentSettings().model
     # Schema version is stamped on every processed lot (identified or not) so the
     # Supabase mirror can record which prompt/schema produced the row — queryable
     # without recomputing the fingerprint.
@@ -948,13 +914,18 @@ def enrich_items(
     if client is None:
         return 0
 
+    cfg = _EnrichmentSettings()
+    # Rebuild the rate limiter for this run so env changes take effect.
+    global _limiter
+    _limiter = _RateLimiter(cfg.rpm)
+
     # Reuse unchanged lots up front; only the rest hit the API.
     to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
 
     enriched = 0
     input_tokens = 0
     output_tokens = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=cfg.workers) as pool:
         futures = {pool.submit(enrich_item, client, item): item for item in to_enrich}
         for future in concurrent.futures.as_completed(futures):
             item = futures[future]
@@ -978,11 +949,11 @@ def enrich_items(
         4,
     )
     reused_note = f" (reused {reused} unchanged)" if reused else ""
-    print(f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL}{reused_note}")
+    print(f"  enriched {enriched}/{len(to_enrich)} lots via {cfg.model}{reused_note}")
     if to_enrich:
         print(
             f"  enrich: sync cost ~${est_cost_usd:.4f} "
-            f"({input_tokens} in + {output_tokens} out tok, standard rate, {MODEL})"
+            f"({input_tokens} in + {output_tokens} out tok, standard rate, {cfg.model})"
         )
     _telemetry_capture(
         "enrich_sync_completed",
@@ -993,13 +964,13 @@ def enrich_items(
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "est_cost_usd": est_cost_usd,
-            "model": MODEL,
+            "model": cfg.model,
         },
     )
     _record_enrich_run(
         {
             "mode": "sync",
-            "model": MODEL,
+            "model": cfg.model,
             "schema_version": ENRICHMENT_SCHEMA_VERSION,
             "auction_safe_id": _chunk_safe_id(to_enrich),
             "lots_submitted": len(to_enrich),
@@ -1096,6 +1067,7 @@ def _run_one_batch(
 ) -> int:
     """Submit one Message Batch for ``chunk`` and apply the results in place.
     Returns the count of lots that got any field populated."""
+    model = _EnrichmentSettings().model
     requests, by_custom_id = _build_batch_requests(chunk, inline_images)
     batch = client.messages.batches.create(requests=requests)
     batch_id = getattr(batch, "id", None) or batch["id"]
@@ -1106,7 +1078,7 @@ def _run_one_batch(
             "batch_id": batch_id,
             "lots": len(requests),
             "transport": "inline" if inline_images else "url",
-            "model": MODEL,
+            "model": model,
         },
     )
 
@@ -1122,7 +1094,7 @@ def _run_one_batch(
                 "batch_id": batch_id,
                 "lots": len(requests),
                 "status": status,
-                "model": MODEL,
+                "model": model,
             },
         )
         return 0
@@ -1177,7 +1149,7 @@ def _run_one_batch(
     )
     print(
         f"  enrich: batch {batch_id} cost ~${est_cost_usd:.4f} "
-        f"({input_tokens} in + {output_tokens} out tok, batch 50%-off rate, {MODEL})"
+        f"({input_tokens} in + {output_tokens} out tok, batch 50%-off rate, {model})"
     )
     _telemetry_capture(
         "enrich_batch_completed",
@@ -1189,13 +1161,13 @@ def _run_one_batch(
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "est_cost_usd": est_cost_usd,
-            "model": MODEL,
+            "model": model,
         },
     )
     _record_enrich_run(
         {
             "mode": "batch",
-            "model": MODEL,
+            "model": model,
             "schema_version": ENRICHMENT_SCHEMA_VERSION,
             "auction_safe_id": _chunk_safe_id(chunk),
             "lots_submitted": len(requests),
@@ -1226,9 +1198,9 @@ def enrich_items_batch(
     each photo is downloaded + downscaled and inlined as base64, so Anthropic
     never fetches the URL itself — that avoids the org's URL Content Fetching
     rate limit (~100 RPM), which a batch of URL images would otherwise blow
-    through. Inline batches are chunked by both ``BATCH_INLINE_MAX_REQUESTS`` and
-    ``BATCH_MAX_BYTES`` (payload budget under the 256 MB hard limit); URL batches
-    chunk by ``BATCH_MAX_REQUESTS`` only.
+    through. Inline batches are chunked by both ``GOONERS_ENRICHMENT_BATCH_INLINE_SIZE`` and
+    ``GOONERS_ENRICHMENT_BATCH_MAX_BYTES`` (payload budget under the 256 MB hard limit);
+    URL batches chunk by ``GOONERS_ENRICHMENT_BATCH_SIZE`` only.
 
     Use this for a large historical backfill (needs ``requests`` + ``pillow`` for
     image inlining); use ``enrich_items`` for a live scrape (a batch can take up
@@ -1240,29 +1212,38 @@ def enrich_items_batch(
     if client is None:
         return 0
 
+    cfg = _EnrichmentSettings()
     to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
     if not to_enrich:
         if reused:
             print(
-                f"  enriched 0/0 lots via {MODEL} (batch) (reused {reused} unchanged)"
+                f"  enriched 0/0 lots via {cfg.model} (batch) (reused {reused} unchanged)"
             )
         return 0
 
-    max_count = BATCH_INLINE_MAX_REQUESTS if inline_images else BATCH_MAX_REQUESTS
+    max_count = cfg.batch_inline_size if inline_images else cfg.batch_max_requests
     enriched = 0
-    for chunk in _chunk_for_batch(to_enrich, max_count, inline_images):
+    for chunk in _chunk_for_batch(
+        to_enrich, max_count, inline_images, cfg.max_images, cfg.batch_max_bytes
+    ):
         enriched += _run_one_batch(
             client, chunk, poll_interval, max_wait, inline_images
         )
 
     reused_note = f" (reused {reused} unchanged)" if reused else ""
     print(
-        f"  enriched {enriched}/{len(to_enrich)} lots via {MODEL} (batch){reused_note}"
+        f"  enriched {enriched}/{len(to_enrich)} lots via {cfg.model} (batch){reused_note}"
     )
     return enriched
 
 
-def _chunk_for_batch(to_enrich: list[dict], max_count: int, inline_images: bool):
+def _chunk_for_batch(
+    to_enrich: list[dict],
+    max_count: int,
+    inline_images: bool,
+    max_images: int,
+    max_bytes: int,
+):
     """Yield chunks bounded by request count and, for inline batches, a payload
     byte budget (a rough estimate from the lot's text + image bytes, so a chunk
     of large photos still lands under the 256 MB hard limit)."""
@@ -1274,10 +1255,10 @@ def _chunk_for_batch(to_enrich: list[dict], max_count: int, inline_images: bool)
         if inline_images:
             # base64 of the downscaled JPEGs; cap per-photo so one big source
             # image doesn't over-inflate the budget (we downscale before send).
-            est += min(_estimated_image_bytes(item), 400 * 1024 * MAX_IMAGES)
+            est += min(_estimated_image_bytes(item), 400 * 1024 * max_images)
         if chunk and (
             len(chunk) >= max_count
-            or (inline_images and chunk_bytes + est > BATCH_MAX_BYTES)
+            or (inline_images and chunk_bytes + est > max_bytes)
         ):
             yield chunk
             chunk, chunk_bytes = [], 0
@@ -1477,7 +1458,7 @@ def estimate_enrichment_cost(
     print(
         f"  enrich: cost estimate — {n} lots to enrich, ~{avg_in:.0f} input tok/lot "
         f"(sampled {len(counts)}); ~${total:.2f} at {rate} rate "
-        f"(input ${in_cost:.2f} + output ${out_cost:.2f}, {MODEL})"
+        f"(input ${in_cost:.2f} + output ${out_cost:.2f}, {_EnrichmentSettings().model})"
     )
     return {
         "lots": n,
@@ -1508,9 +1489,7 @@ def _backfill_from_supabase(
     if client is None:
         return 1
 
-    import os as _os
-
-    if not _os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         print(
             "error: SUPABASE_SECRET_KEY is required for --from-supabase",
             file=sys.stderr,

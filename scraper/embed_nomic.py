@@ -3,6 +3,7 @@
 # dependencies = [
 #     "requests",
 #     "numpy",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """Nomic Embed (text + vision) generation → Supabase pgvector table.
@@ -48,17 +49,19 @@ already embedded):
         --with numpy --with requests python embed_nomic.py [--archive] [<safeId> ...]
 """
 
+import argparse
 import io
 import json
-import os
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import env_secrets as secrets
 import numpy as np
 import requests as _req
+from config import EmbeddingSettings as _EmbedCfg
+from config import EnrichmentSettings as _EmbedEnrichCfg
 
-_MAX_IMAGES = int(os.environ.get("GOONERS_MAX_IMAGES", "3"))
+_MAX_IMAGES = max(1, _EmbedEnrichCfg().max_images)
 
 _ACTIVE_ITEMS_DIR = Path(__file__).resolve().parent.parent / "public" / "data" / "items"
 _ARCHIVE_ITEMS_DIR = (
@@ -89,7 +92,7 @@ def _get_device() -> str:
     """
     global _device
     if _device is None:
-        forced = os.environ.get("GOONERS_EMBED_DEVICE")
+        forced = _EmbedCfg().device
         if forced:
             _device = forced
         else:
@@ -357,7 +360,7 @@ def upsert_embeddings(
         session = requests.Session()
 
     if batch_size is None:
-        batch_size = int(os.environ.get("GOONERS_NOMIC_UPSERT_BATCH", "100"))
+        batch_size = _EmbedCfg().upsert_batch
 
     rows = [
         {
@@ -546,7 +549,11 @@ def overlay_enrichment(items: list[dict], safe_id: str, session=None) -> int:
 
 
 def generate_and_upsert(
-    items: list[dict], safe_id: str, session=None, force: bool = False
+    items: list[dict],
+    safe_id: str,
+    session=None,
+    force: bool = False,
+    batch_size: int | None = None,
 ) -> int:
     """Embed the lots not already in the table for one auction and upsert them.
 
@@ -584,7 +591,9 @@ def generate_and_upsert(
         + "..."
     )
     embeddings, ids, n_images_used = embed_items(todo, session)
-    n = upsert_embeddings(embeddings, ids, n_images_used, safe_id, session=session)
+    n = upsert_embeddings(
+        embeddings, ids, n_images_used, safe_id, session=session, batch_size=batch_size
+    )
     print(f"  [nomic] Upserted {n} embeddings → Supabase {NOMIC_TABLE}")
     return n
 
@@ -596,9 +605,9 @@ def maybe_generate_and_upsert(items: list[dict], safe_id: str, session=None) -> 
     Failures warn rather than aborting the scrape (the local read model is
     primary).
     """
-    if os.environ.get("GOONERS_NOMIC_EMBEDDINGS") != "1":
+    if not _EmbedCfg().enabled:
         return
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         print("[nomic] SUPABASE_SECRET_KEY not set — skipping Nomic embeddings")
         return
 
@@ -624,6 +633,7 @@ def backfill_from_read_model(
     include_archive: bool = False,
     session=None,
     force: bool = False,
+    batch_size: int | None = None,
 ) -> int:
     """Populate ``nomic_embeddings`` from the on-disk NDJSON read model.
 
@@ -633,7 +643,7 @@ def backfill_from_read_model(
     already carry enrichment fields, so the embedded text folds in the resale
     identity without a separate overlay. Returns total rows written.
     """
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         raise RuntimeError(
             "SUPABASE_SECRET_KEY is required to backfill Nomic embeddings"
         )
@@ -657,7 +667,9 @@ def backfill_from_read_model(
         if not items:
             continue
         try:
-            total += generate_and_upsert(items, safe_id, session=session, force=force)
+            total += generate_and_upsert(
+                items, safe_id, session=session, force=force, batch_size=batch_size
+            )
         except Exception as exc:
             print(f"  [nomic] WARNING: backfill failed for {safe_id}: {exc}")
     print(f"\n[nomic] backfill complete: {total} embeddings upserted")
@@ -670,6 +682,7 @@ def backfill_from_supabase(
     include_archive: bool = False,
     session=None,
     force: bool = False,
+    batch_size: int | None = None,
 ) -> int:
     """Populate ``nomic_embeddings`` by fetching lot items from the Supabase
     ``lots`` table instead of on-disk NDJSON files. Each lot's ``lot_enrichment``
@@ -680,7 +693,7 @@ def backfill_from_supabase(
     unless ``force`` re-embeds every lot (use after enrichment changes the text).
     Requires ``SUPABASE_SECRET_KEY`` (reads and writes to Supabase).
     """
-    if not os.environ.get("SUPABASE_SECRET_KEY"):
+    if not secrets.supabase_secret_key():
         raise RuntimeError(
             "SUPABASE_SECRET_KEY is required to backfill Nomic embeddings from Supabase"
         )
@@ -741,33 +754,69 @@ def backfill_from_supabase(
             if not targets:
                 continue
         try:
-            total += generate_and_upsert(targets, safe_id, session=session, force=force)
+            total += generate_and_upsert(
+                targets, safe_id, session=session, force=force, batch_size=batch_size
+            )
         except Exception as exc:
             print(f"  [nomic] WARNING: backfill failed for {safe_id}: {exc}")
     print(f"\n[nomic] Supabase backfill complete: {total} embeddings upserted")
     return total
 
 
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    _cfg = _EmbedCfg()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Backfill Nomic embeddings into the Supabase nomic_embeddings table. "
+            "Source is either local NDJSON sidecars (default) or the Supabase lots table (--from-supabase)."
+        )
+    )
+    parser.add_argument(
+        "safe_ids",
+        nargs="*",
+        metavar="safeId",
+        help="Auction safe IDs to embed (default: all discovered).",
+    )
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="Include archived auctions (default: active only).",
+    )
+    parser.add_argument(
+        "--from-supabase",
+        action="store_true",
+        help="Source lots from the Supabase lots table instead of local NDJSON sidecars.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-embed every lot, not just missing ones. Use after enrichment changes the embedded text.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=_cfg.upsert_batch,
+        help=f"Max embedding rows per Supabase upsert request "
+        f"(env: GOONERS_NOMIC_UPSERT_BATCH, default {_cfg.upsert_batch}). "
+        "Smaller values reduce per-request latency under HNSW index pressure.",
+    )
+    return parser.parse_args(argv)
+
+
 if __name__ == "__main__":
-    # Backfill the table from already-scraped NDJSON sidecars:
-    #   uv run --with sentence-transformers --with 'transformers==4.49.0' \
-    #     --with torchvision --with pillow --with einops --with numpy \
-    #     --with requests python embed_nomic.py [--archive] [<safeId> ...]
-    #
-    # Or from the Supabase lots table (no NDJSON needed):
-    #   ... python embed_nomic.py --from-supabase [--archive] [<safeId> ...]
-    # Add --force to re-embed every lot (not just missing ones) — needed after the
-    # embedded text changes, e.g. a re-embed that folds in new enrichment.
-    args = sys.argv[1:]
-    include_archive = "--archive" in args
-    from_supabase = "--from-supabase" in args
-    force = "--force" in args
-    ids = [a for a in args if not a.startswith("--")]
-    if from_supabase:
+    _args = _parse_args()
+    _ids = _args.safe_ids or None
+    if _args.from_supabase:
         backfill_from_supabase(
-            ids or None, include_archive=include_archive, force=force
+            _ids,
+            include_archive=_args.archive,
+            force=_args.force,
+            batch_size=_args.batch_size,
         )
     else:
         backfill_from_read_model(
-            ids or None, include_archive=include_archive, force=force
+            _ids,
+            include_archive=_args.archive,
+            force=_args.force,
+            batch_size=_args.batch_size,
         )

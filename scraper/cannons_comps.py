@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "requests",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """
@@ -35,10 +36,11 @@ Usage (from scraper/):
 
 import argparse
 import json
-import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+from config import CannonsCompsSettings as _CfgCannons
 
 # Server-side PostHog telemetry (shared scraper helper). Silent no-op unless
 # GOONERS_POSTHOG_KEY is set AND the posthog SDK imports; never raises into the
@@ -227,6 +229,7 @@ def build_comps(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    _cfg = _CfgCannons()
     parser = argparse.ArgumentParser(
         description="Precompute Cannon's (archive) comps via Nomic pgvector"
     )
@@ -234,12 +237,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--top-k",
         type=int,
-        default=int(os.environ.get("GOONERS_CANNONS_COMPS_TOP_K", DEFAULT_TOP_K)),
+        default=_cfg.top_k,
+        help=f"Max archived-lot matches per active item (env: GOONERS_CANNONS_COMPS_TOP_K, default {_cfg.top_k}).",
     )
     parser.add_argument(
         "--min-sim",
         type=float,
-        default=float(os.environ.get("GOONERS_CANNONS_COMPS_MIN_SIM", DEFAULT_MIN_SIM)),
+        default=_cfg.min_sim,
+        help=f"Minimum Nomic cosine similarity to keep a match (env: GOONERS_CANNONS_COMPS_MIN_SIM, default {_cfg.min_sim}).",
     )
     parser.add_argument(
         "--active-limit",

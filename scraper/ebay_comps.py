@@ -6,6 +6,7 @@
 #     "beautifulsoup4",
 #     "pyarrow",
 #     "pyyaml",
+#     "pydantic-settings>=2,<3",
 # ]
 # ///
 """
@@ -46,8 +47,11 @@ import os
 import random
 import sys
 from pathlib import Path
+from time import monotonic
 
+import env_secrets as secrets
 import telemetry
+from config import EbayCompsSettings as _CfgEbay
 from corpus_reuse import CorpusReuser, corpus_first_enabled
 
 # Apify backend — re-export for external callers and expose via the CLI.
@@ -138,7 +142,7 @@ from ebay_util import (
 
 DEFAULT_LIMIT = 50
 DEFAULT_STALE_HOURS = 7 * 24
-DEFAULT_MONTHLY_BUDGET = 5000
+DEFAULT_MONTHLY_BUDGET = 50000
 
 
 # ── Orchestration ─────────────────────────────────────────────────────────────
@@ -193,9 +197,7 @@ def fetch_direct(
         return summary
 
     if provider_min_remaining is None:
-        provider_min_remaining = int(
-            os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"
-        )
+        provider_min_remaining = _CfgEbay().soldcomps_min_remaining
 
     if mirror_to_warehouse is None:
         from warehouse import should_mirror
@@ -289,6 +291,12 @@ def fetch_direct(
         )
     )
     candidates = sorted(loaded, key=auction_end_sort_key)
+    print(
+        f"eBay comp fetch starting: {len(candidates)} lots loaded, "
+        f"{len(known_fresh)} already fresh"
+        + (f", budget cap {query_limit} queries" if cap_active else "")
+    )
+    _run_start = monotonic()
 
     # Leaf category scoping (Phase 2 inc 4, #329): pre-load eBay leaf
     # candidates for all distinct category groups in this run — one Supabase
@@ -341,6 +349,27 @@ def fetch_direct(
         if cap_active and summary["queries_attempted"] >= query_limit:
             break
         summary["items_attempted"] += 1
+        if summary["items_attempted"] % 100 == 0:
+            _elapsed = monotonic() - _run_start
+            _rate = summary["items_attempted"] / _elapsed * 60 if _elapsed > 0 else 0
+            print(
+                f"  … {summary['items_attempted']} items attempted, "
+                f"{summary['queries_attempted']} queries, {summary['matches']} matches, "
+                f"{summary['reused_items']} reused "
+                f"({_elapsed:.0f}s elapsed, {_rate:.0f} items/min)"
+            )
+            telemetry.capture(
+                "soldcomps_progress",
+                {
+                    "items_attempted": summary["items_attempted"],
+                    "queries_attempted": summary["queries_attempted"],
+                    "matches": summary["matches"],
+                    "reused_items": summary["reused_items"],
+                    "elapsed_seconds": round(_elapsed),
+                    "items_per_minute": round(_rate, 1),
+                    "provider_remaining": summary.get("provider_remaining"),
+                },
+            )
 
         # Corpus-first reuse: when the corpus already covers this lot, use those
         # comps and skip the paid API queries entirely (no-op unless enabled).
@@ -480,6 +509,7 @@ def fetch_direct(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    _cfg = _CfgEbay()
     parser = argparse.ArgumentParser(
         description="Fetch eBay sold comps into the static read model"
     )
@@ -494,27 +524,24 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--limit",
         type=int,
-        default=int(os.environ.get("GOONERS_EBAY_COMPS_LIMIT", DEFAULT_LIMIT)),
+        default=_cfg.limit,
+        help=f"Max lots to fetch comps for (env: GOONERS_EBAY_COMPS_LIMIT, default {_cfg.limit}).",
     )
     fetch_parser.add_argument("--queries-per-item", type=int, default=3)
     fetch_parser.add_argument("--max-matches", type=int, default=3)
     fetch_parser.add_argument(
         "--max-queries",
         type=int,
-        default=int(os.environ.get("GOONERS_EBAY_COMPS_MAX_QUERIES", "0")),
-        help="Hard cap on SoldComps requests this run (1 query = 1 request). "
-        "0 disables this per-run cap; the monthly budget still applies.",
+        default=_cfg.max_queries,
+        help=f"Hard cap on SoldComps requests this run (0 = unlimited; monthly budget still applies). "
+        f"env: GOONERS_EBAY_COMPS_MAX_QUERIES, default {_cfg.max_queries}.",
     )
     fetch_parser.add_argument(
         "--monthly-budget",
         type=int,
-        default=int(
-            os.environ.get(
-                "GOONERS_EBAY_COMPS_MONTHLY_BUDGET", str(DEFAULT_MONTHLY_BUDGET)
-            )
-        ),
-        help="Shared monthly request ceiling across all runs (derived from the "
-        "read model). 0 disables it.",
+        default=_cfg.monthly_budget,
+        help=f"Shared monthly request ceiling across all runs (0 = off). "
+        f"env: GOONERS_EBAY_COMPS_MONTHLY_BUDGET, default {_cfg.monthly_budget}.",
     )
     fetch_parser.add_argument(
         "--no-daily-pacing",
@@ -532,10 +559,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument("--auction-safe-id", default=None)
     fetch_parser.add_argument(
         "--skip-categories",
-        default=os.environ.get("GOONERS_EBAY_COMPS_SKIP_CATEGORIES", ""),
+        default=_cfg.skip_categories,
         help="Comma-separated broad category groups to skip entirely "
-        "(e.g. 'Collectibles,Jewelry & Watches,Coins & Currency,China & Glass'). "
-        "Also reads GOONERS_EBAY_COMPS_SKIP_CATEGORIES env var.",
+        "(e.g. 'Collectibles,Jewelry & Watches'). "
+        "env: GOONERS_EBAY_COMPS_SKIP_CATEGORIES.",
     )
     fetch_parser.add_argument("--include-archived", action="store_true")
     fetch_parser.add_argument(
@@ -548,9 +575,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--corpus-first",
         action="store_true",
-        help="Before spending the API on a lot, reuse the sold-listings corpus "
-        "when it already covers the lot with fresh, similar listings (#290 inc 3). "
-        "Also reads GOONERS_CORPUS_FIRST=1.",
+        default=_cfg.corpus_first,
+        help=f"Reuse the sold-listings corpus when it already covers a lot, "
+        f"skipping the paid SoldComps API call. "
+        f"env: GOONERS_CORPUS_FIRST, default {_cfg.corpus_first}.",
     )
     fetch_parser.add_argument("--dry-run", action="store_true")
     fetch_parser.add_argument(
@@ -561,12 +589,25 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     fetch_parser.add_argument(
         "--provider-min-remaining",
         type=int,
-        default=int(os.environ.get("GOONERS_SOLDCOMPS_MIN_REMAINING", "0") or "0"),
-        help="Stop the run when the SoldComps provider's reported remaining "
-        "quota (its X-Usage-* response header) reaches this floor. The "
-        "authoritative meter, independent of the comp ledger.",
+        default=_cfg.soldcomps_min_remaining,
+        help=f"Stop the run when the SoldComps provider's reported remaining "
+        f"quota (its X-Usage-* response header) reaches this floor. "
+        f"env: GOONERS_SOLDCOMPS_MIN_REMAINING, default {_cfg.soldcomps_min_remaining}.",
     )
     fetch_parser.add_argument("--sleep-seconds", type=float, default=1.0)
+    fetch_parser.add_argument(
+        "--user-agent",
+        default=_cfg.user_agent,
+        help="Custom User-Agent header for eBay HTTP requests. Empty = rotate randomly. "
+        "env: GOONERS_EBAY_USER_AGENT.",
+    )
+    fetch_parser.add_argument(
+        "--agent-browser-command",
+        default=_cfg.agent_browser_command,
+        help="Shell command to invoke the agent browser for blocked requests. "
+        "Empty = built-in default (npm exec --yes agent-browser@0.27.0 --). "
+        "env: GOONERS_AGENT_BROWSER_COMMAND.",
+    )
 
     apify_parser = subparsers.add_parser(
         "fetch-apify",
@@ -579,8 +620,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apify_parser.add_argument(
         "--max-listings-per-search",
         type=int,
-        default=int(os.environ.get("GOONERS_APIFY_MAX_LISTINGS", "10")),
-        help="Results to request from Apify per search query (more = higher cost).",
+        default=_cfg.apify_max_listings,
+        help=f"Results to request from Apify per search query (more = higher cost). "
+        f"env: GOONERS_APIFY_MAX_LISTINGS, default {_cfg.apify_max_listings}.",
     )
     apify_parser.add_argument("--stale-hours", type=int, default=DEFAULT_STALE_HOURS)
     apify_parser.add_argument(
@@ -590,7 +632,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     apify_parser.add_argument(
         "--skip-categories",
-        default=os.environ.get("GOONERS_EBAY_COMPS_SKIP_CATEGORIES", ""),
+        default=_cfg.skip_categories,
     )
     apify_parser.add_argument("--include-archived", action="store_true")
     apify_parser.add_argument("--auction-safe-id", default=None)
@@ -603,14 +645,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apify_parser.add_argument(
         "--concurrency",
         type=int,
-        default=int(
-            os.environ.get("GOONERS_APIFY_CONCURRENCY", str(APIFY_CONCURRENCY))
-        ),
-        help="Max parallel Apify actor runs.",
+        default=_cfg.apify_concurrency,
+        help=f"Max parallel Apify actor runs. "
+        f"env: GOONERS_APIFY_CONCURRENCY, default {_cfg.apify_concurrency}.",
     )
     apify_parser.add_argument(
         "--api-key",
-        default=os.environ.get("APIFY_API_KEY"),
+        default=secrets.apify_key(),
         help="Apify API token (defaults to APIFY_API_KEY env var).",
     )
 
@@ -669,6 +710,12 @@ def smoke(
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     if args.command == "fetch-direct":
+        # Push explicit CLI overrides into the environment so _EbayCfg() instances
+        # constructed inside ebay_fetch.py pick them up without signature changes.
+        if args.user_agent:
+            os.environ["GOONERS_EBAY_USER_AGENT"] = args.user_agent
+        if args.agent_browser_command:
+            os.environ["GOONERS_AGENT_BROWSER_COMMAND"] = args.agent_browser_command
         skip_categories = (
             frozenset(c.strip() for c in args.skip_categories.split(",") if c.strip())
             if args.skip_categories

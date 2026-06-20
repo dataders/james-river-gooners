@@ -28,7 +28,7 @@ on:
         description: 'Shared monthly request ceiling across all runs (0 disables; matches the SoldComps plan). The provider X-Usage-* header is the authoritative stop.'
         required: false
         type: string
-        default: '5000'
+        default: '50000'
       queries_per_item:
         description: 'Fallback queries per item (1=cheapest, 3=best match rate)'
         required: false
@@ -56,6 +56,11 @@ on:
         default: false
       sold_listings_corpus:
         description: 'Capture the full eBay candidate set into the sold_listings corpus (#290/#294)'
+        required: false
+        type: boolean
+        default: false
+      leaf_categories:
+        description: 'Narrow eBay category search to the best matching leaf category from the ebay_categories table (requires GOONERS_EBAY_LEAF_CATEGORIES)'
         required: false
         type: boolean
         default: false
@@ -113,6 +118,7 @@ jobs:
           # Raw sold-listings corpus (#290/#294): opt-in capture of the full
           # candidate set per query. No-op unless on.
           GOONERS_SOLD_LISTINGS_CORPUS: ${{ inputs.sold_listings_corpus && '1' || '' }}
+          GOONERS_EBAY_LEAF_CATEGORIES: ${{ inputs.leaf_categories && '1' || '' }}
         run: |
           cd scraper
           # Prefer Supabase (#6): the comps read model + ledger, so no JSON is
@@ -142,11 +148,13 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct --dry-run --from-supabase --limit 1 --sleep-seconds 0 \
                 --monthly-budget "${{ inputs.monthly_budget }}" \
                 --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG $PACING_FLAG
           else
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct \
                 --from-supabase \
                 --limit "${{ inputs.limit }}" \

@@ -16,6 +16,9 @@ methods; portable code should depend on those, not on :func:`connect`.
 import os
 from abc import ABC, abstractmethod
 
+import env_secrets as secrets
+from config import WarehouseSettings as _CfgWarehouse
+
 DEFAULT_DATABASE = "md:"
 
 
@@ -30,7 +33,7 @@ def is_motherduck(database: str) -> bool:
 
 def require_motherduck_token(database: str, action: str = "use MotherDuck") -> None:
     """Raise if a MotherDuck database is targeted without a token configured."""
-    if is_motherduck(database) and not os.environ.get("MOTHERDUCK_TOKEN"):
+    if is_motherduck(database) and not secrets.motherduck_token():
         raise RuntimeError(f"MOTHERDUCK_TOKEN is required to {action}")
 
 
@@ -77,7 +80,7 @@ def reset_cached_connection(database: str | None = None) -> None:
 
 def warehouse_kind() -> str:
     """Which warehouse implementation to use (``GOONERS_WAREHOUSE``)."""
-    return os.environ.get("GOONERS_WAREHOUSE", "motherduck").strip().lower()
+    return _CfgWarehouse().warehouse
 
 
 class SnapshotSink(ABC):

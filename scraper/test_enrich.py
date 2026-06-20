@@ -475,7 +475,7 @@ class PromptShapeTests(unittest.TestCase):
         item = {"title": "Drill", "images": [f"https://img/{n}.jpg" for n in range(5)]}
         content = build_content(item)
         image_blocks = [b for b in content if b["type"] == "image"]
-        self.assertEqual(len(image_blocks), enrich.MAX_IMAGES)
+        self.assertEqual(len(image_blocks), 3)  # default GOONERS_MAX_IMAGES
         self.assertEqual(content[-1]["type"], "text")
 
     def test_item_image_urls_filters_non_http_and_respects_limit(self):
@@ -571,7 +571,7 @@ class FingerprintTests(unittest.TestCase):
     def test_changes_with_model(self):
         item = {"title": "Drill", "images": []}
         before = enrichment_fingerprint(item)
-        with mock.patch.object(enrich, "MODEL", "some-other-model"):
+        with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT_MODEL": "some-other-model"}):
             self.assertNotEqual(before, enrichment_fingerprint(item))
 
 
@@ -729,7 +729,7 @@ class EnrichItemsBatchTests(unittest.TestCase):
         self.assertEqual(good["enrichmentConfidence"], "high")
         # Identified lots get a model stamp; the junk lot doesn't, but both get a
         # fingerprint so neither is re-called on the next backfill.
-        self.assertEqual(good["enrichmentModel"], enrich.MODEL)
+        self.assertEqual(good["enrichmentModel"], "claude-haiku-4-5")
         self.assertEqual(junk["enrichmentModel"], "")
         self.assertTrue(good["enrichmentInputHash"])
         self.assertTrue(junk["enrichmentInputHash"])
@@ -802,7 +802,7 @@ class EnrichItemsBatchTests(unittest.TestCase):
             }
         )
         # Inline path (default) chunks at BATCH_INLINE_MAX_REQUESTS.
-        with mock.patch.object(enrich, "BATCH_INLINE_MAX_REQUESTS", 2):
+        with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT_BATCH_INLINE_SIZE": "2"}):
             enriched = enrich_items_batch(items, client=client, poll_interval=0)
         self.assertEqual(enriched, 5)
         # 5 lots / 2 per batch → 3 submissions.
@@ -1143,7 +1143,7 @@ class BackfillRunTests(unittest.TestCase):
                 "condition": "used",
                 "productUrl": "",
                 "enrichmentConfidence": "high",
-                "enrichmentModel": enrich.MODEL,
+                "enrichmentModel": "claude-haiku-4-5",
             }
             row["enrichmentInputHash"] = enrich.enrichment_fingerprint(row)
             (active / "done1.ndjson").write_text(

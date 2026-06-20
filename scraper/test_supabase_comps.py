@@ -260,9 +260,12 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         session.get.return_value = unittest.mock.MagicMock(
             status_code=200, json=lambda: [{"remaining": 1620}]
         )
-        self.assertEqual(self._ledger(session).provider_remaining(), 1620)
+        now = datetime(2026, 6, 14, 12, 0, tzinfo=UTC)
+        self.assertEqual(self._ledger(session).provider_remaining(now), 1620)
         args, kwargs = session.get.call_args
         self.assertTrue(args[0].endswith("/soldcomps_usage"))
+        # Scoped to the start of the current billing period (calendar month).
+        self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-01T00:00:00+00:00")
         self.assertEqual(kwargs["params"]["order"], "observed_at.desc")
         self.assertEqual(kwargs["params"]["limit"], "1")
 
@@ -272,6 +275,18 @@ class SupabaseCompLedgerTest(unittest.TestCase):
             status_code=200, json=lambda: []
         )
         self.assertIsNone(self._ledger(session).provider_remaining())
+
+    def test_provider_remaining_none_when_reading_from_previous_period(self):
+        # A remaining=0 cached at end of last month must not block the new period.
+        session = unittest.mock.MagicMock()
+        # The query is scoped to this month — the old row simply isn't returned.
+        session.get.return_value = unittest.mock.MagicMock(
+            status_code=200, json=lambda: []
+        )
+        now = datetime(2026, 6, 1, 0, 5, tzinfo=UTC)  # just after period reset
+        self.assertIsNone(self._ledger(session).provider_remaining(now))
+        _, kwargs = session.get.call_args
+        self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-01T00:00:00+00:00")
 
     def test_provider_used_today_is_high_minus_latest(self):
         session = unittest.mock.MagicMock()

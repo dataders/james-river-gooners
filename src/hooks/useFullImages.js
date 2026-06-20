@@ -8,7 +8,11 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 // view and swap it in. Falls back to whatever images the item already carries
 // (the thumbnail, or the full set on the offline NDJSON path where nothing is
 // trimmed and Supabase isn't configured).
-export function useFullImages(item) {
+//
+// Pass `triggered: false` to defer the fetch until an external signal is true
+// (e.g. on first hover or first touch in a card carousel). Defaults to true so
+// existing callers (ItemDetail) are unchanged.
+export function useFullImages(item, { triggered = true } = {}) {
   const itemImages = item?.images || []
   const key = item ? `${item.auctionSafeId || ''}:${item.id}` : null
   // Tag the fetched set with the lot it belongs to. When a different lot is
@@ -18,7 +22,7 @@ export function useFullImages(item) {
   const [fetched, setFetched] = useState(null)
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !item) return
+    if (!triggered || !isSupabaseConfigured || !item) return
     let cancelled = false
     const run = async () => {
       // An active lot can be flagged archived dynamically (its deadline passed)
@@ -43,7 +47,7 @@ export function useFullImages(item) {
     }
     run()
     return () => { cancelled = true }
-  }, [item, key])
+  }, [triggered, item, key])
 
   return fetched && fetched.key === key ? fetched.images : itemImages
 }

@@ -66,13 +66,3 @@ export async function fetchJsonWithRetry(url, options) {
   return resp.json()
 }
 
-/**
- * @param {string} url
- * @param {RetryOptions} [options]
- * @returns {Promise<string>}
- */
-export async function fetchTextWithRetry(url, options) {
-  const resp = await fetchWithRetry(url, options)
-  if (!resp.ok) throw new Error(`Failed to load ${url}: ${resp.status}`)
-  return resp.text()
-}
