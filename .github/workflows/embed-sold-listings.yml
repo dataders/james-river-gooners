@@ -69,7 +69,7 @@ jobs:
           # trust_remote_code, transformers==4.49.0 for the vision config, torchvision
           # for the image processor.
           ITEM_IDS="${{ inputs.item_ids }}"
-          uv run --with requests \
+          uv run --with requests --with 'pydantic-settings>=2,<3' \
             --with sentence-transformers --with 'transformers==4.49.0' \
             --with torchvision --with pillow --with einops \
             python embed_sold_listings.py --step "${{ inputs.step || 'all' }}" \

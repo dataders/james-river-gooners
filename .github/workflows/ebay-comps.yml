@@ -148,11 +148,13 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct --dry-run --from-supabase --limit 1 --sleep-seconds 0 \
                 --monthly-budget "${{ inputs.monthly_budget }}" \
                 --queries-per-item "${{ inputs.queries_per_item }}" $SKIP_FLAG $PACING_FLAG
           else
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct \
                 --from-supabase \
                 --limit "${{ inputs.limit }}" \
