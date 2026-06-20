@@ -102,11 +102,13 @@ export function CategoryPrefsModal({
 
   useEffect(() => {
     closeRef.current?.focus()
+    /** @param {KeyboardEvent} e */
     function onKey(e) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  /** @param {MouseEvent} e */
   function handleOverlayClick(e) {
     if (e.target === overlayRef.current) onClose()
   }
