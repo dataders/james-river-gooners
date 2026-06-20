@@ -2,8 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * @param {{ name: string, count: number }} c
- * @param {{ baselineExcludedCategories: string[], onToggleBaselineCategory: (cat: string) => void }} props
+ * @param {{ c: { name: string, count: number }, baselineExcludedCategories: string[], onToggleBaselineCategory: (cat: string) => void }} props
  */
 function CategoryRow({ c, baselineExcludedCategories, onToggleBaselineCategory }) {
   const hidden = baselineExcludedCategories.includes(c.name)
@@ -97,8 +96,8 @@ export function CategoryPrefsModal({
   onToggleBaselineCategory,
   onClose,
 }) {
-  const overlayRef = useRef(null)
-  const closeRef = useRef(null)
+  const overlayRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const closeRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
 
   useEffect(() => {
     closeRef.current?.focus()
@@ -108,7 +107,7 @@ export function CategoryPrefsModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  /** @param {MouseEvent} e */
+  /** @param {import('react').MouseEvent<HTMLDivElement>} e */
   function handleOverlayClick(e) {
     if (e.target === overlayRef.current) onClose()
   }
