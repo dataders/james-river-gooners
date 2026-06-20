@@ -117,8 +117,8 @@ jobs:
           GOONERS_EBAY_COMPS_SKIP_CATEGORIES: ${{ inputs.skip_categories }}
           # Raw sold-listings corpus (#290/#294): opt-in capture of the full
           # candidate set per query. No-op unless on.
-          GOONERS_SOLD_LISTINGS_CORPUS: ${{ inputs.sold_listings_corpus && '1' || '' }}
-          GOONERS_EBAY_LEAF_CATEGORIES: ${{ inputs.leaf_categories && '1' || '' }}
+          GOONERS_SOLD_LISTINGS_CORPUS: ${{ inputs.sold_listings_corpus && '1' || '0' }}
+          GOONERS_EBAY_LEAF_CATEGORIES: ${{ inputs.leaf_categories && '1' || '0' }}
         run: |
           cd scraper
           # Prefer Supabase (#6): the comps read model + ledger, so no JSON is
