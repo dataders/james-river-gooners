@@ -48,7 +48,7 @@ page.on('request', req => {
 
 page.on('response', async resp => {
   if (resp.request().method() !== 'POST') return
-  let body = ''
+  let body
   try { body = await resp.text() } catch { body = '(unreadable)' }
   console.log('\n━━ POST RESPONSE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log('URL    :', resp.url())
