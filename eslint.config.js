@@ -61,6 +61,11 @@ export default defineConfig([
       '@typescript-eslint/no-unnecessary-type-conversion': 'off',
       // Numbers in template literals are idiomatic (e.g. `${count} lots`).
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      // set-state-in-effect requires React Compiler to produce meaningful
+      // diagnostics; without it the rule fires on valid patterns (syncing
+      // external values to local state, early-return guards, one-way latches).
+      // Disable until the project adopts React Compiler.
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
   {
@@ -102,6 +107,8 @@ export default defineConfig([
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       // Encourage typedef hints / discourage silent `any`-style holes
       'valid-typeof': 'error',
+      // See TS block above for rationale.
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
   // Node.js scripts and test infrastructure — need process/console/etc.
