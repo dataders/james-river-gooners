@@ -3,7 +3,7 @@
 SoldComps Phase 2 / RFC #290, increment 3. Before spending a ``/v1/scrape``
 request on a lot, ask the sold-listings corpus (via the per-item KNN RPC
 ``match_sold_listings_for_item``, 0027) whether it already holds enough fresh,
-visually-similar sold listings. If so, build the comps from the corpus and skip
+hybrid-matched sold listings. If so, build the comps from the corpus and skip
 the API; otherwise fall through to the paid fetch (which then *feeds* the corpus
 for next time). Spend amortises: you pay to build the corpus early, then reuse it.
 
@@ -82,8 +82,8 @@ def reuse_comp_rows(
 ) -> list[dict]:
     """Shape per-item corpus matches into ebay_comp_snapshots rows.
 
-    Tagged ``source_query='visual'`` (same as the batch re-rank), so reused comps
-    slot into ``public_auction_comps`` indistinguishably from freshly-fetched ones.
+    Tagged ``source_query='visual'`` (the hybrid path, same as the batch re-rank),
+    so reused comps slot into ``public_auction_comps`` indistinguishably from freshly-fetched ones.
     """
     rows = []
     for match in matches[:_KEEP]:
