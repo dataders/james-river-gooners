@@ -12,7 +12,9 @@ import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
-import { supabaseUrl } from '../lib/supabase'
+
+const SPA_ORIGIN = 'https://gooners.anders.omg.lol'
+const OG_WORKER_URL = import.meta.env.VITE_OG_WORKER_URL ?? null
 
 function isHiBidUrl(value) {
   try {
@@ -41,12 +43,14 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
   const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
-  // When Supabase is configured, share via the og-item edge function so that
-  // social platforms (Slack, Discord, iMessage) can crawl it and render a
-  // rich preview — item photo, title, category, and current bid. The edge
-  // function immediately redirects human visitors to the SPA deep-link URL.
-  const shareUrl = supabaseUrl && itemKey
-    ? `${supabaseUrl}/functions/v1/og-item?item=${encodeURIComponent(itemKey)}`
+  // Use the Cloudflare Worker (VITE_OG_WORKER_URL) for item-specific rich
+  // previews when configured; fall back to the SPA URL (site-level OG tags)
+  // otherwise. The Supabase edge function can't be used here because its gateway
+  // overrides Content-Type: text/html → text/plain, breaking all crawlers.
+  const shareUrl = itemKey
+    ? OG_WORKER_URL
+      ? `${OG_WORKER_URL}?item=${encodeURIComponent(itemKey)}`
+      : `${SPA_ORIGIN}/?item=${encodeURIComponent(itemKey)}`
     : window.location.href
 
   const handleShare = () => {

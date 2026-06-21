@@ -164,20 +164,28 @@ export default defineConfig([
           pattern: 'useVirtualizer($$$)',
           message: 'Use useWindowVirtualizer() instead — the app scrolls the window, not a container div; useVirtualizer needs an explicit scrollElement and would silently render all items without one.',
         },
+        {
+          pattern: 'import.meta.env.$_',
+          message: 'Read env vars through the approved gateway files (src/lib/supabase.js, src/lib/telemetry.js, src/hooks/useSemanticSearch.js, src/hooks/useImageSearch.js) — VITE_ vars are safe only when accessed through a module that guards on isSupabaseConfigured / isAnalyticsConfigured. See the Environment Variables section of CLAUDE.md.',
+        },
       ],
     },
   },
   // QueryClient must be the singleton from src/lib/queryClient.js. Test files
   // legitimately create isolated clients per test, so they're exempt.
+  // Uses a distinct plugin namespace ('ast-grep-qc') so ESLint's flat-config
+  // merge doesn't clobber the architecture rules above — two config blocks with
+  // the same rule name would let the last block silently win for files that
+  // match both.
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
     ignores: [
       'src/lib/queryClient.js',
       'src/**/*.{test,vitest}.{js,jsx,ts,tsx}',
     ],
-    plugins: { 'ast-grep': astGrepPlugin },
+    plugins: { 'ast-grep-qc': astGrepPlugin },
     rules: {
-      'ast-grep/no-restricted-syntax': ['error',
+      'ast-grep-qc/no-restricted-syntax': ['error',
         {
           pattern: 'new QueryClient($$$)',
           message: 'Import the singleton queryClient from src/lib/queryClient.js — a second QueryClient gets its own isolated cache and breaks shared server state.',

@@ -51,9 +51,12 @@ function buildHtml(lot: LotRow, spaUrl: string): string {
 
   const ogTitle = `${title} | James River Gooners`
   const ogDesc = [category, bid, bids, auction].filter(Boolean).join(' · ')
-  const ogImage = (lot.images ?? [])[0] ?? ''
-  const escapedSpaUrl = JSON.stringify(spaUrl)
+  // Fall back to the static OG image when the lot has no photo.
+  const ogImage = (lot.images ?? [])[0] || `${SPA_ORIGIN}/og-image.png`
 
+  // No <script> or <meta http-equiv="refresh"> — Supabase's gateway overrides
+  // Content-Type to text/plain when it detects inline JavaScript, which breaks
+  // all social preview crawlers. Human visitors can follow the <a> link.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -64,16 +67,14 @@ function buildHtml(lot: LotRow, spaUrl: string): string {
   <meta property="og:description" content="${esc(ogDesc)}" />
   <meta property="og:url" content="${esc(spaUrl)}" />
   <meta property="og:type" content="website" />
-  ${ogImage ? `<meta property="og:image" content="${esc(ogImage)}" />` : ''}
-  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}" />
+  <meta property="og:image" content="${esc(ogImage)}" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(ogDesc)}" />
-  ${ogImage ? `<meta name="twitter:image" content="${esc(ogImage)}" />` : ''}
-  <meta http-equiv="refresh" content="0; url=${esc(spaUrl)}">
-  <script>window.location.replace(${escapedSpaUrl})</script>
+  <meta name="twitter:image" content="${esc(ogImage)}" />
 </head>
 <body>
-  <p>Redirecting to <a href="${esc(spaUrl)}">James River Gooners</a>…</p>
+  <p><a href="${esc(spaUrl)}">View on James River Gooners →</a></p>
 </body>
 </html>`
 }
