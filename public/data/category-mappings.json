@@ -530,9 +530,13 @@
       "women's accessories": "Fashion Accessories",
       "auto accessories": "Auto Parts & Accessories",
       "daisy pellet gun": "Firearms",
-      "us": "Collectibles",
-      "international": "Collectibles",
-      "canada": "Collectibles"
+      "coins & currency > us": "Coins & Currency",
+      "coins & currency > international": "Coins & Currency",
+      "coins & currency > canada": "Coins & Currency",
+      "coins & currency > world": "Coins & Currency",
+      "us": "__unknown__",
+      "international": "__unknown__",
+      "canada": "__unknown__"
     },
     "rasmus": {
       "apparel & accessories": "Clothing",
