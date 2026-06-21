@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import astGrepPlugin from 'eslint-plugin-ast-grep'
 
 export default defineConfig([
   // `.claude` holds nested git worktrees (agent workspaces) — full repo
@@ -119,6 +120,34 @@ export default defineConfig([
     },
     rules: {
       'no-console': 'off',
+    },
+  },
+  // Structural rules via ast-grep — catch patterns that are legal JS/TS but
+  // violate project conventions agents would otherwise naturally write wrong.
+  // net.js is the fetchWithRetry implementation (raw fetch is intentional there).
+  // telemetry.js is the posthog wrapper (posthog.capture is intentional there).
+  // useSemanticSearch + useImageSearch call the HF Inference API directly — they
+  // are external-API clients, not internal infrastructure callers.
+  {
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    ignores: [
+      'src/utils/net.js',
+      'src/lib/telemetry.js',
+      'src/hooks/useSemanticSearch.js',
+      'src/hooks/useImageSearch.js',
+    ],
+    plugins: { 'ast-grep': astGrepPlugin },
+    rules: {
+      'ast-grep/no-restricted-syntax': ['error',
+        {
+          pattern: 'fetch($$$)',
+          message: 'Use fetchWithRetry / fetchJsonWithRetry / fetchTextWithRetry from src/utils/net.js — they add exponential-backoff retries on 5xx and network errors.',
+        },
+        {
+          pattern: 'posthog.capture($$$)',
+          message: 'Use captureEvent() from src/lib/telemetry.js — it checks isAnalyticsConfigured and no-ops when PostHog is unconfigured.',
+        },
+      ],
     },
   },
 ])
