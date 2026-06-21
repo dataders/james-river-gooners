@@ -1,0 +1,4 @@
+# og-item is a public endpoint — no auth token required.
+# Social crawlers (iMessage, Slack, Discord) don't send JWTs, and all data
+# returned is already public (title, category, bid, first photo only).
+verify_jwt = false
