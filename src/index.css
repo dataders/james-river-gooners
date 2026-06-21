@@ -439,7 +439,7 @@ body {
   gap: 10px;
 }
 .fp-control-row--inline .fp-control-label {
-  flex: 0 0 auto;
+  flex: 0 0 62px;
   white-space: nowrap;
 }
 .fp-control-row--inline .archive-segmented {

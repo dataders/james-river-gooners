@@ -32,8 +32,6 @@ export function FilterPanel({
   onArchiveModeChange,
   decisionView,
   onDecisionViewChange,
-  localOnly,
-  onLocalOnlyChange,
   // Distance / location filter
   userLocationLabel,
   maxDistanceMiles,
@@ -138,15 +136,6 @@ export function FilterPanel({
                 onRadiusChange={onMaxDistanceChange}
               />
             </div>
-
-            <label className="local-toggle">
-              <span>Richmond area only</span>
-              <input
-                type="checkbox"
-                checked={localOnly}
-                onChange={e => onLocalOnlyChange(e.target.checked)}
-              />
-            </label>
 
             <div className="fp-pill-row">
               {cannonBidsLinked && (
