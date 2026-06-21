@@ -121,6 +121,9 @@ class FacebookMappingTest(unittest.TestCase):
             [{"url": "https://facebook.test/search"}],
         )
         self.assertNotIn("urls", kwargs["json"])
+        self.assertEqual(kwargs["json"]["resultsLimit"], 1)
+        self.assertNotIn("maxItems", kwargs["json"])
+        self.assertNotIn("maxListings", kwargs["json"])
         self.assertEqual(
             get.call_args_list[0].args[0],
             "https://api.apify.com/v2/actor-runs/run-1",

@@ -176,8 +176,7 @@ def _apify_headers(api_token: str) -> dict[str, str]:
 def _apify_input(urls: list[str], *, limit: int = DEFAULT_LIMIT) -> dict:
     return {
         "startUrls": [{"url": url} for url in urls],
-        "maxItems": limit,
-        "maxListings": limit,
+        "resultsLimit": limit,
     }
 
 
