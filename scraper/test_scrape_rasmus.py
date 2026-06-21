@@ -6,6 +6,7 @@ from scrape_rasmus import (
     _fs_fields,
     _fs_value,
     _richmond_specs_from_aids,
+    city_state_from_title,
     has_bid_changes,
     location_matches,
     map_item,
@@ -13,6 +14,44 @@ from scrape_rasmus import (
     parse_rasmus_category,
     rasmus_safe_id,
 )
+
+
+class CityStateFromTitleTest(unittest.TestCase):
+    KEYWORDS = [
+        "VA",
+        "Virginia",
+        "Richmond",
+        "Glen Allen",
+        "Virginia Beach",
+        "Newport News",
+    ]
+
+    def test_extracts_city_and_defaults_state(self):
+        self.assertEqual(
+            city_state_from_title("Estate Auction | Richmond, VA", self.KEYWORDS),
+            ("Richmond", "VA"),
+        )
+
+    def test_prefers_longest_match(self):
+        # "Virginia Beach" must win over the bare "Virginia"/"VA" tokens.
+        self.assertEqual(
+            city_state_from_title("Coins & Collectibles - Virginia Beach, VA", self.KEYWORDS),
+            ("Virginia Beach", "VA"),
+        )
+
+    def test_multiword_city(self):
+        self.assertEqual(
+            city_state_from_title("Tools Auction Newport News VA", self.KEYWORDS),
+            ("Newport News", "VA"),
+        )
+
+    def test_no_city_returns_blank_city(self):
+        # Only the bare state token matched — no pinnable city, so the geocode
+        # gate (downstream) fails the scrape rather than guessing.
+        self.assertEqual(
+            city_state_from_title("Surplus Auction in Virginia", self.KEYWORDS),
+            ("", "VA"),
+        )
 
 
 class RichmondSpecsFromAidsTest(unittest.TestCase):

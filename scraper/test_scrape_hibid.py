@@ -1,8 +1,12 @@
 import unittest
 from datetime import UTC, datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 
+import geocode
 from scrape_hibid import (
+    company_location,
     extract_catalog_id,
     fetch_lot_details,
     hibid_safe_id,
@@ -19,6 +23,40 @@ def _fake_session(html: str):
     sess = mock.Mock()
     sess.get = mock.Mock(return_value=resp)
     return sess
+
+
+class CompanyLocationTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.sources = Path(self._tmp.name) / "hibid_sources.yml"
+        self.sources.write_text(
+            "companies:\n"
+            "  - slug: emerald_ventures\n"
+            "    name: Emerald Ventures\n"
+            '    location: "Richmond, VA"\n'
+            "  - slug: peoples_auction\n"
+            "    name: Peoples Auction\n"
+            '    location: "Chesapeake, VA"\n'
+            "  - slug: no_location\n"
+            "    name: No Location\n"
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_resolves_by_slug(self):
+        self.assertEqual(
+            company_location("peoples_auction", sources_file=self.sources),
+            ("Chesapeake", "VA"),
+        )
+
+    def test_unknown_slug_raises(self):
+        with self.assertRaises(geocode.GeocodeError):
+            company_location("nope", sources_file=self.sources)
+
+    def test_missing_location_raises(self):
+        with self.assertRaises(geocode.GeocodeError):
+            company_location("no_location", sources_file=self.sources)
 
 
 class FetchLotPriceTest(unittest.TestCase):

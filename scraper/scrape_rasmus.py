@@ -125,6 +125,32 @@ def location_matches(text: str, keywords: list[str]) -> bool:
     return False
 
 
+# Bare state tokens in location_keywords aren't cities — they catch "…, VA" but
+# can't pin a point for the distance filter, so they're never returned as a city.
+_STATE_TOKENS = {"va", "virginia"}
+
+
+def city_state_from_title(title: str, keywords: list[str]) -> tuple[str, str]:
+    """Extract a ``(city, state)`` from a Rasmus auction title.
+
+    The city only exists in the page title (the per-item ``location`` is a
+    warehouse bin). We match the same ``location_keywords`` used for the Richmond
+    filter, ignoring bare state tokens, and prefer the **longest** match so
+    "Virginia Beach" wins over "Virginia" and "Newport News" matches whole.
+    Returns ``("", "VA")`` when no city keyword is found — geocoding then fails
+    the scrape loudly rather than guessing a location.
+    """
+    lower = (title or "").lower()
+    best = ""
+    for kw in keywords:
+        k = kw.lower()
+        if k in _STATE_TOKENS:
+            continue
+        if re.search(r"\b" + re.escape(k) + r"\b", lower) and len(kw) > len(best):
+            best = kw
+    return best, "VA"
+
+
 def parse_rasmus_category(category) -> str:
     """Pull a human category from Rasmus's ``["0--Category--China"]`` shape."""
     if not category:
@@ -544,6 +570,8 @@ def scrape_rasmus_auction(
         print(f"  No bid changes; skipping write for {safe_id}")
         return {"changed": False}
 
+    keywords = load_sources().get("location_keywords", [])
+    auction_city, auction_state = city_state_from_title(auction_title, keywords)
     ctx = WriteContext(
         safe_id=safe_id,
         auction_id=aid,
@@ -554,6 +582,8 @@ def scrape_rasmus_auction(
         scraped_at=scraped_at.isoformat(),
         session=session,
         snapshot_to_motherduck=snapshot_to_motherduck,
+        auction_city=auction_city,
+        auction_state=auction_state,
     )
     return write_read_model(all_items, ctx)
 

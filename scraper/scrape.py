@@ -439,6 +439,9 @@ def scrape_auction(
         session=session,
         snapshot_to_motherduck=snapshot_to_motherduck,
         fill_blank_end_dates=True,
+        # Cannon's is a single Richmond, VA auction house.
+        auction_city="Richmond",
+        auction_state="VA",
     )
     return write_read_model(all_items, ctx)
 
