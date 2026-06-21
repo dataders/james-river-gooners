@@ -40,8 +40,6 @@ export function FilterPanel({
   onMyBidsPanelOpen,
   cannonBidCount,
   cannonBidsLoading,
-  bestDeals,
-  onBestDealsToggle,
   favoriteCount,
   ignoredCount,
   cannonBidsLinked,
@@ -137,8 +135,8 @@ export function FilterPanel({
               />
             </div>
 
-            <div className="fp-pill-row">
-              {cannonBidsLinked && (
+            {cannonBidsLinked && (
+              <div className="fp-pill-row">
                 <button
                   type="button"
                   className="deals-toggle"
@@ -150,15 +148,8 @@ export function FilterPanel({
                       ? `My Bids (${cannonBidCount})`
                       : 'My Bids'}
                 </button>
-              )}
-              <button
-                type="button"
-                className={`deals-toggle${bestDeals ? ' active' : ''}`}
-                onClick={onBestDealsToggle}
-              >
-                Best deals
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         </Accordion>
 
