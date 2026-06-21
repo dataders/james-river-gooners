@@ -55,6 +55,8 @@ companies:
     location: "Midlothian, VA"
     # catalog_ids: find on hibid.com/company/99274 — look for /catalog/NNNNNN/ in auction links
 
+    catalog_ids:
+      - 751393  # 6/26/26 Prince George Extravaganza Auction
   - id: 132962
     slug: patriot-auction-company
     name: "Patriot Auction Company"
@@ -68,3 +70,5 @@ companies:
     name: "Lorak Deals LLC"
     location: "Midlothian, VA"
     # catalog_ids: find on hibid.com/company/149734 — look for /catalog/NNNNNN/ in auction links
+    catalog_ids:
+      - 746879  # Lorak Deals LLC
