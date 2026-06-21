@@ -53,8 +53,10 @@ function buildHtml(lot: LotRow, spaUrl: string): string {
   const ogDesc = [category, bid, bids, auction].filter(Boolean).join(' · ')
   // Fall back to the static OG image when the lot has no photo.
   const ogImage = (lot.images ?? [])[0] || `${SPA_ORIGIN}/og-image.png`
-  const escapedSpaUrl = JSON.stringify(spaUrl)
 
+  // No <script> or <meta http-equiv="refresh"> — Supabase's gateway overrides
+  // Content-Type to text/plain when it detects inline JavaScript, which breaks
+  // all social preview crawlers. Human visitors can follow the <a> link.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,10 +72,9 @@ function buildHtml(lot: LotRow, spaUrl: string): string {
   <meta name="twitter:title" content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(ogDesc)}" />
   <meta name="twitter:image" content="${esc(ogImage)}" />
-  <script>window.location.replace(${escapedSpaUrl})</script>
 </head>
 <body>
-  <p>Redirecting to <a href="${esc(spaUrl)}">James River Gooners</a>…</p>
+  <p><a href="${esc(spaUrl)}">View on James River Gooners →</a></p>
 </body>
 </html>`
 }
