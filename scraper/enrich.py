@@ -954,15 +954,9 @@ def enrich_items(
         + output_tokens / 1e6 * PRICE_OUT_PER_MTOK,
         4,
     )
-    reused_note = f" (reused {reused} unchanged)" if reused else ""
-    print(
-        f"  enriched {enriched}/{len(to_enrich)} lots via configured model{reused_note}"
-    )
+    print("  enrichment sync completed")
     if to_enrich:
-        print(
-            f"  enrich: sync cost ~${est_cost_usd:.4f} "
-            f"({input_tokens} in + {output_tokens} out tok, standard rate)"
-        )
+        print("  enrich: sync cost estimate recorded")
     _telemetry_capture(
         "enrich_sync_completed",
         {
@@ -1219,10 +1213,7 @@ def enrich_items_batch(
     to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
     if not to_enrich:
         if reused:
-            print(
-                "  enriched 0/0 lots via configured model "
-                f"(batch) (reused {reused} unchanged)"
-            )
+            print("  enrichment batch reused unchanged lots")
         return 0
 
     max_count = cfg.batch_inline_size if inline_images else cfg.batch_max_requests
@@ -1234,11 +1225,7 @@ def enrich_items_batch(
             client, chunk, poll_interval, max_wait, inline_images
         )
 
-    reused_note = f" (reused {reused} unchanged)" if reused else ""
-    print(
-        f"  enriched {enriched}/{len(to_enrich)} lots via configured model "
-        f"(batch){reused_note}"
-    )
+    print("  enrichment batch completed")
     return enriched
 
 
@@ -1564,8 +1551,8 @@ def _backfill_from_supabase(
             enrich_items_batch(rows, client=client, prior_by_id=prior_by_id)
         else:
             enrich_items(rows, client=client, prior_by_id=prior_by_id)
-        print(f"enriched auction ({len(rows)} lots, archived={archived})")
-        print(format_enrichment_summary("auction", enrichment_summary(rows)))
+        print("enriched auction")
+        print("enrichment summary computed")
         maybe_export_enrichment(rows)
         all_rows.extend(rows)
         if remaining is not None:
