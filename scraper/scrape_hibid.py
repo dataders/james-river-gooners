@@ -45,6 +45,16 @@ SOURCES_FILE = Path(__file__).resolve().parent / "hibid_sources.yml"
 HIBID_BASE = "https://hibid.com"
 REQUEST_DELAY = 0.5  # seconds between lot-page fetches
 
+# HiBid serves a 200 placeholder page (not a real lot) when the auctioneer hides
+# a lot or the listing is removed; the parsed title falls through to one of these
+# markers. Treat such pages as a failed fetch so the dead lot is never persisted.
+PLACEHOLDER_TITLES = {
+    "lot unavailable",
+    "404 not found",
+    "page not found",
+    "not found",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -408,6 +418,11 @@ def fetch_lot_details(
         t = soup.find("title")
         if t:
             title = t.get_text(strip=True).split("|")[0].strip()
+
+    # Skip placeholder/error pages (auctioneer-hidden or removed lots): HiBid
+    # returns these with a 200 status, so raise_for_status doesn't catch them.
+    if not title or title.strip().lower() in PLACEHOLDER_TITLES:
+        return None
 
     # Description — truncate at common boilerplate markers
     description = ""
