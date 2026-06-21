@@ -1539,6 +1539,10 @@ body {
   width: 100%;
   overflow: hidden;
   background: var(--border);
+  /* Pre-promote to its own compositing layer so the image doesn't flash when
+     the parent card creates a new layer on hover (transform: translateY(-2px)).
+     Two nested overflow:hidden contexts + parent transform = brief raster gap. */
+  will-change: transform;
 }
 /* Fixed square viewport so image size never changes between slides */
 .item-card:not(.compact) .item-image {
