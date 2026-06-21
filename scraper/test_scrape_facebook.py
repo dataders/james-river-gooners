@@ -78,23 +78,82 @@ class FacebookMappingTest(unittest.TestCase):
         )
         self.assertEqual(row["location"], "Richmond, VA")
 
-    def test_run_apify_urls_uses_actor_start_urls_input(self):
-        response = MagicMock()
-        response.json.return_value = []
-        response.raise_for_status.return_value = None
-        with patch.object(
-            scrape_facebook.requests, "post", return_value=response
-        ) as post:
-            scrape_facebook.run_apify_urls(
-                "token", ["https://facebook.test/search"], limit=1
+    def test_run_apify_urls_starts_actor_and_fetches_dataset(self):
+        start_response = MagicMock()
+        start_response.json.return_value = {
+            "data": {"id": "run-1", "defaultDatasetId": "dataset-1"}
+        }
+        start_response.raise_for_status.return_value = None
+
+        status_response = MagicMock()
+        status_response.json.return_value = {"data": {"status": "SUCCEEDED"}}
+        status_response.raise_for_status.return_value = None
+
+        dataset_response = MagicMock()
+        dataset_response.json.return_value = [{"id": "listing-1"}]
+        dataset_response.raise_for_status.return_value = None
+
+        with (
+            patch.object(
+                scrape_facebook.requests, "post", return_value=start_response
+            ) as post,
+            patch.object(
+                scrape_facebook.requests,
+                "get",
+                side_effect=[status_response, dataset_response],
+            ) as get,
+        ):
+            rows = scrape_facebook.run_apify_urls(
+                "token",
+                ["https://facebook.test/search"],
+                limit=1,
+                poll_interval=0,
             )
 
         _, kwargs = post.call_args
+        self.assertTrue(
+            post.call_args.args[0].endswith(
+                "/acts/apify~facebook-marketplace-scraper/runs"
+            )
+        )
         self.assertEqual(
             kwargs["json"]["startUrls"],
             [{"url": "https://facebook.test/search"}],
         )
         self.assertNotIn("urls", kwargs["json"])
+        self.assertEqual(
+            get.call_args_list[0].args[0],
+            "https://api.apify.com/v2/actor-runs/run-1",
+        )
+        self.assertEqual(
+            get.call_args_list[1].args[0],
+            "https://api.apify.com/v2/datasets/dataset-1/items",
+        )
+        self.assertEqual(rows, [{"id": "listing-1"}])
+
+    def test_run_apify_urls_raises_when_actor_does_not_succeed(self):
+        start_response = MagicMock()
+        start_response.json.return_value = {
+            "data": {"id": "run-1", "defaultDatasetId": "dataset-1"}
+        }
+        start_response.raise_for_status.return_value = None
+        status_response = MagicMock()
+        status_response.json.return_value = {"data": {"status": "FAILED"}}
+        status_response.raise_for_status.return_value = None
+
+        with (
+            patch.object(scrape_facebook.requests, "post", return_value=start_response),
+            patch.object(scrape_facebook.requests, "get", return_value=status_response),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, "Apify run run-1 ended with FAILED"
+            ):
+                scrape_facebook.run_apify_urls(
+                    "token",
+                    ["https://facebook.test/search"],
+                    limit=1,
+                    poll_interval=0,
+                )
 
 
 if __name__ == "__main__":
