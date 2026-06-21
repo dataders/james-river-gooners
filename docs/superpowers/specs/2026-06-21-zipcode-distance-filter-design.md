@@ -74,8 +74,12 @@ The three scrapers each build a `WriteContext` (`scrape.py:431`,
 - **Cannon's** (`scrape.py`): hard-code `("Richmond", "VA")` — Cannon's is a single
   Richmond house.
 - **HiBid** (`scrape_hibid.py`): the company's `location:` field in
-  `hibid_sources.yml` is already `"City, ST"` (e.g. `"Chesapeake, VA"`). Parse it into
-  `(city, state)` at discovery and pass through. (This config is the source of truth;
+  `hibid_sources.yml` is already `"City, ST"` (e.g. `"Chesapeake, VA"`). **Process
+  boundary:** discovery runs in `rescrape_all.py` but the `WriteContext` is built in a
+  separate `scrape_hibid.py` subprocess (`_hibid_job` shells out with `--source <slug>
+  --company <name>`, no location arg). The child already loads `SOURCES_FILE`, so it
+  **re-reads `hibid_sources.yml` by slug** to resolve `location` → `(city, state)` —
+  rather than threading a new CLI arg through. (This config is the source of truth;
   every company already has the field.)
 - **Rasmus** (`scrape_rasmus.py`): the discovery path already fetches each auction's
   page `<title>`/`og:title` (`fetch_auction_meta`, ~line 330) and matches it against
@@ -89,6 +93,12 @@ Geocoding and the gate live **once** in the shared write path, so all three sour
 inherit identical behavior (same rationale as `write_read_model` being the single
 write tail).
 
+Geocoding is invoked from **`_stamp_auction_metadata`** (`persist.py:71`) — it already
+runs per lot inside `write_read_model`, and a raised `GeocodeError` there propagates out
+of `write_read_model` → non-zero subprocess exit → counted as a `failure` in
+`_scrape_source` (`rescrape_all.py`) → `sys.exit(1)`. That is the exact failure path the
+gate relies on.
+
 - New module `scraper/geocode.py` + committed data file `scraper/geocode_cache.yml`
   mapping normalized `"city, st"` → `{lat, lng}` (lower-cased, trimmed key). Seed it
   with every city currently present across the three sources (Richmond, Midlothian,
@@ -99,7 +109,10 @@ write tail).
   2. Miss → optionally call a **free, no-key** geocoder (US Census Geocoder,
      `geocoding.geo.census.gov`) to resolve and **append the result to
      `geocode_cache.yml`** (so local dev self-heals the cache; the new entry gets
-     committed). This network step is best-effort.
+     committed). This network step is best-effort and **gated off in CI** — a
+     `GOONERS_GEOCODE_ONLINE` opt-in (default off) means CI is cache-only and a Census
+     outage can never make the deterministic gate flaky. The API is a local-dev
+     convenience, never a CI dependency.
   3. Still unresolved (cache miss **and** geocoder unavailable/failed, or missing
      city/state) → **raise** `GeocodeError`.
 - In `write_read_model` (or a new `_stamp_auction_metadata` sub-step), call
@@ -139,6 +152,11 @@ Additive migration `supabase/migrations/00NN_lot_location.sql`:
 Writer (`scraper/supabase_lots.py`): add the four fields to `_lot_row` (write) and
 `_row_to_item` (read-back), mapping `auctionLatitude`↔`auction_latitude`, etc.
 
+**Out of scope:** the optional MotherDuck `listing_snapshots` path
+(`motherduck.py` `rows_for_snapshots` / `SNAPSHOT_COLUMN_CASTS`) explicitly picks its
+columns and won't carry the new fields. The browser never reads MotherDuck, so the
+snapshot is intentionally left unchanged.
+
 **Rollout (data-backed migration → "populate before merge", per CLAUDE.md):**
 
 1. Apply the migration to the live project (additive; old frontend unaffected).
@@ -157,10 +175,15 @@ Writer (`scraper/supabase_lots.py`): add the four fields to `_lot_row` (write) a
 
 ### 3a. Normalizer + types
 
-- `src/types.ts` `Auction`: add `city?: string`, `state?: string`, `lat: number`,
-  `lng: number`.
-- `auctionNormalize.js` `normalizeLotRow` / `normalizeRowsSupabase`: map the new
-  columns; set `lat`/`lng` on the auction record (alongside `isLocal`, which stays).
+- `src/types.ts` `Auction`: add `city?: string`, `state?: string`, **`lat?: number`,
+  `lng?: number`** (optional — the hard gate guarantees they're present in practice, but
+  optional avoids `tsc`/`checkJs` breakage in typed code that builds `Auction` objects;
+  the distance stage treats missing coords as "fails the radius"). Note
+  `readModelSchema.ts` validates only the **Item** shape, never `Auction`, so new
+  auction fields can't drop rows.
+- `auctionNormalize.js`: the **auction record's** `lat`/`lng`/`city`/`state` are set in
+  the `auctionMap` block of `normalizeRowsSupabase` (alongside `isLocal`), since that's
+  the object the pipeline filters on — not the per-item `normalizeLotRow`.
 
 ### 3b. Distance util
 
@@ -169,17 +192,31 @@ Writer (`scraper/supabase_lots.py`): add the four fields to `_lot_row` (write) a
 
 ### 3c. Preferences store
 
-`preferencesStore.js` + `prefs.js` + `urlState.js`:
+Touches **four** files (the store has a hand-enumerated selector shim + a typed prefs
+module — both must list the new fields or they're invisible to consumers):
 
-- New fields: `userLat`, `userLng`, `userLocationLabel` (e.g. `"Richmond, VA"` /
+`preferencesStore.js`:
+- New state fields: `userLat`, `userLng`, `userLocationLabel` (e.g. `"Richmond, VA"` /
   `"Current location"`), `maxDistanceMiles`.
-- **Defaults** (`DEFAULT_PREFS`): Richmond, VA centroid (`37.5407, -77.4360`),
-  label `"Richmond, VA"`, `maxDistanceMiles: 25`.
-- URL params (`URL_PARAMS`): `lat`, `lng`, `mi` (loaded/merged in `loadInitialPrefs`,
-  synced via `setField`). `userLocationLabel` persists to localStorage but isn't a URL
-  param (a shared link carries coords + radius; the label is cosmetic and re-derivable).
-- Setters: `setUserLocation({ lat, lng, label })` (sets the three location fields in one
-  `set()`), `setMaxDistanceMiles(v)`.
+- `FIELD_CONFIG` entries: `userLat`/`userLng`/`maxDistanceMiles` → URL params; merge them
+  in `loadInitialPrefs`.
+- Setters: `setUserLocation({ lat, lng, label })` (one `set()` for the three location
+  fields, then `savePrefs` + URL sync for lat/lng), `setMaxDistanceMiles(v)`.
+
+`prefs.js` (`@ts-check`): add the new keys to **`DEFAULT_PREFS`**, **`PERSISTED_KEYS`**
+(else the radius/location silently reset on reload and don't round-trip through the cloud
+`filter_preferences` row), and the **`Prefs` typedef**.
+- **Defaults**: Richmond, VA centroid (`37.5407, -77.4360`), label `"Richmond, VA"`,
+  `maxDistanceMiles: 25`.
+
+`urlState.js`: add `URL_PARAMS` `lat`, `lng`, `mi`. `userLocationLabel` persists to
+localStorage but isn't a URL param (a shared link carries coords + radius; the label is
+cosmetic and re-derivable).
+
+`usePreferences.js`: the selector shim explicitly enumerates every field + setter — add
+`userLat`, `userLng`, `userLocationLabel`, `maxDistanceMiles`, `setUserLocation`,
+`setMaxDistanceMiles` so `App.jsx`'s destructure sees them.
+
 - Radius values: `25, 50, 100, 250, 500, null` where `null` = **"Any distance"**
   (disables the distance filter).
 
@@ -227,8 +264,8 @@ auctions list + category counts reflect it:
 `"Within 25 mi of Richmond, VA"`; `onRemove` sets radius to **Any distance** (doesn't
 reset the location). Since the distance filter is on by default, the chip renders on
 first load — acceptable and informative (it tells the user why far auctions are hidden).
-`clearAllFilters` in `App.jsx` resets radius to Any (or to the 25mi default — decide in
-the plan; leaning "reset to default 25mi of Richmond" to match initial state).
+**`clearAllFilters` resets to the default 25 mi of Richmond, VA** (not "Any distance"),
+so "Clear filters" lands on the same state as a fresh page load.
 
 ---
 
@@ -254,5 +291,5 @@ server and get explicit approval before merging.
   extracted the gate fires (correct, loud) — seed the cache / improve the parse.
 - **Default-on filter hides far auctions silently-ish.** Mitigated by the always-visible
   "Within 25 mi of Richmond" chip + the "Any distance" option.
-- **`clearAllFilters` semantics for location** — reset to default (25mi/Richmond) vs.
-  "Any distance." Resolve in the implementation plan.
+- **`clearAllFilters` semantics for location** — resolved: reset to default
+  25 mi / Richmond, VA (matches fresh-load state).
