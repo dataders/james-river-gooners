@@ -1,16 +1,27 @@
-// @ts-nocheck
+// @ts-check
 import { useState } from 'react'
 import { RADIUS_OPTIONS } from '../utils/distance.ts'
 import { lookupZip } from '../utils/geocodeZip.ts'
+
+/** @typedef {import('../utils/distance.ts').UserLocation} UserLocation */
 
 // Facebook-Marketplace-style location control: set a location (zip code or
 // "use my current location") and a radius. Filters the grid to auctions within
 // that distance. The legacy "Richmond area only" toggle remains as a separate
 // source-quality filter while this ships.
+/**
+ * @param {{
+ *   label: string,
+ *   radius: number | null,
+ *   onSetLocation: (location: UserLocation) => void,
+ *   onRadiusChange: (radius: number | null) => void,
+ * }} props
+ */
 export function LocationFilter({ label, radius, onSetLocation, onRadiusChange }) {
   const [zip, setZip] = useState('')
   const [status, setStatus] = useState('') // '', 'loading', 'error', 'geo-error'
 
+  /** @param {React.FormEvent<HTMLFormElement>} e */
   async function submitZip(e) {
     e.preventDefault()
     const clean = zip.trim()
