@@ -14,6 +14,7 @@ import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
 
 const SPA_ORIGIN = 'https://gooners.anders.omg.lol'
+const OG_WORKER_URL = import.meta.env.VITE_OG_WORKER_URL ?? null
 
 function isHiBidUrl(value) {
   try {
@@ -42,12 +43,14 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
   const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
-  // Supabase's gateway overrides Content-Type: text/html → text/plain for all
-  // edge function responses, so the og-item function URL shows as "Text Document"
-  // in iMessage/Slack instead of a rich preview card. Use the SPA URL directly —
-  // index.html has site-level OG tags that produce a branded preview card.
+  // Use the Cloudflare Worker (VITE_OG_WORKER_URL) for item-specific rich
+  // previews when configured; fall back to the SPA URL (site-level OG tags)
+  // otherwise. The Supabase edge function can't be used here because its gateway
+  // overrides Content-Type: text/html → text/plain, breaking all crawlers.
   const shareUrl = itemKey
-    ? `${SPA_ORIGIN}/?item=${encodeURIComponent(itemKey)}`
+    ? OG_WORKER_URL
+      ? `${OG_WORKER_URL}?item=${encodeURIComponent(itemKey)}`
+      : `${SPA_ORIGIN}/?item=${encodeURIComponent(itemKey)}`
     : window.location.href
 
   const handleShare = () => {
