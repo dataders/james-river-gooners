@@ -2,25 +2,6 @@
 import { useState } from 'react'
 
 /**
- * @param {{ c: { name: string, count: number }, baselineExcludedCategories: string[], onToggleBaselineCategory: (cat: string) => void }} props
- */
-function CategoryRow({ c, baselineExcludedCategories, onToggleBaselineCategory }) {
-  const hidden = baselineExcludedCategories.includes(c.name)
-  return (
-    <label className="catprefs-cat-row">
-      <span className={`catprefs-cat-name${hidden ? ' catprefs-cat-name--hidden' : ''}`}>
-        {c.name}
-      </span>
-      <span className="catprefs-cat-count">{c.count}</span>
-      <span className="catprefs-toggle">
-        <input type="checkbox" checked={hidden} onChange={() => onToggleBaselineCategory(c.name)} />
-        <span className="catprefs-toggle-track"><span className="catprefs-toggle-thumb" /></span>
-      </span>
-    </label>
-  )
-}
-
-/**
  * @param {{
  *   group: { group: string, totalCount: number, rawCategories: {name: string, count: number}[] },
  *   baselineExcludedGroups: string[],
@@ -31,47 +12,63 @@ function CategoryRow({ c, baselineExcludedCategories, onToggleBaselineCategory }
  */
 function GroupSection({ group, baselineExcludedGroups, baselineExcludedCategories, onToggleBaselineGroup, onToggleBaselineCategory }) {
   const [expanded, setExpanded] = useState(false)
-  const hidden = baselineExcludedGroups.includes(group.group)
+  const groupHidden = baselineExcludedGroups.includes(group.group)
+  const shown = group.rawCategories.filter(c => !baselineExcludedCategories.includes(c.name))
+  const hidden = group.rawCategories.filter(c => baselineExcludedCategories.includes(c.name))
+  const isHidden = groupHidden || shown.length === 0
+  const shownCount = groupHidden ? 0 : shown.reduce((s, c) => s + c.count, 0)
 
   return (
-    <div className={`catprefs-group${hidden ? ' catprefs-group--hidden' : ''}`}>
-      <div className="catprefs-group-header">
+    <div className={`filter-group${isHidden ? ' all-hidden' : ''}`}>
+      <div className="filter-group-header">
         <button
           type="button"
-          className="catprefs-expand-btn"
+          className="filter-group-toggle"
           onClick={() => setExpanded(v => !v)}
           aria-expanded={expanded}
-          aria-label={`${expanded ? 'Collapse' : 'Expand'} ${group.group}`}
         >
-          <span className="catprefs-expand-arrow" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
-          <span className={`catprefs-group-name${hidden ? ' catprefs-group-name--hidden' : ''}`}>
-            {group.group}
+          <span className="filter-group-arrow" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+          <span className="filter-group-name">{group.group}</span>
+          <span className="filter-group-count">
+            {isHidden ? `hidden (${group.totalCount})` : shownCount}
           </span>
-          <span className="catprefs-group-count">{group.totalCount} lots</span>
         </button>
-        <label
-          className="catprefs-toggle"
-          title={hidden ? 'Always hidden — click to show' : 'Click to always hide'}
+        <button
+          type="button"
+          className="filter-action"
+          onClick={() => onToggleBaselineGroup(group.group)}
         >
-          <input
-            type="checkbox"
-            checked={hidden}
-            onChange={() => onToggleBaselineGroup(group.group)}
-          />
-          <span className="catprefs-toggle-track"><span className="catprefs-toggle-thumb" /></span>
-        </label>
+          {isHidden ? 'show' : 'hide'}
+        </button>
       </div>
 
-      {expanded && !hidden && (
-        <div className="catprefs-cats">
-          {group.rawCategories.map(c => (
-            <CategoryRow
-              key={c.name}
-              c={c}
-              baselineExcludedCategories={baselineExcludedCategories}
-              onToggleBaselineCategory={onToggleBaselineCategory}
-            />
-          ))}
+      {expanded && !groupHidden && (
+        <div className="filter-group-body">
+          <div className="filter-chips">
+            {shown.map(({ name, count }) => (
+              <button
+                key={name}
+                type="button"
+                className="filter-chip shown"
+                onClick={() => onToggleBaselineCategory(name)}
+              >
+                {name}
+                <span className="chip-count">{count}</span>
+              </button>
+            ))}
+            {hidden.map(({ name, count }) => (
+              <button
+                key={name}
+                type="button"
+                className="filter-chip hidden"
+                onClick={() => onToggleBaselineCategory(name)}
+              >
+                <span className="x-mark">✕</span>
+                {name}
+                <span className="chip-count">{count}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
