@@ -17,6 +17,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
   const [showFbModal, setShowFbModal] = useState(false)
+  const [showCarouselHint, setShowCarouselHint] = useState(false)
   // The grid carries only the thumbnail (the _card view trims images[] to the
   // first element); pull the full image set for the carousel and for any child
   // that needs every photo (e.g. FbListingModal's photo assessment). Memoized
@@ -57,14 +58,31 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
     return () => { document.title = prev }
   }, [item])
 
-  // Close on Escape
+  // Show carousel hint briefly when a multi-image item opens
+  useEffect(() => {
+    if (!itemKey || images.length <= 1) return
+    setShowCarouselHint(true)
+    const t = setTimeout(() => setShowCarouselHint(false), 3000)
+    return () => clearTimeout(t)
+  }, [itemKey, images.length])
+
+  // Close on Escape; navigate carousel with ArrowLeft / ArrowRight
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      if (images.length <= 1) return
+      const tag = document.activeElement?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+      setImageState(s => {
+        const cur = s.itemKey === itemKey ? Math.min(s.imgIndex, images.length - 1) : 0
+        const delta = e.key === 'ArrowLeft' ? -1 : 1
+        return { itemKey, imgIndex: (cur + delta + images.length) % images.length }
+      })
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
+  }, [onClose, images.length, itemKey])
 
   // Lock body scroll
   useEffect(() => {
@@ -119,6 +137,9 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
                     />
                   ))}
                 </div>
+                {showCarouselHint && (
+                  <div className="carousel-hint">← → to browse photos</div>
+                )}
               </>
             )}
           </div>

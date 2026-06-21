@@ -468,7 +468,7 @@ def fetch_lot_details(
             ]
             break
     breadcrumb_extra = " ".join(cat_crumbs)
-    raw_cat = cat_crumbs[-1] if cat_crumbs else ""
+    raw_cat = " > ".join(cat_crumbs) if cat_crumbs else ""
 
     # Images — HiBid loads the gallery via JS, but the primary photo is in og:image
     images: list[str] = []

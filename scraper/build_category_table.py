@@ -101,12 +101,26 @@ class Resolver:
     def subcategory(self, source, raw, text=""):
         raw = (raw or "").strip().lower()
         sub = None
-        if source in self.per_source and raw in self.per_source[source]:
-            sub = self.per_source[source][raw]
-        elif raw in self.common:
-            sub = self.common[raw]
-        elif raw in self.identity:
-            sub = self.identity[raw]
+        # Per-source lookup (full path OR leaf-only for legacy entries)
+        if source in self.per_source:
+            tbl = self.per_source[source]
+            if raw in tbl:
+                sub = tbl[raw]
+            elif " > " in raw:
+                leaf = raw.split(" > ")[-1].strip()
+                if leaf in tbl:
+                    sub = tbl[leaf]
+        if sub is None:
+            if raw in self.common:
+                sub = self.common[raw]
+            elif " > " in raw:
+                leaf = raw.split(" > ")[-1].strip()
+                if leaf in self.common:
+                    sub = self.common[leaf]
+                elif leaf in self.identity:
+                    sub = self.identity[leaf]
+            elif raw in self.identity:
+                sub = self.identity[raw]
         if sub is None or sub == "__unknown__":
             inferred = self._infer(text)
             if inferred:

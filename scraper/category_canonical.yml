@@ -638,15 +638,20 @@ mappings:
     "women's accessories": Fashion Accessories
     auto accessories: Auto Parts & Accessories
     daisy pellet gun: Firearms
-    # Country-facet leaves. These are a COUNTRY tab, not a real category, and
-    # are genuinely ambiguous (coins vs stamps vs cards). Proper fix: have the
-    # scraper keep the parent breadcrumb. Until then we use the empirical
-    # dominant for these HiBid auctions (sports cards / stamps / misc all roll
-    # up to Collectibles; only the coin sub-tree differs, and "world" below is
-    # the coin case).
-    us: Collectibles
-    international: Collectibles
-    canada: Collectibles
+    # Path-specific disambiguation: "Parent > leaf" entries. The resolver tries
+    # the full path first, then falls back to the leaf alone (for legacy
+    # entries above). These handle country-facet leaves that appear under
+    # multiple category trees (coins vs stamps vs cards).
+    coins & currency > us: Coins & Currency
+    coins & currency > international: Coins & Currency
+    coins & currency > canada: Coins & Currency
+    coins & currency > world: Coins & Currency
+    # Country-facet leaves without path context — genuinely ambiguous, let
+    # inference decide (previously mapped to Collectibles as a stopgap; now
+    # falls through to inference since the scraper keeps the full path).
+    us: __unknown__
+    international: __unknown__
+    canada: __unknown__
 
   # Rasmus runs on auction-engine.com and sells industrial / warehouse
   # liquidation lots. Its taxonomy is almost entirely disjoint from the antiques
