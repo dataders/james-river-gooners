@@ -124,15 +124,16 @@ export default defineConfig([
   },
   // Structural rules via ast-grep — catch patterns that are legal JS/TS but
   // violate project conventions agents would otherwise naturally write wrong.
-  // net.js is the fetchWithRetry implementation (raw fetch is intentional there).
-  // telemetry.js is the posthog wrapper (posthog.capture is intentional there).
-  // useSemanticSearch + useImageSearch call the HF Inference API directly — they
-  // are external-API clients, not internal infrastructure callers.
+  // net.js     — fetchWithRetry implementation (raw fetch intentional)
+  // telemetry.js — posthog singleton wrapper (posthog.init/capture intentional)
+  // supabase.js  — Supabase singleton (createClient call intentional)
+  // useSemanticSearch + useImageSearch — HF Inference API clients (raw fetch intentional)
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
     ignores: [
       'src/utils/net.js',
       'src/lib/telemetry.js',
+      'src/lib/supabase.js',
       'src/hooks/useSemanticSearch.js',
       'src/hooks/useImageSearch.js',
     ],
@@ -146,6 +147,18 @@ export default defineConfig([
         {
           pattern: 'posthog.capture($$$)',
           message: 'Use captureEvent() from src/lib/telemetry.js — it checks isAnalyticsConfigured and no-ops when PostHog is unconfigured.',
+        },
+        {
+          pattern: 'posthog.init($$$)',
+          message: 'PostHog is initialized once in src/lib/telemetry.js — do not call posthog.init() elsewhere.',
+        },
+        {
+          pattern: 'createClient($$$)',
+          message: 'Import the supabase singleton from src/lib/supabase.js — do not instantiate a new Supabase client (a second client bypasses the shared auth session).',
+        },
+        {
+          pattern: 'dangerouslySetInnerHTML={$$$}',
+          message: 'dangerouslySetInnerHTML bypasses React\'s XSS protection — this app never needs it; use JSX children instead.',
         },
       ],
     },
