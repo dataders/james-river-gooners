@@ -12,7 +12,8 @@ import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
-import { supabaseUrl } from '../lib/supabase'
+
+const SPA_ORIGIN = 'https://gooners.anders.omg.lol'
 
 function isHiBidUrl(value) {
   try {
@@ -41,12 +42,12 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
 
   const itemKey = item ? `${item.auctionSafeId || ''}:${item.id}` : null
 
-  // When Supabase is configured, share via the og-item edge function so that
-  // social platforms (Slack, Discord, iMessage) can crawl it and render a
-  // rich preview — item photo, title, category, and current bid. The edge
-  // function immediately redirects human visitors to the SPA deep-link URL.
-  const shareUrl = supabaseUrl && itemKey
-    ? `${supabaseUrl}/functions/v1/og-item?item=${encodeURIComponent(itemKey)}`
+  // Supabase's gateway overrides Content-Type: text/html → text/plain for all
+  // edge function responses, so the og-item function URL shows as "Text Document"
+  // in iMessage/Slack instead of a rich preview card. Use the SPA URL directly —
+  // index.html has site-level OG tags that produce a branded preview card.
+  const shareUrl = itemKey
+    ? `${SPA_ORIGIN}/?item=${encodeURIComponent(itemKey)}`
     : window.location.href
 
   const handleShare = () => {
