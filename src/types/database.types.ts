@@ -512,6 +512,51 @@ export type Database = {
           },
         ]
       }
+      facebook_sold_listings: {
+        Row: {
+          embedding: string | null
+          first_seen_at: string
+          id: string
+          keyword: string
+          last_seen_at: string
+          listing_url: string | null
+          location: string | null
+          price_label: string | null
+          price_value: number | null
+          sold_date: string | null
+          thumbnail_url: string | null
+          title: string | null
+        }
+        Insert: {
+          embedding?: string | null
+          first_seen_at?: string
+          id: string
+          keyword: string
+          last_seen_at?: string
+          listing_url?: string | null
+          location?: string | null
+          price_label?: string | null
+          price_value?: number | null
+          sold_date?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+        }
+        Update: {
+          embedding?: string | null
+          first_seen_at?: string
+          id?: string
+          keyword?: string
+          last_seen_at?: string
+          listing_url?: string | null
+          location?: string | null
+          price_label?: string | null
+          price_value?: number | null
+          sold_date?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -2104,6 +2149,20 @@ export type Database = {
           sold_at: string
           sold_price: number
           source: string
+          title: string
+        }[]
+      }
+      match_facebook_comps: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          id: string
+          last_seen_at: string
+          listing_url: string
+          price_label: string
+          price_value: number
+          similarity: number
+          sold_date: string
+          thumbnail_url: string
           title: string
         }[]
       }
