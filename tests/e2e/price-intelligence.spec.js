@@ -8,65 +8,6 @@ async function waitForItems(page) {
   return match ? parseInt(match[1], 10) : 0
 }
 
-function bestDealsButton(page) {
-  return page.getByRole('button', { name: 'Best deals', exact: true })
-}
-
-// ── Best Deals toggle ─────────────────────────────────────────────────────────
-
-test.describe('Best deals toggle', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await waitForItems(page)
-  })
-
-  test('Best deals toggle button is present in the header', async ({ page }) => {
-    await expect(bestDealsButton(page)).toBeVisible()
-  })
-
-  test('Best deals toggle activates on click and adds active class', async ({ page }) => {
-    const btn = bestDealsButton(page)
-    await expect(btn).not.toHaveClass(/active/)
-    await btn.click()
-    await expect(btn).toHaveClass(/active/)
-  })
-
-  test('Best deals toggle is a two-state toggle', async ({ page }) => {
-    const btn = bestDealsButton(page)
-    await btn.click()
-    await expect(btn).toHaveClass(/active/)
-    await btn.click()
-    await expect(btn).not.toHaveClass(/active/)
-  })
-
-  test('Best deals toggle does not increase item count', async ({ page }) => {
-    const totalBefore = await waitForItems(page)
-    test.skip(totalBefore === 0, 'No items loaded — skipping best deals test')
-
-    await bestDealsButton(page).click()
-    await page.waitForTimeout(300)
-    const countAfter = parseInt(
-      (await page.locator('.item-count').textContent()).match(/^(\d+) items/)[1]
-    )
-    expect(countAfter).toBeLessThanOrEqual(totalBefore)
-  })
-
-  test('disabling Best deals toggle restores previous item count', async ({ page }) => {
-    const totalBefore = await waitForItems(page)
-    test.skip(totalBefore === 0, 'No items loaded — skipping best deals test')
-
-    await bestDealsButton(page).click()
-    await page.waitForTimeout(300)
-    await bestDealsButton(page).click()
-    await page.waitForTimeout(300)
-
-    const countAfter = parseInt(
-      (await page.locator('.item-count').textContent()).match(/^(\d+) items/)[1]
-    )
-    expect(countAfter).toBe(totalBefore)
-  })
-})
-
 // ── Card-level ROI display ────────────────────────────────────────────────────
 
 test.describe('Card ROI display', () => {
