@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "mcp__2c66a00a-f94b-4b95-ac29-1703113c048b__exec(*)"
+      "mcp__2c66a00a-f94b-4b95-ac29-1703113c048b__exec(*)",
+      "mcp__016c5a90-a41e-4855-aea3-2898b36b09fa__execute_sql(*)",
+      "mcp__016c5a90-a41e-4855-aea3-2898b36b09fa__apply_migration(*)"
     ]
   },
   "mcpServers": {
