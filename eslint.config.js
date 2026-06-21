@@ -160,6 +160,28 @@ export default defineConfig([
           pattern: 'dangerouslySetInnerHTML={$$$}',
           message: 'dangerouslySetInnerHTML bypasses React\'s XSS protection — this app never needs it; use JSX children instead.',
         },
+        {
+          pattern: 'useVirtualizer($$$)',
+          message: 'Use useWindowVirtualizer() instead — the app scrolls the window, not a container div; useVirtualizer needs an explicit scrollElement and would silently render all items without one.',
+        },
+      ],
+    },
+  },
+  // QueryClient must be the singleton from src/lib/queryClient.js. Test files
+  // legitimately create isolated clients per test, so they're exempt.
+  {
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    ignores: [
+      'src/lib/queryClient.js',
+      'src/**/*.{test,vitest}.{js,jsx,ts,tsx}',
+    ],
+    plugins: { 'ast-grep': astGrepPlugin },
+    rules: {
+      'ast-grep/no-restricted-syntax': ['error',
+        {
+          pattern: 'new QueryClient($$$)',
+          message: 'Import the singleton queryClient from src/lib/queryClient.js — a second QueryClient gets its own isolated cache and breaks shared server state.',
+        },
       ],
     },
   },
