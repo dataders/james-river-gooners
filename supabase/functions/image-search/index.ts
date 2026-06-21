@@ -1,7 +1,8 @@
 // Image Search Edge Function
 //
 // POST body: { imageBase64: string, mimeType: string }
-// Returns:   { brand, model, category, keywords, description, searchTerms, estimatedValue }
+// Returns:   { brand, model, category, keywords, description, searchTerms, estimatedValue,
+//              productType, searchQuery, condition, brandConfidence, modelConfidence }
 //
 // Requires:
 //   ANTHROPIC_API_KEY  — set in Supabase Edge Function secrets
@@ -86,8 +87,31 @@ Deno.serve(async (req) => {
               type: 'string',
               description: 'Rough US retail or resale market value estimate such as "$50-100". Empty string if uncertain.',
             },
+            productType: {
+              type: 'string',
+              description: 'The plain noun for what this is (e.g. "cordless drill", "credenza"). Empty string if unclear.',
+            },
+            searchQuery: {
+              type: 'string',
+              description: 'The single best eBay sold-listings search phrase: brand + model + product type + one key attribute. Unquoted. This is what we search eBay with.',
+            },
+            condition: {
+              type: 'string',
+              enum: ['new', 'open_box', 'used', 'for_parts', ''],
+              description: 'Item condition. Empty string if not determinable.',
+            },
+            brandConfidence: {
+              type: 'string',
+              enum: ['high', 'medium', 'low', ''],
+              description: 'Confidence in the brand identification.',
+            },
+            modelConfidence: {
+              type: 'string',
+              enum: ['high', 'medium', 'low', ''],
+              description: 'Confidence in the model identification.',
+            },
           },
-          required: ['brand', 'model', 'category', 'keywords', 'description', 'searchTerms', 'estimatedValue'],
+          required: ['brand', 'model', 'category', 'keywords', 'description', 'searchTerms', 'estimatedValue', 'productType', 'searchQuery', 'condition', 'brandConfidence', 'modelConfidence'],
         },
       },
     ],
@@ -106,7 +130,7 @@ Deno.serve(async (req) => {
           },
           {
             type: 'text',
-            text: 'You are an expert auction appraiser. Identify this item so a buyer can research its resale value. Be specific about brand and model when visible. Focus on what makes this useful for eBay or auction price research.',
+            text: 'You are an expert auction appraiser. Identify this item so a buyer can research its resale value. Be specific about brand and model when visible. Compose a strong searchQuery: the single best eBay sold-listings phrase (brand + model + product type + one key attribute, unquoted) that we will search eBay with. Rate your brand and model confidence honestly. Focus on what makes this useful for eBay or auction price research.',
           },
         ],
       },
