@@ -121,8 +121,11 @@ export default function App() {
     hideAll,
     showAll,
     showOnly,
-    toggleBaselineGroup,
-    toggleBaselineCategory,
+    addBaselineGroup,
+    addBaselineCategory,
+    removeBaselineGroup,
+    removeBaselineCategory,
+    clearBaseline,
     setSearchQuery,
     setMinPrice,
     setMaxPrice,
@@ -534,11 +537,11 @@ export default function App() {
               cannonBids={auth.user ? cannonBids : null}
               onSignInClick={() => setAuthOpen(true)}
               onCannonLinkClick={() => setCannonLinkOpen(true)}
-              groupedCategories={auth.user ? groupedCategories : undefined}
               baselineExcludedGroups={baselineExcludedGroups}
               baselineExcludedCategories={baselineExcludedCategories}
-              onToggleBaselineGroup={toggleBaselineGroup}
-              onToggleBaselineCategory={toggleBaselineCategory}
+              onRemoveBaselineGroup={removeBaselineGroup}
+              onRemoveBaselineCategory={removeBaselineCategory}
+              onClearBaseline={clearBaseline}
             />
           </div>
 
@@ -636,11 +639,11 @@ export default function App() {
         cannonBids={auth.user ? cannonBids : null}
         onSignInClick={() => setAuthOpen(true)}
         onCannonLinkClick={() => setCannonLinkOpen(true)}
-        groupedCategories={auth.user ? groupedCategories : undefined}
         baselineExcludedGroups={baselineExcludedGroups}
         baselineExcludedCategories={baselineExcludedCategories}
-        onToggleBaselineGroup={toggleBaselineGroup}
-        onToggleBaselineCategory={toggleBaselineCategory}
+        onRemoveBaselineGroup={removeBaselineGroup}
+        onRemoveBaselineCategory={removeBaselineCategory}
+        onClearBaseline={clearBaseline}
       />
 
       <div className={`app-body${filterOpen ? '' : ' app-body--sidebar-closed'}`}>
@@ -689,12 +692,18 @@ export default function App() {
           groupedCategories={groupedCategories}
           excludedCategories={excludedCategories}
           excludedGroups={excludedGroups}
+          baselineExcludedGroups={baselineExcludedGroups}
+          baselineExcludedCategories={baselineExcludedCategories}
           onToggleExcluded={toggleExcluded}
           onHideGroup={hideGroup}
           onShowGroup={showGroup}
           onHideAll={() => hideAll(groupedCategories.map(g => g.group))}
           onShowAll={showAll}
           onShowOnly={showOnly}
+          onAddBaselineGroup={addBaselineGroup}
+          onRemoveBaselineGroup={removeBaselineGroup}
+          onAddBaselineCategory={addBaselineCategory}
+          onRemoveBaselineCategory={removeBaselineCategory}
         />
 
         <main data-load-complete={loadComplete ? 'true' : 'false'}>

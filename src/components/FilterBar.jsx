@@ -1,12 +1,20 @@
 // @ts-nocheck
 import { useState } from 'react'
 
-function GroupSection({ group, excludedCategories, excludedGroups, onToggle, onShowOnly, onHideGroup, onShowGroup, startExpanded }) {
+function GroupSection({
+  group, excludedCategories, excludedGroups, baselineExcludedGroups, baselineExcludedCategories,
+  onToggle, onShowOnly, onHideGroup, onShowGroup,
+  onAddBaselineGroup, onRemoveBaselineGroup, onAddBaselineCategory, onRemoveBaselineCategory,
+  startExpanded,
+}) {
   const [expanded, setExpanded] = useState(startExpanded)
   // A group can be hidden coarsely (its name in excludedGroups) or finely (each
   // raw chip excluded). Coarse hiding also covers future raw categories that
   // normalize into the group, so it's how the group-level button works.
   const groupHidden = excludedGroups.includes(group.group)
+  // "Always hidden" = promoted into the permanent baseline. It seeds every visit
+  // and renders with a lock + restore instead of the temporary show/hide pair.
+  const baselineHidden = baselineExcludedGroups.includes(group.group)
   const shown = group.rawCategories.filter(c => !excludedCategories.includes(c.name))
   const hidden = group.rawCategories.filter(c => excludedCategories.includes(c.name))
   const isHidden = groupHidden || shown.length === 0
@@ -14,27 +22,33 @@ function GroupSection({ group, excludedCategories, excludedGroups, onToggle, onS
   const rawNames = group.rawCategories.map(c => c.name)
 
   return (
-    <div className={`filter-group ${isHidden ? 'all-hidden' : ''}`}>
+    <div className={`filter-group ${isHidden ? 'all-hidden' : ''}${baselineHidden ? ' always-hidden' : ''}`}>
       <div className="filter-group-header">
         <button
           className="filter-group-toggle"
           onClick={() => setExpanded(!expanded)}
         >
           <span className="filter-group-arrow">{expanded ? '▾' : '▸'}</span>
+          {baselineHidden && <span className="lock-mark" aria-hidden="true">🔒</span>}
           <span className="filter-group-name">{group.group}</span>
           <span className="filter-group-count">
-            {isHidden ? `hidden (${group.totalCount})` : shownCount}
+            {baselineHidden ? 'always hidden' : isHidden ? `hidden (${group.totalCount})` : shownCount}
           </span>
         </button>
-        <button
-          className="filter-action"
-          onClick={() => isHidden
-            ? onShowGroup(group.group, rawNames)
-            : onHideGroup(group.group)
-          }
-        >
-          {isHidden ? 'show' : 'hide'}
-        </button>
+        {baselineHidden ? (
+          <button className="filter-action" onClick={() => onRemoveBaselineGroup(group.group)}>restore</button>
+        ) : isHidden ? (
+          <span className="filter-group-actions">
+            <button className="filter-action" onClick={() => onShowGroup(group.group, rawNames)}>show</button>
+            <button
+              className="filter-action filter-action--promote"
+              title={`Never show ${group.group} again`}
+              onClick={() => onAddBaselineGroup(group.group)}
+            >never show this</button>
+          </span>
+        ) : (
+          <button className="filter-action" onClick={() => onHideGroup(group.group)}>hide</button>
+        )}
       </div>
 
       {expanded && !groupHidden && (
@@ -59,17 +73,28 @@ function GroupSection({ group, excludedCategories, excludedGroups, onToggle, onS
                 </button>
               </span>
             ))}
-            {hidden.map(({ name, count }) => (
-              <button
-                key={name}
-                className="filter-chip hidden"
-                onClick={() => onToggle(name)}
-              >
-                <span className="x-mark">✕</span>
-                {name}
-                <span className="chip-count">{count}</span>
-              </button>
-            ))}
+            {hidden.map(({ name, count }) => {
+              const locked = baselineExcludedCategories.includes(name)
+              return (
+                <span key={name} className="filter-chip-wrap">
+                  <button
+                    className="filter-chip hidden"
+                    onClick={() => onToggle(name)}
+                  >
+                    <span className="x-mark">{locked ? '🔒' : '✕'}</span>
+                    {name}
+                    <span className="chip-count">{count}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-chip-promote${locked ? ' locked' : ''}`}
+                    title={locked ? `Restore ${name}` : `Never show ${name} again`}
+                    aria-label={locked ? `Restore ${name}` : `Never show ${name} again`}
+                    onClick={() => locked ? onRemoveBaselineCategory(name) : onAddBaselineCategory(name)}
+                  >🔒</button>
+                </span>
+              )
+            })}
           </div>
         </div>
       )}
@@ -81,12 +106,18 @@ export function FilterBar({
   groupedCategories,
   excludedCategories,
   excludedGroups,
+  baselineExcludedGroups = [],
+  baselineExcludedCategories = [],
   onToggleExcluded,
   onHideGroup,
   onShowGroup,
   onHideAll,
   onShowAll,
   onShowOnly,
+  onAddBaselineGroup,
+  onRemoveBaselineGroup,
+  onAddBaselineCategory,
+  onRemoveBaselineCategory,
 }) {
   const totalItems = groupedCategories.reduce((s, g) => s + g.totalCount, 0)
   const isGroupHidden = (g) => excludedGroups.includes(g.group)
@@ -130,10 +161,16 @@ export function FilterBar({
               group={group}
               excludedCategories={excludedCategories}
               excludedGroups={excludedGroups}
+              baselineExcludedGroups={baselineExcludedGroups}
+              baselineExcludedCategories={baselineExcludedCategories}
               onToggle={onToggleExcluded}
               onShowOnly={handleShowOnly}
               onHideGroup={onHideGroup}
               onShowGroup={onShowGroup}
+              onAddBaselineGroup={onAddBaselineGroup}
+              onRemoveBaselineGroup={onRemoveBaselineGroup}
+              onAddBaselineCategory={onAddBaselineCategory}
+              onRemoveBaselineCategory={onRemoveBaselineCategory}
               startExpanded={false}
             />
           ))}

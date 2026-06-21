@@ -1342,6 +1342,51 @@ body {
   border-color: var(--gold);
   background: color-mix(in srgb, var(--gold) 12%, var(--surface));
 }
+/* "never show this" / restore — promote a hidden category into the permanent
+   "always hidden" baseline (group-level action + per-chip lock toggle). */
+.filter-group-actions,
+.filter-group-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-action--promote {
+  color: var(--gold);
+}
+.filter-group.always-hidden .filter-group-name {
+  font-style: italic;
+  opacity: 0.7;
+}
+.lock-mark {
+  font-size: 0.72rem;
+}
+/* Per-chip promote/restore — mirrors the `only` affordance on shown chips. */
+.filter-chip-promote {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.7rem;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+.filter-chip-promote:hover,
+.filter-chip-promote:focus-visible {
+  opacity: 1;
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, var(--surface));
+}
+.filter-chip-promote.locked {
+  opacity: 1;
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 18%, var(--surface));
+}
+
 .filter-chip.archived {
   border-style: dashed;
 }
@@ -4898,7 +4943,16 @@ a.cannons-comp-card:hover {
   margin: 0 0 6px;
 }
 
-/* ── Category Preferences (inline in account dropdown / nav drawer) ──────── */
-.catprefs-list {
-  /* scrolling handled by the parent .account-dropdown or nav-drawer-body */
+/* ── Always-hidden categories (review/restore list in account dropdown) ──── */
+.always-hidden-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+}
+.always-hidden-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 4px 0;
+  padding: 0 4px;
 }

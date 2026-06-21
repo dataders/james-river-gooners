@@ -1,17 +1,19 @@
 // @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { CategoryPrefsList } from './CategoryPrefsModal.jsx'
+import { AlwaysHiddenCategories } from './AlwaysHiddenCategories.jsx'
 
 // The logged-in account menu items, shared by the desktop dropdown
 // (AccountButton) and the mobile NavDrawer. Owns the change-password flow
-// and the inline category preferences section.
-export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAction, groupedCategories, baselineExcludedGroups, baselineExcludedCategories, onToggleBaselineGroup, onToggleBaselineCategory }) {
+// and the "always hidden categories" review/restore list (categories are
+// *added* to that set inline in the Filters panel, not here).
+export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAction, baselineExcludedGroups = [], baselineExcludedCategories = [], onRemoveBaselineGroup, onRemoveBaselineCategory, onClearBaseline }) {
   const [changing, setChanging] = useState(false)
   const [newPass, setNewPass] = useState('')
   const [busy, setBusy] = useState(false)
   const [passError, setPassError] = useState('')
   const [passNotice, setPassNotice] = useState('')
-  const [categoryPrefsExpanded, setCategoryPrefsExpanded] = useState(false)
+  const [alwaysHiddenExpanded, setAlwaysHiddenExpanded] = useState(false)
+  const alwaysHiddenCount = baselineExcludedGroups.length + baselineExcludedCategories.length
   const inputRef = useRef(null)
 
   useEffect(() => { if (changing) inputRef.current?.focus() }, [changing])
@@ -48,30 +50,26 @@ export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAc
           {cannonBids.linked ? `Cannon's ✓ (${cannonBids.username})` : "Link Cannon's account"}
         </button>
       )}
-      {groupedCategories?.length > 0 && (
-        <>
-          <button
-            type="button"
-            className="account-dropdown-item account-dropdown-item--expand"
-            role="menuitem"
-            aria-expanded={categoryPrefsExpanded}
-            onClick={() => setCategoryPrefsExpanded(v => !v)}
-          >
-            <span>Category preferences</span>
-            <span className="account-expand-arrow" aria-hidden="true">{categoryPrefsExpanded ? '▾' : '▸'}</span>
-          </button>
-          {categoryPrefsExpanded && (
-            <div className="account-catprefs">
-              <CategoryPrefsList
-                groupedCategories={groupedCategories}
-                baselineExcludedGroups={baselineExcludedGroups}
-                baselineExcludedCategories={baselineExcludedCategories}
-                onToggleBaselineGroup={onToggleBaselineGroup}
-                onToggleBaselineCategory={onToggleBaselineCategory}
-              />
-            </div>
-          )}
-        </>
+      <button
+        type="button"
+        className="account-dropdown-item account-dropdown-item--expand"
+        role="menuitem"
+        aria-expanded={alwaysHiddenExpanded}
+        onClick={() => setAlwaysHiddenExpanded(v => !v)}
+      >
+        <span>Always-hidden categories{alwaysHiddenCount > 0 ? ` (${alwaysHiddenCount})` : ''}</span>
+        <span className="account-expand-arrow" aria-hidden="true">{alwaysHiddenExpanded ? '▾' : '▸'}</span>
+      </button>
+      {alwaysHiddenExpanded && (
+        <div className="account-catprefs">
+          <AlwaysHiddenCategories
+            baselineExcludedGroups={baselineExcludedGroups}
+            baselineExcludedCategories={baselineExcludedCategories}
+            onRemoveGroup={onRemoveBaselineGroup}
+            onRemoveCategory={onRemoveBaselineCategory}
+            onClearAll={onClearBaseline}
+          />
+        </div>
       )}
       {changing ? (
         <form className="account-change-pass-form" onSubmit={handleChangePassword}>

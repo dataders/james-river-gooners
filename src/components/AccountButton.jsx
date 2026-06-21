@@ -10,7 +10,7 @@ function PersonIcon() {
   )
 }
 
-export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkClick, groupedCategories, baselineExcludedGroups, baselineExcludedCategories, onToggleBaselineGroup, onToggleBaselineCategory }) {
+export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkClick, baselineExcludedGroups, baselineExcludedCategories, onRemoveBaselineGroup, onRemoveBaselineCategory, onClearBaseline }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -53,11 +53,11 @@ export function AccountButton({ auth, cannonBids, onSignInClick, onCannonLinkCli
               cannonBids={cannonBids}
               onCannonLinkClick={onCannonLinkClick}
               onAfterAction={() => setOpen(false)}
-              groupedCategories={groupedCategories}
               baselineExcludedGroups={baselineExcludedGroups}
               baselineExcludedCategories={baselineExcludedCategories}
-              onToggleBaselineGroup={onToggleBaselineGroup}
-              onToggleBaselineCategory={onToggleBaselineCategory}
+              onRemoveBaselineGroup={onRemoveBaselineGroup}
+              onRemoveBaselineCategory={onRemoveBaselineCategory}
+              onClearBaseline={onClearBaseline}
             />
           </div>
         )}

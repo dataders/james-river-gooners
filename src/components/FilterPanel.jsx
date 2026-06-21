@@ -59,7 +59,9 @@ export function FilterPanel({
   archiveLoading, archiveError,
   // Category filter
   groupedCategories, excludedCategories, excludedGroups,
+  baselineExcludedGroups, baselineExcludedCategories,
   onToggleExcluded, onHideGroup, onShowGroup, onHideAll, onShowAll, onShowOnly,
+  onAddBaselineGroup, onRemoveBaselineGroup, onAddBaselineCategory, onRemoveBaselineCategory,
 }) {
   return (
     <>
@@ -204,12 +206,18 @@ export function FilterPanel({
           groupedCategories={groupedCategories}
           excludedCategories={excludedCategories}
           excludedGroups={excludedGroups}
+          baselineExcludedGroups={baselineExcludedGroups}
+          baselineExcludedCategories={baselineExcludedCategories}
           onToggleExcluded={onToggleExcluded}
           onHideGroup={onHideGroup}
           onShowGroup={onShowGroup}
           onHideAll={onHideAll}
           onShowAll={onShowAll}
           onShowOnly={onShowOnly}
+          onAddBaselineGroup={onAddBaselineGroup}
+          onRemoveBaselineGroup={onRemoveBaselineGroup}
+          onAddBaselineCategory={onAddBaselineCategory}
+          onRemoveBaselineCategory={onRemoveBaselineCategory}
         />
       </aside>
     </>

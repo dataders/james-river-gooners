@@ -9,8 +9,8 @@ export function NavDrawer({
   onFeedback,
   theme, onToggleTheme,
   auth, cannonBids, onSignInClick, onCannonLinkClick,
-  groupedCategories, baselineExcludedGroups, baselineExcludedCategories,
-  onToggleBaselineGroup, onToggleBaselineCategory,
+  baselineExcludedGroups, baselineExcludedCategories,
+  onRemoveBaselineGroup, onRemoveBaselineCategory, onClearBaseline,
 }) {
   useEffect(() => {
     if (!open) return
@@ -50,11 +50,11 @@ export function NavDrawer({
                 cannonBids={cannonBids}
                 onCannonLinkClick={act(onCannonLinkClick)}
                 onAfterAction={onClose}
-                groupedCategories={groupedCategories}
                 baselineExcludedGroups={baselineExcludedGroups}
                 baselineExcludedCategories={baselineExcludedCategories}
-                onToggleBaselineGroup={onToggleBaselineGroup}
-                onToggleBaselineCategory={onToggleBaselineCategory}
+                onRemoveBaselineGroup={onRemoveBaselineGroup}
+                onRemoveBaselineCategory={onRemoveBaselineCategory}
+                onClearBaseline={onClearBaseline}
               />
             ) : (
               <button type="button" className="nav-drawer-item" onClick={act(onSignInClick)}>
