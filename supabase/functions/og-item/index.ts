@@ -51,7 +51,8 @@ function buildHtml(lot: LotRow, spaUrl: string): string {
 
   const ogTitle = `${title} | James River Gooners`
   const ogDesc = [category, bid, bids, auction].filter(Boolean).join(' · ')
-  const ogImage = (lot.images ?? [])[0] ?? ''
+  // Fall back to the static OG image when the lot has no photo.
+  const ogImage = (lot.images ?? [])[0] || `${SPA_ORIGIN}/og-image.png`
   const escapedSpaUrl = JSON.stringify(spaUrl)
 
   return `<!DOCTYPE html>
@@ -64,12 +65,11 @@ function buildHtml(lot: LotRow, spaUrl: string): string {
   <meta property="og:description" content="${esc(ogDesc)}" />
   <meta property="og:url" content="${esc(spaUrl)}" />
   <meta property="og:type" content="website" />
-  ${ogImage ? `<meta property="og:image" content="${esc(ogImage)}" />` : ''}
-  <meta name="twitter:card" content="${ogImage ? 'summary_large_image' : 'summary'}" />
+  <meta property="og:image" content="${esc(ogImage)}" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(ogDesc)}" />
-  ${ogImage ? `<meta name="twitter:image" content="${esc(ogImage)}" />` : ''}
-  <meta http-equiv="refresh" content="0; url=${esc(spaUrl)}">
+  <meta name="twitter:image" content="${esc(ogImage)}" />
   <script>window.location.replace(${escapedSpaUrl})</script>
 </head>
 <body>
