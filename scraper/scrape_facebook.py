@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlencode
@@ -30,6 +31,8 @@ from persist import WriteContext, write_read_model
 FACEBOOK_SOURCES = Path(__file__).resolve().parent / "facebook_sources.yml"
 APIFY_API_URL = "https://api.apify.com/v2"
 APIFY_ACTOR_ID = "apify~facebook-marketplace-scraper"
+APIFY_POLL_INTERVAL = 10
+APIFY_MAX_WAIT = 900
 DEFAULT_LIMIT = 60
 
 
@@ -163,29 +166,86 @@ def card_to_sold_listing_row(card: dict, *, keyword: str) -> dict:
     }
 
 
-def run_apify_urls(
+def _apify_headers(api_token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json",
+    }
+
+
+def _apify_input(urls: list[str], *, limit: int = DEFAULT_LIMIT) -> dict:
+    return {
+        "startUrls": [{"url": url} for url in urls],
+        "maxItems": limit,
+        "maxListings": limit,
+    }
+
+
+def start_apify_run(
     api_token: str, urls: list[str], *, limit: int = DEFAULT_LIMIT
-) -> list[dict]:
-    endpoint = f"{APIFY_API_URL}/acts/{APIFY_ACTOR_ID}/run-sync-get-dataset-items"
+) -> tuple[str, str]:
     resp = requests.post(
-        endpoint,
-        headers={
-            "Authorization": f"Bearer {api_token}",
-            "Content-Type": "application/json",
-        },
+        f"{APIFY_API_URL}/acts/{APIFY_ACTOR_ID}/runs",
+        headers=_apify_headers(api_token),
+        json=_apify_input(urls, limit=limit),
+        timeout=(10, 30),
+    )
+    resp.raise_for_status()
+    data = resp.json()["data"]
+    return data["id"], data["defaultDatasetId"]
+
+
+def wait_for_apify_run(
+    api_token: str,
+    run_id: str,
+    *,
+    poll_interval: int = APIFY_POLL_INTERVAL,
+    max_wait: int = APIFY_MAX_WAIT,
+) -> str:
+    deadline = time.monotonic() + max_wait
+    while time.monotonic() < deadline:
+        resp = requests.get(
+            f"{APIFY_API_URL}/actor-runs/{run_id}",
+            headers={"Authorization": f"Bearer {api_token}"},
+            timeout=(10, 30),
+        )
+        resp.raise_for_status()
+        status = resp.json()["data"]["status"]
+        if status in {"SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"}:
+            return status
+        time.sleep(poll_interval)
+    return "TIMED-OUT"
+
+
+def fetch_apify_dataset(api_token: str, dataset_id: str) -> list[dict]:
+    resp = requests.get(
+        f"{APIFY_API_URL}/datasets/{dataset_id}/items",
+        headers={"Authorization": f"Bearer {api_token}"},
         params={"clean": "true", "format": "json"},
-        json={
-            "startUrls": [{"url": url} for url in urls],
-            "maxItems": limit,
-            "maxListings": limit,
-        },
-        timeout=180,
+        timeout=(10, 60),
     )
     resp.raise_for_status()
     body = resp.json()
     if isinstance(body, list):
         return body
     return body.get("items") or []
+
+
+def run_apify_urls(
+    api_token: str,
+    urls: list[str],
+    *,
+    limit: int = DEFAULT_LIMIT,
+    poll_interval: int = APIFY_POLL_INTERVAL,
+    max_wait: int = APIFY_MAX_WAIT,
+) -> list[dict]:
+    run_id, dataset_id = start_apify_run(api_token, urls, limit=limit)
+    status = wait_for_apify_run(
+        api_token, run_id, poll_interval=poll_interval, max_wait=max_wait
+    )
+    if status != "SUCCEEDED":
+        raise RuntimeError(f"Apify run {run_id} ended with {status}")
+    return fetch_apify_dataset(api_token, dataset_id)
 
 
 def scrape_spec(
