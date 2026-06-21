@@ -6,8 +6,5 @@ compatibility_date = "2025-01-01"
 SPA_ORIGIN = "https://gooners.anders.omg.lol"
 
 # Secrets — set once via CLI, never committed:
-#   wrangler secret put SUPABASE_URL
-#   wrangler secret put SUPABASE_ANON_KEY
-#
-# SUPABASE_URL   = your Supabase project URL (same as VITE_SUPABASE_URL)
-# SUPABASE_ANON_KEY = publishable key (same as VITE_SUPABASE_PUBLISHABLE_KEY)
+#   wrangler secret put VITE_SUPABASE_URL
+#   wrangler secret put VITE_SUPABASE_PUBLISHABLE_KEY
