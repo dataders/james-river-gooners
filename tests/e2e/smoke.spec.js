@@ -30,8 +30,7 @@ test.describe('Smoke — basic app structure', () => {
   })
 
   test('view controls are present', async ({ page }) => {
-    await expect(page.getByText('Richmond area only')).toBeVisible()
-    // Archive view is a segmented control (Active / All / Archived).
+    // Archive view is a segmented control (Active / All / Archived) inside the filter panel.
     const group = page.getByRole('group', { name: 'Which auctions to show' })
     await expect(group.getByRole('button', { name: 'Active', exact: true })).toBeVisible()
     await expect(group.getByRole('button', { name: 'Archived', exact: true })).toBeVisible()

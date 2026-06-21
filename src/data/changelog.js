@@ -9,6 +9,17 @@
 export const CHANGELOG = [
   {
     date: '2026-06-21',
+    title: 'Interface polish',
+    changes: [
+      { id: 'interface-font-smoothing', icon: '✨', text: 'Text is crisper on Mac — applied system-level font smoothing so every label, price, and description renders sharper.' },
+      { id: 'interface-tabular-nums', icon: '💰', text: 'Prices and bid counts no longer shift layout as values change — digits are now fixed-width so the numbers read steadily as auctions update.' },
+      { id: 'interface-text-wrap', icon: '📝', text: 'Descriptions and card text wrap more naturally — headings balance across lines and body text no longer leaves lone words dangling on the last line.' },
+      { id: 'interface-press-feedback', icon: '👆', text: 'Buttons give tactile press feedback — favorite, ignore, and filter chips now scale down slightly when tapped, confirming the action registered.' },
+      { id: 'interface-image-depth', icon: '🖼️', text: 'Lot photos have a subtle edge outline that separates them from the card background in both dark and light mode, giving images more visual depth.' },
+    ],
+  },
+  {
+    date: '2026-06-21',
     title: 'Facebook Marketplace comps',
     changes: [
       { id: 'facebook-active-listings', icon: '🛒', text: 'Facebook Marketplace listings now appear in the grid alongside auction lots, with a clear marketplace badge and direct listing links.' },

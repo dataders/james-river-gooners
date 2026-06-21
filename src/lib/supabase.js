@@ -42,3 +42,6 @@ export const supabase = url && publishableKey
       })
     )
   : null
+
+/** OG preview worker URL — null when not configured (no worker deployed). */
+export const ogWorkerUrl = import.meta.env['VITE_OG_WORKER_URL'] ?? null

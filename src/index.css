@@ -17,6 +17,7 @@
   --chip-bg: #3d0505;
   --chip-excluded: #2a1a1a;
   --radius: 10px;
+  --img-outline: rgba(255, 255, 255, 0.08);
 }
 
 @media (prefers-color-scheme: light) {
@@ -31,6 +32,7 @@
     --gold: #9c824a;
     --chip-bg: #ffe8e8;
     --chip-excluded: #f0e0e0;
+    --img-outline: rgba(0, 0, 0, 0.08);
   }
 }
 
@@ -45,6 +47,7 @@
   --gold: #c8a84b;
   --chip-bg: #3d0505;
   --chip-excluded: #2a1a1a;
+  --img-outline: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="light"] {
@@ -58,6 +61,7 @@
   --gold: #9c824a;
   --chip-bg: #ffe8e8;
   --chip-excluded: #f0e0e0;
+  --img-outline: rgba(0, 0, 0, 0.08);
 }
 
 html {
@@ -66,6 +70,8 @@ html {
   color: var(--text);
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -229,7 +235,7 @@ body {
   color: var(--text-muted);
   font-size: 0.82rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, transform 0.1s;
   white-space: nowrap;
   flex-shrink: 0;
   min-height: 36px;
@@ -237,6 +243,9 @@ body {
 .filter-toggle-btn:hover {
   border-color: var(--accent);
   color: var(--text);
+}
+.filter-toggle-btn:active {
+  transform: scale(0.96);
 }
 .filter-toggle-btn--open {
   border-color: var(--gold);
@@ -320,11 +329,14 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s, transform 0.1s;
 }
 .filter-panel-close:hover {
   color: var(--text);
   background: var(--chip-bg);
+}
+.filter-panel-close:active {
+  transform: scale(0.96);
 }
 
 /* Accordion sections inside the filter panel */
@@ -344,6 +356,10 @@ body {
   color: var(--text);
   cursor: pointer;
   text-align: left;
+  transition: opacity 0.1s;
+}
+.fp-accordion-header:active {
+  opacity: 0.7;
 }
 .fp-accordion-title {
   font-size: 0.72rem;
@@ -351,13 +367,24 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--gold);
+  text-wrap: balance;
 }
 .fp-accordion-arrow {
   font-size: 0.7rem;
   color: var(--text-muted);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.fp-accordion-header[aria-expanded="true"] .fp-accordion-arrow {
+  transform: rotate(90deg);
 }
 .fp-accordion-body {
   padding-bottom: 10px;
+  animation: accordion-open 0.18s ease-out;
+}
+@keyframes accordion-open {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* View section controls inside the accordion */
@@ -404,6 +431,26 @@ body {
   color: #1a1a1a;
   font-weight: 700;
 }
+/* Inline (horizontal) variant: small-caps label left, control right */
+.fp-control-row--inline {
+  flex-direction: row;
+  align-items: center;
+  padding: 5px 0;
+  gap: 10px;
+}
+.fp-control-row--inline .fp-control-label {
+  flex: 0 0 62px;
+  white-space: nowrap;
+}
+.fp-control-row--inline .archive-segmented {
+  flex: 1;
+  width: auto;
+}
+.fp-control-row--inline .segmented-option {
+  min-height: 28px;
+  font-size: 0.78rem;
+  padding: 0 4px;
+}
 .fp-pill-row {
   display: flex;
   gap: 8px;
@@ -421,6 +468,44 @@ body {
   flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+/* Compact summary row: pin · label · radius select · Change */
+.lf-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.lf-summary .lf-label {
+  flex: 1;
+  min-width: 0;
+}
+.lf-radius-select--inline {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 2px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.78rem;
+}
+.lf-radius-select--inline:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.lf-change-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+.lf-change-btn:hover {
+  opacity: 0.8;
 }
 .lf-current {
   display: flex;
@@ -477,12 +562,16 @@ body {
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
 }
 .lf-set-btn:hover:not(:disabled),
 .lf-geo-btn:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+}
+.lf-set-btn:active:not(:disabled),
+.lf-geo-btn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 .lf-set-btn:disabled,
 .lf-geo-btn:disabled {
@@ -681,6 +770,7 @@ body {
   font-weight: 700;
   color: var(--gold);
   font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .dual-slider {
@@ -1384,11 +1474,14 @@ body {
   color: var(--text);
   font-size: 0.78rem;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
   white-space: nowrap;
 }
 .filter-chip:hover {
   border-color: var(--accent);
+}
+.filter-chip:active {
+  transform: scale(0.96);
 }
 .filter-chip.shown {
   background: var(--chip-bg);
@@ -1440,7 +1533,7 @@ body {
   letter-spacing: 0.04em;
   cursor: pointer;
   opacity: 0.5;
-  transition: all 0.15s;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 .filter-chip-only:hover,
 .filter-chip-only:focus-visible {
@@ -1480,7 +1573,7 @@ body {
   cursor: pointer;
   font-size: 0.7rem;
   opacity: 0.5;
-  transition: all 0.15s;
+  transition: opacity 0.15s, border-color 0.15s, background-color 0.15s;
 }
 .filter-chip-promote:hover,
 .filter-chip-promote:focus-visible {
@@ -1586,6 +1679,7 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-wrap: pretty;
 }
 
 /* Item card */
@@ -1630,6 +1724,9 @@ body {
   color: var(--accent);
   transform: scale(1.05);
 }
+.favorite-button:active {
+  transform: scale(0.96);
+}
 .favorite-button.active {
   color: var(--gold);
   border-color: color-mix(in srgb, var(--gold) 50%, transparent);
@@ -1663,6 +1760,9 @@ body {
   border-color: #e5534b;
   color: #e5534b;
   transform: scale(1.05);
+}
+.ignore-button:active {
+  transform: scale(0.96);
 }
 .ignore-button.active {
   color: #e5534b;
@@ -1704,6 +1804,7 @@ body {
   width: 100%;
   display: block;
   object-fit: contain;
+  box-shadow: inset 0 0 0 1px var(--img-outline);
 }
 /* In the square viewport, images fill the full height */
 .item-card:not(.compact) .item-image img {
@@ -1871,11 +1972,13 @@ body {
   font-weight: 800;
   font-size: 1rem;
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .item-bids {
   font-size: 0.7rem;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .item-time {
@@ -1906,6 +2009,7 @@ body {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .item-roi-cost {
@@ -2113,7 +2217,10 @@ body {
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.deals-toggle:active {
+  transform: scale(0.96);
 }
 
 .deals-toggle.active {
@@ -2152,7 +2259,10 @@ body {
   color: var(--text-muted);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.segmented-option:active {
+  transform: scale(0.96);
 }
 .segmented-option:last-child {
   border-right: none;
@@ -2359,6 +2469,7 @@ body {
 .tutorial-title {
   font-size: 1.1rem;
   color: var(--accent);
+  text-wrap: balance;
 }
 
 .tutorial-close {
@@ -3331,12 +3442,14 @@ body {
   font-weight: 800;
   font-size: 1.5rem;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-bids {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-time {
@@ -3349,6 +3462,7 @@ body {
   font-size: 0.85rem;
   color: var(--text);
   white-space: pre-wrap;
+  text-wrap: pretty;
   line-height: 1.6;
   margin-bottom: 20px;
   border-top: 1px solid var(--border);
@@ -3701,6 +3815,7 @@ body {
   font-weight: 700;
   margin: 0 0 10px;
   color: var(--text);
+  text-wrap: balance;
 }
 
 .bid-panel-hint {
@@ -3708,6 +3823,7 @@ body {
   color: var(--text-muted);
   margin: 0 0 10px;
   line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .bid-cta {
@@ -3719,10 +3835,13 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   padding: 10px 20px;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
 }
 .bid-cta:hover {
   background: var(--accent-hover);
+}
+.bid-cta:active {
+  transform: scale(0.96);
 }
 .bid-cta:disabled {
   opacity: 0.5;
@@ -3877,6 +3996,7 @@ body {
   font-size: 0.82rem;
   line-height: 1.5;
   margin: 0 0 12px;
+  text-wrap: pretty;
 }
 
 .resale-gate-cta {
@@ -3906,6 +4026,7 @@ body {
   font-size: 0.9rem;
   letter-spacing: 0;
   margin: 0;
+  text-wrap: balance;
 }
 
 .ebay-comps-all {
@@ -4003,6 +4124,7 @@ body {
   font-size: 0.95rem;
   font-weight: 850;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .ebay-comp-date {
@@ -4018,6 +4140,7 @@ body {
   font-weight: 650;
   line-height: 1.25;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .ebay-comp-meta {
@@ -4026,6 +4149,7 @@ body {
   line-height: 1.25;
   margin-top: 4px;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .ebay-comp-warning {
@@ -4059,12 +4183,14 @@ body {
   font-size: 0.9rem;
   letter-spacing: 0;
   margin: 0;
+  text-wrap: balance;
 }
 .category-sold-median {
   color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .category-sold-meta {
   color: var(--text-muted);
@@ -4090,6 +4216,7 @@ body {
   font-size: 0.9rem;
   letter-spacing: 0;
   margin: 0;
+  text-wrap: balance;
 }
 
 .cannons-comps-median {
@@ -4097,6 +4224,7 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .cannons-comp-list {
@@ -4160,6 +4288,7 @@ a.cannons-comp-card:hover {
   font-size: 0.95rem;
   font-weight: 850;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .cannons-comp-date {
@@ -4175,6 +4304,7 @@ a.cannons-comp-card:hover {
   font-weight: 650;
   line-height: 1.25;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .cannons-comp-meta {
@@ -4183,6 +4313,7 @@ a.cannons-comp-card:hover {
   line-height: 1.25;
   margin-top: 4px;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 /* ROI Calculator */
@@ -4274,11 +4405,13 @@ a.cannons-comp-card:hover {
   color: var(--gold);
   font-size: 1.25rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .roi-result-cost {
   color: var(--text-muted);
   font-size: 1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .roi-footnote {
@@ -4292,27 +4425,18 @@ a.cannons-comp-card:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  min-height: 40px;
+  min-height: 32px;
 }
 .has-filters .has-filter-row:last-child {
   border-bottom: none;
 }
-.has-filter-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
 .has-filter-label {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text);
-}
-.has-filter-sublabel {
-  font-size: 0.72rem;
-  color: var(--text-muted);
 }
 /* Reuse the local-toggle switch styling */
 .has-filters .has-filter-row input[type="checkbox"] {
@@ -4604,7 +4728,7 @@ a.cannons-comp-card:hover {
   color: var(--text-muted);
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
 }
 .deals-hours-pill:hover {
   border-color: var(--accent);
