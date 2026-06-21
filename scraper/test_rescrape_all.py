@@ -6,7 +6,13 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from rescrape_all import finalize_closed_file, manifest_entry_for_file, parse_end_date
+from rescrape_all import (
+    FACEBOOK,
+    finalize_closed_file,
+    manifest_entry_for_file,
+    parse_args,
+    parse_end_date,
+)
 
 
 class ManifestEntryTest(unittest.TestCase):
@@ -207,6 +213,20 @@ class FinalizeClosedFileTest(unittest.TestCase):
                 if line.strip()
             ]
             self.assertEqual(rows[0]["finalBid"], 999.0)
+
+
+class FacebookRunnerTest(unittest.TestCase):
+    def test_source_arg_accepts_facebook(self):
+        args = parse_args(["--source", "facebook"])
+        self.assertEqual(args.source, "facebook")
+
+    def test_facebook_job_shells_scrape_facebook_for_keyword(self):
+        job = FACEBOOK.build({"keyword": "golf", "safe_id": "facebook_golf"})
+
+        self.assertEqual(job.header, "golf")
+        self.assertEqual(job.cmd[-2:], ["--keyword", "golf"])
+        self.assertEqual(job.retry_label, "golf")
+        self.assertEqual(job.fail_id, "facebook_golf")
 
 
 if __name__ == "__main__":

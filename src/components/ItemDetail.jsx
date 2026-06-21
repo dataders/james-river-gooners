@@ -7,6 +7,7 @@ import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
 import { getDisplayEnrichment } from '../utils/enrichment'
 import { buildEbaySoldSearchUrl } from '../utils/ebayComps'
+import { buildFacebookMarketplaceSearchUrl } from '../utils/facebookMarketplace'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
@@ -115,6 +116,8 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const enrichment = getDisplayEnrichment(item)
   const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
   const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
+  const facebookCompsUrl = buildFacebookMarketplaceSearchUrl(item.searchQuery, { sold: true })
+  const isFacebook = item.source === 'facebook'
 
   return (
     <div className="detail-overlay" onClick={onClose}>
@@ -268,7 +271,21 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
                 rel="noopener noreferrer"
                 className="detail-link"
               >
-                {item.detailUrl?.includes('hibid.com') ? 'Open on HiBid' : "Open on Cannon's"}
+                {isFacebook
+                  ? 'Open Facebook listing'
+                  : item.detailUrl?.includes('hibid.com')
+                    ? 'Open on HiBid'
+                    : "Open on Cannon's"}
+              </a>
+            )}
+            {facebookCompsUrl && (
+              <a
+                href={facebookCompsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="detail-link"
+              >
+                Search Facebook comps
               </a>
             )}
             <button className="detail-share" onClick={handleShare} aria-label="Share">

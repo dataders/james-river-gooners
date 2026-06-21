@@ -1087,6 +1087,14 @@ body {
   border-radius: 8px;
   padding: 8px 10px;
 }
+.image-lot-link {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.12s;
+}
+.image-lot-link:hover {
+  border-color: var(--accent);
+}
 .image-lot-thumb {
   width: 52px;
   height: 52px;
@@ -1723,6 +1731,40 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+}
+
+.item-price-row {
+  justify-content: flex-start;
+}
+
+.item-source-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.item-source-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #e7f0ff;
+  color: #174ea6;
+}
+
+.item-source-link {
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.item-source-link:hover {
+  text-decoration: underline;
 }
 
 .item-bid {

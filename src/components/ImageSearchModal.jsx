@@ -120,6 +120,8 @@ export function ImageSearchModal({ onClose, items = [], user, onSearchInGrid, on
     } catch { return '' }
   }
 
+  const facebookComps = result?.facebookComps || []
+
 
   return (
     <div className="image-search-overlay" onClick={onClose}>
@@ -293,6 +295,48 @@ export function ImageSearchModal({ onClose, items = [], user, onSearchInGrid, on
                             </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Facebook sold comps */}
+                {facebookComps.length > 0 && (
+                  <section className="image-search-section">
+                    <h3 className="image-search-section-title">
+                      Sold on Facebook ({facebookComps.length})
+                    </h3>
+                    <div className="image-search-lot-list">
+                      {facebookComps.map(comp => (
+                        <a
+                          key={comp.id}
+                          href={comp.listing_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="image-lot-item image-lot-link"
+                        >
+                          {comp.thumbnail_url && (
+                            <img
+                              src={comp.thumbnail_url}
+                              alt=""
+                              className="image-lot-thumb"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="image-lot-body">
+                            <div className="image-lot-title">{comp.title}</div>
+                            <div className="image-lot-meta">
+                              {(comp.price_label || comp.price_value) && (
+                                <span className="image-lot-sold-price">
+                                  {comp.price_label || formatPrice(comp.price_value)} sold
+                                </span>
+                              )}
+                              {(comp.sold_date || comp.last_seen_at) && (
+                                <span>{formatDate(comp.sold_date || comp.last_seen_at)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </a>
                       ))}
                     </div>
                   </section>

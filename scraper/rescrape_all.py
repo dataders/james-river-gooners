@@ -31,6 +31,7 @@ import pyarrow.parquet as pq
 from dates import parse_auction_datetime_utc
 from discover import discover_current_auction_urls
 from scrape import DATA_DIR, ITEMS_DIR, extract_auction_id, sanitize_auction_id
+from scrape_facebook import discover_facebook_specs
 from scrape_hibid import discover_hibid_specs, extract_catalog_id, hibid_safe_id
 from scrape_rasmus import discover_rasmus_specs, rasmus_safe_id
 
@@ -306,10 +307,22 @@ def _discover_rasmus() -> list[dict]:
         return []
 
 
+def _discover_facebook() -> list[dict]:
+    print("Discovering Facebook Marketplace searches...")
+    try:
+        specs = discover_facebook_specs()
+        print(f"  Found {len(specs)} Facebook Marketplace searches")
+        return specs
+    except Exception as exc:
+        print(f"  Facebook Marketplace discovery failed: {exc}")
+        return []
+
+
 def _candidate_ids_from(
     maxanet_urls: list[str],
     hibid_specs: list[dict],
     rasmus_specs: list[dict] | None = None,
+    facebook_specs: list[dict] | None = None,
 ) -> set[str]:
     ids: set[str] = set()
     for url in maxanet_urls:
@@ -323,6 +336,8 @@ def _candidate_ids_from(
             ids.add(hibid_safe_id(cid))
     for spec in rasmus_specs or []:
         ids.add(rasmus_safe_id(spec["aid"]))
+    for spec in facebook_specs or []:
+        ids.add(spec["safe_id"])
     return ids
 
 
@@ -413,9 +428,19 @@ def _rasmus_job(spec: dict) -> SourceJob:
     )
 
 
+def _facebook_job(spec: dict) -> SourceJob:
+    return SourceJob(
+        header=spec["keyword"],
+        cmd=[sys.executable, "scrape_facebook.py", "--keyword", spec["keyword"]],
+        retry_label=spec["keyword"],
+        fail_id=spec["safe_id"],
+    )
+
+
 MAXANET = SourceRunner("Maxanet", _maxanet_job)
 HIBID = SourceRunner("HiBid", _hibid_job)
 RASMUS = SourceRunner("Rasmus", _rasmus_job)
+FACEBOOK = SourceRunner("Facebook", _facebook_job)
 
 
 def _scrape_source(
@@ -442,7 +467,10 @@ def archive_only() -> None:
     maxanet_urls = _discover_maxanet()
     hibid_specs = _discover_hibid()
     rasmus_specs = _discover_rasmus()
-    candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs, rasmus_specs)
+    facebook_specs = _discover_facebook()
+    candidate_ids = _candidate_ids_from(
+        maxanet_urls, hibid_specs, rasmus_specs, facebook_specs
+    )
     archive_closed_and_stale(candidate_ids)
 
 
@@ -451,7 +479,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--source",
-        choices=["maxanet", "hibid", "rasmus"],
+        choices=["maxanet", "hibid", "rasmus", "facebook"],
         help="Scrape only one source (default: all). Does not archive — run --archive-only afterwards.",
     )
     group.add_argument(
@@ -481,14 +509,19 @@ def main() -> None:
     run_maxanet = args.source in (None, "maxanet")
     run_hibid = args.source in (None, "hibid")
     run_rasmus = args.source in (None, "rasmus")
+    run_facebook = args.source in (None, "facebook")
 
     maxanet_urls = _discover_maxanet() if run_maxanet else []
     print()
     hibid_specs = _discover_hibid() if run_hibid else []
     print()
     rasmus_specs = _discover_rasmus() if run_rasmus else []
+    print()
+    facebook_specs = _discover_facebook() if run_facebook else []
 
-    total = len(maxanet_urls) + len(hibid_specs) + len(rasmus_specs)
+    total = (
+        len(maxanet_urls) + len(hibid_specs) + len(rasmus_specs) + len(facebook_specs)
+    )
     if total == 0:
         print("No auction URLs found")
         sys.exit(0)
@@ -496,7 +529,7 @@ def main() -> None:
     print(
         f"\nRe-scraping {total} auctions "
         f"({len(maxanet_urls)} Maxanet, {len(hibid_specs)} HiBid, "
-        f"{len(rasmus_specs)} Rasmus)..."
+        f"{len(rasmus_specs)} Rasmus, {len(facebook_specs)} Facebook)..."
     )
     failures: list[str] = []
     failures += _scrape_source(MAXANET, maxanet_urls, total, 1)
@@ -504,13 +537,21 @@ def main() -> None:
     failures += _scrape_source(
         RASMUS, rasmus_specs, total, len(maxanet_urls) + len(hibid_specs) + 1
     )
+    failures += _scrape_source(
+        FACEBOOK,
+        facebook_specs,
+        total,
+        len(maxanet_urls) + len(hibid_specs) + len(rasmus_specs) + 1,
+    )
 
     print(f"\n{'=' * 60}")
     print(f"Done: {total - len(failures)}/{total} succeeded")
 
     if args.source is None:
         # Full run: archive stale/closed auctions and update manifests
-        candidate_ids = _candidate_ids_from(maxanet_urls, hibid_specs, rasmus_specs)
+        candidate_ids = _candidate_ids_from(
+            maxanet_urls, hibid_specs, rasmus_specs, facebook_specs
+        )
         archive_closed_and_stale(candidate_ids)
     else:
         # Partial run: just update manifests; archiving deferred to --archive-only

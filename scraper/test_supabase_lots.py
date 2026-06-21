@@ -319,6 +319,41 @@ class SkipUnchangedTest(unittest.TestCase):
         session.get.assert_not_called()
 
 
+class PruneActiveLotsTest(unittest.TestCase):
+    def test_delete_ids_not_seen_filters_safe_id_and_archived_false(self):
+        session = MagicMock()
+        session.delete.return_value = MagicMock(ok=True, status_code=204)
+
+        deleted = supabase_lots.delete_active_lots_not_in_set(
+            "facebook_golf",
+            {"1", "2"},
+            url="https://x.sb.co/",
+            key="k",
+            session=session,
+        )
+
+        self.assertEqual(deleted, 1)
+        args, kwargs = session.delete.call_args
+        self.assertEqual(args[0], "https://x.sb.co/rest/v1/lots")
+        self.assertEqual(kwargs["params"]["auction_safe_id"], "eq.facebook_golf")
+        self.assertEqual(kwargs["params"]["archived"], "eq.false")
+        self.assertEqual(kwargs["params"]["item_id"], "not.in.(1,2)")
+
+    def test_empty_seen_set_is_noop_to_avoid_empty_window(self):
+        session = MagicMock()
+
+        deleted = supabase_lots.delete_active_lots_not_in_set(
+            "facebook_golf",
+            set(),
+            url="https://x.sb.co",
+            key="k",
+            session=session,
+        )
+
+        self.assertEqual(deleted, 0)
+        session.delete.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # archive_lots
 # ---------------------------------------------------------------------------

@@ -54,6 +54,16 @@ def apify_key() -> str | None:
     return os.environ.get("APIFY_API_KEY") or None
 
 
+def apify_token() -> str | None:
+    """Apify token for scraper integrations.
+
+    New integrations use GOONERS_APIFY_TOKEN so their cost can be controlled
+    independently from the legacy eBay fallback, with APIFY_API_KEY as a local
+    compatibility fallback.
+    """
+    return os.environ.get("GOONERS_APIFY_TOKEN") or apify_key()
+
+
 def motherduck_token() -> str | None:
     """MotherDuck read/write PAT for the optional listing_snapshots warehouse."""
     return os.environ.get("MOTHERDUCK_TOKEN") or None

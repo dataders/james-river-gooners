@@ -4,6 +4,12 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-21 — Facebook Marketplace comps
+
+- 🛒 **Facebook listings in the grid** — Facebook Marketplace listings now appear in the grid alongside auction lots, with a clear marketplace badge and direct listing links.
+- 📷 **Photo search checks Facebook sold comps** — photo search now checks a sold Facebook Marketplace comp corpus, so identified items can show recent sold examples from Facebook as another resale signal.
+- 🔎 **Search Facebook comps from details** — lot details now include a "Search Facebook comps" link when the item has an identified resale search phrase.
+
 ## 2026-06-21 — Never show me this: permanently hide categories
 
 - 🔒 **Permanently hide a category** — hide a category in Filters and a new “never show this” option appears — pick it and that category stays hidden on every visit, not just this one. Review or undo your always-hidden categories anytime from your account menu. "Clear filters" keeps your permanent choices in place.
