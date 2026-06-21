@@ -12,9 +12,10 @@ import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
+import { ogWorkerUrl } from '../lib/supabase'
 
 const SPA_ORIGIN = 'https://gooners.anders.omg.lol'
-const OG_WORKER_URL = import.meta.env.VITE_OG_WORKER_URL ?? null
+const OG_WORKER_URL = ogWorkerUrl
 
 function isHiBidUrl(value) {
   try {
