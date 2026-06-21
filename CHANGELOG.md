@@ -4,6 +4,11 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-21 — Never show me this: permanently hide categories
+
+- 🔒 **Permanently hide a category** — hide a category in Filters and a new “never show this” option appears — pick it and that category stays hidden on every visit, not just this one. Review or undo your always-hidden categories anytime from your account menu. "Clear filters" keeps your permanent choices in place.
+- 🎯 **Hidden categories sharpen For You** — your always-hidden categories also sharpen the "For You" ranking — the types of lots you've permanently hidden pull your taste profile away from similar items, so recommendations get more relevant automatically.
+
 ## 2026-06-19 — Swipe deck deals your For You picks first
 
 - 🃏 **Swipe in For You order** — the Swipe deck now deals cards in your For You order — the lots it thinks you'll love come up first, instead of whatever order you happened to be browsing in.
