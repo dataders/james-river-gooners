@@ -7,13 +7,8 @@
 //   ANTHROPIC_API_KEY  — set in Supabase Edge Function secrets
 //   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — auto-injected by Supabase
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.39'
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { requireUser, jsonResponse, CORS_HEADERS } from '../_shared/auth.ts'
 
 const VALID_MIME_TYPES = new Set([
   'image/jpeg',
@@ -27,53 +22,25 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: CORS_HEADERS })
   }
 
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
-  }
-
-  // Verify JWT belongs to an authenticated user
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
-  const token = authHeader.replace('Bearer ', '')
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
-  }
+  const auth = await requireUser(req)
+  if ('response' in auth && auth.response) return auth.response
 
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Image search is not configured (missing API key)' }), {
-      status: 503,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ error: 'Image search is not configured (missing API key)' }, 503)
   }
 
   let body: { imageBase64?: string; mimeType?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
 
   const { imageBase64, mimeType = 'image/jpeg' } = body
 
   if (!imageBase64) {
-    return new Response(JSON.stringify({ error: 'imageBase64 is required' }), {
-      status: 400,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ error: 'imageBase64 is required' }, 400)
   }
 
   const safeMime = VALID_MIME_TYPES.has(mimeType) ? mimeType : 'image/jpeg'
@@ -148,13 +115,8 @@ Deno.serve(async (req) => {
 
   const toolUse = message.content.find(block => block.type === 'tool_use')
   if (!toolUse || toolUse.type !== 'tool_use') {
-    return new Response(JSON.stringify({ error: 'Failed to identify item' }), {
-      status: 500,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ error: 'Failed to identify item' }, 500)
   }
 
-  return new Response(JSON.stringify(toolUse.input), {
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-  })
+  return jsonResponse(toolUse.input)
 })
