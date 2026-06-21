@@ -235,7 +235,7 @@ body {
   color: var(--text-muted);
   font-size: 0.82rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, transform 0.1s;
   white-space: nowrap;
   flex-shrink: 0;
   min-height: 36px;
@@ -243,6 +243,9 @@ body {
 .filter-toggle-btn:hover {
   border-color: var(--accent);
   color: var(--text);
+}
+.filter-toggle-btn:active {
+  transform: scale(0.96);
 }
 .filter-toggle-btn--open {
   border-color: var(--gold);
@@ -326,11 +329,14 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s, transform 0.1s;
 }
 .filter-panel-close:hover {
   color: var(--text);
   background: var(--chip-bg);
+}
+.filter-panel-close:active {
+  transform: scale(0.96);
 }
 
 /* Accordion sections inside the filter panel */
@@ -350,6 +356,10 @@ body {
   color: var(--text);
   cursor: pointer;
   text-align: left;
+  transition: opacity 0.1s;
+}
+.fp-accordion-header:active {
+  opacity: 0.7;
 }
 .fp-accordion-title {
   font-size: 0.72rem;
@@ -357,13 +367,24 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--gold);
+  text-wrap: balance;
 }
 .fp-accordion-arrow {
   font-size: 0.7rem;
   color: var(--text-muted);
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.fp-accordion-header[aria-expanded="true"] .fp-accordion-arrow {
+  transform: rotate(90deg);
 }
 .fp-accordion-body {
   padding-bottom: 10px;
+  animation: accordion-open 0.18s ease-out;
+}
+@keyframes accordion-open {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* View section controls inside the accordion */
@@ -483,12 +504,16 @@ body {
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
 }
 .lf-set-btn:hover:not(:disabled),
 .lf-geo-btn:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+}
+.lf-set-btn:active:not(:disabled),
+.lf-geo-btn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 .lf-set-btn:disabled,
 .lf-geo-btn:disabled {
@@ -687,6 +712,7 @@ body {
   font-weight: 700;
   color: var(--gold);
   font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .dual-slider {
@@ -2133,7 +2159,10 @@ body {
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.deals-toggle:active {
+  transform: scale(0.96);
 }
 
 .deals-toggle.active {
@@ -2172,7 +2201,10 @@ body {
   color: var(--text-muted);
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.segmented-option:active {
+  transform: scale(0.96);
 }
 .segmented-option:last-child {
   border-right: none;

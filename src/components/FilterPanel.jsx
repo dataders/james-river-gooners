@@ -17,7 +17,7 @@ function Accordion({ title, children, defaultOpen = false }) {
         aria-expanded={open}
       >
         <span className="fp-accordion-title">{title}</span>
-        <span className="fp-accordion-arrow" aria-hidden="true">{open ? '▾' : '▸'}</span>
+        <span className="fp-accordion-arrow" aria-hidden="true">▸</span>
       </button>
       {open && <div className="fp-accordion-body">{children}</div>}
     </div>
