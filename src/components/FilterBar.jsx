@@ -16,7 +16,14 @@ function GroupSection({
   // and renders with a lock + restore instead of the temporary show/hide pair.
   const baselineHidden = baselineExcludedGroups.includes(group.group)
   const shown = group.rawCategories.filter(c => !excludedCategories.includes(c.name))
-  const hidden = group.rawCategories.filter(c => excludedCategories.includes(c.name))
+  // Hidden chips render after shown ones; within hidden, the permanently
+  // "always hidden" (baseline-locked) chips sink to the very bottom.
+  const hidden = group.rawCategories
+    .filter(c => excludedCategories.includes(c.name))
+    .sort((a, b) =>
+      (baselineExcludedCategories.includes(a.name) ? 1 : 0) -
+      (baselineExcludedCategories.includes(b.name) ? 1 : 0)
+    )
   const isHidden = groupHidden || shown.length === 0
   const shownCount = groupHidden ? 0 : shown.reduce((s, c) => s + c.count, 0)
   const rawNames = group.rawCategories.map(c => c.name)
@@ -136,6 +143,13 @@ export function FilterBar({
   // Isolate one category — exclude every other category across all groups.
   const handleShowOnly = (name) => onShowOnly(name, groupedCategories)
 
+  // Permanently "always hidden" groups sink to the bottom of the list (stable
+  // sort keeps the original order among non-hidden and among hidden groups).
+  const orderedGroups = [...groupedCategories].sort((a, b) =>
+    (baselineExcludedGroups.includes(a.group) ? 1 : 0) -
+    (baselineExcludedGroups.includes(b.group) ? 1 : 0)
+  )
+
   const [open, setOpen] = useState(false)
 
   return (
@@ -155,7 +169,7 @@ export function FilterBar({
       </div>
       {open && (
         <div className="filter-bar-body">
-          {groupedCategories.map(group => (
+          {orderedGroups.map(group => (
             <GroupSection
               key={group.group}
               group={group}
