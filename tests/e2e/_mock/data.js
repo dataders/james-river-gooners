@@ -44,6 +44,10 @@ function lot(auction, n, over = {}) {
     detail_url: `https://example.test/${auction.safe_id}/${n}`,
     auction_id: auction.auction_id,
     auction_title: auction.title,
+    auction_city: auction.city,
+    auction_state: auction.state,
+    auction_latitude: auction.latitude,
+    auction_longitude: auction.longitude,
     auction_end_date: end,
     scraped_at: SCRAPED,
     source: auction.source,
@@ -53,12 +57,12 @@ function lot(auction, n, over = {}) {
 
 // --- Auctions -------------------------------------------------------------
 
-const RICHMOND = { safe_id: 'richmond-estate', auction_id: 'A1', title: 'Richmond Estate Auction', source: 'cannons' }
-const HENRICO = { safe_id: 'henrico-tools', auction_id: 'A2', title: 'Henrico Tool & Equipment Sale', source: 'hibid' }
+const RICHMOND = { safe_id: 'richmond-estate', auction_id: 'A1', title: 'Richmond Estate Auction', source: 'cannons', city: 'Richmond', state: 'VA', latitude: 37.5407, longitude: -77.4360 }
+const HENRICO = { safe_id: 'henrico-tools', auction_id: 'A2', title: 'Henrico Tool & Equipment Sale', source: 'hibid', city: 'Henrico', state: 'VA', latitude: 37.5059, longitude: -77.3324 }
 // Lynchburg is a FAR_KEYWORD (see src/utils/locality.js) → this auction is
 // NON-local, so toggling "Richmond area only" must drop its lots from the grid.
-const LYNCHBURG = { safe_id: 'lynchburg-warehouse', auction_id: 'A3', title: 'Lynchburg Warehouse Liquidation', source: 'rasmus' }
-const ARCHIVED = { safe_id: 'richmond-closed', auction_id: 'A4', title: 'Richmond Closed Estate Sale', source: 'cannons' }
+const LYNCHBURG = { safe_id: 'lynchburg-warehouse', auction_id: 'A3', title: 'Lynchburg Warehouse Liquidation', source: 'rasmus', city: 'Lynchburg', state: 'VA', latitude: 37.4138, longitude: -79.1422 }
+const ARCHIVED = { safe_id: 'richmond-closed', auction_id: 'A4', title: 'Richmond Closed Estate Sale', source: 'cannons', city: 'Richmond', state: 'VA', latitude: 37.5407, longitude: -77.4360 }
 
 // --- Active lots ----------------------------------------------------------
 
