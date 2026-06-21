@@ -67,7 +67,7 @@ class ReuseRowsTest(unittest.TestCase):
             matches, "auction-1", "lot-9", "2026-06-14T00:00:00+00:00"
         )
         self.assertEqual(len(rows), 3)  # capped at _KEEP
-        self.assertTrue(all(r["source_query"] == "visual" for r in rows))
+        self.assertTrue(all(r["source_query"] == "hybrid" for r in rows))
         self.assertTrue(
             all(
                 r["auction_safe_id"] == "auction-1" and r["item_id"] == "lot-9"

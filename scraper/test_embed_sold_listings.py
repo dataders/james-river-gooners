@@ -72,7 +72,7 @@ class RerankRowsTest(unittest.TestCase):
         base.update(over)
         return base
 
-    def test_shapes_visual_comp_rows(self):
+    def test_shapes_hybrid_comp_rows(self):
         rows = esl.rerank_rows_for_auction(
             [self._match()], "auction-1", "2026-06-14T00:00:00+00:00"
         )
@@ -80,7 +80,7 @@ class RerankRowsTest(unittest.TestCase):
         row = rows[0]
         self.assertEqual(row["auction_safe_id"], "auction-1")
         self.assertEqual(row["item_id"], "lot-1")
-        self.assertEqual(row["source_query"], "visual")
+        self.assertEqual(row["source_query"], "hybrid")
         self.assertEqual(row["price_value"], 250.0)
         self.assertEqual(row["item_web_url"], "https://www.ebay.com/itm/111222333444")
 

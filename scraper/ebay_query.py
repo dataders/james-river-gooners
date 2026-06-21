@@ -17,7 +17,7 @@ EBAY_SEARCH_URL = "https://www.ebay.com/sch/i.html"
 
 # Always-safe /v1/scrape constraints applied to EVERY funnel tier: US
 # marketplace, US-only sellers, most-recently-sold first, a sub-$5 junk floor,
-# and a wide candidate set (for a future visual re-rank). These never reduce
+# and a wide candidate set (for a future hybrid re-rank). These never reduce
 # recall in a way that would empty a tier, so they ride along on broad/category
 # too. (minPrice/count are env-overridable at call time; see the builder.)
 _EBAY_SORT_ORDER = "endedRecently"

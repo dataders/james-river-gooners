@@ -457,11 +457,17 @@ class PromptShapeTests(unittest.TestCase):
         )
         self.assertEqual(item_images({"images": "not-json"}), [])
 
-    def test_build_content_includes_image_block_when_url_present(self):
-        content = build_content({"title": "Drill", "images": ["https://img/1.jpg"]})
+    def test_build_content_inlines_image_as_base64_when_url_present(self):
+        # The sync path downloads + inlines images as base64 (not image-by-URL),
+        # so sources Anthropic can't fetch (e.g. HiBid) still get their photos.
+        with mock.patch.object(
+            enrich, "fetch_image_base64", return_value=("image/jpeg", "ZGF0YQ==")
+        ):
+            content = build_content({"title": "Drill", "images": ["https://img/1.jpg"]})
         self.assertEqual(content[0]["type"], "image")
         self.assertEqual(
-            content[0]["source"], {"type": "url", "url": "https://img/1.jpg"}
+            content[0]["source"],
+            {"type": "base64", "media_type": "image/jpeg", "data": "ZGF0YQ=="},
         )
         self.assertEqual(content[-1]["type"], "text")
 
@@ -470,10 +476,21 @@ class PromptShapeTests(unittest.TestCase):
         self.assertEqual(len(content), 1)
         self.assertEqual(content[0]["type"], "text")
 
+    def test_build_content_is_text_only_when_image_unfetchable(self):
+        # fetch_image_base64 returns None for an unreachable image host — the lot
+        # degrades to text-only rather than dropping enrichment entirely.
+        with mock.patch.object(enrich, "fetch_image_base64", return_value=None):
+            content = build_content({"title": "Drill", "images": ["https://img/1.jpg"]})
+        self.assertEqual(len(content), 1)
+        self.assertEqual(content[0]["type"], "text")
+
     def test_build_content_includes_up_to_max_images(self):
         # #152: feed the first few photos, not just one (capped at MAX_IMAGES).
         item = {"title": "Drill", "images": [f"https://img/{n}.jpg" for n in range(5)]}
-        content = build_content(item)
+        with mock.patch.object(
+            enrich, "fetch_image_base64", return_value=("image/jpeg", "ZGF0YQ==")
+        ):
+            content = build_content(item)
         image_blocks = [b for b in content if b["type"] == "image"]
         self.assertEqual(len(image_blocks), 3)  # default GOONERS_MAX_IMAGES
         self.assertEqual(content[-1]["type"], "text")

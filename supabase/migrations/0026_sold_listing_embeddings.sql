@@ -7,7 +7,7 @@
 -- mean(vision(thumbnail))). Because it lives in the same space as
 -- `nomic_embeddings`, a lot's vector and a listing's vector compare
 -- apples-to-apples — that's what `match_sold_listings` (0026) exploits to
--- re-rank a lot's candidate comps by visual+text similarity ("right words,
+-- re-rank a lot's candidate comps by hybrid text+image similarity ("right words,
 -- wrong object").
 
 create extension if not exists vector;

@@ -16,10 +16,10 @@
     { "id": "sewing-machine", "query": "Singer sewing machine", "regime": "specific" },
     { "id": "diamond-ring", "query": "diamond engagement ring", "regime": "specific" },
     { "id": "pokemon-cards", "query": "Pokemon trading cards", "regime": "specific" },
-    { "id": "power-drill", "query": "cordless power drill", "regime": "visual" },
-    { "id": "table-lamp", "query": "table lamp", "regime": "visual" },
-    { "id": "dining-chairs", "query": "set of dining chairs", "regime": "visual" },
-    { "id": "wristwatch", "query": "men's wristwatch", "regime": "visual" },
-    { "id": "glass-vase", "query": "decorative glass vase", "regime": "visual" }
+    { "id": "power-drill", "query": "cordless power drill", "regime": "hybrid" },
+    { "id": "table-lamp", "query": "table lamp", "regime": "hybrid" },
+    { "id": "dining-chairs", "query": "set of dining chairs", "regime": "hybrid" },
+    { "id": "wristwatch", "query": "men's wristwatch", "regime": "hybrid" },
+    { "id": "glass-vase", "query": "decorative glass vase", "regime": "hybrid" }
   ]
 }

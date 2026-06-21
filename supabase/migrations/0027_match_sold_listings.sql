@@ -1,7 +1,7 @@
--- Visual re-rank of eBay comps over the sold-listings corpus (RFC #290, inc 2).
+-- Hybrid re-rank of eBay comps over the sold-listings corpus (RFC #290, inc 2).
 --
 -- For every embedded active item in `active_auction`, return its top-K most
--- visually+textually similar sold listings (cosine over the shared 768-dim Nomic
+-- hybrid-similar sold listings (cosine over the shared 768-dim Nomic
 -- space: the lot's `nomic_embeddings` vector vs each listing's
 -- `sold_listing_embeddings` vector), joined to `sold_listings` for the price +
 -- display fields. This is the "right words, wrong object" filter: keyword search

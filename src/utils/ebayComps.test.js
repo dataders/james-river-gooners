@@ -256,32 +256,32 @@ test('groupSupabaseComps skips rows without an item id and handles empties', () 
   assert.deepEqual(groupSupabaseComps([{ title: 'orphan' }]), {})
 })
 
-test('groupSupabaseComps puts visual comps before keyword comps', () => {
+test('groupSupabaseComps puts hybrid comps before keyword comps', () => {
   const rows = [
     { item_id: '1', ebay_item_id: 'kw1', title: 'Keyword match 1', price_value: 10, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/111', source_query: 'specific' },
     { item_id: '1', ebay_item_id: 'kw2', title: 'Keyword match 2', price_value: 20, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/222', source_query: 'broad' },
-    { item_id: '1', ebay_item_id: 'vis1', title: 'Visual match 1', price_value: 30, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/333', source_query: 'visual' },
-    { item_id: '1', ebay_item_id: 'vis2', title: 'Visual match 2', price_value: 40, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/444', source_query: 'visual' },
+    { item_id: '1', ebay_item_id: 'hyb1', title: 'Hybrid match 1', price_value: 30, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/333', source_query: 'hybrid' },
+    { item_id: '1', ebay_item_id: 'hyb2', title: 'Hybrid match 2', price_value: 40, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/444', source_query: 'hybrid' },
   ]
   const { matches } = groupSupabaseComps(rows)['1']
   assert.equal(matches.length, 4)
-  assert.equal(matches[0].sourceQuery, 'visual')
-  assert.equal(matches[1].sourceQuery, 'visual')
+  assert.equal(matches[0].sourceQuery, 'hybrid')
+  assert.equal(matches[1].sourceQuery, 'hybrid')
   assert.equal(matches[2].sourceQuery, 'specific')
   assert.equal(matches[3].sourceQuery, 'broad')
 })
 
-test('groupSupabaseComps deduplicates by ebayItemId keeping the visual entry', () => {
-  // Same eBay listing appears as both a keyword match and a visual match.
-  // The visual one should be kept; the keyword duplicate dropped.
+test('groupSupabaseComps deduplicates by ebayItemId keeping the hybrid entry', () => {
+  // Same eBay listing appears as both a keyword match and a hybrid match.
+  // The hybrid one should be kept; the keyword duplicate dropped.
   const rows = [
     { item_id: '1', ebay_item_id: 'shared', title: 'Keyword version', price_value: 10, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/111', source_query: 'specific' },
-    { item_id: '1', ebay_item_id: 'shared', title: 'Visual version', price_value: 10, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/111', source_query: 'visual' },
+    { item_id: '1', ebay_item_id: 'shared', title: 'Hybrid version', price_value: 10, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/111', source_query: 'hybrid' },
     { item_id: '1', ebay_item_id: 'unique', title: 'Unique keyword', price_value: 20, price_currency: 'USD', item_web_url: 'https://www.ebay.com/itm/222', source_query: 'specific' },
   ]
   const { matches } = groupSupabaseComps(rows)['1']
   assert.equal(matches.length, 2)
   assert.equal(matches[0].ebayItemId, 'shared')
-  assert.equal(matches[0].sourceQuery, 'visual')
+  assert.equal(matches[0].sourceQuery, 'hybrid')
   assert.equal(matches[1].ebayItemId, 'unique')
 })

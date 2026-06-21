@@ -525,14 +525,21 @@ def enrichment_fingerprint(item: dict) -> str:
 
 
 def build_content(item: dict) -> list:
-    """The user-turn content: the first few photos (http(s) URLs) plus the lot's
-    identifying text."""
-    content = [
-        {"type": "image", "source": {"type": "url", "url": url}}
+    """The user-turn content: the first few photos plus the lot's identifying text.
+
+    Photos are downloaded and inlined as base64 (like the batch path) rather than
+    sent as image URLs. Anthropic's URL fetcher can't reach some sources' image
+    hosts — HiBid returns ``400 'Unable to download the file'`` for every lot —
+    which silently dropped images from those lots' enrichment. Downloading locally
+    (our scraper session can fetch them) and inlining sidesteps that entirely;
+    a lot whose images can't be fetched degrades to text-only via
+    ``build_content_inline``."""
+    images = [
+        result
         for url in item_image_urls(item)
+        if (result := fetch_image_base64(url)) is not None
     ]
-    content.append({"type": "text", "text": item_prompt_text(item)})
-    return content
+    return build_content_inline(item, images)
 
 
 def fetch_image_base64(url: str) -> tuple[str, str] | None:
@@ -576,8 +583,9 @@ def build_content_inline(item: dict, images: list[tuple[str, str]]) -> list:
 
 def build_request_params(item: dict, content: list | None = None) -> dict:
     """The Messages API params for one lot. ``content`` defaults to the
-    image-by-URL content (synchronous path); the batch path passes inlined-image
-    content. Everything else is identical so both transports score the same."""
+    synchronous-path content (``build_content``, which now also inlines images as
+    base64); the batch path passes its own pre-fetched inlined-image content.
+    Everything else is identical so both transports score the same."""
     return {
         "model": _EnrichmentSettings().model,
         # Room for the v4 fields (arrays + url); output tokens are tiny regardless.

@@ -5,7 +5,7 @@
 #     "requests",
 # ]
 # ///
-"""Batch Nomic embedding + visual re-rank of the sold-listings corpus.
+"""Batch Nomic embedding + hybrid re-rank of the sold-listings corpus.
 
 SoldComps Phase 2 / RFC #290, increment 2. Two passes, both off the hourly hot
 path (the two ~550 MB Nomic models load here, not in the scrape):
@@ -21,8 +21,8 @@ path (the two ~550 MB Nomic models load here, not in the scrape):
 
   2. **rerank** — for each active auction, call the ``match_sold_listings`` RPC
      (the lot's own ``nomic_embeddings`` vector vs each listing's, cosine) and
-     write the visually-best K back into ``ebay_comp_snapshots`` tagged
-     ``source_query='visual'`` (D2 option a: the ``public_auction_comps`` view and
+     write the top-K hybrid matches back into ``ebay_comp_snapshots`` tagged
+     ``source_query='hybrid'`` (D2 option a: the ``public_auction_comps`` view and
      the UI are unchanged; the better comps simply appear).
 
 Gated on Supabase being configured; a true no-op otherwise. Needs the same deps
@@ -48,8 +48,8 @@ EMBEDDING_TABLE = "sold_listing_embeddings"
 CORPUS_TABLE = "sold_listings"
 READ_PAGE_SIZE = 1000
 
-# Visual-match thresholds for the re-rank writeback. match_count mirrors the
-# curated comps' top-3; min_sim is the quality floor for a visually-confident comp.
+# Hybrid-match thresholds for the re-rank writeback. match_count mirrors the
+# curated comps' top-3; min_sim is the quality floor for a hybrid-confident comp.
 # Internal tuning parameters — adjust in code with tests, not at runtime.
 _RERANK_MATCH_COUNT = 3
 _RERANK_MIN_SIM = 0.80
@@ -66,7 +66,7 @@ def listing_to_item(row: dict) -> dict:
     category breadcrumbs as noise.
 
     Image: prefers the higher-resolution ``full_res_thumbnail_url`` when
-    available so the visual vector captures more detail.
+    available so the hybrid embedding captures more detail.
     """
     description = (row.get("condition") or "").strip()
     image = row.get("full_res_thumbnail_url") or row.get("thumbnail_url") or ""
@@ -327,12 +327,12 @@ def rerank_rows_for_auction(
 ) -> list[dict]:
     """Shape ``match_sold_listings`` RPC rows into ebay_comp_snapshots rows.
 
-    Tagged ``source_query='visual'`` so they slot into the existing
-    public_auction_comps view as a distinct, visually-ranked comp set. The
+    Tagged ``source_query='hybrid'`` so they slot into the existing
+    public_auction_comps view as a distinct, hybrid-ranked comp set. The
     similarity is bucketed into the text match_confidence the UI already renders.
 
     skip_item_ids: lots to exclude — those where keyword comps exist AND enrichment
-    identified a brand/artist (keyword pipeline owns those; visual is redundant).
+    identified a brand/artist (keyword pipeline owns those; the hybrid path is redundant).
     """
     rows = []
     for match in matches or []:
@@ -358,7 +358,7 @@ def rerank_rows_for_auction(
                 "thumbnail_url": match.get("thumbnail_url"),
                 "item_web_url": match.get("item_web_url"),
                 "condition": match.get("condition"),
-                "source_query": "visual",
+                "source_query": "hybrid",
                 "match_confidence": "high" if sim >= _HIGH_SIM else "medium",
             }
         )
@@ -400,7 +400,7 @@ def rerank_auction(
 
 
 def rerank_all_active(session=None) -> int:
-    """Re-rank + write visual comps for every active auction. Returns rows written."""
+    """Re-rank + write hybrid comps for every active auction. Returns rows written."""
     url, key = resolve_credentials()
     if not url or not key:
         print("[sold-rerank] Supabase unconfigured — skipping")
@@ -418,7 +418,7 @@ def rerank_all_active(session=None) -> int:
     skipped_total = 0
     for safe_id in safe_ids:
         try:
-            # Mixture-of-experts gate: skip visual for lots where the keyword
+            # Mixture-of-experts gate: skip hybrid for lots where the keyword
             # pipeline already found something AND enrichment identified a
             # brand/artist (those lots get better comps from exact-phrase search).
             kw_ids = _keyword_item_ids(session, url, key, safe_id)
@@ -438,7 +438,7 @@ def rerank_all_active(session=None) -> int:
         except RuntimeError as exc:
             print(f"[sold-rerank] {safe_id}: {exc}")
     print(
-        f"[sold-rerank] wrote {total} visual comp row(s) across {len(safe_ids)} auction(s)"
+        f"[sold-rerank] wrote {total} hybrid comp row(s) across {len(safe_ids)} auction(s)"
         + (
             f" (skipped {skipped_total} enriched lots with keyword comps)"
             if skipped_total
@@ -450,13 +450,13 @@ def rerank_all_active(session=None) -> int:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Embed + visually re-rank the sold-listings corpus"
+        description="Embed + hybrid re-rank the sold-listings corpus"
     )
     parser.add_argument(
         "--step",
         choices=["embed", "rerank", "all"],
         default="all",
-        help="embed = generate listing embeddings; rerank = write visual comps; all = both (default).",
+        help="embed = generate listing embeddings; rerank = write hybrid comps; all = both (default).",
     )
     parser.add_argument(
         "--item-ids",

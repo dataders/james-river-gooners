@@ -266,7 +266,7 @@ funnel for graceful degradation:
 - **Always-safe (every tier):** US marketplace (`ebaySite=ebay.com`), US-only
   sellers (`itemLocation=domestic`), most-recently-sold first
   (`sortOrder=endedRecently`), a sub-$5 junk floor (`minPrice`, default 5), and a
-  wide candidate set (`count`, default 40, for a future visual re-rank). These
+  wide candidate set (`count`, default 40, for a future hybrid re-rank). These
   never empty a tier, so they apply uniformly. Both numeric defaults are
   env-overridable (`GOONERS_EBAY_COMPS_MIN_PRICE`, `GOONERS_EBAY_COMPS_COUNT`).
 - **Precise-only (`specific` tier alone):** `categoryId` (from
@@ -276,8 +276,8 @@ funnel for graceful degradation:
   specific query returns nothing, the loop already falls through to broad/category,
   which carry only the safe constraints — degradation for free, no new retry logic.
 
-**Phase 2 (planned):** persist a raw sold-listings corpus, batch-Nomic-visual
-re-rank candidates against each lot's photos, and reuse that corpus
+**Phase 2 (planned):** persist a raw sold-listings corpus, batch-Nomic hybrid
+re-rank of candidates against each lot's embeddings, and reuse that corpus
 corpus-first to amortize the metered API spend across runs.
 
 The same call site emits a `soldcomps_api_request` PostHog event per provider

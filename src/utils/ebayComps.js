@@ -229,14 +229,14 @@ export function groupSupabaseComps(rows) {
     }
     entry.matches.push(match)
   }
-  // Visual (embedding-ranked) comps are higher quality than keyword matches.
+  // Hybrid (embedding-ranked) comps are higher quality than keyword matches.
   // Sort them first so EbayComps always shows the embedding top-K when available,
-  // falling back to keyword comps only when no visual comps exist yet. Then
+  // falling back to keyword comps only when no hybrid comps exist yet. Then
   // deduplicate by eBay listing ID so the same listing doesn't appear twice when
-  // it surfaces in both the keyword and visual result sets.
+  // it surfaces in both the keyword and hybrid result sets.
   for (const entry of Object.values(items)) {
     entry.matches.sort((a, b) =>
-      (a.sourceQuery === 'visual' ? 0 : 1) - (b.sourceQuery === 'visual' ? 0 : 1)
+      (a.sourceQuery === 'hybrid' ? 0 : 1) - (b.sourceQuery === 'hybrid' ? 0 : 1)
     )
     const seen = new Set()
     entry.matches = entry.matches.filter(m => {

@@ -63,17 +63,17 @@ jobs:
       GOONERS_SCRAPE_DRY_RUN: ${{ inputs.dry_run }}
       GOONERS_EBAY_COMPS_LIMIT: ${{ inputs.comps_limit || '2000' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
 
       - name: Cache HuggingFace models (Nomic)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/huggingface
           key: huggingface-nomic-embed-v1.5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
 
@@ -95,11 +95,13 @@ jobs:
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
               --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
+              --with 'pydantic-settings>=2,<3' \
               python scrape.py "${GOONERS_SCRAPE_AUCTION_URL}"
           else
             echo "Re-scraping all Cannon's auctions..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
               --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
+              --with 'pydantic-settings>=2,<3' \
               python rescrape_all.py --source maxanet
           fi
 
@@ -118,6 +120,7 @@ jobs:
           echo "Re-scraping HiBid auctions..."
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
             --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
+            --with 'pydantic-settings>=2,<3' \
             python rescrape_all.py --source hibid
 
       - name: Archive closed auctions and rebuild manifests
@@ -162,6 +165,7 @@ jobs:
           if [ "${GOONERS_SCRAPE_DRY_RUN}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0
           else
             # Backfill mode: spend only on items without comps yet, soonest-ending
@@ -170,6 +174,7 @@ jobs:
             # draws from the same pool, derived from the read model itself, so
             # the pipeline never exceeds the SoldComps quota.
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' --with posthog \
+              --with 'pydantic-settings>=2,<3' \
               python ebay_comps.py fetch-direct \
                 --skip-attempted \
                 --queries-per-item 2 \

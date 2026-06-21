@@ -46,8 +46,8 @@ jobs:
       POSTHOG_PERSONAL_KEY: ${{ secrets.POSTHOG_PERSONAL_KEY }}
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
 
       - id: guard
         run: |
