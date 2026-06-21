@@ -2873,6 +2873,19 @@ body {
 .carousel-dot.active {
   background: #fff;
 }
+.carousel-hint {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 /* Card-level image carousel — arrows (desktop hover) + dots (mobile swipe) */
 .card-carousel-btn {

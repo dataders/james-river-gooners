@@ -260,5 +260,71 @@ class SecondPassRecoveryTest(unittest.TestCase):
             )
 
 
+class HiBidPathDisambiguationTest(unittest.TestCase):
+    """Verify that full breadcrumb paths resolve correctly for HiBid.
+
+    The scraper now emits raw_cat as "Parent > Leaf" (e.g. "Coins & Currency >
+    US") instead of just the leaf.  The resolver tries the full path first, then
+    falls back to the leaf alone for backward-compatible leaf-only entries.
+    """
+
+    def test_coins_currency_us_path_resolves(self):
+        # Full path -> path-specific entry -> Coins & Currency
+        self.assertEqual(
+            normalize_category("Coins & Currency > US", source="hibid"),
+            "Coins & Currency",
+        )
+
+    def test_coins_currency_international_path_resolves(self):
+        self.assertEqual(
+            normalize_category("Coins & Currency > International", source="hibid"),
+            "Coins & Currency",
+        )
+
+    def test_coins_currency_canada_path_resolves(self):
+        self.assertEqual(
+            normalize_category("Coins & Currency > Canada", source="hibid"),
+            "Coins & Currency",
+        )
+
+    def test_coins_currency_world_path_resolves(self):
+        self.assertEqual(
+            normalize_category("Coins & Currency > World", source="hibid"),
+            "Coins & Currency",
+        )
+
+    def test_leaf_only_half_dollars_still_resolves(self):
+        # Legacy leaf-only entries still resolve via the leaf fallback.
+        self.assertEqual(
+            normalize_category("Half Dollars", source="hibid"),
+            "Coins & Currency",
+        )
+
+    def test_path_leaf_fallback_for_denomination(self):
+        # Full path whose leaf is a known denomination -> leaf fallback works.
+        self.assertEqual(
+            normalize_category("Coins & Currency > Half Dollars", source="hibid"),
+            "Coins & Currency",
+        )
+
+    def test_bare_us_without_path_falls_through(self):
+        # Bare "US" (no path context) is now __unknown__ -> falls to inference/Other.
+        # Without any keyword hint in description it becomes Other.
+        result = normalize_category("US", "", source="hibid")
+        # Must NOT be Coins & Currency — it's ambiguous without path context.
+        self.assertNotEqual(result, "Coins & Currency")
+
+    def test_sports_cards_path_resolves_via_leaf(self):
+        # A path whose leaf is a known trading-card entry resolves correctly.
+        # "Trading Cards" subcategory rolls up to the "Collectibles" group.
+        self.assertEqual(
+            normalize_category(
+                "Sports Cards & Memorabilia > Baseball Trading Cards",
+                source="hibid",
+            ),
+            "Collectibles",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
