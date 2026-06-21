@@ -102,11 +102,22 @@ but wrong for inline promotion: a user who has hidden several categories this
 session and then promotes one would lose the other session-only hides. The new
 `addToBaseline` must **union** the item into the baseline while leaving the
 session `excluded*` as-is (the item is already in it — that's why the promote
-affordance was visible). Restoring removes the item from the baseline; whether it
-also un-hides it from the current session is a UX decision to settle in the plan
-(recommended: restore removes from baseline only, matching "restore = stop hiding
-it by default", and the existing `show`/`restore` row affordance handles the
-session).
+affordance was visible).
+
+Two details the plan must settle explicitly so the two surfaces behave
+identically:
+
+- **Restore semantics (decision required).** Recommended: `removeFromBaseline`
+  removes the item from the baseline **and** un-hides it from the current session
+  (so "restore" = "show it again now and stop hiding it by default"), since a 🔒
+  always-hidden row is, by definition, also currently hidden. Pick one behavior
+  and apply it the same way from both the inline filter row and the account-menu
+  chip.
+- **URL-param parity.** Every existing category action in the store calls
+  `syncUrlParam(URL_PARAMS.excludedGroups/excludedCategories, …)` after mutating
+  state. The new `addToBaseline` / `removeFromBaseline` actions must keep the same
+  URL sync where they change the session `excluded*` set, or the shareable-link
+  state will drift out of sync with the grid.
 
 ## Persistence / auth
 
