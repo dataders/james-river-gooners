@@ -42,6 +42,8 @@ jobs:
           # bundle. Optional: telemetry is simply off if the secret is unset.
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+          # Cloudflare Worker for item-specific OG share previews.
+          VITE_OG_WORKER_URL: ${{ secrets.VITE_OG_WORKER_URL }}
 
       - uses: actions/upload-pages-artifact@v5
         with:
