@@ -78,6 +78,36 @@ class FacebookMappingTest(unittest.TestCase):
         )
         self.assertEqual(row["location"], "Richmond, VA")
 
+    def test_scrape_spec_writes_facebook_location_metadata(self):
+        active_card = {
+            "id": "active-1",
+            "listingUrl": "https://www.facebook.com/marketplace/item/active-1/",
+            "title": "Ping Driver",
+            "listing_price": {"amount": 100, "formatted_amount": "$100"},
+        }
+        spec = {
+            "keyword": "golf",
+            "location": "richmond",
+            "safe_id": "facebook_golf",
+            "active_url": "https://facebook.test/active",
+            "sold_url": "https://facebook.test/sold",
+        }
+
+        with (
+            patch.object(
+                scrape_facebook,
+                "run_apify_urls",
+                side_effect=[[active_card], []],
+            ),
+            patch.object(scrape_facebook, "write_read_model") as write_read_model,
+        ):
+            summary = scrape_facebook.scrape_spec(spec, api_token="token", limit=1)
+
+        self.assertEqual(summary, {"active": 1, "sold": 0})
+        ctx = write_read_model.call_args.args[1]
+        self.assertEqual(ctx.auction_city, "Richmond")
+        self.assertEqual(ctx.auction_state, "VA")
+
     def test_run_apify_urls_starts_actor_and_fetches_dataset(self):
         start_response = MagicMock()
         start_response.json.return_value = {

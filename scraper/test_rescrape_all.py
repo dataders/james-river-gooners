@@ -228,6 +228,19 @@ class FacebookRunnerTest(unittest.TestCase):
         self.assertEqual(job.retry_label, "golf")
         self.assertEqual(job.fail_id, "facebook_golf")
 
+    def test_facebook_job_passes_limit_when_provided(self):
+        job = FACEBOOK.build(
+            {"keyword": "golf", "safe_id": "facebook_golf"}, facebook_limit=1
+        )
+
+        self.assertEqual(job.cmd[-4:], ["--keyword", "golf", "--limit", "1"])
+
+    def test_parse_args_accepts_facebook_limit(self):
+        args = parse_args(["--source", "facebook", "--facebook-limit", "1"])
+
+        self.assertEqual(args.source, "facebook")
+        self.assertEqual(args.facebook_limit, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

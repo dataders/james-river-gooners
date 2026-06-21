@@ -34,6 +34,9 @@ APIFY_ACTOR_ID = "apify~facebook-marketplace-scraper"
 APIFY_POLL_INTERVAL = 10
 APIFY_MAX_WAIT = 900
 DEFAULT_LIMIT = 60
+MARKETPLACE_LOCATIONS = {
+    "richmond": ("Richmond", "VA"),
+}
 
 
 def _token() -> str | None:
@@ -54,6 +57,10 @@ def _marketplace_url(location: str, keyword: str, *, exact: bool, sold: bool) ->
         params["exact"] = "true"
     query = urlencode(params).replace("out%2520of%2520stock", "out%20of%20stock")
     return f"https://www.facebook.com/marketplace/{location}/search?{query}"
+
+
+def marketplace_city_state(location: str) -> tuple[str, str]:
+    return MARKETPLACE_LOCATIONS.get(location.lower(), (location.title(), "VA"))
 
 
 def discover_facebook_specs(path: Path = FACEBOOK_SOURCES) -> list[dict]:
@@ -264,6 +271,7 @@ def scrape_spec(
     items = [item for item in items if item.get("id") and item.get("detailUrl")]
     now = datetime.now(UTC).isoformat()
     if items:
+        auction_city, auction_state = marketplace_city_state(spec["location"])
         write_read_model(
             items,
             WriteContext(
@@ -274,6 +282,8 @@ def scrape_spec(
                 source="facebook",
                 source_url=spec["active_url"],
                 scraped_at=now,
+                auction_city=auction_city,
+                auction_state=auction_state,
             ),
         )
         if secrets.supabase_secret_key():

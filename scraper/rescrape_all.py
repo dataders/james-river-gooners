@@ -428,10 +428,13 @@ def _rasmus_job(spec: dict) -> SourceJob:
     )
 
 
-def _facebook_job(spec: dict) -> SourceJob:
+def _facebook_job(spec: dict, facebook_limit: int | None = None) -> SourceJob:
+    cmd = [sys.executable, "scrape_facebook.py", "--keyword", spec["keyword"]]
+    if facebook_limit is not None:
+        cmd.extend(["--limit", str(facebook_limit)])
     return SourceJob(
         header=spec["keyword"],
-        cmd=[sys.executable, "scrape_facebook.py", "--keyword", spec["keyword"]],
+        cmd=cmd,
         retry_label=spec["keyword"],
         fail_id=spec["safe_id"],
     )
@@ -444,13 +447,13 @@ FACEBOOK = SourceRunner("Facebook", _facebook_job)
 
 
 def _scrape_source(
-    runner: SourceRunner, specs: list, total: int, start_i: int
+    runner: SourceRunner, specs: list, total: int, start_i: int, **build_kwargs
 ) -> list[str]:
     """Run every spec for one source as an isolated subprocess; return failures."""
     failures: list[str] = []
     cwd = Path(__file__).resolve().parent
     for j, spec in enumerate(specs, start_i):
-        job = runner.build(spec)
+        job = runner.build(spec, **build_kwargs)
         print(f"\n{'=' * 60}")
         print(f"[{j}/{total}] {runner.name}: {job.header}")
         print(f"{'=' * 60}")
@@ -491,6 +494,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--backfill-final-prices",
         action="store_true",
         help="One-time: stamp closed/finalBid onto already-archived lots (#94), then exit.",
+    )
+    parser.add_argument(
+        "--facebook-limit",
+        type=int,
+        default=None,
+        help="Max Facebook listings per active/sold search when scraping Facebook.",
     )
     return parser.parse_args(argv)
 
@@ -542,6 +551,7 @@ def main() -> None:
         facebook_specs,
         total,
         len(maxanet_urls) + len(hibid_specs) + len(rasmus_specs) + 1,
+        facebook_limit=args.facebook_limit,
     )
 
     print(f"\n{'=' * 60}")

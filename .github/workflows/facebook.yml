@@ -25,6 +25,7 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GOONERS_ENRICHMENT: '1'
       GOONERS_NOMIC_EMBEDDINGS: '1'
+      FACEBOOK_LIMIT: ${{ inputs.limit || '60' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -43,4 +44,4 @@ jobs:
           uv run --with requests --with pyarrow --with pyyaml --with beautifulsoup4 \
             --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
             --with 'pydantic-settings>=2,<3' \
-            python rescrape_all.py --source facebook
+            python rescrape_all.py --source facebook --facebook-limit "$FACEBOOK_LIMIT"
