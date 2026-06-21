@@ -10,6 +10,7 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
   const enrichment = getDisplayEnrichment(item)
   const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
   const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
+  const isFacebook = item.source === 'facebook'
 
   const compMedian = getCompMedianPrice(itemComps)
   const maxBid = compMedian != null ? calcMaxBid(compMedian, DEFAULT_MARGIN) : null
@@ -213,6 +214,23 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
       </div>
       <div className="item-info">
         <div className="item-title">{displayTitle}</div>
+        {isFacebook && (
+          <div className="item-source-row">
+            <span className="item-source-badge item-source-facebook">Facebook Marketplace</span>
+            {item.detailUrl && (
+              <a
+                href={item.detailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="item-source-link"
+                aria-label="Open listing"
+                onClick={e => e.stopPropagation()}
+              >
+                Open listing
+              </a>
+            )}
+          </div>
+        )}
         {enrichment && (!usedLabelAsTitle || enrichment.condition || enrichment.isMixedLot || parseInt(enrichment.quantity, 10) > 1) && (
           <div className="item-product">
             {!usedLabelAsTitle && <span className="item-product-label">{enrichment.label}</span>}
@@ -240,10 +258,10 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
             ))}
           </div>
         )}
-        <div className="item-category">
+        {!isFacebook && <div className="item-category">
           {usedLabelAsTitle && item.lotNumber ? `Lot ${item.lotNumber} · ` : ''}
           {item.rawCategory || item.category}
-        </div>
+        </div>}
         {compact && item.description && (
           <div className="item-description">{item.description}</div>
         )}
@@ -259,20 +277,26 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
             </div>
           )
         })()}
-        <div className="item-bid-row">
-          <span className="item-bid">${(bidStatus?.currentBid ?? item.currentBid).toLocaleString()}</span>
-          <span className="item-bids">
-            {item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}
-            {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}
-          </span>
-        </div>
-        {maxBid != null && (
+        {isFacebook ? (
+          <div className="item-bid-row item-price-row">
+            <span className="item-bid">${Number(item.currentBid || 0).toLocaleString()}</span>
+          </div>
+        ) : (
+          <div className="item-bid-row">
+            <span className="item-bid">${(bidStatus?.currentBid ?? item.currentBid).toLocaleString()}</span>
+            <span className="item-bids">
+              {item.totalBids} bid{item.totalBids !== 1 ? 's' : ''}
+              {item.uniqueBidders > 0 && ` · ${item.uniqueBidders} bidder${item.uniqueBidders !== 1 ? 's' : ''}`}
+            </span>
+          </div>
+        )}
+        {!isFacebook && maxBid != null && (
           <div className="item-roi-row">
             <span className="item-roi-max"><span className="item-roi-label">Max</span> ${Math.round(maxBid)}</span>
             <span className="item-roi-cost"><span className="item-roi-label">All-in</span> ${totalCost}</span>
           </div>
         )}
-        {remaining && <div className="item-time">{remaining}</div>}
+        {!isFacebook && remaining && <div className="item-time">{remaining}</div>}
       </div>
     </div>
   )

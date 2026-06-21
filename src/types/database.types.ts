@@ -781,9 +781,13 @@ export type Database = {
       lots: {
         Row: {
           archived: boolean
+          auction_city: string | null
           auction_end_date: string | null
           auction_id: string | null
+          auction_latitude: number | null
+          auction_longitude: number | null
           auction_safe_id: string
+          auction_state: string | null
           auction_title: string | null
           category: string | null
           closed: boolean | null
@@ -806,9 +810,13 @@ export type Database = {
         }
         Insert: {
           archived?: boolean
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id: string
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           closed?: boolean | null
@@ -831,9 +839,13 @@ export type Database = {
         }
         Update: {
           archived?: boolean
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           closed?: boolean | null
@@ -932,6 +944,24 @@ export type Database = {
             referencedColumns: ["auction_safe_id", "item_id"]
           },
         ]
+      }
+      resale_scan_log: {
+        Row: {
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
       }
       sold_listing_embeddings: {
         Row: {
@@ -1302,9 +1332,13 @@ export type Database = {
       }
       public_active_lots: {
         Row: {
+          auction_city: string | null
           auction_end_date: string | null
           auction_id: string | null
+          auction_latitude: number | null
+          auction_longitude: number | null
           auction_safe_id: string | null
+          auction_state: string | null
           auction_title: string | null
           category: string | null
           current_bid: number | null
@@ -1322,9 +1356,13 @@ export type Database = {
           unique_bidders: number | null
         }
         Insert: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           current_bid?: number | null
@@ -1342,9 +1380,13 @@ export type Database = {
           unique_bidders?: number | null
         }
         Update: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           current_bid?: number | null
@@ -1365,9 +1407,13 @@ export type Database = {
       }
       public_active_lots_card: {
         Row: {
+          auction_city: string | null
           auction_end_date: string | null
           auction_id: string | null
+          auction_latitude: number | null
+          auction_longitude: number | null
           auction_safe_id: string | null
+          auction_state: string | null
           auction_title: string | null
           category: string | null
           current_bid: number | null
@@ -1385,9 +1431,13 @@ export type Database = {
           unique_bidders: number | null
         }
         Insert: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           current_bid?: number | null
@@ -1405,9 +1455,13 @@ export type Database = {
           unique_bidders?: number | null
         }
         Update: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           current_bid?: number | null
@@ -1428,9 +1482,13 @@ export type Database = {
       }
       public_archived_lots: {
         Row: {
+          auction_city: string | null
           auction_end_date: string | null
           auction_id: string | null
+          auction_latitude: number | null
+          auction_longitude: number | null
           auction_safe_id: string | null
+          auction_state: string | null
           auction_title: string | null
           category: string | null
           closed: boolean | null
@@ -1450,9 +1508,13 @@ export type Database = {
           unique_bidders: number | null
         }
         Insert: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           closed?: boolean | null
@@ -1472,9 +1534,13 @@ export type Database = {
           unique_bidders?: number | null
         }
         Update: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           closed?: boolean | null
@@ -1497,9 +1563,13 @@ export type Database = {
       }
       public_archived_lots_card: {
         Row: {
+          auction_city: string | null
           auction_end_date: string | null
           auction_id: string | null
+          auction_latitude: number | null
+          auction_longitude: number | null
           auction_safe_id: string | null
+          auction_state: string | null
           auction_title: string | null
           category: string | null
           closed: boolean | null
@@ -1519,9 +1589,13 @@ export type Database = {
           unique_bidders: number | null
         }
         Insert: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           closed?: boolean | null
@@ -1541,9 +1615,13 @@ export type Database = {
           unique_bidders?: number | null
         }
         Update: {
+          auction_city?: string | null
           auction_end_date?: string | null
           auction_id?: string | null
+          auction_latitude?: number | null
+          auction_longitude?: number | null
           auction_safe_id?: string | null
+          auction_state?: string | null
           auction_title?: string | null
           category?: string | null
           closed?: boolean | null
@@ -2010,6 +2088,25 @@ export type Database = {
           title: string
         }[]
       }
+      match_cannons_comps_by_vector: {
+        Args: {
+          match_count?: number
+          min_sim?: number
+          query_embedding: string
+        }
+        Returns: {
+          auction_title: string
+          comp_auction_safe_id: string
+          comp_item_id: string
+          detail_url: string
+          image_url: string
+          similarity: number
+          sold_at: string
+          sold_price: number
+          source: string
+          title: string
+        }[]
+      }
       match_lots: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
@@ -2034,6 +2131,24 @@ export type Database = {
           condition: string
           ebay_item_id: string
           item_id: string
+          item_web_url: string
+          similarity: number
+          sold_date: string
+          sold_date_label: string
+          sold_price: number
+          thumbnail_url: string
+          title: string
+        }[]
+      }
+      match_sold_listings_by_vector: {
+        Args: {
+          match_count?: number
+          min_sim?: number
+          query_embedding: string
+        }
+        Returns: {
+          condition: string
+          ebay_item_id: string
           item_web_url: string
           similarity: number
           sold_date: string
@@ -2076,6 +2191,10 @@ export type Database = {
           item_id: string
           similarity: number
         }[]
+      }
+      record_resale_scan: {
+        Args: { daily_cap?: number; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

@@ -254,6 +254,52 @@ def archive_lots(
     return len(rows)
 
 
+def delete_active_lots_not_in_set(
+    safe_id: str,
+    seen_item_ids: set[str],
+    *,
+    url: str | None = None,
+    key: str | None = None,
+    session=None,
+) -> int:
+    """Delete stale active lots for one auction/source safe_id.
+
+    Intentionally no-ops on an empty seen set so a failed scrape cannot wipe a
+    source before the successful upsert happens.
+    """
+    if not seen_item_ids:
+        return 0
+    url, key = resolve_credentials(url, key)
+    if not url or not key:
+        return 0
+    if session is None:
+        from http_client import supabase_session
+
+        session = supabase_session("lots")
+    endpoint = f"{url.rstrip('/')}/rest/v1/{LOTS_TABLE}"
+    item_ids = ",".join(sorted(str(item_id) for item_id in seen_item_ids))
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Prefer": "return=minimal",
+    }
+    resp = session.delete(
+        endpoint,
+        headers=headers,
+        params={
+            "auction_safe_id": f"eq.{safe_id}",
+            "archived": "eq.false",
+            "item_id": f"not.in.({item_ids})",
+        },
+    )
+    if not resp.ok:
+        raise RuntimeError(
+            f"lots stale delete failed: {resp.status_code} {resp.text[:300]}"
+        )
+    print(f"Pruned stale active lots for {safe_id}")
+    return 1
+
+
 def _row_to_item(row: dict) -> dict:
     """Convert a Supabase snake_case ``lots`` row to the camelCase item dict."""
     images = row.get("images") or []

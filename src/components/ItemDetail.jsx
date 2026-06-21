@@ -7,11 +7,21 @@ import { CategorySoldHistory } from './CategorySoldHistory'
 import { RoiCalculator } from './RoiCalculator'
 import { getDisplayEnrichment } from '../utils/enrichment'
 import { buildEbaySoldSearchUrl } from '../utils/ebayComps'
+import { buildFacebookMarketplaceSearchUrl } from '../utils/facebookMarketplace'
 import { ResaleInsightsGate } from './ResaleInsightsGate'
 import { BidPanel } from './BidPanel'
 import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
 import { supabaseUrl } from '../lib/supabase'
+
+function isHiBidUrl(value) {
+  try {
+    const { hostname } = new URL(value)
+    return hostname === 'hibid.com' || hostname.endsWith('.hibid.com')
+  } catch {
+    return false
+  }
+}
 
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, cannonBids, bidStatus, user, onCannonLinkClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
@@ -115,6 +125,9 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const enrichment = getDisplayEnrichment(item)
   const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
   const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
+  const facebookCompsUrl = buildFacebookMarketplaceSearchUrl(item.searchQuery, { sold: true })
+  const isFacebook = item.source === 'facebook'
+  const isHiBid = isHiBidUrl(item.detailUrl)
 
   return (
     <div className="detail-overlay" onClick={onClose}>
@@ -268,7 +281,21 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
                 rel="noopener noreferrer"
                 className="detail-link"
               >
-                {item.detailUrl?.includes('hibid.com') ? 'Open on HiBid' : "Open on Cannon's"}
+                {isFacebook
+                  ? 'Open Facebook listing'
+                  : isHiBid
+                    ? 'Open on HiBid'
+                    : "Open on Cannon's"}
+              </a>
+            )}
+            {facebookCompsUrl && (
+              <a
+                href={facebookCompsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="detail-link"
+              >
+                Search Facebook comps
               </a>
             )}
             <button className="detail-share" onClick={handleShare} aria-label="Share">

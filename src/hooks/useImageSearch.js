@@ -2,8 +2,78 @@
 import { useState, useCallback } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { buildEbaySoldSearchUrl } from '../utils/ebayComps'
+import {
+  buildFacebookMarketplaceSearchUrl,
+  facebookCompsQueryFromIdentification,
+} from '../utils/facebookMarketplace'
 
-const FB_MARKETPLACE_RICHMOND = 'https://www.facebook.com/marketplace/richmond/search/'
+const TOP_FACEBOOK_COMPS = 8
+
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+const HF_TOKEN = import.meta.env.VITE_HF_TOKEN
+const HF_EMBED_URL =
+  'https://api-inference.huggingface.co/pipeline/feature-extraction/nomic-ai/nomic-embed-text-v1.5'
+
+async function embedViaHF(query) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (HF_TOKEN) headers.Authorization = `Bearer ${HF_TOKEN}`
+  const res = await fetch(HF_EMBED_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ inputs: `search_query: ${query}` }),
+  })
+  if (!res.ok) throw new Error(`HF API ${res.status}`)
+  let vec = await res.json()
+  if (Array.isArray(vec[0])) vec = vec[0]
+  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0))
+  return norm > 0 ? vec.map(v => v / norm) : vec
+}
+
+function embedViaWorker(query) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('../workers/nomicEncoder.js', import.meta.url), {
+      type: 'module',
+    })
+    const id = Date.now()
+    worker.onmessage = (e) => {
+      const { type, embedding, message } = e.data
+      if (type === 'ready') {
+        worker.postMessage({ type: 'encode', query, id })
+        return
+      }
+      worker.terminate()
+      if (type === 'embedding') {
+        resolve(Array.from(embedding))
+      } else if (type === 'error') {
+        reject(new Error(message || 'Nomic embedding failed'))
+      }
+    }
+    worker.onerror = () => {
+      worker.terminate()
+      reject(new Error('Nomic worker failed'))
+    }
+  })
+}
+
+async function embedTextQuery(query) {
+  return isIOS ? embedViaHF(query) : embedViaWorker(query)
+}
+
+function recentTime(comp) {
+  const raw = comp.sold_date || comp.last_seen_at
+  const ms = raw ? new Date(raw).getTime() : 0
+  return Number.isFinite(ms) ? ms : 0
+}
+
+function sortFacebookComps(comps) {
+  return [...(comps || [])].sort((a, b) => {
+    const sim = (b.similarity || 0) - (a.similarity || 0)
+    if (Math.abs(sim) > 0.02) return sim
+    return recentTime(b) - recentTime(a)
+  })
+}
 
 export function useImageSearch() {
   const [loading, setLoading] = useState(false)
@@ -33,19 +103,32 @@ export function useImageSearch() {
 
       const identification = data
 
-      const ebayQuery = [identification.brand, identification.model]
-        .filter(Boolean)
-        .join(' ') || identification.searchTerms || (identification.keywords || [])[0] || ''
+      const ebayQuery = facebookCompsQueryFromIdentification(identification)
       const ebaySearchUrl = ebayQuery ? buildEbaySoldSearchUrl(ebayQuery) : null
 
-      const fbQuery = [identification.brand, identification.model, ...(identification.keywords || []).slice(0, 2)]
-        .filter(Boolean)
-        .join(' ')
-      const fbMarketplaceUrl = fbQuery
-        ? `${FB_MARKETPLACE_RICHMOND}?query=${encodeURIComponent(fbQuery)}`
-        : null
+      const fbQuery = facebookCompsQueryFromIdentification(identification)
+      const fbMarketplaceUrl = buildFacebookMarketplaceSearchUrl(fbQuery, { sold: true })
 
-      setResult({ ...identification, ebaySearchUrl, fbMarketplaceUrl })
+      let facebookComps = []
+      if (fbQuery) {
+        try {
+          const queryEmbedding = await embedTextQuery(fbQuery)
+          const { data: compRows, error: compError } = await supabase.rpc(
+            'match_facebook_comps',
+            {
+              query_embedding: queryEmbedding,
+              match_count: TOP_FACEBOOK_COMPS,
+            }
+          )
+          if (compError) throw compError
+          facebookComps = sortFacebookComps(compRows)
+        } catch (compErr) {
+          console.warn('Failed to load Facebook sold comps:', compErr)
+          facebookComps = []
+        }
+      }
+
+      setResult({ ...identification, ebaySearchUrl, fbMarketplaceUrl, facebookComps })
     } catch (err) {
       setError(err.message || 'Failed to analyze image')
     } finally {

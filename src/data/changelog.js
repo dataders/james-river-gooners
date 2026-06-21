@@ -9,6 +9,15 @@
 export const CHANGELOG = [
   {
     date: '2026-06-21',
+    title: 'Facebook Marketplace comps',
+    changes: [
+      { id: 'facebook-active-listings', icon: '🛒', text: 'Facebook Marketplace listings now appear in the grid alongside auction lots, with a clear marketplace badge and direct listing links.' },
+      { id: 'facebook-photo-sold-comps', icon: '📷', text: 'Photo search now checks a sold Facebook Marketplace comp corpus, so identified items can show recent sold examples from Facebook as another resale signal.' },
+      { id: 'facebook-detail-comps-link', icon: '🔎', text: 'Lot details now include a "Search Facebook comps" link when the item has an identified resale search phrase.' },
+    ],
+  },
+  {
+    date: '2026-06-21',
     title: 'Never show me this: permanently hide categories',
     changes: [
       { id: 'cat-prefs-baseline', icon: '🔒', text: 'Hide a category in Filters and a new “never show this” option appears — pick it and that category stays hidden on every visit, not just this one. Review or undo your always-hidden categories anytime from your account menu. "Clear filters" keeps your permanent choices in place.' },
@@ -233,4 +242,3 @@ export const CHANGELOG = [
     ],
   },
 ]
-
