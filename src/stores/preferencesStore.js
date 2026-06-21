@@ -212,6 +212,47 @@ export const usePreferencesStore = create((set, get) => {
       savePrefs(get())
     },
 
+    // --- Inline "promote a hidden category to always-hidden" (and restore) ---
+    // Add to the permanent baseline WITHOUT clobbering the session excluded set.
+    // The item is already session-hidden (that's why the promote UI was shown),
+    // so the session filter and URL stay untouched; only the baseline gains it.
+    // (Unlike toggleBaseline*, which forces the session to equal the baseline.)
+    addBaselineGroup: (group) => {
+      if (get().baselineExcludedGroups.includes(group)) return
+      set({ baselineExcludedGroups: [...get().baselineExcludedGroups, group] })
+      savePrefs(get())
+    },
+    addBaselineCategory: (cat) => {
+      if (get().baselineExcludedCategories.includes(cat)) return
+      set({ baselineExcludedCategories: [...get().baselineExcludedCategories, cat] })
+      savePrefs(get())
+    },
+    // Restore: drop from the baseline AND un-hide from the live session (+ URL
+    // sync), so "restore" means "show it again now and stop hiding it by default."
+    removeBaselineGroup: (group) => {
+      const baselineExcludedGroups = get().baselineExcludedGroups.filter(g => g !== group)
+      const excludedGroups = get().excludedGroups.filter(g => g !== group)
+      syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
+      set({ baselineExcludedGroups, excludedGroups })
+      savePrefs(get())
+    },
+    removeBaselineCategory: (cat) => {
+      const baselineExcludedCategories = get().baselineExcludedCategories.filter(c => c !== cat)
+      const excludedCategories = get().excludedCategories.filter(c => c !== cat)
+      syncUrlParam(URL_PARAMS.excludedCategories, excludedCategories)
+      set({ baselineExcludedCategories, excludedCategories })
+      savePrefs(get())
+    },
+    clearBaseline: () => {
+      const { baselineExcludedGroups, baselineExcludedCategories } = get()
+      const excludedGroups = get().excludedGroups.filter(g => !baselineExcludedGroups.includes(g))
+      const excludedCategories = get().excludedCategories.filter(c => !baselineExcludedCategories.includes(c))
+      syncUrlParam(URL_PARAMS.excludedGroups, excludedGroups)
+      syncUrlParam(URL_PARAMS.excludedCategories, excludedCategories)
+      set({ baselineExcludedGroups: [], baselineExcludedCategories: [], excludedGroups, excludedCategories })
+      savePrefs(get())
+    },
+
     // Isolate a single raw category: exclude everything else (coarse group
     // exclusions for other groups, fine raw exclusions for siblings in `keep`'s
     // own group — so a 100-coin auction yields a few grp= params, not 100 cat=).
