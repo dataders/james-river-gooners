@@ -244,7 +244,9 @@ def parse_metric_line(line: str) -> tuple[str, dict[str, str], float] | None:
 def _label_hash(labels: dict[str, str]) -> str:
     """Stable short hash of a label set — the per-series identity in the table."""
     canonical = json.dumps(labels, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha1(canonical.encode("utf-8"), usedforsecurity=False).hexdigest()[
+        :16
+    ]
 
 
 def metric_rows(

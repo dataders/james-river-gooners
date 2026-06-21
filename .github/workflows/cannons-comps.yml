@@ -51,6 +51,8 @@ jobs:
         env:
           GOONERS_CANNONS_COMPS_TOP_K: ${{ inputs.top_k }}
           GOONERS_CANNONS_COMPS_MIN_SIM: ${{ inputs.min_sim }}
+          GOONERS_CANNONS_COMPS_ACTIVE_LIMIT: ${{ inputs.active_limit }}
+          GOONERS_CANNONS_COMPS_DRY_RUN: ${{ inputs.dry_run }}
           # Secret key (service_role) → reads nomic_embeddings/sold_lots via the
           # RPC and writes to cannons_comp_snapshots, bypassing RLS. Required.
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -60,14 +62,13 @@ jobs:
           GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
         run: |
           cd scraper
-          LIMIT_FLAG=""
-          if [ -n "${{ inputs.active_limit }}" ]; then
-            LIMIT_FLAG="--active-limit ${{ inputs.active_limit }}"
+          args=(--from-supabase)
+          if [ -n "${GOONERS_CANNONS_COMPS_ACTIVE_LIMIT}" ]; then
+            args+=(--active-limit "${GOONERS_CANNONS_COMPS_ACTIVE_LIMIT}")
           fi
-          DRY_FLAG=""
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            DRY_FLAG="--dry-run"
+          if [ "${GOONERS_CANNONS_COMPS_DRY_RUN}" = "true" ]; then
+            args+=(--dry-run)
           fi
           # --from-supabase: the read-model manifest isn't committed, so read the
           # active-auction list from the Supabase lots table instead.
-          uv run --with requests --with posthog python cannons_comps.py --from-supabase $LIMIT_FLAG $DRY_FLAG
+          uv run --with requests --with posthog python cannons_comps.py "${args[@]}"

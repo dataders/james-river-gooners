@@ -521,7 +521,7 @@ def enrichment_fingerprint(item: dict) -> str:
             *item_image_urls(item),
         )
     )
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+    return hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def build_content(item: dict) -> list:

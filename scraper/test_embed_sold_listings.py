@@ -37,12 +37,14 @@ class ListingToItemTest(unittest.TestCase):
         self.assertEqual(item["description"], "")  # no condition -> empty
 
     def test_prefers_full_res_thumbnail_url(self):
-        item = esl.listing_to_item({
-            "ebay_item_id": "5",
-            "title": "Chair",
-            "full_res_thumbnail_url": "https://i.ebayimg.com/full.jpg",
-            "thumbnail_url": "https://i.ebayimg.com/thumb.jpg",
-        })
+        item = esl.listing_to_item(
+            {
+                "ebay_item_id": "5",
+                "title": "Chair",
+                "full_res_thumbnail_url": "https://i.ebayimg.com/full.jpg",
+                "thumbnail_url": "https://i.ebayimg.com/thumb.jpg",
+            }
+        )
         self.assertEqual(item["images"], ["https://i.ebayimg.com/full.jpg"])
 
     def test_tolerates_absent_raw_json(self):

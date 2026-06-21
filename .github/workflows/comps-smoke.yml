@@ -51,8 +51,9 @@ jobs:
           npm_config_cache: ${{ runner.temp }}/npm-agent-browser
           AGENT_BROWSER_ARGS: --no-sandbox,--disable-blink-features=AutomationControlled
           AGENT_BROWSER_SESSION: gooners-ebay-comps
+          GOONERS_EBAY_COMPS_SMOKE_LIMIT: ${{ inputs.limit || '1' }}
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
             --with 'pydantic-settings>=2,<3' \
-            python ebay_comps.py smoke --limit "${{ inputs.limit || '1' }}"
+            python ebay_comps.py smoke --limit "${GOONERS_EBAY_COMPS_SMOKE_LIMIT}"

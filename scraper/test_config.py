@@ -34,6 +34,7 @@ from pydantic import ValidationError
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _env(**kwargs):
     """Return a patch.dict context manager with only the given vars set."""
     return patch.dict(os.environ, kwargs, clear=True)
@@ -42,6 +43,7 @@ def _env(**kwargs):
 # ---------------------------------------------------------------------------
 # EnrichmentSettings
 # ---------------------------------------------------------------------------
+
 
 class EnrichmentDefaultsTest(unittest.TestCase):
     def test_defaults(self):
@@ -101,12 +103,16 @@ class EnrichmentBoolParsingTest(unittest.TestCase):
     def test_enabled_true_variants(self):
         for v in self._TRUE_VALS:
             with self.subTest(v=v), _env(GOONERS_ENRICHMENT=v):
-                self.assertTrue(EnrichmentSettings().enabled, f"Expected True for {v!r}")
+                self.assertTrue(
+                    EnrichmentSettings().enabled, f"Expected True for {v!r}"
+                )
 
     def test_enabled_false_variants(self):
         for v in self._FALSE_VALS:
             with self.subTest(v=v), _env(GOONERS_ENRICHMENT=v):
-                self.assertFalse(EnrichmentSettings().enabled, f"Expected False for {v!r}")
+                self.assertFalse(
+                    EnrichmentSettings().enabled, f"Expected False for {v!r}"
+                )
 
     def test_enabled_absent_is_false(self):
         with _env():
@@ -115,7 +121,9 @@ class EnrichmentBoolParsingTest(unittest.TestCase):
     def test_text_only_true_variants(self):
         for v in self._TRUE_VALS:
             with self.subTest(v=v), _env(GOONERS_ENRICHMENT_TEXT_ONLY=v):
-                self.assertTrue(EnrichmentSettings().text_only, f"Expected True for {v!r}")
+                self.assertTrue(
+                    EnrichmentSettings().text_only, f"Expected True for {v!r}"
+                )
 
     def test_old_boolean_bug_is_fixed(self):
         # Before config.py: `== "1"` meant GOONERS_ENRICHMENT=true was silently OFF.
@@ -154,6 +162,7 @@ class EnrichmentValidationTest(unittest.TestCase):
 # EbayCompsSettings
 # ---------------------------------------------------------------------------
 
+
 class EbayCompsDefaultsTest(unittest.TestCase):
     def test_defaults(self):
         with _env():
@@ -182,7 +191,9 @@ class EbayCompsEnvOverrideTest(unittest.TestCase):
 
     def test_skip_categories_via_env(self):
         with _env(GOONERS_EBAY_COMPS_SKIP_CATEGORIES="Collectibles,Jewelry"):
-            self.assertEqual(EbayCompsSettings().skip_categories, "Collectibles,Jewelry")
+            self.assertEqual(
+                EbayCompsSettings().skip_categories, "Collectibles,Jewelry"
+            )
 
     def test_corpus_first_via_env(self):
         with _env(GOONERS_CORPUS_FIRST="1"):
@@ -218,12 +229,15 @@ class EbayCompsNewFieldsTest(unittest.TestCase):
 
     def test_agent_browser_command_via_env(self):
         with _env(GOONERS_AGENT_BROWSER_COMMAND="npx my-browser --"):
-            self.assertEqual(EbayCompsSettings().agent_browser_command, "npx my-browser --")
+            self.assertEqual(
+                EbayCompsSettings().agent_browser_command, "npx my-browser --"
+            )
 
 
 # ---------------------------------------------------------------------------
 # EmbeddingSettings
 # ---------------------------------------------------------------------------
+
 
 class EmbeddingDefaultsTest(unittest.TestCase):
     def test_defaults(self):
@@ -277,6 +291,7 @@ class EmbeddingEnvOverrideTest(unittest.TestCase):
 # SupabaseSettings
 # ---------------------------------------------------------------------------
 
+
 class SupabaseDefaultsTest(unittest.TestCase):
     def test_defaults(self):
         with _env():
@@ -297,7 +312,10 @@ class SupabaseEnvOverrideTest(unittest.TestCase):
 
 class SupabaseValidationTest(unittest.TestCase):
     def test_read_timeout_below_min_raises(self):
-        with self.assertRaises(ValidationError), _env(GOONERS_SUPABASE_READ_TIMEOUT="0"):
+        with (
+            self.assertRaises(ValidationError),
+            _env(GOONERS_SUPABASE_READ_TIMEOUT="0"),
+        ):
             SupabaseSettings()
 
     def test_page_size_above_max_raises(self):
@@ -312,6 +330,7 @@ class SupabaseValidationTest(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # CannonsCompsSettings
 # ---------------------------------------------------------------------------
+
 
 class CannonsCompsDefaultsTest(unittest.TestCase):
     def test_defaults(self):
@@ -341,17 +360,24 @@ class CannonsCompsValidationTest(unittest.TestCase):
             CannonsCompsSettings()
 
     def test_min_sim_below_zero_raises(self):
-        with self.assertRaises(ValidationError), _env(GOONERS_CANNONS_COMPS_MIN_SIM="-0.1"):
+        with (
+            self.assertRaises(ValidationError),
+            _env(GOONERS_CANNONS_COMPS_MIN_SIM="-0.1"),
+        ):
             CannonsCompsSettings()
 
     def test_min_sim_above_one_raises(self):
-        with self.assertRaises(ValidationError), _env(GOONERS_CANNONS_COMPS_MIN_SIM="1.1"):
+        with (
+            self.assertRaises(ValidationError),
+            _env(GOONERS_CANNONS_COMPS_MIN_SIM="1.1"),
+        ):
             CannonsCompsSettings()
 
 
 # ---------------------------------------------------------------------------
 # WarehouseSettings
 # ---------------------------------------------------------------------------
+
 
 class WarehouseDefaultsTest(unittest.TestCase):
     def test_defaults(self):
@@ -389,6 +415,7 @@ class WarehouseValidationTest(unittest.TestCase):
 # TelemetrySettings
 # ---------------------------------------------------------------------------
 
+
 class TelemetryDefaultsTest(unittest.TestCase):
     def test_defaults(self):
         with _env():
@@ -399,12 +426,15 @@ class TelemetryDefaultsTest(unittest.TestCase):
 class TelemetryEnvOverrideTest(unittest.TestCase):
     def test_posthog_host_via_env(self):
         with _env(GOONERS_POSTHOG_HOST="https://eu.i.posthog.com"):
-            self.assertEqual(TelemetrySettings().posthog_host, "https://eu.i.posthog.com")
+            self.assertEqual(
+                TelemetrySettings().posthog_host, "https://eu.i.posthog.com"
+            )
 
 
 # ---------------------------------------------------------------------------
 # Argparse default pattern: CLI > env > default
 # ---------------------------------------------------------------------------
+
 
 class ArgparseDefaultPatternTest(unittest.TestCase):
     """Verifies that default=cfg.field gives CLI > env > schema-default precedence."""
@@ -424,7 +454,9 @@ class ArgparseDefaultPatternTest(unittest.TestCase):
         self.assertAlmostEqual(args.min_sim, 0.80)
 
     def test_env_overrides_schema_default(self):
-        with _env(GOONERS_CANNONS_COMPS_TOP_K="10", GOONERS_CANNONS_COMPS_MIN_SIM="0.9"):
+        with _env(
+            GOONERS_CANNONS_COMPS_TOP_K="10", GOONERS_CANNONS_COMPS_MIN_SIM="0.9"
+        ):
             parser = self._make_parser()
         args = parser.parse_args([])
         self.assertEqual(args.top_k, 10)
@@ -448,6 +480,7 @@ class ArgparseDefaultPatternTest(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # describe() output
 # ---------------------------------------------------------------------------
+
 
 class DescribeTest(unittest.TestCase):
     def test_runs_without_error(self):
@@ -501,6 +534,7 @@ class DescribeTest(unittest.TestCase):
 # secrets.py
 # ---------------------------------------------------------------------------
 
+
 class SecretsTest(unittest.TestCase):
     def test_anthropic_key_absent(self):
         with _env():
@@ -527,7 +561,10 @@ class SecretsTest(unittest.TestCase):
             self.assertEqual(_secrets.supabase_url(), "https://abc.supabase.co")
 
     def test_supabase_url_primary_takes_precedence(self):
-        with _env(SUPABASE_URL="https://primary.supabase.co", VITE_SUPABASE_URL="https://vite.supabase.co"):
+        with _env(
+            SUPABASE_URL="https://primary.supabase.co",
+            VITE_SUPABASE_URL="https://vite.supabase.co",
+        ):
             self.assertEqual(_secrets.supabase_url(), "https://primary.supabase.co")
 
     def test_supabase_secret_key_absent(self):
@@ -547,7 +584,9 @@ class SecretsTest(unittest.TestCase):
             self.assertIsNone(_secrets.supabase_creds())
 
     def test_supabase_creds_returns_tuple(self):
-        with _env(SUPABASE_URL="https://abc.supabase.co", SUPABASE_SECRET_KEY="sb_secret_abc"):
+        with _env(
+            SUPABASE_URL="https://abc.supabase.co", SUPABASE_SECRET_KEY="sb_secret_abc"
+        ):
             result = _secrets.supabase_creds()
         self.assertEqual(result, ("https://abc.supabase.co", "sb_secret_abc"))
 

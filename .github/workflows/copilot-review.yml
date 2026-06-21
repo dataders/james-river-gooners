@@ -41,19 +41,22 @@ jobs:
           # Copilot's review bot shows up as a suggested reviewer only when
           # Copilot code review is enabled for the repository/org. Look it up
           # by login rather than hard-coding a node ID (it differs per repo).
-          copilot_id=$(gh api graphql \
-            -f query='
-              query($owner: String!, $name: String!) {
-                repository(owner: $owner, name: $name) {
-                  suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
-                    nodes {
-                      login
-                      __typename
-                      ... on Bot { id }
-                    }
-                  }
+          suggested_actors_query=$(cat <<'GRAPHQL'
+          query($owner: String!, $name: String!) {
+            repository(owner: $owner, name: $name) {
+              suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
+                nodes {
+                  login
+                  __typename
+                  ... on Bot { id }
                 }
-              }' \
+              }
+            }
+          }
+          GRAPHQL
+          )
+          copilot_id=$(gh api graphql \
+            -f query="$suggested_actors_query" \
             -f owner="$OWNER" -f name="$NAME" \
             --jq '.data.repository.suggestedActors.nodes[]
                   | select(.login == "copilot-pull-request-reviewer")
@@ -67,17 +70,20 @@ jobs:
           fi
 
           # union: true keeps any reviewers already requested on the PR.
+          request_review_query=$(cat <<'GRAPHQL'
+          mutation($prId: ID!, $reviewerId: ID!) {
+            requestReviews(input: {
+              pullRequestId: $prId,
+              userIds: [$reviewerId],
+              union: true
+            }) {
+              pullRequest { id }
+            }
+          }
+          GRAPHQL
+          )
           gh api graphql \
-            -f query='
-              mutation($prId: ID!, $reviewerId: ID!) {
-                requestReviews(input: {
-                  pullRequestId: $prId,
-                  userIds: [$reviewerId],
-                  union: true
-                }) {
-                  pullRequest { id }
-                }
-              }' \
+            -f query="$request_review_query" \
             -f prId="$PR_NODE_ID" -f reviewerId="$copilot_id"
 
           echo "Requested a Copilot review on PR #$PR_NUMBER."

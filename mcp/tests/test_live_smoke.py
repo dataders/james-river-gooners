@@ -1,5 +1,6 @@
 import asyncio
 import os
+from typing import Any, cast
 
 import pytest
 from gooners_mcp.client import GoonersClient
@@ -17,7 +18,7 @@ def _tools():
     client = GoonersClient(cfg.url, cfg.publishable_key, cfg.email, cfg.password)
     server = build_server(client)
     tool_list = asyncio.run(server.list_tools())
-    return {t.name: t.fn for t in tool_list}  # ty: ignore[unresolved-attribute]  # fastmcp Tool.fn (untyped)
+    return {t.name: cast(Any, t).fn for t in tool_list}  # fastmcp Tool.fn is dynamic.
 
 
 def test_list_auctions_returns_some():

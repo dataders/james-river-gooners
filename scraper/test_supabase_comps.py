@@ -265,7 +265,9 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         args, kwargs = session.get.call_args
         self.assertTrue(args[0].endswith("/soldcomps_usage"))
         # Scoped to the start of the current billing period (calendar month).
-        self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-01T00:00:00+00:00")
+        self.assertEqual(
+            kwargs["params"]["observed_at"], "gte.2026-06-01T00:00:00+00:00"
+        )
         self.assertEqual(kwargs["params"]["order"], "observed_at.desc")
         self.assertEqual(kwargs["params"]["limit"], "1")
 
@@ -286,7 +288,9 @@ class SupabaseCompLedgerTest(unittest.TestCase):
         now = datetime(2026, 6, 1, 0, 5, tzinfo=UTC)  # just after period reset
         self.assertIsNone(self._ledger(session).provider_remaining(now))
         _, kwargs = session.get.call_args
-        self.assertEqual(kwargs["params"]["observed_at"], "gte.2026-06-01T00:00:00+00:00")
+        self.assertEqual(
+            kwargs["params"]["observed_at"], "gte.2026-06-01T00:00:00+00:00"
+        )
 
     def test_provider_used_today_is_high_minus_latest(self):
         session = unittest.mock.MagicMock()
