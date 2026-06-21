@@ -301,13 +301,14 @@ def test_edge_schema_fields_are_enrichment_fields():
     for field in EXPECTED_SUBSET:
         assert f'"{field}"' in enrich_src, f"{field} missing from enrich.py"
 
-    # The edge fn must declare exactly these names (model -> modelOrSku alias allowed).
+    # The edge fn must declare each of these as a tool-schema property. Match each
+    # field by name rather than a fixed indentation (robust to reformatting): a
+    # `<field>: {` declaration with a `type:` line shortly after.
     edge_src = (Path(__file__).parents[1] / "supabase/functions/image-search/index.ts").read_text()
-    props = set(re.findall(r"^\s{12}(\w+):\s*\{", edge_src, re.M))
-    # searchQuery, productType, condition, brand, brandConfidence, modelConfidence present
     for field in {"brand", "productType", "searchQuery", "condition",
                   "brandConfidence", "modelConfidence"}:
-        assert field in props, f"edge tool schema missing {field}; props={props}"
+        assert re.search(rf"\b{field}:\s*\{{\s*\n\s*type:", edge_src), \
+            f"edge tool schema missing property {field}"
 ```
 
 - [ ] **Step 2: Run it — expect FAIL** (edge schema lacks `searchQuery`/`productType`/confidences):
@@ -398,7 +399,7 @@ test('parseSoldcompsItems maps + dedupes by url, drops items missing title/price
   assert.deepEqual(rows[0].price, { value: '50.00', currency: 'USD' })
   assert.equal(rows[0].itemWebUrl, 'https://www.ebay.com/itm/1')
   assert.equal(rows[0].ebayItemId, '1')
-  assert.equal(rows[0].soldDateLabel, '2026-05-01' /* or formatted; assert non-empty */ ? rows[0].soldDateLabel : rows[0].soldDateLabel)
+  assert.ok(rows[0].soldDateLabel, 'soldDateLabel is non-empty when an end date is present')
 })
 
 test('decideStatus', () => {
