@@ -41,10 +41,30 @@ companies:
     location: "Midlothian, VA"
     catalog_ids:
       - 744897   # Vintage Galore! Gaming, Disney, Music, Cards, Action Figures
-
       - 750993   # Sports, Trading & Collector Cards Auction
+      - 753446   # 3rd Annual Vinyl Record, Music & Media Rarities Auction (Jul 19 - Aug 2)
   - id: 78672
     slug: peoples_auction
     name: "Peoples Auction"
     location: "Chesapeake, VA"
     # No active catalogs — discovery will run when one appears
+
+  - id: 99274
+    slug: estate-finds-4-u-and-appraisals
+    name: "Estate Finds 4 U & Appraisals"
+    location: "Midlothian, VA"
+    # catalog_ids: find on hibid.com/company/99274 — look for /catalog/NNNNNN/ in auction links
+
+  - id: 132962
+    slug: patriot-auction-company
+    name: "Patriot Auction Company"
+    location: "Cumberland, VA"
+    catalog_ids:
+      - 753452   # Cumberland Weekly General Surplus #89 (Jun 20 - Jun 27)
+      - 753222   # Powhatan "The Shop Shakedown" Estate Auction (Jun 19 - Jul 6)
+
+  - id: 149734
+    slug: lorak-deals-llc
+    name: "Lorak Deals LLC"
+    location: "Midlothian, VA"
+    # catalog_ids: find on hibid.com/company/149734 — look for /catalog/NNNNNN/ in auction links

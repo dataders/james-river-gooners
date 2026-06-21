@@ -18,6 +18,8 @@ site:
 # place names are treated as "Richmond area" and included. Matched as
 # whole words, case-insensitively.
 location_keywords:
+  - VA       # catch any Virginia auction by state abbreviation (Rasmus titles end with "City, Va")
+  - Virginia # catch "Virginia Beach" and spelled-out forms
   - Richmond
   - Henrico
   - Chesterfield
@@ -38,3 +40,20 @@ location_keywords:
   - Colonial Heights
   - Petersburg
   - Aylett
+  # Hampton Roads / coastal Virginia
+  - Williamsburg
+  - James City
+  - Yorktown
+  - Hampton
+  - Newport News
+  - Norfolk
+  - Portsmouth
+  - Chesapeake
+  - Virginia Beach
+  - Suffolk
+  - Poquoson
+  # Charlottesville area
+  - Charlottesville
+  - Albemarle
+  - Crozet
+  - Waynesboro
