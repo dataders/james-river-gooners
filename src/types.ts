@@ -61,6 +61,18 @@ export interface Auction {
   archived: boolean
   /** True when the auction is in the Richmond area. */
   isLocal: boolean
+  /** Auction city, e.g. "Richmond" (for the distance filter / display). */
+  city?: string
+  /** Auction state abbreviation, e.g. "VA". */
+  state?: string
+  /**
+   * Auction coordinates (geocoded city centroid) for the distance filter.
+   * Optional in the type, but the scraper's geocode gate guarantees they're
+   * present in practice; the distance stage treats a missing coord as
+   * out-of-radius rather than crashing.
+   */
+  lat?: number
+  lng?: number
   totalItems: number
 }
 

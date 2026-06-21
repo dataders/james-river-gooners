@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { filterItems } from './filters.js'
+import { filterItems, getGroupedCategories } from './filters.js'
 import { itemKey } from './itemKey.js'
 
 const base = {
@@ -83,4 +83,84 @@ test('items without uniqueBidders count as 0 bidders', () => {
     filterItems(items, { excludedCategories: [], minBidders: 1 }),
     [cannons]
   )
+})
+
+test('price and bid bounds drop lots outside the requested range', () => {
+  const cheap = { ...base, id: '1', currentBid: 5, totalBids: 0 }
+  const target = { ...base, id: '2', currentBid: 25, totalBids: 3 }
+  const pricey = { ...base, id: '3', currentBid: 100, totalBids: 9 }
+  const items = [cheap, target, pricey]
+
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], minPrice: 10, maxPrice: 50 }),
+    [target]
+  )
+  assert.deepEqual(
+    filterItems(items, { excludedCategories: [], minBids: 1, maxBids: 5 }),
+    [target]
+  )
+})
+
+test('time bounds filter by hours until lot close', () => {
+  const now = Date.now()
+  const realDateNow = Date.now
+  Date.now = () => now
+  try {
+    const inHours = (h) => new Date(now + h * 3600000).toISOString()
+    const soon = { ...base, id: '1', endDate: inHours(1) }
+    const target = { ...base, id: '2', endDate: inHours(6) }
+    const late = { ...base, id: '3', endDate: inHours(30) }
+
+    assert.deepEqual(
+      filterItems([soon, target, late], { excludedCategories: [], minHours: 2, maxHours: 12 }),
+      [target]
+    )
+  } finally {
+    Date.now = realDateNow
+  }
+})
+
+test('raw category exclusions and empty search sets hide matching lots', () => {
+  const art = { ...base, id: '1', auctionSafeId: 'a', rawCategory: 'Artwork' }
+  const tool = { ...base, id: '2', auctionSafeId: 'a', rawCategory: 'Tools' }
+
+  assert.deepEqual(
+    filterItems([art, tool], { excludedCategories: ['Artwork'] }),
+    [tool]
+  )
+  assert.deepEqual(
+    filterItems([art, tool], { excludedCategories: [], searchIds: new Set() }),
+    []
+  )
+})
+
+test('getGroupedCategories counts raw categories under normalized groups', () => {
+  const items = [
+    { ...base, id: '1', category: 'Home', rawCategory: 'Lighting' },
+    { ...base, id: '2', category: 'Home', rawCategory: 'Lighting' },
+    { ...base, id: '3', category: 'Home', rawCategory: 'Furniture' },
+    { ...base, id: '4', category: 'Tools', rawCategory: 'Hand Tools' },
+    { ...base, id: '5', category: '', rawCategory: '' },
+  ]
+
+  assert.deepEqual(getGroupedCategories(items), [
+    {
+      group: 'Home',
+      totalCount: 3,
+      rawCategories: [
+        { name: 'Lighting', count: 2 },
+        { name: 'Furniture', count: 1 },
+      ],
+    },
+    {
+      group: 'Tools',
+      totalCount: 1,
+      rawCategories: [{ name: 'Hand Tools', count: 1 }],
+    },
+    {
+      group: 'Other',
+      totalCount: 1,
+      rawCategories: [{ name: 'Other', count: 1 }],
+    },
+  ])
 })

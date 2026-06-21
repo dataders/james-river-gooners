@@ -16,6 +16,7 @@ function Chip({ label, onRemove }) {
 export function ActiveFilters({
   searchQuery, onClearSearch,
   localOnly, onClearLocal,
+  maxDistanceMiles, userLocationLabel, onClearDistance,
   archiveMode, onClearArchive,
   decisionView, onClearDecision,
   bestDeals, onClearBestDeals,
@@ -37,6 +38,12 @@ export function ActiveFilters({
     chips.push({ label: `"${q.length > 20 ? q.slice(0, 20) + '…' : q}"`, onRemove: onClearSearch })
   }
   if (localOnly) chips.push({ label: 'Richmond only', onRemove: onClearLocal })
+  if (maxDistanceMiles != null) {
+    chips.push({
+      label: `Within ${maxDistanceMiles} mi of ${userLocationLabel || 'your location'}`,
+      onRemove: onClearDistance,
+    })
+  }
   if (archiveMode === 'archived') chips.push({ label: 'Archived only', onRemove: onClearArchive })
   if (archiveMode === 'both') chips.push({ label: 'All auctions', onRemove: onClearArchive })
   if (decisionView === 'favorites') chips.push({ label: 'Favorites', onRemove: onClearDecision })

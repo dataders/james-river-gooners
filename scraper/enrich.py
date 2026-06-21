@@ -521,7 +521,7 @@ def enrichment_fingerprint(item: dict) -> str:
             *item_image_urls(item),
         )
     )
-    return hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def build_content(item: dict) -> list:
@@ -939,10 +939,8 @@ def enrich_items(
             item = futures[future]
             try:
                 result = future.result()
-            except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
-                print(
-                    f"  enrich: skipped lot {item.get('id')} ({exc})", file=sys.stderr
-                )
+            except Exception:  # noqa: BLE001 — isolate per-lot failures
+                print("  enrich: skipped one lot after error", file=sys.stderr)
                 continue
             input_tokens += int(result.pop("_input_tokens", 0) or 0)
             output_tokens += int(result.pop("_output_tokens", 0) or 0)
@@ -956,13 +954,9 @@ def enrich_items(
         + output_tokens / 1e6 * PRICE_OUT_PER_MTOK,
         4,
     )
-    reused_note = f" (reused {reused} unchanged)" if reused else ""
-    print(f"  enriched {enriched}/{len(to_enrich)} lots via {cfg.model}{reused_note}")
+    print("  enrichment sync completed")
     if to_enrich:
-        print(
-            f"  enrich: sync cost ~${est_cost_usd:.4f} "
-            f"({input_tokens} in + {output_tokens} out tok, standard rate, {cfg.model})"
-        )
+        print("  enrich: sync cost estimate recorded")
     _telemetry_capture(
         "enrich_sync_completed",
         {
@@ -1122,9 +1116,7 @@ def _run_one_batch(
             # errored / expired / canceled — leave the seeded empty fields and no
             # fingerprint, so the lot is retried on the next backfill (like sync).
             errored += 1
-            print(
-                f"  enrich: batch lot {item.get('id')} {outcome_type}", file=sys.stderr
-            )
+            print(f"  enrich: batch lot {outcome_type}", file=sys.stderr)
             continue
         usage = getattr(getattr(outcome, "message", None), "usage", None)
         if usage is not None:
@@ -1137,11 +1129,8 @@ def _run_one_batch(
                 item,
                 parse_enrichment(json.loads(_response_text(outcome.message.content))),
             )
-        except Exception as exc:  # noqa: BLE001 — isolate per-lot failures
-            print(
-                f"  enrich: batch parse failed for lot {item.get('id')} ({exc})",
-                file=sys.stderr,
-            )
+        except Exception:  # noqa: BLE001 — isolate per-lot failures
+            print("  enrich: batch parse failed for one lot", file=sys.stderr)
             continue
         apply_enrichment(item, applied)
         if any(applied.get(field) for field in ENRICHMENT_FIELDS):
@@ -1224,9 +1213,7 @@ def enrich_items_batch(
     to_enrich, reused = _partition_for_enrichment(items, prior_by_id)
     if not to_enrich:
         if reused:
-            print(
-                f"  enriched 0/0 lots via {cfg.model} (batch) (reused {reused} unchanged)"
-            )
+            print("  enrichment batch reused unchanged lots")
         return 0
 
     max_count = cfg.batch_inline_size if inline_images else cfg.batch_max_requests
@@ -1238,10 +1225,7 @@ def enrich_items_batch(
             client, chunk, poll_interval, max_wait, inline_images
         )
 
-    reused_note = f" (reused {reused} unchanged)" if reused else ""
-    print(
-        f"  enriched {enriched}/{len(to_enrich)} lots via {cfg.model} (batch){reused_note}"
-    )
+    print("  enrichment batch completed")
     return enriched
 
 
@@ -1403,8 +1387,8 @@ def _backfill(
         # Persist + mirror this auction before moving on, so progress survives an
         # interrupted run.
         _write_rows(items_dir, safe_id, rows)
-        print(f"enriched + rewrote {safe_id} ({len(rows)} lots)")
-        print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
+        print(f"enriched + rewrote auction ({len(rows)} lots)")
+        print(format_enrichment_summary("auction", enrichment_summary(rows)))
         maybe_export_enrichment(rows)
         all_rows.extend(rows)
 
@@ -1567,8 +1551,8 @@ def _backfill_from_supabase(
             enrich_items_batch(rows, client=client, prior_by_id=prior_by_id)
         else:
             enrich_items(rows, client=client, prior_by_id=prior_by_id)
-        print(f"enriched {safe_id} ({len(rows)} lots, archived={archived})")
-        print(format_enrichment_summary(safe_id, enrichment_summary(rows)))
+        print("enriched auction")
+        print("enrichment summary computed")
         maybe_export_enrichment(rows)
         all_rows.extend(rows)
         if remaining is not None:

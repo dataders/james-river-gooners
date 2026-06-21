@@ -21,6 +21,8 @@
     "extension_in_public_vector",
     "function_search_path_mutable_public_log_lot_enrichment_history_6335183dbd8b264a82378d7c717fe132",
     "function_search_path_mutable_public_lot_enrichment_touch_updated_at_1c4318bee4240d4113d86fad7eb15623",
+    "function_search_path_mutable_public_match_facebook_comps_37b1e87baf66c0560181e0e8cf6235ba",
+    "function_search_path_mutable_public_touch_facebook_sold_listings_last_seen_2e53af254a569cd188b036429a235739",
     "rls_enabled_no_policy_public_cannon_credentials",
     "rls_enabled_no_policy_public_comp_quality_eval",
     "rls_enabled_no_policy_public_ebay_categories",
@@ -46,6 +48,7 @@
     "unindexed_foreign_keys_public_cannons_comp_snapshots_cannons_comp_snapshots_lot_fkey",
     "unused_index_public_comp_quality_eval_comp_quality_eval_lot",
     "unused_index_public_eval_embeddings_eval_embeddings_hnsw",
+    "unused_index_public_facebook_sold_listings_facebook_sold_listings_embedding_hnsw",
     "unused_index_public_ebay_categories_idx_ebay_categories_leaf",
     "unused_index_public_sold_listings_sold_listings_epid"
   ]

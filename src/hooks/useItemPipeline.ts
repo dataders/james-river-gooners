@@ -8,6 +8,7 @@ import { hasEbayComps } from '../utils/ebayComps.js'
 import { hasCannonsComps } from '../utils/cannonsComps.js'
 import { hasEnrichment } from '../utils/enrichment.js'
 import { sortItems, sortByMargin, sortByMaxBid, sortByForYou } from '../utils/sort.ts'
+import { haversineMiles } from '../utils/distance.ts'
 import { useSearch } from './useSearch.js'
 import { useSemanticSearch } from './useSemanticSearch.js'
 
@@ -19,6 +20,10 @@ export interface ItemPipelineInputs {
   auctions: Auction[]
   // Filter state (usePreferences + App-local toggles)
   localOnly: boolean
+  /** User location + radius for the distance filter. `null` radius = Any distance. */
+  userLat: number
+  userLng: number
+  maxDistanceMiles: number | null
   searchQuery: string
   excludedCategories: string[]
   excludedGroups: string[]
@@ -64,6 +69,9 @@ export function useItemPipeline({
   items,
   auctions,
   localOnly,
+  userLat,
+  userLng,
+  maxDistanceMiles,
   searchQuery,
   excludedCategories,
   excludedGroups,
@@ -87,23 +95,33 @@ export function useItemPipeline({
   bidItemIds,
   forYouByKey,
 }: ItemPipelineInputs) {
-  const localAuctionIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const a of auctions) {
-      if (a.isLocal) ids.add(a.safeId)
-    }
-    return ids
-  }, [auctions])
-
-  // Apply locality filter upstream so auctions list + category counts reflect it
+  // Locality + distance filter, applied upstream so the auctions list and
+  // category counts reflect them. An auction passes when it satisfies BOTH the
+  // (legacy) "Richmond area only" toggle and the distance radius. A null radius
+  // ("Any distance") disables the distance check; an auction missing coordinates
+  // fails any active radius rather than crashing.
   const visibleAuctions = useMemo(
-    () => localOnly ? auctions.filter(a => a.isLocal) : auctions,
-    [auctions, localOnly]
+    () => auctions.filter(a => {
+      if (localOnly && !a.isLocal) return false
+      if (maxDistanceMiles != null) {
+        if (a.lat == null || a.lng == null) return false
+        if (haversineMiles(userLat, userLng, a.lat, a.lng) > maxDistanceMiles) return false
+      }
+      return true
+    }),
+    [auctions, localOnly, maxDistanceMiles, userLat, userLng]
+  )
+
+  const visibleAuctionIds = useMemo(
+    () => new Set(visibleAuctions.map(a => a.safeId)),
+    [visibleAuctions]
   )
 
   const visibleItems = useMemo(
-    () => localOnly ? items.filter(item => localAuctionIds.has(item.auctionSafeId)) : items,
-    [items, localOnly, localAuctionIds]
+    () => (!localOnly && maxDistanceMiles == null)
+      ? items
+      : items.filter(item => visibleAuctionIds.has(item.auctionSafeId)),
+    [items, localOnly, maxDistanceMiles, visibleAuctionIds]
   )
 
   const searchIndex = useSearch(visibleItems)

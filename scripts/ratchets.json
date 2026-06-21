@@ -1,6 +1,6 @@
 {
   "_comment": "One-way quality baselines enforced in CI. Each only moves the good direction; the ratchet scripts print the new number to lock in when you beat it. See scripts/*.mjs and CLAUDE.md.",
-  "typedSourceFloor": 30,
+  "typedSourceFloor": 33,
   "untypedSourceCeiling": 66,
   "suppressionsCeiling": 10,
   "bundleGzipBytesCeiling": 375000,

@@ -79,3 +79,23 @@ test('normalizeRowsSupabase builds auction records from lot rows', () => {
   assert.equal(auctions[0].totalItems, 2)
   assert.equal(items.length, 2)
 })
+
+test('normalizeRowsSupabase carries auction location for the distance filter', () => {
+  const rows = [
+    { item_id: 'i1', auction_safe_id: 'a1', auction_title: 'Estate',
+      source: 'cannons', auction_city: 'Richmond', auction_state: 'VA',
+      auction_latitude: '37.538509', auction_longitude: '-77.43428' },
+  ]
+  const { auctions } = normalizeRowsSupabase(rows, false)
+  assert.equal(auctions[0].city, 'Richmond')
+  assert.equal(auctions[0].state, 'VA')
+  assert.equal(auctions[0].lat, 37.538509)
+  assert.equal(auctions[0].lng, -77.43428)
+})
+
+test('normalizeRowsSupabase leaves location undefined when columns are absent', () => {
+  const rows = [{ item_id: 'i1', auction_safe_id: 'a1', source: 'cannons' }]
+  const { auctions } = normalizeRowsSupabase(rows, false)
+  assert.equal(auctions[0].lat, undefined)
+  assert.equal(auctions[0].lng, undefined)
+})

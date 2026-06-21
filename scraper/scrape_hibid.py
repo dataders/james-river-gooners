@@ -55,6 +55,32 @@ def hibid_safe_id(catalog_id: str | int) -> str:
     return f"hibid_{catalog_id}"
 
 
+def company_location(slug: str, sources_file: Path | None = None) -> tuple[str, str]:
+    """Resolve a company's ``location:`` ("City, ST") into ``(city, state)``.
+
+    Discovery (``rescrape_all.py``) and this scraper run in separate processes —
+    the child is only handed ``--source <slug>``, so it re-reads the config by
+    slug here rather than threading a new CLI arg. Raises GeocodeError on an
+    unknown slug or a missing/malformed location, which fails the scrape (the
+    same loud gate as an unmapped city).
+    """
+    import geocode
+
+    with open(sources_file or SOURCES_FILE) as f:
+        config = yaml.safe_load(f)
+    for company in config.get("companies", []):
+        if company.get("slug") == slug:
+            location = company.get("location", "")
+            if not location:
+                raise geocode.GeocodeError(
+                    f"HiBid company {slug!r} has no 'location' in hibid_sources.yml"
+                )
+            return geocode.parse_location(location)
+    raise geocode.GeocodeError(
+        f"unknown HiBid company slug {slug!r} (not in hibid_sources.yml)"
+    )
+
+
 def extract_catalog_id(url: str) -> str | None:
     m = re.search(r"/catalog/(\d+)", url)
     return m.group(1) if m else None
@@ -624,6 +650,7 @@ def scrape_hibid_auction(
         print(f"  No bid changes; skipping write for {safe_id}")
         return {"changed": False}
 
+    auction_city, auction_state = company_location(source_slug)
     ctx = WriteContext(
         safe_id=safe_id,
         auction_id=catalog_id,
@@ -634,6 +661,8 @@ def scrape_hibid_auction(
         scraped_at=scraped_at.isoformat(),
         session=session,
         snapshot_to_motherduck=snapshot_to_motherduck,
+        auction_city=auction_city,
+        auction_state=auction_state,
     )
     return write_read_model(all_items, ctx)
 

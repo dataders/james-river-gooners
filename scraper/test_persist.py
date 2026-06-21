@@ -21,6 +21,8 @@ def _ctx(tmp: Path, **over) -> WriteContext:
         scraped_at="2026-05-30T12:00:00+00:00",
         session=mock.Mock(),
         snapshot_to_motherduck=False,
+        auction_city="Richmond",
+        auction_state="VA",
     )
     return replace(ctx, **over) if over else ctx
 
@@ -66,6 +68,12 @@ class WriteReadModelTest(unittest.TestCase):
         fake_embed.maybe_generate_and_upsert = self.embed
         mock.patch.dict(sys.modules, {"embed_nomic": fake_embed}).start()
 
+        # Stub the geocoder so the test doesn't depend on geocode_cache.yml; the
+        # gate's own behaviour is covered by test_geocode.
+        self.geocode = mock.patch(
+            "geocode.resolve", return_value=(37.5407, -77.436)
+        ).start()
+
     def tearDown(self):
         mock.patch.stopall()
         self._tmp.cleanup()
@@ -91,6 +99,12 @@ class WriteReadModelTest(unittest.TestCase):
         self.assertEqual(row["scrapedAt"], "2026-05-30T12:00:00+00:00")
         self.assertEqual(row["source"], "testsrc")
         self.assertEqual(row["images"], ["https://img/a.jpg", "https://img/b.jpg"])
+        # Auction location stamped for the distance filter (geocode stubbed).
+        self.assertEqual(row["auctionCity"], "Richmond")
+        self.assertEqual(row["auctionState"], "VA")
+        self.assertEqual(row["auctionLatitude"], 37.5407)
+        self.assertEqual(row["auctionLongitude"], -77.436)
+        self.geocode.assert_called_once_with("Richmond", "VA")
 
         # Parquet stringifies images in place.
         self.assertEqual((self._items_dir / "src_42.parquet").exists(), True)

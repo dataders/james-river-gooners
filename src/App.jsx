@@ -18,6 +18,7 @@ import { useFilterBounds } from './hooks/useFilterBounds'
 import { useForYou } from './hooks/useForYou'
 import { itemKey } from './utils/itemKey'
 import { sortByForYou } from './utils/sort'
+import { DEFAULT_LOCATION, DEFAULT_RADIUS_MILES } from './utils/distance'
 import { overlayEnrichment } from './utils/enrichment'
 import { syncUrlParam, pushUrlParam, readParam, readBoolParam, URL_PARAMS, ITEM_PANEL_STATE } from './utils/urlState'
 import { captureEvent } from './lib/telemetry'
@@ -110,6 +111,10 @@ export default function App() {
     minHours,
     maxHours,
     localOnly,
+    userLat,
+    userLng,
+    userLocationLabel,
+    maxDistanceMiles,
     hasComp,
     hasCannonsComp,
     sort,
@@ -136,6 +141,8 @@ export default function App() {
     setMinHours,
     setMaxHours,
     setLocalOnly,
+    setUserLocation,
+    setMaxDistanceMiles,
     setHasComp,
     setHasCannonsComp,
     setSort,
@@ -390,6 +397,9 @@ export default function App() {
     items,
     auctions,
     localOnly,
+    userLat,
+    userLng,
+    maxDistanceMiles,
     searchQuery: deferredSearchQuery,
     excludedCategories,
     excludedGroups,
@@ -473,6 +483,10 @@ export default function App() {
 
   const clearAllFilters = useCallback(() => {
     setLocalOnly(false)
+    // Distance filter resets to the default 25 mi of Richmond, VA — the same
+    // state as a fresh page load (not "Any distance").
+    setUserLocation(DEFAULT_LOCATION)
+    setMaxDistanceMiles(DEFAULT_RADIUS_MILES)
     changeArchiveMode('active')
     setDecisionView('all')
     setBestDeals(false)
@@ -491,7 +505,7 @@ export default function App() {
     showAll()
     showAllAuctions()
     setSearchQuery('')
-  }, [setLocalOnly, changeArchiveMode, setDecisionView, setMinPrice, setMaxPrice, setMinBids, setMaxBids, setMinBidders, setMaxBidders, setMinHours, setMaxHours, setHasComp, setHasCannonsComp, setShowEnrichedOnly, showAll, showAllAuctions, setSearchQuery])
+  }, [setLocalOnly, setUserLocation, setMaxDistanceMiles, changeArchiveMode, setDecisionView, setMinPrice, setMaxPrice, setMinBids, setMaxBids, setMinBidders, setMaxBidders, setMinHours, setMaxHours, setHasComp, setHasCannonsComp, setShowEnrichedOnly, showAll, showAllAuctions, setSearchQuery])
 
   if (error) {
     return <div className="error">Error: {error}</div>
@@ -656,6 +670,10 @@ export default function App() {
           onDecisionViewChange={setDecisionView}
           localOnly={localOnly}
           onLocalOnlyChange={setLocalOnly}
+          userLocationLabel={userLocationLabel}
+          maxDistanceMiles={maxDistanceMiles}
+          onSetLocation={setUserLocation}
+          onMaxDistanceChange={setMaxDistanceMiles}
           onMyBidsPanelOpen={() => setMyBidsPanelOpen(true)}
           bestDeals={bestDeals}
           onBestDealsToggle={handleBestDealsToggle}
@@ -712,6 +730,9 @@ export default function App() {
             onClearSearch={() => setSearchQuery('')}
             localOnly={localOnly}
             onClearLocal={() => setLocalOnly(false)}
+            maxDistanceMiles={maxDistanceMiles}
+            userLocationLabel={userLocationLabel}
+            onClearDistance={() => setMaxDistanceMiles(null)}
             archiveMode={archiveMode}
             onClearArchive={() => changeArchiveMode('active')}
             decisionView={decisionView}

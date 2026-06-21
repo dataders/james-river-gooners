@@ -49,6 +49,10 @@ export function normalizeRowsSupabase(rows, archived) {
         source: item.source || 'cannons',
         archived,
         isLocal: isLocalAuction(item.auctionTitle),
+        city: row.auction_city ?? undefined,
+        state: row.auction_state ?? undefined,
+        lat: row.auction_latitude != null ? Number(row.auction_latitude) : undefined,
+        lng: row.auction_longitude != null ? Number(row.auction_longitude) : undefined,
         totalItems: 0,
       }
     }

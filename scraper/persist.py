@@ -36,6 +36,11 @@ class WriteContext:
     source: str  # source slug stamped onto each lot ("cannons", "hibid", a HiBid company slug, …)
     source_url: str  # canonical auction URL, recorded with MotherDuck snapshots
     scraped_at: str  # ISO-8601 string stamped onto each lot
+    # Auction location for the browser's distance filter. Geocoded to coordinates
+    # in _stamp_auction_metadata; an unresolvable location FAILS the scrape (loud,
+    # never a silent null) — see scraper/geocode.py.
+    auction_city: str = ""
+    auction_state: str = ""
     session: requests.Session | None = None  # reused for Nomic image downloads
     snapshot_to_motherduck: bool | None = (
         None  # None → defer to should_snapshot_to_motherduck()
@@ -69,6 +74,12 @@ def write_read_model(items: list[dict], ctx: WriteContext) -> dict:
 
 
 def _stamp_auction_metadata(items: list[dict], ctx: WriteContext) -> None:
+    # Resolve the auction's coordinates once — every lot shares them. A
+    # GeocodeError propagates out of write_read_model and fails the scrape, so a
+    # new/unmapped location is flagged loudly rather than stored as a null.
+    import geocode
+
+    lat, lng = geocode.resolve(ctx.auction_city, ctx.auction_state)
     for item in items:
         item["auctionId"] = ctx.auction_id
         item["auctionSafeId"] = ctx.safe_id
@@ -78,6 +89,10 @@ def _stamp_auction_metadata(items: list[dict], ctx: WriteContext) -> None:
             item["endDate"] = ctx.auction_end_date
         item["scrapedAt"] = ctx.scraped_at
         item["source"] = ctx.source
+        item["auctionCity"] = ctx.auction_city
+        item["auctionState"] = ctx.auction_state
+        item["auctionLatitude"] = lat
+        item["auctionLongitude"] = lng
 
 
 def _enrich_items(items: list[dict], ctx: WriteContext, ndjson_path: Path) -> None:
