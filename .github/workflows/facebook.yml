@@ -40,7 +40,7 @@ jobs:
         timeout-minutes: 35
         run: |
           cd scraper
-          uv run --with requests --with pyarrow --with pyyaml \
+          uv run --with requests --with pyarrow --with pyyaml --with beautifulsoup4 \
             --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
             --with 'pydantic-settings>=2,<3' \
             python rescrape_all.py --source facebook
