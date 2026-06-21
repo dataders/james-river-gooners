@@ -1,5 +1,5 @@
 // @ts-check
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 /**
  * @param {{ c: { name: string, count: number }, baselineExcludedCategories: string[], onToggleBaselineCategory: (cat: string) => void }} props
@@ -85,80 +85,21 @@ function GroupSection({ group, baselineExcludedGroups, baselineExcludedCategorie
  *   baselineExcludedCategories: string[],
  *   onToggleBaselineGroup: (group: string) => void,
  *   onToggleBaselineCategory: (cat: string) => void,
- *   onClose: () => void,
  * }} props
  */
-export function CategoryPrefsModal({
-  groupedCategories,
-  baselineExcludedGroups,
-  baselineExcludedCategories,
-  onToggleBaselineGroup,
-  onToggleBaselineCategory,
-  onClose,
-}) {
-  const overlayRef = useRef(/** @type {HTMLDivElement | null} */ (null))
-  const closeRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
-
-  useEffect(() => {
-    closeRef.current?.focus()
-    /** @param {KeyboardEvent} e */
-    function onKey(e) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  /** @param {import('react').MouseEvent<HTMLDivElement>} e */
-  function handleOverlayClick(e) {
-    if (e.target === overlayRef.current) onClose()
-  }
-
-  const hiddenGroupCount = groupedCategories.filter(g => baselineExcludedGroups.includes(g.group)).length
-
+export function CategoryPrefsList({ groupedCategories, baselineExcludedGroups, baselineExcludedCategories, onToggleBaselineGroup, onToggleBaselineCategory }) {
   return (
-    <div
-      className="tutorial-overlay"
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Category preferences"
-    >
-      <div className="tutorial-panel catprefs-panel">
-        <div className="tutorial-header">
-          <h2 className="tutorial-title">Category preferences</h2>
-          <button
-            className="tutorial-close"
-            ref={closeRef}
-            onClick={onClose}
-            aria-label="Close category preferences"
-          >✕</button>
-        </div>
-
-        <p className="catprefs-description">
-          Hidden categories are excluded by default and skipped in your For&nbsp;You rankings.
-          &ldquo;Clear filters&rdquo; always restores this list — you can still temporarily
-          show a group without changing these settings.
-        </p>
-
-        {hiddenGroupCount > 0 && (
-          <p className="catprefs-hidden-count">
-            {hiddenGroupCount} group{hiddenGroupCount > 1 ? 's' : ''} hidden
-          </p>
-        )}
-
-        <div className="catprefs-list">
-          {groupedCategories.map(group => (
-            <GroupSection
-              key={group.group}
-              group={group}
-              baselineExcludedGroups={baselineExcludedGroups}
-              baselineExcludedCategories={baselineExcludedCategories}
-              onToggleBaselineGroup={onToggleBaselineGroup}
-              onToggleBaselineCategory={onToggleBaselineCategory}
-            />
-          ))}
-        </div>
-      </div>
+    <div className="catprefs-list">
+      {groupedCategories.map(group => (
+        <GroupSection
+          key={group.group}
+          group={group}
+          baselineExcludedGroups={baselineExcludedGroups}
+          baselineExcludedCategories={baselineExcludedCategories}
+          onToggleBaselineGroup={onToggleBaselineGroup}
+          onToggleBaselineCategory={onToggleBaselineCategory}
+        />
+      ))}
     </div>
   )
 }

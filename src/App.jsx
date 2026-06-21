@@ -48,7 +48,6 @@ const CannonLinkModal = lazyDefault(() => import('./components/CannonLinkModal')
 const MyBidsPanel = lazyDefault(() => import('./components/MyBidsPanel'), 'MyBidsPanel')
 const ImageSearchModal = lazyDefault(() => import('./components/ImageSearchModal'), 'ImageSearchModal')
 const FeedbackModal = lazyDefault(() => import('./components/FeedbackModal.tsx'), 'FeedbackModal')
-const CategoryPrefsModal = lazyDefault(() => import('./components/CategoryPrefsModal'), 'CategoryPrefsModal')
 
 export default function App() {
   // 'active' (live auctions only), 'both' (live + archived), or 'archived'
@@ -150,7 +149,6 @@ export default function App() {
   usePreferencesSync(auth.user)
   const [authOpen, setAuthOpen] = useState(false)
   const [cannonLinkOpen, setCannonLinkOpen] = useState(false)
-  const [categoryPrefsOpen, setCategoryPrefsOpen] = useState(false)
   const { favoriteIds, isFavorite, toggleFavorite, removeFavorite } = useFavorites(auth.user)
   const { ignoredIds, isIgnored, toggleIgnored, removeIgnored } = useIgnored(auth.user)
   const cannonBids = useCannonBids(auth.user)
@@ -536,7 +534,11 @@ export default function App() {
               cannonBids={auth.user ? cannonBids : null}
               onSignInClick={() => setAuthOpen(true)}
               onCannonLinkClick={() => setCannonLinkOpen(true)}
-              onCategoryPrefsClick={auth.user ? () => setCategoryPrefsOpen(true) : undefined}
+              groupedCategories={auth.user ? groupedCategories : undefined}
+              baselineExcludedGroups={baselineExcludedGroups}
+              baselineExcludedCategories={baselineExcludedCategories}
+              onToggleBaselineGroup={toggleBaselineGroup}
+              onToggleBaselineCategory={toggleBaselineCategory}
             />
           </div>
 
@@ -634,7 +636,11 @@ export default function App() {
         cannonBids={auth.user ? cannonBids : null}
         onSignInClick={() => setAuthOpen(true)}
         onCannonLinkClick={() => setCannonLinkOpen(true)}
-        onCategoryPrefsClick={auth.user ? () => setCategoryPrefsOpen(true) : undefined}
+        groupedCategories={auth.user ? groupedCategories : undefined}
+        baselineExcludedGroups={baselineExcludedGroups}
+        baselineExcludedCategories={baselineExcludedCategories}
+        onToggleBaselineGroup={toggleBaselineGroup}
+        onToggleBaselineCategory={toggleBaselineCategory}
       />
 
       <div className={`app-body${filterOpen ? '' : ' app-body--sidebar-closed'}`}>
@@ -853,16 +859,6 @@ export default function App() {
         />
       )}
 
-      {categoryPrefsOpen && (
-        <CategoryPrefsModal
-          groupedCategories={groupedCategories}
-          baselineExcludedGroups={baselineExcludedGroups}
-          baselineExcludedCategories={baselineExcludedCategories}
-          onToggleBaselineGroup={toggleBaselineGroup}
-          onToggleBaselineCategory={toggleBaselineCategory}
-          onClose={() => setCategoryPrefsOpen(false)}
-        />
-      )}
       </Suspense>
     </div>
   )

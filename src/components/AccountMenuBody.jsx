@@ -1,16 +1,17 @@
 // @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { CategoryPrefsList } from './CategoryPrefsModal.jsx'
 
 // The logged-in account menu items, shared by the desktop dropdown
-// (AccountButton) and the mobile NavDrawer. Owns the change-password flow.
-// `onAfterAction` lets the container (popover / drawer) close itself after an
-// action that should dismiss it (sign out, Cannon's link, password saved).
-export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onCategoryPrefsClick, onAfterAction }) {
+// (AccountButton) and the mobile NavDrawer. Owns the change-password flow
+// and the inline category preferences section.
+export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAction, groupedCategories, baselineExcludedGroups, baselineExcludedCategories, onToggleBaselineGroup, onToggleBaselineCategory }) {
   const [changing, setChanging] = useState(false)
   const [newPass, setNewPass] = useState('')
   const [busy, setBusy] = useState(false)
   const [passError, setPassError] = useState('')
   const [passNotice, setPassNotice] = useState('')
+  const [categoryPrefsExpanded, setCategoryPrefsExpanded] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => { if (changing) inputRef.current?.focus() }, [changing])
@@ -47,6 +48,31 @@ export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onCategor
           {cannonBids.linked ? `Cannon's ✓ (${cannonBids.username})` : "Link Cannon's account"}
         </button>
       )}
+      {groupedCategories?.length > 0 && (
+        <>
+          <button
+            type="button"
+            className="account-dropdown-item account-dropdown-item--expand"
+            role="menuitem"
+            aria-expanded={categoryPrefsExpanded}
+            onClick={() => setCategoryPrefsExpanded(v => !v)}
+          >
+            <span>Category preferences</span>
+            <span className="account-expand-arrow" aria-hidden="true">{categoryPrefsExpanded ? '▾' : '▸'}</span>
+          </button>
+          {categoryPrefsExpanded && (
+            <div className="account-catprefs">
+              <CategoryPrefsList
+                groupedCategories={groupedCategories}
+                baselineExcludedGroups={baselineExcludedGroups}
+                baselineExcludedCategories={baselineExcludedCategories}
+                onToggleBaselineGroup={onToggleBaselineGroup}
+                onToggleBaselineCategory={onToggleBaselineCategory}
+              />
+            </div>
+          )}
+        </>
+      )}
       {changing ? (
         <form className="account-change-pass-form" onSubmit={handleChangePassword}>
           <input
@@ -73,16 +99,6 @@ export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onCategor
         </form>
       ) : (
         <>
-          {onCategoryPrefsClick && (
-            <button
-              type="button"
-              className="account-dropdown-item"
-              role="menuitem"
-              onClick={() => { onAfterAction?.(); onCategoryPrefsClick() }}
-            >
-              Category preferences
-            </button>
-          )}
           <button type="button" className="account-dropdown-item" role="menuitem" onClick={() => setChanging(true)}>
             Change password
           </button>

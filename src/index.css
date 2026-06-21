@@ -2452,7 +2452,10 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-  min-width: 200px;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: min(520px, calc(100vh - 80px));
+  overflow-y: auto;
   padding: 8px 0;
   z-index: 200;
 }
@@ -2487,6 +2490,23 @@ body {
 .account-dropdown-item:hover { background: var(--surface-alt, rgba(0,0,0,0.06)); }
 .account-dropdown-item--primary { color: var(--accent); font-weight: 600; }
 .account-dropdown-item:disabled { opacity: 0.5; cursor: default; }
+.account-dropdown-item--expand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.account-expand-arrow {
+  font-size: 0.65rem;
+  opacity: 0.5;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.account-catprefs {
+  border-top: 1px solid var(--border, rgba(0,0,0,0.08));
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
+  padding: 4px 0;
+  margin-bottom: 2px;
+}
 
 .account-change-pass-form {
   padding: 4px 14px 8px;
@@ -4878,29 +4898,9 @@ a.cannons-comp-card:hover {
   margin: 0 0 6px;
 }
 
-/* ── Category Preferences Modal ─────────────────────────────────────────── */
-/* Reuses .tutorial-overlay / .tutorial-panel from the tutorial modal. */
-.catprefs-panel {
-  max-width: 520px;
-  max-height: 82vh;
-  display: flex;
-  flex-direction: column;
-}
-.catprefs-description {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin: 0 0 10px;
-  line-height: 1.5;
-}
-.catprefs-hidden-count {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin: 0 0 10px;
-  font-variant-numeric: tabular-nums;
-}
+/* ── Category Preferences (inline in account dropdown / nav drawer) ──────── */
 .catprefs-list {
-  overflow-y: auto;
-  flex: 1;
+  /* scrolling handled by the parent .account-dropdown or nav-drawer-body */
 }
 .catprefs-group {
   border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
@@ -4938,9 +4938,6 @@ a.cannons-comp-card:hover {
   font-size: 0.9rem;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .catprefs-group-name--hidden { opacity: 0.4; }
 .catprefs-group-count {
