@@ -1,16 +1,19 @@
 // @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { AlwaysHiddenCategories } from './AlwaysHiddenCategories.jsx'
 
 // The logged-in account menu items, shared by the desktop dropdown
-// (AccountButton) and the mobile NavDrawer. Owns the change-password flow.
-// `onAfterAction` lets the container (popover / drawer) close itself after an
-// action that should dismiss it (sign out, Cannon's link, password saved).
-export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAction }) {
+// (AccountButton) and the mobile NavDrawer. Owns the change-password flow
+// and the "always hidden categories" review/restore list (categories are
+// *added* to that set inline in the Filters panel, not here).
+export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAction, baselineExcludedGroups = [], baselineExcludedCategories = [], onRemoveBaselineGroup, onRemoveBaselineCategory, onClearBaseline }) {
   const [changing, setChanging] = useState(false)
   const [newPass, setNewPass] = useState('')
   const [busy, setBusy] = useState(false)
   const [passError, setPassError] = useState('')
   const [passNotice, setPassNotice] = useState('')
+  const [alwaysHiddenExpanded, setAlwaysHiddenExpanded] = useState(false)
+  const alwaysHiddenCount = baselineExcludedGroups.length + baselineExcludedCategories.length
   const inputRef = useRef(null)
 
   useEffect(() => { if (changing) inputRef.current?.focus() }, [changing])
@@ -46,6 +49,27 @@ export function AccountMenuBody({ auth, cannonBids, onCannonLinkClick, onAfterAc
         >
           {cannonBids.linked ? `Cannon's ✓ (${cannonBids.username})` : "Link Cannon's account"}
         </button>
+      )}
+      <button
+        type="button"
+        className="account-dropdown-item account-dropdown-item--expand"
+        role="menuitem"
+        aria-expanded={alwaysHiddenExpanded}
+        onClick={() => setAlwaysHiddenExpanded(v => !v)}
+      >
+        <span>Always-hidden categories{alwaysHiddenCount > 0 ? ` (${alwaysHiddenCount})` : ''}</span>
+        <span className="account-expand-arrow" aria-hidden="true">{alwaysHiddenExpanded ? '▾' : '▸'}</span>
+      </button>
+      {alwaysHiddenExpanded && (
+        <div className="account-catprefs">
+          <AlwaysHiddenCategories
+            baselineExcludedGroups={baselineExcludedGroups}
+            baselineExcludedCategories={baselineExcludedCategories}
+            onRemoveGroup={onRemoveBaselineGroup}
+            onRemoveCategory={onRemoveBaselineCategory}
+            onClearAll={onClearBaseline}
+          />
+        </div>
       )}
       {changing ? (
         <form className="account-change-pass-form" onSubmit={handleChangePassword}>

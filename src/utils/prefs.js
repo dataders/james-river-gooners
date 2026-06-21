@@ -14,6 +14,8 @@ export const DEFAULT_EXCLUDED_GROUPS = ['Firearms', 'Vehicles']
  *   includedCategories: string[],
  *   excludedCategories: string[],
  *   excludedGroups: string[],
+ *   baselineExcludedGroups: string[],
+ *   baselineExcludedCategories: string[],
  *   searchQuery: string,
  *   minPrice: number | null,
  *   maxPrice: number | null,
@@ -38,6 +40,11 @@ export const DEFAULT_PREFS = {
   includedCategories: [],
   excludedCategories: [],
   excludedGroups: [...DEFAULT_EXCLUDED_GROUPS],
+  // Permanent per-user baseline: categories excluded by default, restored on "clear filters".
+  // Separate from the session excludedGroups/excludedCategories so a temporary
+  // session override doesn't overwrite the user's standing preferences.
+  baselineExcludedGroups: [...DEFAULT_EXCLUDED_GROUPS],
+  baselineExcludedCategories: [],
   searchQuery: '',
   minPrice: null,
   maxPrice: null,
@@ -65,6 +72,8 @@ export const PERSISTED_KEYS = [
   'includedCategories',
   'excludedCategories',
   'excludedGroups',
+  'baselineExcludedGroups',
+  'baselineExcludedCategories',
   'minPrice',
   'maxPrice',
   'minBids',

@@ -21,6 +21,7 @@ export function useForYou(
   favoriteItems: Item[],
   bidItems: Item[],
   ignoredItems: Item[],
+  baselineExcludedItems: Item[],
   auctions: Auction[],
   enabled: boolean,
 ): ForYouResult {
@@ -33,6 +34,10 @@ export function useForYou(
     .sort()
     .join(',')
   const ignoredKey = ignoredItems
+    .map(i => compositeKey(i.auctionSafeId, i.id))
+    .sort()
+    .join(',')
+  const baselineKey = baselineExcludedItems
     .map(i => compositeKey(i.auctionSafeId, i.id))
     .sort()
     .join(',')
@@ -53,8 +58,17 @@ export function useForYou(
     const targetAuctionIds = auctions.map(a => a.safeId)
     const historyAuctionIds = historyItems.map(i => i.auctionSafeId)
     const historyItemIds = historyItems.map(i => String(i.id))
-    const ignoredAuctionIds = ignoredItems.map(i => i.auctionSafeId)
-    const ignoredItemIds = ignoredItems.map(i => String(i.id))
+    // Combine explicit ignores with the embedding centroid of the user's
+    // permanently excluded categories. avg() in the RPC is unaffected by
+    // duplicates, so we can append without deduplicating.
+    const ignoredAuctionIds = [
+      ...ignoredItems.map(i => i.auctionSafeId),
+      ...baselineExcludedItems.map(i => i.auctionSafeId),
+    ]
+    const ignoredItemIds = [
+      ...ignoredItems.map(i => String(i.id)),
+      ...baselineExcludedItems.map(i => String(i.id)),
+    ]
 
     let cancelled = false
     setStatus('loading')
@@ -83,7 +97,7 @@ export function useForYou(
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, historyKey, ignoredKey, targetKey])
+  }, [enabled, historyKey, ignoredKey, baselineKey, targetKey])
 
   return { scoreByKey, status }
 }

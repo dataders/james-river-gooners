@@ -98,6 +98,8 @@ export default function App() {
   const {
     excludedCategories,
     excludedGroups,
+    baselineExcludedGroups,
+    baselineExcludedCategories,
     searchQuery,
     minPrice,
     maxPrice,
@@ -119,6 +121,11 @@ export default function App() {
     hideAll,
     showAll,
     showOnly,
+    addBaselineGroup,
+    addBaselineCategory,
+    removeBaselineGroup,
+    removeBaselineCategory,
+    clearBaseline,
     setSearchQuery,
     setMinPrice,
     setMaxPrice,
@@ -335,6 +342,17 @@ export default function App() {
     () => items.filter(i => cannonBids.bidItemIds.has(String(i.id))),
     [items, cannonBids.bidItemIds]
   )
+  // Items from the user's permanently-excluded categories: used as a negative
+  // signal in the For You ranking (their embeddings' centroid gets subtracted
+  // from the taste vector, pushing results away from excluded category types).
+  const baselineExcludedItems = useMemo(
+    () => items.filter(item =>
+      baselineExcludedGroups.includes(item.category) ||
+      baselineExcludedCategories.includes(item.rawCategory)
+    ),
+    [items, baselineExcludedGroups, baselineExcludedCategories]
+  )
+
   const hasForYouSignal = favoriteItems.length > 0 || bidItems.length > 0
 
   // Compute the taste ranking whenever the user has any signal — not just while
@@ -345,6 +363,7 @@ export default function App() {
     favoriteItems,
     bidItems,
     ignoredItems,
+    baselineExcludedItems,
     auctions,
     hasForYouSignal,
   )
@@ -437,11 +456,20 @@ export default function App() {
     if (hasComp) n++
     if (hasCannonsComp) n++
     if (showEnrichedOnly) n++
-    if (excludedCategories.length > 0 || excludedGroups.length > 0) n++
+    // Count category filters only when the session differs from the user's
+    // baseline — baseline exclusions are permanent preferences, not transient filters.
+    const baseGroups = new Set(baselineExcludedGroups)
+    const baseCats = new Set(baselineExcludedCategories)
+    const hasCategorySessionOverride =
+      excludedGroups.some(g => !baseGroups.has(g)) ||
+      baselineExcludedGroups.some(g => !excludedGroups.includes(g)) ||
+      excludedCategories.some(c => !baseCats.has(c)) ||
+      baselineExcludedCategories.some(c => !excludedCategories.includes(c))
+    if (hasCategorySessionOverride) n++
     if (excludedAuctions.length > 0) n++
     if (searchQuery.trim()) n++
     return n
-  }, [localOnly, archiveMode, decisionView, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, excludedAuctions, searchQuery])
+  }, [localOnly, archiveMode, decisionView, bestDeals, minPrice, maxPrice, minBids, maxBids, minBidders, maxBidders, minHours, maxHours, hasComp, hasCannonsComp, showEnrichedOnly, excludedCategories, excludedGroups, baselineExcludedGroups, baselineExcludedCategories, excludedAuctions, searchQuery])
 
   const clearAllFilters = useCallback(() => {
     setLocalOnly(false)
@@ -509,6 +537,11 @@ export default function App() {
               cannonBids={auth.user ? cannonBids : null}
               onSignInClick={() => setAuthOpen(true)}
               onCannonLinkClick={() => setCannonLinkOpen(true)}
+              baselineExcludedGroups={baselineExcludedGroups}
+              baselineExcludedCategories={baselineExcludedCategories}
+              onRemoveBaselineGroup={removeBaselineGroup}
+              onRemoveBaselineCategory={removeBaselineCategory}
+              onClearBaseline={clearBaseline}
             />
           </div>
 
@@ -606,6 +639,11 @@ export default function App() {
         cannonBids={auth.user ? cannonBids : null}
         onSignInClick={() => setAuthOpen(true)}
         onCannonLinkClick={() => setCannonLinkOpen(true)}
+        baselineExcludedGroups={baselineExcludedGroups}
+        baselineExcludedCategories={baselineExcludedCategories}
+        onRemoveBaselineGroup={removeBaselineGroup}
+        onRemoveBaselineCategory={removeBaselineCategory}
+        onClearBaseline={clearBaseline}
       />
 
       <div className={`app-body${filterOpen ? '' : ' app-body--sidebar-closed'}`}>
@@ -654,12 +692,18 @@ export default function App() {
           groupedCategories={groupedCategories}
           excludedCategories={excludedCategories}
           excludedGroups={excludedGroups}
+          baselineExcludedGroups={baselineExcludedGroups}
+          baselineExcludedCategories={baselineExcludedCategories}
           onToggleExcluded={toggleExcluded}
           onHideGroup={hideGroup}
           onShowGroup={showGroup}
           onHideAll={() => hideAll(groupedCategories.map(g => g.group))}
           onShowAll={showAll}
           onShowOnly={showOnly}
+          onAddBaselineGroup={addBaselineGroup}
+          onRemoveBaselineGroup={removeBaselineGroup}
+          onAddBaselineCategory={addBaselineCategory}
+          onRemoveBaselineCategory={removeBaselineCategory}
         />
 
         <main data-load-complete={loadComplete ? 'true' : 'false'}>
@@ -823,6 +867,7 @@ export default function App() {
           user={auth.user}
         />
       )}
+
       </Suspense>
     </div>
   )

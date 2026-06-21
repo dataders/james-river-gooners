@@ -8,6 +8,14 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-21',
+    title: 'Never show me this: permanently hide categories',
+    changes: [
+      { id: 'cat-prefs-baseline', icon: '🔒', text: 'Hide a category in Filters and a new “never show this” option appears — pick it and that category stays hidden on every visit, not just this one. Review or undo your always-hidden categories anytime from your account menu. "Clear filters" keeps your permanent choices in place.' },
+      { id: 'cat-prefs-foryou', icon: '🎯', text: 'Your always-hidden categories also sharpen the "For You" ranking — the types of lots you\'ve permanently hidden pull your taste profile away from similar items, so recommendations get more relevant automatically.' },
+    ],
+  },
+  {
     date: '2026-06-19',
     title: 'Swipe deck deals your For You picks first',
     changes: [
