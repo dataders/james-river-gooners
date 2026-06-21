@@ -101,8 +101,10 @@ JWT-gated (service-role + `auth.getUser`). Fires the instant Stage 1 returns, ke
 - **Atomic** per-user daily cap (`resale_scan_log`: insert-then-count, or guard RPC).
   Under cap → call SoldComps `/v1/scrape` (`Authorization: Bearer SOLDCOMPS_API_KEY`,
   `SOLDCOMPS_API_URL` env-overridable). **v1 sends a keyword query** built from
-  `searchQuery` (+ a category id when cheaply derivable from the existing
-  `EBAY_CATEGORY_IDS` map); it does **not** port the full `build_ebay_sold_searches` /
+  `searchQuery` (+ a category id *if* cheaply derivable — confirm the exact helper, e.g.
+  `ebay_category_id`/`EBAY_CATEGORY_IDS` in `ebay_query.py`, is portable to TS; otherwise
+  drop the category id, it's optional for v1); it does **not** port the full
+  `build_ebay_sold_searches` /
   `soldcomps_sold_matches` funnel (specific→broad→category tiers, condition/price filters,
   leaf-category lookup) — that precision is explicitly deferred. Parse matches → price,
   sold date, condition, thumbnail, **eBay item URL**. Log one row.
@@ -178,7 +180,7 @@ JWT-gated. Fires **in parallel** with Stage 2, keyed on `{searchQuery, imageBase
 ## Data flow
 
 ```
-[photo] ──▶ image-search (Haiku, full enrichment) ──▶ Stage 1: Identification ▼ (render)
+[photo] ──▶ image-search (Haiku, enrichment subset) ──▶ Stage 1: Identification ▼ (render)
                         │ searchQuery
           ┌─────────────┴──────────────┐ (parallel)
           ▼                            ▼
