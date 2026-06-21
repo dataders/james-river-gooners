@@ -92,7 +92,7 @@ export function FilterPanel({
         {/* View options — archive mode, favorites, view layout, quick toggles */}
         <Accordion title="View" defaultOpen={true}>
           <div className="fp-view-section">
-            <div className="fp-control-row">
+            <div className="fp-control-row fp-control-row--inline">
               <span className="fp-control-label">Auctions</span>
               <div className="archive-segmented" role="group" aria-label="Which auctions to show">
                 {[
@@ -111,7 +111,7 @@ export function FilterPanel({
               </div>
             </div>
 
-            <div className="fp-control-row">
+            <div className="fp-control-row fp-control-row--inline">
               <span className="fp-control-label">Show</span>
               <div className="archive-segmented" role="group" aria-label="Which items to show">
                 {[
@@ -130,8 +130,7 @@ export function FilterPanel({
               </div>
             </div>
 
-            <div className="fp-control-row fp-control-row--stack">
-              <span className="fp-control-label">Location</span>
+            <div className="fp-control-row">
               <LocationFilter
                 label={userLocationLabel}
                 radius={maxDistanceMiles}

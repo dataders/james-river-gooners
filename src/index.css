@@ -431,6 +431,26 @@ body {
   color: #1a1a1a;
   font-weight: 700;
 }
+/* Inline (horizontal) variant: small-caps label left, control right */
+.fp-control-row--inline {
+  flex-direction: row;
+  align-items: center;
+  padding: 5px 0;
+  gap: 10px;
+}
+.fp-control-row--inline .fp-control-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.fp-control-row--inline .archive-segmented {
+  flex: 1;
+  width: auto;
+}
+.fp-control-row--inline .segmented-option {
+  min-height: 28px;
+  font-size: 0.78rem;
+  padding: 0 4px;
+}
 .fp-pill-row {
   display: flex;
   gap: 8px;
@@ -448,6 +468,44 @@ body {
   flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+/* Compact summary row: pin · label · radius select · Change */
+.lf-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.lf-summary .lf-label {
+  flex: 1;
+  min-width: 0;
+}
+.lf-radius-select--inline {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 2px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.78rem;
+}
+.lf-radius-select--inline:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.lf-change-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+.lf-change-btn:hover {
+  opacity: 0.8;
 }
 .lf-current {
   display: flex;
@@ -4367,27 +4425,18 @@ a.cannons-comp-card:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  min-height: 40px;
+  min-height: 32px;
 }
 .has-filters .has-filter-row:last-child {
   border-bottom: none;
 }
-.has-filter-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
 .has-filter-label {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text);
-}
-.has-filter-sublabel {
-  font-size: 0.72rem;
-  color: var(--text-muted);
 }
 /* Reuse the local-toggle switch styling */
 .has-filters .has-filter-row input[type="checkbox"] {

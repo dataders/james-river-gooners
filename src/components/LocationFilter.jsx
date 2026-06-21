@@ -5,10 +5,6 @@ import { lookupZip } from '../utils/geocodeZip.ts'
 
 /** @typedef {import('../utils/distance.ts').UserLocation} UserLocation */
 
-// Facebook-Marketplace-style location control: set a location (zip code or
-// "use my current location") and a radius. Filters the grid to auctions within
-// that distance. The legacy "Richmond area only" toggle remains as a separate
-// source-quality filter while this ships.
 /**
  * @param {{
  *   label: string,
@@ -20,6 +16,7 @@ import { lookupZip } from '../utils/geocodeZip.ts'
 export function LocationFilter({ label, radius, onSetLocation, onRadiusChange }) {
   const [zip, setZip] = useState('')
   const [status, setStatus] = useState('') // '', 'loading', 'error', 'geo-error'
+  const [editing, setEditing] = useState(false)
 
   /** @param {React.FormEvent<HTMLFormElement>} e */
   async function submitZip(e) {
@@ -38,6 +35,7 @@ export function LocationFilter({ label, radius, onSetLocation, onRadiusChange })
     onSetLocation(result)
     setZip('')
     setStatus('')
+    setEditing(false)
   }
 
   function useMyLocation() {
@@ -54,6 +52,7 @@ export function LocationFilter({ label, radius, onSetLocation, onRadiusChange })
           label: 'Current location',
         })
         setStatus('')
+        setEditing(false)
       },
       () => setStatus('geo-error'),
       { timeout: 10000 }
@@ -62,51 +61,11 @@ export function LocationFilter({ label, radius, onSetLocation, onRadiusChange })
 
   return (
     <div className="location-filter">
-      <div className="lf-current">
+      <div className="lf-summary">
         <span className="lf-pin" aria-hidden="true">📍</span>
         <span className="lf-label">{label}</span>
-      </div>
-
-      <form className="lf-zip-row" onSubmit={submitZip}>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="\d{5}"
-          maxLength={5}
-          className="lf-zip-input"
-          placeholder="Zip code"
-          aria-label="Zip code"
-          value={zip}
-          onChange={(e) => {
-            setZip(e.target.value.replace(/\D/g, '').slice(0, 5))
-            if (status === 'error') setStatus('')
-          }}
-        />
-        <button type="submit" className="lf-set-btn" disabled={status === 'loading'}>
-          Set
-        </button>
-        <button
-          type="button"
-          className="lf-geo-btn"
-          onClick={useMyLocation}
-          disabled={status === 'loading'}
-          title="Use my current location"
-        >
-          📍 Use my location
-        </button>
-      </form>
-
-      {status === 'error' && (
-        <div className="lf-error">Enter a valid 5-digit US zip code.</div>
-      )}
-      {status === 'geo-error' && (
-        <div className="lf-error">Couldn’t get your location. Try a zip code instead.</div>
-      )}
-
-      <label className="lf-radius-row">
-        <span className="fp-control-label">Within</span>
         <select
-          className="lf-radius-select"
+          className="lf-radius-select lf-radius-select--inline"
           value={radius == null ? 'any' : String(radius)}
           onChange={(e) =>
             onRadiusChange(e.target.value === 'any' ? null : Number(e.target.value))
@@ -118,7 +77,54 @@ export function LocationFilter({ label, radius, onSetLocation, onRadiusChange })
             </option>
           ))}
         </select>
-      </label>
+        <button
+          type="button"
+          className="lf-change-btn"
+          onClick={() => { setEditing(v => !v); setStatus('') }}
+        >
+          {editing ? 'Done' : 'Change'}
+        </button>
+      </div>
+
+      {editing && (
+        <>
+          <form className="lf-zip-row" onSubmit={submitZip}>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d{5}"
+              maxLength={5}
+              className="lf-zip-input"
+              placeholder="Zip code"
+              aria-label="Zip code"
+              value={zip}
+              onChange={(e) => {
+                setZip(e.target.value.replace(/\D/g, '').slice(0, 5))
+                if (status === 'error') setStatus('')
+              }}
+            />
+            <button type="submit" className="lf-set-btn" disabled={status === 'loading'}>
+              Set
+            </button>
+            <button
+              type="button"
+              className="lf-geo-btn"
+              onClick={useMyLocation}
+              disabled={status === 'loading'}
+              title="Use my current location"
+            >
+              📍 Use my location
+            </button>
+          </form>
+
+          {status === 'error' && (
+            <div className="lf-error">Enter a valid 5-digit US zip code.</div>
+          )}
+          {status === 'geo-error' && (
+            <div className="lf-error">Couldn't get your location. Try a zip code instead.</div>
+          )}
+        </>
+      )}
     </div>
   )
 }
