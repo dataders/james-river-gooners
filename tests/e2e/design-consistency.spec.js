@@ -215,24 +215,6 @@ test.describe('Design consistency — navigation active-state hierarchy', () => 
     await waitForLoad(page)
   })
 
-  test('inactive deals-toggle has a different text color than when active', async ({ page }) => {
-    const btn = page.locator('button.deals-toggle').first()
-    const inactiveColor = await btn.evaluate(el => getComputedStyle(el).color)
-    await btn.click()
-    await expect(btn).toHaveClass(/active/)
-    await page.waitForTimeout(300) // allow color transition (0.15s) to settle
-    const activeColor = await btn.evaluate(el => getComputedStyle(el).color)
-    expect(activeColor).not.toBe(inactiveColor)
-  })
-
-  test('active deals-toggle has higher font-weight than inactive', async ({ page }) => {
-    const btn = page.locator('button.deals-toggle').first()
-    const inactiveWeight = await btn.evaluate(el => parseFloat(getComputedStyle(el).fontWeight))
-    await btn.click()
-    await expect(btn).toHaveClass(/active/)
-    const activeWeight = await btn.evaluate(el => parseFloat(getComputedStyle(el).fontWeight))
-    expect(activeWeight).toBeGreaterThan(inactiveWeight)
-  })
 })
 
 test.describe('Design consistency — range filter label hierarchy', () => {

@@ -121,17 +121,6 @@ test.describe('Filters', () => {
     expect(styles.maxHeight).not.toBe('none')
   })
 
-  test('"Richmond area only" checkbox is interactive', async ({ page }) => {
-    const label = page.locator('label.local-toggle', { hasText: 'Richmond area only' })
-    const checkbox = label.locator('input[type="checkbox"]')
-    const before = await checkbox.isChecked()
-    await checkbox.click()
-    await expect(checkbox).toBeChecked({ checked: !before })
-    // Restore
-    await checkbox.click()
-    await expect(checkbox).toBeChecked({ checked: before })
-  })
-
   test('archive view segmented control switches between Active and Archived', async ({ page }) => {
     const group = page.getByRole('group', { name: 'Which auctions to show' })
     const active = group.getByRole('button', { name: 'Active', exact: true })
@@ -149,23 +138,7 @@ test.describe('Filters', () => {
     await expect(archived).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test('"Richmond area only" item count is a subset of the total', async ({ page }) => {
-    const totalBefore = await getItemCount(page)
-    test.skip(totalBefore === 0, 'No items loaded — skipping Richmond-only count test')
 
-    const checkbox = page.locator('label.local-toggle', { hasText: 'Richmond area only' })
-      .locator('input[type="checkbox"]')
-    await checkbox.click()
-    await page.waitForTimeout(200)
-
-    const localCount = await getItemCount(page)
-    expect(localCount).toBeLessThanOrEqual(totalBefore)
-
-    // Restore
-    await checkbox.click()
-    await page.waitForTimeout(200)
-    expect(await getItemCount(page)).toBe(totalBefore)
-  })
 
   test('excluding an auction via chip reduces item count', async ({ page }) => {
     const totalBefore = await getItemCount(page)

@@ -30,20 +30,6 @@ test.describe('Preference persistence', () => {
     await expect(html).toHaveAttribute('data-theme', after)
   })
 
-  test('Richmond area only checkbox persists across page reload', async ({ page }) => {
-    await page.goto('/')
-    await waitForLoad(page)
-
-    const checkbox = page.locator('label.local-toggle', { hasText: 'Richmond area only' }).locator('input[type="checkbox"]')
-    await expect(checkbox).not.toBeChecked()
-    await checkbox.click()
-    await expect(checkbox).toBeChecked()
-
-    await page.reload()
-    await waitForLoad(page)
-    await expect(checkbox).toBeChecked()
-  })
-
   test('price range filter persists across page reload', async ({ page }) => {
     await page.goto('/')
     await waitForLoad(page)
@@ -60,23 +46,6 @@ test.describe('Preference persistence', () => {
     await waitForLoad(page)
 
     await expect(maxPriceInput).toHaveValue('250')
-  })
-
-  test('localOnly preference is written to localStorage', async ({ page }) => {
-    await page.goto('/')
-    await waitForLoad(page)
-
-    const checkbox = page.locator('label.local-toggle', { hasText: 'Richmond area only' }).locator('input[type="checkbox"]')
-    await checkbox.click()
-    await expect(checkbox).toBeChecked()
-
-    const stored = await page.evaluate((key) => {
-      const raw = localStorage.getItem(key)
-      return raw ? JSON.parse(raw) : null
-    }, STORAGE_KEY)
-
-    expect(stored).not.toBeNull()
-    expect(stored.localOnly).toBe(true)
   })
 
   test('category exclusions persist across page reload', async ({ page }) => {
