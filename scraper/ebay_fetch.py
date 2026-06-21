@@ -623,9 +623,7 @@ def fetch_sold_matches(
         return provider_result
 
     def _request_headers():
-        ua = _EbayCfg().user_agent or random_user_agent(
-            _choice=_choice
-        )
+        ua = _EbayCfg().user_agent or random_user_agent(_choice=_choice)
         return {
             "User-Agent": ua,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

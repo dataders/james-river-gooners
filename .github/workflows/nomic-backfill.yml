@@ -51,6 +51,9 @@ jobs:
           key: huggingface-clip-vit-b-32-nomic-embed-v1.5
 
       - name: Backfill Nomic embeddings
+        env:
+          GOONERS_NOMIC_BACKFILL_SCOPE: ${{ inputs.scope }}
+          GOONERS_NOMIC_BACKFILL_SAFE_IDS: ${{ inputs.safe_ids }}
         run: |
           cd scraper
           if [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
@@ -58,10 +61,11 @@ jobs:
             exit 1
           fi
           ARCHIVE_FLAG="--archive"
-          if [ "${{ inputs.scope }}" = "active-only" ]; then
+          if [ "${GOONERS_NOMIC_BACKFILL_SCOPE}" = "active-only" ]; then
             ARCHIVE_FLAG=""
           fi
+          read -r -a safe_id_args <<< "${GOONERS_NOMIC_BACKFILL_SAFE_IDS}"
           GOONERS_NOMIC_EMBEDDINGS=1 uv run \
             --with sentence-transformers --with 'transformers==4.49.0' \
             --with torchvision --with pillow --with einops --with numpy --with requests \
-            python embed_nomic.py --from-supabase $ARCHIVE_FLAG ${{ inputs.safe_ids }}
+            python embed_nomic.py --from-supabase $ARCHIVE_FLAG "${safe_id_args[@]}"

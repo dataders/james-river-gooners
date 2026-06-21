@@ -48,13 +48,14 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Load GitHub stats to MotherDuck
+        env:
+          GOONERS_GITHUB_STATS_LOOKBACK_DAYS: ${{ inputs.lookback_days || '180' }}
+          GOONERS_GITHUB_STATS_MAX_LOG_RUNS: ${{ inputs.max_log_runs || '60' }}
         run: |
           cd github_stats
           if [ -z "${MOTHERDUCK_TOKEN:-}" ]; then
             echo "MOTHERDUCK_TOKEN not set — skipping GitHub-stats load"
             exit 0
           fi
-          LOOKBACK="${{ inputs.lookback_days || '180' }}"
-          MAX_LOGS="${{ inputs.max_log_runs || '60' }}"
           uv run --with "dlt[motherduck]" --with 'duckdb==1.5.3' --with requests \
-            python pipeline.py --lookback-days "$LOOKBACK" --max-log-runs "$MAX_LOGS"
+            python pipeline.py --lookback-days "${GOONERS_GITHUB_STATS_LOOKBACK_DAYS}" --max-log-runs "${GOONERS_GITHUB_STATS_MAX_LOG_RUNS}"

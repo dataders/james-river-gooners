@@ -20,7 +20,7 @@ BASELINE="${2:-0}"
 TY_VERSION="0.0.44"
 PYTHON_VERSION="3.13"
 
-cd "$(dirname "$0")/../$PKG"
+cd "$(dirname "$0")/../$PKG" || exit
 out=$(uvx "ty@${TY_VERSION}" check . --python-version "$PYTHON_VERSION" 2>&1)
 
 if printf '%s\n' "$out" | grep -qE 'Found [0-9]+ diagnostic'; then

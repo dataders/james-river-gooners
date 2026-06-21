@@ -124,7 +124,9 @@ def _get_all(session, endpoint: str, headers: dict, params: dict) -> list[dict]:
         offset += READ_PAGE_SIZE
 
 
-def fetch_listings_by_ids(session, url: str, key: str, item_ids: list[str]) -> list[dict]:
+def fetch_listings_by_ids(
+    session, url: str, key: str, item_ids: list[str]
+) -> list[dict]:
     """Fetch specific sold_listings rows by ebay_item_id (force-embed by ID)."""
     base = url.rstrip("/")
     rows = _get_all(
@@ -230,9 +232,13 @@ def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:
     if item_ids:
         rows = fetch_listings_by_ids(session, url, key, item_ids)
         if not rows:
-            print(f"[sold-embed] none of the {len(item_ids)} requested IDs found in corpus")
+            print(
+                f"[sold-embed] none of the {len(item_ids)} requested IDs found in corpus"
+            )
             return 0
-        print(f"[sold-embed] targeted: {len(rows)}/{len(item_ids)} listings fetched by ID")
+        print(
+            f"[sold-embed] targeted: {len(rows)}/{len(item_ids)} listings fetched by ID"
+        )
     else:
         all_rows = fetch_unembedded_listings(session, url, key)
         if not all_rows:
@@ -272,7 +278,9 @@ def embed_corpus(session=None, item_ids: list[str] | None = None) -> int:
     if not item_ids:
         remaining = len(all_rows) - len(rows)
         if remaining:
-            print(f"[sold-embed] {remaining} listings still unembedded — re-run to continue")
+            print(
+                f"[sold-embed] {remaining} listings still unembedded — re-run to continue"
+            )
     print(f"[sold-embed] done: {total} listing embeddings → {EMBEDDING_TABLE}")
     return total
 
@@ -312,7 +320,9 @@ def _enriched_item_ids(session, url: str, key: str, safe_id: str) -> set[str]:
 
 
 def rerank_rows_for_auction(
-    matches: list[dict], safe_id: str, fetched_at: str,
+    matches: list[dict],
+    safe_id: str,
+    fetched_at: str,
     skip_item_ids: set[str] | None = None,
 ) -> list[dict]:
     """Shape ``match_sold_listings`` RPC rows into ebay_comp_snapshots rows.
@@ -356,7 +366,11 @@ def rerank_rows_for_auction(
 
 
 def rerank_auction(
-    safe_id: str, url: str, key: str, session, fetched_at: str,
+    safe_id: str,
+    url: str,
+    key: str,
+    session,
+    fetched_at: str,
     skip_item_ids: set[str] | None = None,
 ) -> int:
     """Call match_sold_listings for one auction; write the comps back."""
@@ -413,7 +427,11 @@ def rerank_all_active(session=None) -> int:
             if skip:
                 skipped_total += len(skip)
             written = rerank_auction(
-                safe_id, url, key, session, fetched_at,
+                safe_id,
+                url,
+                key,
+                session,
+                fetched_at,
                 skip_item_ids=skip or None,
             )
             total += written
@@ -421,7 +439,11 @@ def rerank_all_active(session=None) -> int:
             print(f"[sold-rerank] {safe_id}: {exc}")
     print(
         f"[sold-rerank] wrote {total} visual comp row(s) across {len(safe_ids)} auction(s)"
-        + (f" (skipped {skipped_total} enriched lots with keyword comps)" if skipped_total else "")
+        + (
+            f" (skipped {skipped_total} enriched lots with keyword comps)"
+            if skipped_total
+            else ""
+        )
     )
     return total
 
@@ -441,7 +463,11 @@ def main(argv=None) -> int:
         help="Comma-separated ebay_item_ids to embed (targeted mode — skips the unembedded-only filter).",
     )
     args = parser.parse_args(argv or sys.argv[1:])
-    item_ids = [i.strip() for i in args.item_ids.split(",") if i.strip()] if args.item_ids else None
+    item_ids = (
+        [i.strip() for i in args.item_ids.split(",") if i.strip()]
+        if args.item_ids
+        else None
+    )
     if args.step in ("embed", "all"):
         embed_corpus(item_ids=item_ids)
     if args.step in ("rerank", "all"):

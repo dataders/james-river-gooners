@@ -59,6 +59,9 @@ jobs:
       # run step does not put it in the frontend bundle, so there's no need for a
       # duplicate GOONERS_POSTHOG_KEY secret.
       GOONERS_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+      GOONERS_SCRAPE_AUCTION_URL: ${{ inputs.auction_url }}
+      GOONERS_SCRAPE_DRY_RUN: ${{ inputs.dry_run }}
+      GOONERS_EBAY_COMPS_LIMIT: ${{ inputs.comps_limit || '2000' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -83,16 +86,16 @@ jobs:
         timeout-minutes: 60
         run: |
           cd scraper
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "${GOONERS_SCRAPE_DRY_RUN}" = "true" ]; then
             echo "Dry run: skipping MotherDuck listing snapshot writes"
           elif [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
             export GOONERS_MOTHERDUCK_SNAPSHOTS=1
           fi
-          if [ -n "${{ inputs.auction_url }}" ]; then
+          if [ -n "${GOONERS_SCRAPE_AUCTION_URL}" ]; then
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
               --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
-              python scrape.py "${{ inputs.auction_url }}"
+              python scrape.py "${GOONERS_SCRAPE_AUCTION_URL}"
           else
             echo "Re-scraping all Cannon's auctions..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
@@ -107,7 +110,7 @@ jobs:
         timeout-minutes: 30
         run: |
           cd scraper
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "${GOONERS_SCRAPE_DRY_RUN}" = "true" ]; then
             echo "Dry run: skipping MotherDuck listing snapshot writes"
           elif [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
             export GOONERS_MOTHERDUCK_SNAPSHOTS=1
@@ -145,9 +148,6 @@ jobs:
           # sold listings (3 / 60d / 0.85). Validated — reuses the right comps and
           # skips the paid API. Falls through to the API when coverage is thin.
           GOONERS_CORPUS_FIRST: '1'
-          # Small-batch knob for a controlled corpus test (defaults to the hourly
-          # 2000); ebay_comps.py reads it as the --limit default.
-          GOONERS_EBAY_COMPS_LIMIT: ${{ inputs.comps_limit || '2000' }}
         run: |
           cd scraper
           # Prefer Supabase (#6) when its secret is configured — it's the comps
@@ -159,7 +159,7 @@ jobs:
           elif [ -n "${MOTHERDUCK_TOKEN:-}" ]; then
             export GOONERS_MOTHERDUCK_SNAPSHOTS=1
           fi
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "${GOONERS_SCRAPE_DRY_RUN}" = "true" ]; then
             echo "Dry run: planning eBay comp fetch without writes"
             uv run --with requests --with beautifulsoup4 --with pyarrow --with 'duckdb==1.5.2' \
               python ebay_comps.py fetch-direct --dry-run --limit 1 --sleep-seconds 0

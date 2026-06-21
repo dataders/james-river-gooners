@@ -36,6 +36,8 @@ jobs:
       pipeline_meta: ${{ steps.filter.outputs.pipeline_meta }}
       mcp: ${{ steps.filter.outputs.mcp }}
       dashboard: ${{ steps.filter.outputs.dashboard }}
+      github_actions: ${{ steps.filter.outputs.github_actions }}
+      supabase_edge: ${{ steps.filter.outputs.supabase_edge }}
     steps:
       - uses: actions/checkout@v5
 
@@ -64,6 +66,7 @@ jobs:
               - 'scripts/coverage-check.mjs'
               - 'scripts/dead-exports-ratchet.mjs'
               - 'scripts/lib-ratchet.mjs'
+              - 'scripts/npm-audit-ratchet.mjs'
             e2e:
               - '.github/workflows/test.yml'
               - 'src/**'
@@ -98,6 +101,11 @@ jobs:
               - 'supabase_app/**'
               - 'ruff.toml'
               - 'scripts/ty-ratchet.sh'
+            supabase_edge:
+              - '.github/workflows/test.yml'
+              - 'supabase/functions/**'
+              - 'package.json'
+              - 'package-lock.json'
             pipeline_meta:
               - '.github/workflows/test.yml'
               - 'pipeline_meta/**'
@@ -113,6 +121,13 @@ jobs:
               - 'dashboard/**'
               - 'ruff.toml'
               - 'scripts/ty-ratchet.sh'
+            github_actions:
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'scripts/*.sh'
+              - 'scripts/zizmor-ratchet.mjs'
+              - 'scripts/ratchets.json'
 
   build:
     name: Production build
@@ -170,6 +185,34 @@ jobs:
       - run: npm run ratchets
       # Dead-exports ceiling: unused exports can only go down, never up.
       - run: npm run dead-exports:ratchet
+      # Dependency advisory ceilings: high/critical and total npm advisories can only go down.
+      - run: npm run audit:ratchet
+
+  github-actions:
+    name: GitHub Actions lint + security ratchet
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.github_actions == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - run: npm run actions:check
+
+  supabase-edge:
+    name: Supabase Edge check
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.supabase_edge == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - run: npm run edge:check
 
   unit:
     name: Unit tests
@@ -230,6 +273,8 @@ jobs:
         run: |
           cd github_stats
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r . --severity-level high --confidence-level high
 
       - name: Run ty ratchet (github_stats)
         run: bash scripts/ty-ratchet.sh github_stats 0
@@ -256,6 +301,8 @@ jobs:
         run: |
           cd supabase_stats
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r . --severity-level high --confidence-level high
 
       - name: Run ty ratchet (supabase_stats)
         run: bash scripts/ty-ratchet.sh supabase_stats 0
@@ -282,6 +329,8 @@ jobs:
         run: |
           cd supabase_app
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r . --severity-level high --confidence-level high
 
       - name: Run ty ratchet (supabase_app)
         run: bash scripts/ty-ratchet.sh supabase_app 0
@@ -308,6 +357,8 @@ jobs:
         run: |
           cd pipeline_meta
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r . --severity-level high --confidence-level high
 
       - name: Run ty ratchet (pipeline_meta)
         run: bash scripts/ty-ratchet.sh pipeline_meta 0
@@ -334,6 +385,8 @@ jobs:
         run: |
           cd mcp
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r gooners_mcp tests --severity-level high --confidence-level high
 
       - name: Run ty ratchet (mcp)
         run: bash scripts/ty-ratchet.sh mcp 0
@@ -355,6 +408,8 @@ jobs:
         run: |
           cd dashboard
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r . --severity-level high --confidence-level high
 
       - name: Run ty ratchet (dashboard)
         run: bash scripts/ty-ratchet.sh dashboard 0
@@ -379,6 +434,8 @@ jobs:
         run: |
           cd scraper
           uvx ruff@0.15.8 check .
+          uvx ruff@0.15.8 format --check .
+          uvx bandit -r . --severity-level high --confidence-level high
 
   scraper-type-check:
     name: Scraper type check (ty)

@@ -27,11 +27,7 @@ def anthropic_key() -> str | None:
 def supabase_url() -> str | None:
     """Supabase project URL.  Backend writers use SUPABASE_URL; falls back to
     VITE_SUPABASE_URL so a local dev shell that only has the Vite var works."""
-    return (
-        os.environ.get("SUPABASE_URL")
-        or os.environ.get("VITE_SUPABASE_URL")
-        or None
-    )
+    return os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL") or None
 
 
 def supabase_secret_key() -> str | None:

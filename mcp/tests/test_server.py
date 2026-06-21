@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 from gooners_mcp.client import AuthRequiredError
@@ -9,7 +10,7 @@ def _tools(client):
     # FastMCP 3.x: list_tools() is async and returns FunctionTool objects with a .fn attr.
     server = build_server(client)
     tool_list = asyncio.run(server.list_tools())
-    return {t.name: t.fn for t in tool_list}  # ty: ignore[unresolved-attribute]  # fastmcp Tool.fn (untyped)
+    return {t.name: cast(Any, t).fn for t in tool_list}  # fastmcp Tool.fn is dynamic.
 
 
 def test_get_lot_merges_enrichment():

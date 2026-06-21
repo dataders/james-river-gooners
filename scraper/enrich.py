@@ -521,7 +521,7 @@ def enrichment_fingerprint(item: dict) -> str:
             *item_image_urls(item),
         )
     )
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+    return hashlib.sha1(payload.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
 def build_content(item: dict) -> list:
@@ -1257,8 +1257,7 @@ def _chunk_for_batch(
             # image doesn't over-inflate the budget (we downscale before send).
             est += min(_estimated_image_bytes(item), 400 * 1024 * max_images)
         if chunk and (
-            len(chunk) >= max_count
-            or (inline_images and chunk_bytes + est > max_bytes)
+            len(chunk) >= max_count or (inline_images and chunk_bytes + est > max_bytes)
         ):
             yield chunk
             chunk, chunk_bytes = [], 0

@@ -26,6 +26,8 @@ import {
   parseWatchlistItems,
 } from './parsers.js'
 
+type SupabaseClientAny = ReturnType<typeof createClient<any>>
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -43,7 +45,7 @@ function requireEncryptionKey(): string {
   return key
 }
 
-async function getKey(rawKey: string): Promise<CryptoKey> {
+function getKey(rawKey: string): Promise<CryptoKey> {
   const keyBytes = new TextEncoder().encode(rawKey.padEnd(32, '0').slice(0, 32))
   return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
 }
@@ -213,7 +215,7 @@ async function maxanetLogin(username: string, password: string): Promise<LoginRe
     let hops = 0
     while (nextUrl && hops < 6) {
       hops++
-      const hopUrl = nextUrl
+      const hopUrl: string = nextUrl
       try {
         const hopResp = await fetch(hopUrl, {
           headers: {
@@ -443,7 +445,7 @@ async function fetchPastBids(
 // ── Action handlers ───────────────────────────────────────────────────────────
 
 async function saveCredentials(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
   username: string,
   password: string,
@@ -457,7 +459,7 @@ async function saveCredentials(
 }
 
 async function deleteCredentials(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
 ): Promise<Response> {
   const { error } = await supabase.from('cannon_credentials').delete().eq('user_id', userId)
@@ -469,7 +471,7 @@ async function deleteCredentials(
 }
 
 async function getStatus(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
 ): Promise<Response> {
   const { data, error } = await supabase
@@ -485,7 +487,7 @@ async function getStatus(
 // records status, Location, and Set-Cookie at each hop so we can see exactly
 // where (or whether) .ASPXAUTH is issued.
 async function debugAuthV2(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
 ): Promise<Response> {
   const { data } = await supabase
@@ -713,7 +715,7 @@ async function debugAuthV2(
 }
 
 async function debugLogin(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
 ): Promise<Response> {
   const { data } = await supabase
@@ -870,7 +872,7 @@ async function debugLogin(
 }
 
 async function getBids(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
 ): Promise<Response> {
   // Fast path: return stored data if the table is already seeded.
@@ -1009,7 +1011,7 @@ interface PlaceBidParams {
 }
 
 async function placeBid(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
   params: PlaceBidParams,
 ): Promise<Response> {
@@ -1121,7 +1123,7 @@ async function placeBid(
   console.log('[cannon-proxy] SubmitBid status:', submitResp.status, '| hasTenantId:', submitHtml.includes('TenantId'))
 
   // The confirmation form has a fresh CSRF token plus UserId, TenantId, etc.
-  const formFields = parseHiddenInputs(submitHtml)
+  const formFields = parseHiddenInputs(submitHtml) as Record<string, string>
   const bidCsrf = formFields.__RequestVerificationToken ?? sessionCsrf
 
   // POST SaveBid — places the actual bid
@@ -1234,7 +1236,7 @@ async function placeBid(
 // user_bids rows by re-authenticating with Maxanet and calling RefreshItem.
 // Updates the status columns in-place; does not add or remove rows.
 async function refreshBidStatuses(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClientAny,
   userId: string,
 ): Promise<Response> {
   const { data: bids, error: dbError } = await supabase

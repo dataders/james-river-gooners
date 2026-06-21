@@ -571,7 +571,9 @@ class FingerprintTests(unittest.TestCase):
     def test_changes_with_model(self):
         item = {"title": "Drill", "images": []}
         before = enrichment_fingerprint(item)
-        with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT_MODEL": "some-other-model"}):
+        with mock.patch.dict(
+            "os.environ", {"GOONERS_ENRICHMENT_MODEL": "some-other-model"}
+        ):
             self.assertNotEqual(before, enrichment_fingerprint(item))
 
 
@@ -802,7 +804,9 @@ class EnrichItemsBatchTests(unittest.TestCase):
             }
         )
         # Inline path (default) chunks at BATCH_INLINE_MAX_REQUESTS.
-        with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT_BATCH_INLINE_SIZE": "2"}):
+        with mock.patch.dict(
+            "os.environ", {"GOONERS_ENRICHMENT_BATCH_INLINE_SIZE": "2"}
+        ):
             enriched = enrich_items_batch(items, client=client, poll_interval=0)
         self.assertEqual(enriched, 5)
         # 5 lots / 2 per batch → 3 submissions.

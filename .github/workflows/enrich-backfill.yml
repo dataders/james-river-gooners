@@ -54,6 +54,11 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Run enrichment backfill
+        env:
+          GOONERS_ENRICH_SAFE_IDS: ${{ inputs.safe_ids }}
+          GOONERS_ENRICH_ESTIMATE_ONLY: ${{ inputs.estimate_only }}
+          GOONERS_ENRICH_TEXT_ONLY: ${{ inputs.text_only }}
+          GOONERS_ENRICH_LIMIT: ${{ inputs.limit }}
         run: |
           cd scraper
           if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
@@ -64,16 +69,16 @@ jobs:
             echo "SUPABASE_SECRET_KEY not set — cannot read/write Supabase"
             exit 1
           fi
-          SAFE_IDS="${{ inputs.safe_ids }}"
-          FLAGS=""
-          if [ "${{ inputs.estimate_only }}" = "true" ]; then
-            FLAGS="${FLAGS} --estimate-only"
+          args=(--batch --from-supabase)
+          if [ "${GOONERS_ENRICH_ESTIMATE_ONLY}" = "true" ]; then
+            args+=(--estimate-only)
           fi
-          if [ "${{ inputs.text_only }}" = "true" ]; then
-            FLAGS="${FLAGS} --text-only"
+          if [ "${GOONERS_ENRICH_TEXT_ONLY}" = "true" ]; then
+            args+=(--text-only)
           fi
-          if [ -n "${{ inputs.limit }}" ]; then
-            FLAGS="${FLAGS} --limit ${{ inputs.limit }}"
+          if [ -n "${GOONERS_ENRICH_LIMIT}" ]; then
+            args+=(--limit "${GOONERS_ENRICH_LIMIT}")
           fi
+          read -r -a safe_id_args <<< "${GOONERS_ENRICH_SAFE_IDS}"
           uv run --with anthropic --with requests --with pillow \
-            python enrich.py --batch --from-supabase ${FLAGS} ${SAFE_IDS}
+            python enrich.py "${args[@]}" "${safe_id_args[@]}"

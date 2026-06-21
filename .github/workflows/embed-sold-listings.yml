@@ -63,14 +63,16 @@ jobs:
           key: huggingface-clip-vit-b-32-nomic-embed-v1.5
 
       - name: Embed + re-rank the sold-listings corpus
+        env:
+          GOONERS_EMBED_SOLD_STEP: ${{ inputs.step || 'all' }}
+          GOONERS_EMBED_SOLD_ITEM_IDS: ${{ inputs.item_ids }}
         run: |
           cd scraper
           # Same Nomic stack as the lot embeddings (#165): einops for nomic_bert's
           # trust_remote_code, transformers==4.49.0 for the vision config, torchvision
           # for the image processor.
-          ITEM_IDS="${{ inputs.item_ids }}"
           uv run --with requests \
             --with sentence-transformers --with 'transformers==4.49.0' \
             --with torchvision --with pillow --with einops \
-            python embed_sold_listings.py --step "${{ inputs.step || 'all' }}" \
-            ${ITEM_IDS:+--item-ids "$ITEM_IDS"}
+            python embed_sold_listings.py --step "${GOONERS_EMBED_SOLD_STEP}" \
+            ${GOONERS_EMBED_SOLD_ITEM_IDS:+--item-ids "$GOONERS_EMBED_SOLD_ITEM_IDS"}

@@ -63,20 +63,24 @@ _COLUMN_FROM_CANDIDATE = {
 # jsonb→text extraction side; we pass strings and rely on the typed target
 # column (migration 0036) to coerce. Null raw_json keys produce NULL columns.
 _RAW_JSON_COLUMN_MAP = {
-    "epid":                   "epid",
-    "condition_id":           "conditionId",
-    "shipping_price":         "shippingPrice",
-    "shipping_currency":      "shippingCurrency",
-    "shipping_type":          "shippingType",
-    "total_price":            "totalPrice",
-    "seller_type":            "sellerType",
-    "seller_username":        "sellerUsername",
-    "seller_feedback_score":  "sellerFeedbackScore",
-    "seller_positive_pct":    "sellerPositivePercent",
+    "epid": "epid",
+    "condition_id": "conditionId",
+    "shipping_price": "shippingPrice",
+    "shipping_currency": "shippingCurrency",
+    "shipping_type": "shippingType",
+    "total_price": "totalPrice",
+    "seller_type": "sellerType",
+    "seller_username": "sellerUsername",
+    "seller_feedback_score": "sellerFeedbackScore",
+    "seller_positive_pct": "sellerPositivePercent",
     "full_res_thumbnail_url": "fullResThumbnailUrl",
-    "provider_scraped_at":    "scrapedAt",
+    "provider_scraped_at": "scrapedAt",
 }
-SOLD_LISTING_COLUMNS = (*_COLUMN_FROM_CANDIDATE.keys(), "raw_json", *_RAW_JSON_COLUMN_MAP.keys())
+SOLD_LISTING_COLUMNS = (
+    *_COLUMN_FROM_CANDIDATE.keys(),
+    "raw_json",
+    *_RAW_JSON_COLUMN_MAP.keys(),
+)
 
 
 def sold_listings_corpus_enabled() -> bool:

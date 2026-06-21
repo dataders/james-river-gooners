@@ -394,7 +394,9 @@ def describe(out=None) -> None:
             constraint_str = _constraints(field_info)
             description_str = field_info.description or ""
 
-            out.write(f"  {field_name:<26} {type_str:<8}  default={default!r:<20}  env: {alias}{constraint_str}\n")
+            out.write(
+                f"  {field_name:<26} {type_str:<8}  default={default!r:<20}  env: {alias}{constraint_str}\n"
+            )
             if description_str:
                 out.write(f"    {description_str}\n")
         out.write("\n")
