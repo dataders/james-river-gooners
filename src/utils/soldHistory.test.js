@@ -1,7 +1,7 @@
 // @ts-nocheck
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeCategoryStats, resaleEstimate, marginForItem } from './soldHistory.js'
+import { normalizeCategoryStats, resaleEstimate, marginForItem, maxBidForItem } from './soldHistory.js'
 import { COST_MULTIPLIER } from './roiCalc.js'
 
 const compsAt = (price) => ({
@@ -22,8 +22,27 @@ test('normalizeCategoryStats coerces the view row to camelCase numbers', () => {
 
 test('normalizeCategoryStats drops rows with no usable median', () => {
   assert.equal(normalizeCategoryStats(null), null)
+  assert.equal(normalizeCategoryStats({}), null)
   assert.equal(normalizeCategoryStats({ category: 'X' }), null)
   assert.equal(normalizeCategoryStats({ category: 'X', median_sold: '0' }), null)
+})
+
+test('normalizeCategoryStats falls back invalid optional numbers to null or zero', () => {
+  assert.deepEqual(normalizeCategoryStats({
+    category: 'X',
+    sold_count: 'not-a-number',
+    median_sold: '12',
+    min_sold: 'bad',
+    max_sold: '',
+    last_sold_at: '',
+  }), {
+    category: 'X',
+    soldCount: 0,
+    medianSold: 12,
+    minSold: null,
+    maxSold: 0,
+    lastSoldAt: null,
+  })
 })
 
 test('resaleEstimate prefers the per-item eBay median, falls back to category', () => {
@@ -44,4 +63,9 @@ test('marginForItem returns profit = resale minus all-in cost', () => {
   assert.ok(m.marginPct > 0 && m.marginPct < 1)
   // No signal at all → null.
   assert.equal(marginForItem(100, undefined, null), null)
+})
+
+test('maxBidForItem backs resale out through the target margin', () => {
+  assert.ok(Math.abs(maxBidForItem(undefined, { medianSold: 300 }, 0) - 235.8490566) < 0.0001)
+  assert.equal(maxBidForItem(undefined, null, 0.3), null)
 })

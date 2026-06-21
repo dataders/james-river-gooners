@@ -70,7 +70,9 @@ class WriteReadModelTest(unittest.TestCase):
 
         # Stub the geocoder so the test doesn't depend on geocode_cache.yml; the
         # gate's own behaviour is covered by test_geocode.
-        self.geocode = mock.patch("geocode.resolve", return_value=(37.5407, -77.436)).start()
+        self.geocode = mock.patch(
+            "geocode.resolve", return_value=(37.5407, -77.436)
+        ).start()
 
     def tearDown(self):
         mock.patch.stopall()

@@ -12,7 +12,9 @@ class NormalizeKeyTest(unittest.TestCase):
         self.assertEqual(normalize_key("  Richmond ", "VA "), "richmond, va")
 
     def test_stable_across_case(self):
-        self.assertEqual(normalize_key("MIDLOTHIAN", "va"), normalize_key("midlothian", "VA"))
+        self.assertEqual(
+            normalize_key("MIDLOTHIAN", "va"), normalize_key("midlothian", "VA")
+        )
 
 
 class ParseLocationTest(unittest.TestCase):
@@ -33,9 +35,7 @@ class ResolveTest(unittest.TestCase):
     def setUp(self):
         self._tmp = TemporaryDirectory()
         self.cache_path = Path(self._tmp.name) / "geocode_cache.yml"
-        self.cache_path.write_text(
-            "richmond, va:\n  lat: 37.5407\n  lng: -77.436\n"
-        )
+        self.cache_path.write_text("richmond, va:\n  lat: 37.5407\n  lng: -77.436\n")
 
     def tearDown(self):
         self._tmp.cleanup()
@@ -62,9 +62,7 @@ class ResolveTest(unittest.TestCase):
         with mock.patch.object(
             geocode, "_nominatim_lookup", return_value=(36.85, -76.29)
         ) as look:
-            coords = resolve(
-                "Norfolk", "VA", cache_path=self.cache_path, online=True
-            )
+            coords = resolve("Norfolk", "VA", cache_path=self.cache_path, online=True)
         self.assertEqual(coords, (36.85, -76.29))
         look.assert_called_once()
         # Persisted to the cache file so a subsequent offline resolve hits.

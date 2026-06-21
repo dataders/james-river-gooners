@@ -35,7 +35,9 @@ class CityStateFromTitleTest(unittest.TestCase):
     def test_prefers_longest_match(self):
         # "Virginia Beach" must win over the bare "Virginia"/"VA" tokens.
         self.assertEqual(
-            city_state_from_title("Coins & Collectibles - Virginia Beach, VA", self.KEYWORDS),
+            city_state_from_title(
+                "Coins & Collectibles - Virginia Beach, VA", self.KEYWORDS
+            ),
             ("Virginia Beach", "VA"),
         )
 

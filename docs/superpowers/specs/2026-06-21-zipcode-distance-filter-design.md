@@ -106,10 +106,13 @@ gate relies on.
   Cannon's).
 - `geocode.resolve(city, state) -> (lat, lng)`:
   1. Look up the normalized key in `geocode_cache.yml`. Hit → return.
-  2. Miss → optionally call a **free, no-key** geocoder (US Census Geocoder,
-     `geocoding.geo.census.gov`) to resolve and **append the result to
+  2. Miss → optionally call a **free, no-key** geocoder (Nominatim / OpenStreetMap
+     `nominatim.openstreetmap.org/search?city=&state=&country=USA`, which resolves
+     *place centroids* — the US Census geocoder only does street addresses, not city
+     centroids, so it's unsuitable here) to resolve and **append the result to
      `geocode_cache.yml`** (so local dev self-heals the cache; the new entry gets
-     committed). This network step is best-effort and **gated off in CI** — a
+     committed). Requires a descriptive `User-Agent` and ~1 req/s; only hit on a cache
+     miss, which is rare. This network step is best-effort and **gated off in CI** — a
      `GOONERS_GEOCODE_ONLINE` opt-in (default off) means CI is cache-only and a Census
      outage can never make the deterministic gate flaky. The API is a local-dev
      convenience, never a CI dependency.

@@ -49,6 +49,7 @@ READ_PAGE_SIZE = _SupaCfg().page_size
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 ITEMS_DIR = _REPO_ROOT / "public" / "data" / "items"
 ARCHIVE_ITEMS_DIR = _REPO_ROOT / "public" / "data" / "archive" / "items"
+HIBID_SOURCES_FILE = _REPO_ROOT / "scraper" / "hibid_sources.yml"
 
 
 def _to_float(value) -> float | None:
@@ -340,6 +341,74 @@ def _row_to_item(row: dict) -> dict:
     }
 
 
+def _infer_location_from_items(items: list[dict], safe_id: str) -> tuple[str, str]:
+    """Derive an auction city/state for legacy sidecars missing location fields."""
+    import geocode
+
+    first = items[0] if items else {}
+    city = first.get("auctionCity")
+    state = first.get("auctionState")
+    if city and state:
+        return city, state
+
+    source = first.get("source") or ""
+    if source == "cannons":
+        return "Richmond", "VA"
+
+    if source == "rasmus":
+        import scrape_rasmus
+
+        keywords = scrape_rasmus.load_sources().get("location_keywords", [])
+        return scrape_rasmus.city_state_from_title(
+            first.get("auctionTitle") or "", keywords
+        )
+
+    if source:
+        return _hibid_location(source)
+
+    raise geocode.GeocodeError(
+        f"cannot infer auction location for {safe_id}: missing source metadata"
+    )
+
+
+def _hibid_location(slug: str) -> tuple[str, str]:
+    import geocode
+    import yaml
+
+    with HIBID_SOURCES_FILE.open() as f:
+        config = yaml.safe_load(f) or {}
+    for company in config.get("companies", []):
+        if company.get("slug") == slug:
+            location = company.get("location") or ""
+            if not location:
+                raise geocode.GeocodeError(
+                    f"HiBid company {slug!r} has no 'location' in hibid_sources.yml"
+                )
+            return geocode.parse_location(location)
+    raise geocode.GeocodeError(
+        f"unknown HiBid company slug {slug!r} (not in hibid_sources.yml)"
+    )
+
+
+def _ensure_location_fields(items: list[dict], safe_id: str) -> None:
+    """Stamp city/state/coords onto legacy sidecars before Supabase backfill."""
+    if not items:
+        return
+    fields = ("auctionCity", "auctionState", "auctionLatitude", "auctionLongitude")
+    if all(items[0].get(field) is not None for field in fields):
+        return
+
+    import geocode
+
+    city, state = _infer_location_from_items(items, safe_id)
+    lat, lng = geocode.resolve(city, state)
+    for item in items:
+        item["auctionCity"] = city
+        item["auctionState"] = state
+        item["auctionLatitude"] = lat
+        item["auctionLongitude"] = lng
+
+
 def _get_paginated(endpoint: str, headers: dict, params: dict, session) -> list[dict]:
     """Paginate through a PostgREST endpoint and return all rows.
 
@@ -476,6 +545,7 @@ def backfill(
                 if line.strip()
             ]
             if items:
+                _ensure_location_fields(items, ndjson_path.stem)
                 active_total += upsert_lots(
                     items,
                     ndjson_path.stem,
@@ -497,6 +567,7 @@ def backfill(
                 if line.strip()
             ]
             if items:
+                _ensure_location_fields(items, ndjson_path.stem)
                 archived_total += archive_lots(
                     ndjson_path.stem,
                     items,

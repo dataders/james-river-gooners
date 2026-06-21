@@ -2,9 +2,9 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
-if (!globalThis.localStorage) {
+function createMemoryStorage() {
   const store = new Map()
-  const storage = {
+  return {
     get length() {
       return store.size
     },
@@ -12,11 +12,10 @@ if (!globalThis.localStorage) {
       store.clear()
     },
     getItem(key) {
-      const value = store.get(String(key))
-      return value === undefined ? null : value
+      return store.has(String(key)) ? store.get(String(key)) : null
     },
     key(index) {
-      return [...store.keys()][index] ?? null
+      return Array.from(store.keys())[index] ?? null
     },
     removeItem(key) {
       store.delete(String(key))
@@ -25,8 +24,21 @@ if (!globalThis.localStorage) {
       store.set(String(key), String(value))
     },
   }
-  Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true })
-  Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+}
+
+const storage = globalThis.window?.localStorage ?? createMemoryStorage()
+
+if (typeof globalThis.localStorage === 'undefined') {
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: storage,
+    configurable: true,
+  })
+}
+if (globalThis.window && typeof globalThis.window.localStorage === 'undefined') {
+  Object.defineProperty(globalThis.window, 'localStorage', {
+    value: storage,
+    configurable: true,
+  })
 }
 
 afterEach(() => {

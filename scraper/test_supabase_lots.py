@@ -426,15 +426,20 @@ class BackfillTest(unittest.TestCase):
                 active_dir,
                 "a1.ndjson",
                 [
-                    {"auctionSafeId": "a1", "id": "1"},
-                    {"auctionSafeId": "a1", "id": "2"},
+                    {"auctionSafeId": "a1", "id": "1", "source": "cannons"},
+                    {"auctionSafeId": "a1", "id": "2", "source": "cannons"},
                 ],
             )
             self._write_ndjson(
                 archive_dir,
                 "a2.ndjson",
                 [
-                    {"auctionSafeId": "a2", "id": "1", "finalBid": 50.0},
+                    {
+                        "auctionSafeId": "a2",
+                        "id": "1",
+                        "source": "cannons",
+                        "finalBid": 50.0,
+                    },
                 ],
             )
 
@@ -463,10 +468,14 @@ class BackfillTest(unittest.TestCase):
             archive_dir = Path(tmp) / "archive" / "items"
             archive_dir.mkdir(parents=True)
             self._write_ndjson(
-                active_dir, "a1.ndjson", [{"auctionSafeId": "a1", "id": "1"}]
+                active_dir,
+                "a1.ndjson",
+                [{"auctionSafeId": "a1", "id": "1", "source": "cannons"}],
             )
             self._write_ndjson(
-                archive_dir, "a2.ndjson", [{"auctionSafeId": "a2", "id": "1"}]
+                archive_dir,
+                "a2.ndjson",
+                [{"auctionSafeId": "a2", "id": "1", "source": "cannons"}],
             )
 
             orig_active = supabase_lots.ITEMS_DIR
@@ -518,6 +527,37 @@ class BackfillTest(unittest.TestCase):
 
         self.assertEqual(active, 0)
         session.post.assert_not_called()
+
+    def test_backfill_stamps_legacy_cannons_location_before_upsert(self):
+        session = _ok_session()
+        with tempfile.TemporaryDirectory() as tmp:
+            active_dir = Path(tmp) / "items"
+            active_dir.mkdir()
+            self._write_ndjson(
+                active_dir,
+                "a1.ndjson",
+                [{"auctionSafeId": "a1", "id": "1", "source": "cannons"}],
+            )
+
+            orig_active = supabase_lots.ITEMS_DIR
+            supabase_lots.ITEMS_DIR = active_dir
+            try:
+                active, archived = supabase_lots.backfill(
+                    url="https://x.sb.co",
+                    key="k",
+                    session=session,
+                    do_archived=False,
+                )
+            finally:
+                supabase_lots.ITEMS_DIR = orig_active
+
+        self.assertEqual(active, 1)
+        self.assertEqual(archived, 0)
+        row = session.post.call_args.kwargs["json"][0]
+        self.assertEqual(row["auction_city"], "Richmond")
+        self.assertEqual(row["auction_state"], "VA")
+        self.assertAlmostEqual(row["auction_latitude"], 37.538509)
+        self.assertAlmostEqual(row["auction_longitude"], -77.43428)
 
 
 if __name__ == "__main__":

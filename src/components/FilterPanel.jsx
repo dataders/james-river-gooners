@@ -4,6 +4,7 @@ import { RangeFilters } from './RangeFilters'
 import { HasFilters } from './HasFilters'
 import { AuctionFilter } from './AuctionFilter'
 import { FilterBar } from './FilterBar'
+import { LocationFilter } from './LocationFilter'
 
 function Accordion({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -33,6 +34,11 @@ export function FilterPanel({
   onDecisionViewChange,
   localOnly,
   onLocalOnlyChange,
+  // Distance / location filter
+  userLocationLabel,
+  maxDistanceMiles,
+  onSetLocation,
+  onMaxDistanceChange,
   onMyBidsPanelOpen,
   cannonBidCount,
   cannonBidsLoading,
@@ -122,6 +128,16 @@ export function FilterPanel({
                   >{opt.label}</button>
                 ))}
               </div>
+            </div>
+
+            <div className="fp-control-row fp-control-row--stack">
+              <span className="fp-control-label">Location</span>
+              <LocationFilter
+                label={userLocationLabel}
+                radius={maxDistanceMiles}
+                onSetLocation={onSetLocation}
+                onRadiusChange={onMaxDistanceChange}
+              />
             </div>
 
             <label className="local-toggle">

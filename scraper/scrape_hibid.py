@@ -76,7 +76,9 @@ def company_location(slug: str, sources_file: Path | None = None) -> tuple[str, 
                     f"HiBid company {slug!r} has no 'location' in hibid_sources.yml"
                 )
             return geocode.parse_location(location)
-    raise geocode.GeocodeError(f"unknown HiBid company slug {slug!r} (not in hibid_sources.yml)")
+    raise geocode.GeocodeError(
+        f"unknown HiBid company slug {slug!r} (not in hibid_sources.yml)"
+    )
 
 
 def extract_catalog_id(url: str) -> str | None:

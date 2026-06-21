@@ -1,4 +1,6 @@
 // @ts-check
+import { DEFAULT_LOCATION, DEFAULT_RADIUS_MILES } from './distance.ts'
+
 export const STORAGE_KEY = 'gooners-preferences'
 
 // Normalized category groups hidden out of the box. These are noise for this
@@ -27,6 +29,10 @@ export const DEFAULT_EXCLUDED_GROUPS = ['Firearms', 'Vehicles']
  *   maxHours: number | null,
  *   minProfit: number | null,
  *   localOnly: boolean,
+ *   userLat: number,
+ *   userLng: number,
+ *   userLocationLabel: string,
+ *   maxDistanceMiles: number | null,
  *   hasComp: boolean,
  *   hasCannonsComp: boolean,
  *   sort: string,
@@ -58,6 +64,13 @@ export const DEFAULT_PREFS = {
   // null = off. Lots can't clear a worthwhile margin below this get hidden.
   minProfit: null,
   localOnly: false,
+  // Distance filter (Facebook-Marketplace style). Defaults to Richmond, VA +
+  // 25 mi so the app opens on the Richmond area, as it did with the old toggle.
+  // maxDistanceMiles = null means "Any distance" (filter off).
+  userLat: DEFAULT_LOCATION.lat,
+  userLng: DEFAULT_LOCATION.lng,
+  userLocationLabel: DEFAULT_LOCATION.label,
+  maxDistanceMiles: DEFAULT_RADIUS_MILES,
   hasComp: false,
   hasCannonsComp: false,
   sort: '',
@@ -84,6 +97,10 @@ export const PERSISTED_KEYS = [
   'maxHours',
   'minProfit',
   'localOnly',
+  'userLat',
+  'userLng',
+  'userLocationLabel',
+  'maxDistanceMiles',
   'hasComp',
   'hasCannonsComp',
   'sort',

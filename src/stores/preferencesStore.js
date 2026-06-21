@@ -14,6 +14,7 @@ import {
   readListParam,
   URL_PARAMS,
 } from '../utils/urlState'
+import { DEFAULT_LOCATION } from '../utils/distance.ts'
 
 // Single source of truth for filter/layout preferences. Replaces the per-field
 // useState soup in the old usePreferences: state lives here, persistence
@@ -37,6 +38,12 @@ const FIELD_CONFIG = {
   maxHours: { url: URL_PARAMS.maxHours },
   minProfit: { url: URL_PARAMS.minProfit },
   localOnly: { url: URL_PARAMS.localOnly },
+  // Distance filter. lat/lng/radius are shareable (URL); the label is cosmetic
+  // (persisted to localStorage, re-derived on a shared link — see loadInitialPrefs).
+  userLat: { url: URL_PARAMS.userLat },
+  userLng: { url: URL_PARAMS.userLng },
+  maxDistanceMiles: { url: URL_PARAMS.maxDistanceMiles },
+  userLocationLabel: {},
   hasComp: { url: URL_PARAMS.hasComp },
   hasCannonsComp: { url: URL_PARAMS.hasCannonsComp },
   sort: { url: URL_PARAMS.sort },
@@ -63,6 +70,16 @@ function loadInitialPrefs() {
   if (readListParam(URL_PARAMS.excludedCategories).length) merged.excludedCategories = readListParam(URL_PARAMS.excludedCategories)
   if (readListParam(URL_PARAMS.excludedGroups).length) merged.excludedGroups = readListParam(URL_PARAMS.excludedGroups)
   if (readParam(URL_PARAMS.localOnly) !== null) merged.localOnly = readParam(URL_PARAMS.localOnly) === '1'
+  // Distance filter: a shared link carries lat/lng/mi. When custom coordinates
+  // arrive via the URL, the label isn't shareable, so show a neutral one.
+  if (readParam(URL_PARAMS.userLat) !== null && readParam(URL_PARAMS.userLng) !== null) {
+    merged.userLat = num(URL_PARAMS.userLat)
+    merged.userLng = num(URL_PARAMS.userLng)
+    if (merged.userLat !== DEFAULT_LOCATION.lat || merged.userLng !== DEFAULT_LOCATION.lng) {
+      merged.userLocationLabel = 'Shared location'
+    }
+  }
+  if (readParam(URL_PARAMS.maxDistanceMiles) !== null) merged.maxDistanceMiles = num(URL_PARAMS.maxDistanceMiles)
   if (readParam(URL_PARAMS.hasComp) !== null) merged.hasComp = readParam(URL_PARAMS.hasComp) === '1'
   if (readParam(URL_PARAMS.hasCannonsComp) !== null) merged.hasCannonsComp = readParam(URL_PARAMS.hasCannonsComp) === '1'
   if (readParam(URL_PARAMS.sort) !== null) merged.sort = readParam(URL_PARAMS.sort) || ''
@@ -108,6 +125,15 @@ export const usePreferencesStore = create((set, get) => {
     setMaxHours: (v) => setField('maxHours', v),
     setMinProfit: (v) => setField('minProfit', v),
     setLocalOnly: (v) => setField('localOnly', v),
+    // Distance filter: set the three location fields in one update (so a single
+    // subscriber fire), persist, and mirror the shareable lat/lng to the URL.
+    setUserLocation: ({ lat, lng, label }) => {
+      set({ userLat: lat, userLng: lng, userLocationLabel: label })
+      savePrefs(get())
+      syncUrlParam(URL_PARAMS.userLat, lat)
+      syncUrlParam(URL_PARAMS.userLng, lng)
+    },
+    setMaxDistanceMiles: (v) => setField('maxDistanceMiles', v),
     setHasComp: (v) => setField('hasComp', v),
     setHasCannonsComp: (v) => setField('hasCannonsComp', v),
     setSort: (v) => setField('sort', v),

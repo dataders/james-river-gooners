@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { Item } from '../types.ts'
-import { sortItems, sortByMargin, SORT_OPTIONS } from './sort.ts'
+import { sortItems, sortByForYou, sortByMargin, sortByMaxBid, SORT_OPTIONS } from './sort.ts'
 import { itemKey } from './itemKey.js'
 
 // Build a slash-formatted local datetime `h` hours from now — the Maxanet
@@ -53,6 +53,27 @@ test('most bids orders by descending total bids', () => {
   assert.deepEqual(ids(sortItems(items, 'bids')), ['b', 'a', 'd', 'c'])
 })
 
+test('bidder sorts treat missing bidder counts as zero', () => {
+  const withBidders = [
+    { id: 'low', uniqueBidders: 1 },
+    { id: 'none' },
+    { id: 'high', uniqueBidders: 5 },
+  ] as unknown as Item[]
+
+  assert.deepEqual(ids(sortItems(withBidders, 'biddersDesc')), ['high', 'low', 'none'])
+  assert.deepEqual(ids(sortItems(withBidders, 'biddersAsc')), ['none', 'low', 'high'])
+})
+
+test('price sort treats null and NaN bids as zero', () => {
+  const withBadPrices = [
+    { id: 'good', currentBid: 10 },
+    { id: 'nullish', currentBid: null },
+    { id: 'nan', currentBid: Number.NaN },
+  ] as unknown as Item[]
+
+  assert.deepEqual(ids(sortItems(withBadPrices, 'priceDesc')), ['good', 'nullish', 'nan'])
+})
+
 test('ending sort handles ISO (HiBid) and Maxanet dates together', () => {
   // Regression: a naive dash→slash swap corrupts ISO 8601 strings, sending
   // every HiBid lot to the bottom. parseAuctionDate parses both forms, so the
@@ -87,4 +108,22 @@ test('sortByMargin orders by score desc, unscored lots last', () => {
   assert.deepEqual(ids(sortByMargin(items, marginByKey)), ['b', 'd', 'a', 'c'])
   // pure: input array is not mutated
   assert.deepEqual(ids(items), ['a', 'b', 'c', 'd'])
+})
+
+test('sortByForYou and sortByMaxBid order by their score maps', () => {
+  const forYouByKey = new Map<string, number | null>([
+    [itemKey(items[0]!), 0.2],
+    [itemKey(items[1]!), null],
+    [itemKey(items[2]!), 0.9],
+    [itemKey(items[3]!), 0.5],
+  ])
+  const maxBidByKey = new Map<string, number | null>([
+    [itemKey(items[0]!), 40],
+    [itemKey(items[1]!), 120],
+    [itemKey(items[2]!), null],
+    [itemKey(items[3]!), 80],
+  ])
+
+  assert.deepEqual(ids(sortByForYou(items, forYouByKey)), ['c', 'd', 'a', 'b'])
+  assert.deepEqual(ids(sortByMaxBid(items, maxBidByKey)), ['b', 'd', 'a', 'c'])
 })
