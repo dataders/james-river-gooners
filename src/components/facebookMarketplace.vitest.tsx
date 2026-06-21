@@ -105,6 +105,36 @@ describe('Facebook Marketplace UI', () => {
     )
   })
 
+  it('does not classify non-HiBid hosts that contain hibid.com as HiBid links', () => {
+    const TestItemDetail = ItemDetail as unknown as ComponentType<Record<string, unknown>>
+    render(
+      <TestItemDetail
+        item={facebookItem({
+          source: 'cannons',
+          detailUrl: 'https://example.com/redirect?next=https://hibid.com/item/1',
+        })}
+        ebayComps={{}}
+        cannonsComps={{}}
+        categoryStats={null}
+        margin={0.4}
+        locked={false}
+        onSignInClick={vi.fn()}
+        cannonBids={null}
+        bidStatus={null}
+        user={null}
+        onCannonLinkClick={vi.fn()}
+        isFavorite={false}
+        isIgnored={false}
+        onClose={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleIgnored={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: /open on cannon's/i })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /open on hibid/i })).toBeNull()
+  })
+
   it('renders sold Facebook comps returned by image search', () => {
     render(
       <ImageSearchModal

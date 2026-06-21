@@ -96,6 +96,8 @@ def _price(card: dict) -> tuple[float | None, str]:
     amount = raw.get("amount") or raw.get("value")
     if amount is None and label:
         amount = re.sub(r"[^0-9.]", "", label)
+    if amount is None:
+        return None, label
     try:
         value = float(amount)
     except (TypeError, ValueError):

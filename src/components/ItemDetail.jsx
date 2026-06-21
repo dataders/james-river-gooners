@@ -14,6 +14,15 @@ import { FbListingModal } from './FbListingModal'
 import { useFullImages } from '../hooks/useFullImages'
 import { supabaseUrl } from '../lib/supabase'
 
+function isHiBidUrl(value) {
+  try {
+    const { hostname } = new URL(value)
+    return hostname === 'hibid.com' || hostname.endsWith('.hibid.com')
+  } catch {
+    return false
+  }
+}
+
 export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categoryStats, margin, locked = false, onSignInClick, cannonBids, bidStatus, user, onCannonLinkClick, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onClose }) {
   const [imageState, setImageState] = useState({ itemKey: null, imgIndex: 0 })
   const [shareLabel, setShareLabel] = useState(null)
@@ -118,6 +127,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
   const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
   const facebookCompsUrl = buildFacebookMarketplaceSearchUrl(item.searchQuery, { sold: true })
   const isFacebook = item.source === 'facebook'
+  const isHiBid = isHiBidUrl(item.detailUrl)
 
   return (
     <div className="detail-overlay" onClick={onClose}>
@@ -273,7 +283,7 @@ export function ItemDetail({ item, ebayComps = {}, cannonsComps = {}, categorySt
               >
                 {isFacebook
                   ? 'Open Facebook listing'
-                  : item.detailUrl?.includes('hibid.com')
+                  : isHiBid
                     ? 'Open on HiBid'
                     : "Open on Cannon's"}
               </a>
