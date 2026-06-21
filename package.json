@@ -50,6 +50,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@ast-grep/napi": "^0.43.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -58,6 +59,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^10.5.0",
+    "eslint-plugin-ast-grep": "^1.0.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.6.0",

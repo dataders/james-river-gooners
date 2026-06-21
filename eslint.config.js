@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import astGrepPlugin from 'eslint-plugin-ast-grep'
 
 export default defineConfig([
   // `.claude` holds nested git worktrees (agent workspaces) — full repo
@@ -119,6 +120,69 @@ export default defineConfig([
     },
     rules: {
       'no-console': 'off',
+    },
+  },
+  // Structural rules via ast-grep — catch patterns that are legal JS/TS but
+  // violate project conventions agents would otherwise naturally write wrong.
+  // net.js     — fetchWithRetry implementation (raw fetch intentional)
+  // telemetry.js — posthog singleton wrapper (posthog.init/capture intentional)
+  // supabase.js  — Supabase singleton (createClient call intentional)
+  // useSemanticSearch + useImageSearch — HF Inference API clients (raw fetch intentional)
+  {
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    ignores: [
+      'src/utils/net.js',
+      'src/lib/telemetry.js',
+      'src/lib/supabase.js',
+      'src/hooks/useSemanticSearch.js',
+      'src/hooks/useImageSearch.js',
+    ],
+    plugins: { 'ast-grep': astGrepPlugin },
+    rules: {
+      'ast-grep/no-restricted-syntax': ['error',
+        {
+          pattern: 'fetch($$$)',
+          message: 'Use fetchWithRetry / fetchJsonWithRetry / fetchTextWithRetry from src/utils/net.js — they add exponential-backoff retries on 5xx and network errors.',
+        },
+        {
+          pattern: 'posthog.capture($$$)',
+          message: 'Use captureEvent() from src/lib/telemetry.js — it checks isAnalyticsConfigured and no-ops when PostHog is unconfigured.',
+        },
+        {
+          pattern: 'posthog.init($$$)',
+          message: 'PostHog is initialized once in src/lib/telemetry.js — do not call posthog.init() elsewhere.',
+        },
+        {
+          pattern: 'createClient($$$)',
+          message: 'Import the supabase singleton from src/lib/supabase.js — do not instantiate a new Supabase client (a second client bypasses the shared auth session).',
+        },
+        {
+          pattern: 'dangerouslySetInnerHTML={$$$}',
+          message: 'dangerouslySetInnerHTML bypasses React\'s XSS protection — this app never needs it; use JSX children instead.',
+        },
+        {
+          pattern: 'useVirtualizer($$$)',
+          message: 'Use useWindowVirtualizer() instead — the app scrolls the window, not a container div; useVirtualizer needs an explicit scrollElement and would silently render all items without one.',
+        },
+      ],
+    },
+  },
+  // QueryClient must be the singleton from src/lib/queryClient.js. Test files
+  // legitimately create isolated clients per test, so they're exempt.
+  {
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    ignores: [
+      'src/lib/queryClient.js',
+      'src/**/*.{test,vitest}.{js,jsx,ts,tsx}',
+    ],
+    plugins: { 'ast-grep': astGrepPlugin },
+    rules: {
+      'ast-grep/no-restricted-syntax': ['error',
+        {
+          pattern: 'new QueryClient($$$)',
+          message: 'Import the singleton queryClient from src/lib/queryClient.js — a second QueryClient gets its own isolated cache and breaks shared server state.',
+        },
+      ],
     },
   },
 ])
