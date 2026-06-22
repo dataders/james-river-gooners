@@ -12,15 +12,15 @@
 // Cache-Control: 5 min (max-age=300) — bids move; stale previews are fine.
 //
 // Secrets (set via `wrangler secret put`):
-//   VITE_SUPABASE_URL             — Supabase project URL
-//   VITE_SUPABASE_PUBLISHABLE_KEY — Publishable key (browser-safe; lots table is public)
+//   SUPABASE_URL      — Supabase project URL
+//   SUPABASE_ANON_KEY — Publishable key (browser-safe; lots table is public-read via RLS)
 //
 // Var (wrangler.toml [vars]):
-//   SPA_ORIGIN           — https://gooners.anders.omg.lol
+//   SPA_ORIGIN        — https://gooners.anders.omg.lol
 
 export interface Env {
-  VITE_SUPABASE_URL: string
-  VITE_SUPABASE_PUBLISHABLE_KEY: string
+  SUPABASE_URL: string
+  SUPABASE_ANON_KEY: string
   SPA_ORIGIN: string
 }
 
@@ -102,7 +102,7 @@ export default {
     const itemId = itemParam.slice(colon + 1)
     const spaUrl = `${spaOrigin}/?item=${encodeURIComponent(itemParam)}`
 
-    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
       return Response.redirect(spaUrl, 302)
     }
 
@@ -115,10 +115,10 @@ export default {
 
     let lot: LotRow | null = null
     try {
-      const res = await fetch(`${env.VITE_SUPABASE_URL}/rest/v1/lots?${qs}`, {
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/lots?${qs}`, {
         headers: {
-          apikey: env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${env.VITE_SUPABASE_PUBLISHABLE_KEY`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
         },
       })
       if (res.ok) {
