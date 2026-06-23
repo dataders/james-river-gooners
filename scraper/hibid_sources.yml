@@ -30,6 +30,7 @@ companies:
       - 749633   # July 5th 2026 Stamps and Collectibles Auction
       - 750346   # July 5th, 2026 Coin Auction
       - 751775   # July 12th, 2026 Stamps and Collectibles Auction
+      - 753726   # July 19th, 2026 Stamps and Collectibles Auctions
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -43,6 +44,7 @@ companies:
       - 744897   # Vintage Galore! Gaming, Disney, Music, Cards, Action Figures
       - 750993   # Sports, Trading & Collector Cards Auction
       - 753446   # 3rd Annual Vinyl Record, Music & Media Rarities Auction (Jul 19 - Aug 2)
+      - 753911   # Video Game Auction! Gamecube, Wii, PS1 & More
   - id: 78672
     slug: peoples_auction
     name: "Peoples Auction"
