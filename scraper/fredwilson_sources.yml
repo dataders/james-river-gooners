@@ -1,0 +1,16 @@
+# Fred Wilson Auction Service LLC
+# Platform: BWPaperclip (bid.fredwilsonauction.com)
+#
+# Fred Wilson operates exclusively in coastal/central Virginia — no geographic
+# filter is needed (unlike Rasmus, which is nationwide). All active auctions on
+# this domain are included except real-estate-only sales.
+#
+# The API is at bid.fredwilsonauctions.com/api/auctions (public JSON, no auth).
+# Active auctions have status="accepting_bids" and active=true.
+# Location is sometimes null in the list endpoint; the scraper falls back to
+# parsing the "tag_line" field (e.g. "LOCATED IN WILLIAMSBURG, VA").
+
+company:
+  name: "Fred Wilson Auction Service LLC"
+  slug: fredwilson
+  api_base: "https://bid.fredwilsonauction.com"
