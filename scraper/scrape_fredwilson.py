@@ -145,9 +145,7 @@ def fetch_auction_detail(session: requests.Session, auction_id: str | int) -> di
     return resp.json()
 
 
-def fetch_auction_items(
-    session: requests.Session, auction_id: str | int
-) -> list[dict]:
+def fetch_auction_items(session: requests.Session, auction_id: str | int) -> list[dict]:
     """Return all lots for one auction (paginated /api/auctions/{id}/items)."""
     items: list[dict] = []
     page = 1
@@ -254,9 +252,7 @@ def map_item(item_data: dict, auction_id: str) -> dict | None:
 
     images: list[str] = []
     for img in item_data.get("images") or []:
-        url = (
-            img.get("lg") or img.get("xl") or img.get("sm") or img.get("xs") or ""
-        )
+        url = img.get("lg") or img.get("xl") or img.get("sm") or img.get("xs") or ""
         if url:
             images.append(url)
     images = images[:5]
@@ -309,7 +305,9 @@ def scrape_fredwilson_auction(
     if not auction_title or not auction_city:
         detail = fetch_auction_detail(session, auction_id)
         if not auction_title:
-            auction_title = (detail.get("name") or "").strip() or f"Fred Wilson Auction {auction_id}"
+            auction_title = (
+                detail.get("name") or ""
+            ).strip() or f"Fred Wilson Auction {auction_id}"
         if not auction_city:
             auction_city, auction_state = _city_from_auction(detail)
         if not auction_end_date:

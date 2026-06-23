@@ -605,7 +605,11 @@ def main() -> None:
         FREDWILSON,
         fredwilson_specs,
         total,
-        len(maxanet_urls) + len(hibid_specs) + len(rasmus_specs) + len(facebook_specs) + 1,
+        len(maxanet_urls)
+        + len(hibid_specs)
+        + len(rasmus_specs)
+        + len(facebook_specs)
+        + 1,
     )
 
     print(f"\n{'=' * 60}")
