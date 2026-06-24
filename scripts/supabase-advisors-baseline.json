@@ -42,6 +42,7 @@
   "performance": [
     "auth_db_connections_absolute",
     "auth_rls_init_plan_public_favorites_own favorites",
+    "auth_rls_init_plan_public_saved_searches_own saved searches",
     "auth_rls_init_plan_public_filter_preferences_own filter preferences",
     "auth_rls_init_plan_public_ignored_own ignored",
     "auth_rls_init_plan_public_user_bids_users read own bids",

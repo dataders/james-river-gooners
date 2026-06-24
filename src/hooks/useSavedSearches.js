@@ -5,7 +5,7 @@ import { pickPersistedPrefs } from '../utils/prefs'
 import { usePreferencesStore } from '../stores/preferencesStore'
 
 /**
- * @typedef {{ id: string, name: string, filters: object, created_at: string }} SavedSearch
+ * @typedef {{ id: string, name: string, filters: Record<string, unknown>, created_at: string }} SavedSearch
  */
 
 /**
@@ -33,12 +33,12 @@ export function useSavedSearches(user) {
       .then(({ data, error }) => {
         if (cancelled) return
         if (error) { console.warn('Failed to load saved searches:', error.message); return }
-        setSearches(data ?? [])
+        setSearches(/** @type {SavedSearch[]} */ (/** @type {unknown} */ (data ?? [])))
       })
     return () => { cancelled = true }
   }, [userId])
 
-  const saveSearch = useCallback((name) => {
+  const saveSearch = useCallback((/** @type {string} */ name) => {
     if (!supabase || !userId || !name.trim()) return
     const filters = pickPersistedPrefs(usePreferencesStore.getState())
     supabase
@@ -51,14 +51,15 @@ export function useSavedSearches(user) {
       .single()
       .then(({ data, error }) => {
         if (error) { console.warn('Failed to save search:', error.message); return }
+        const saved = /** @type {SavedSearch} */ (/** @type {unknown} */ (data))
         setSearches(prev => {
-          const without = prev.filter(s => s.name !== data.name)
-          return [...without, data].sort((a, b) => a.name.localeCompare(b.name))
+          const without = prev.filter(s => s.name !== saved.name)
+          return [...without, saved].sort((a, b) => a.name.localeCompare(b.name))
         })
       })
   }, [userId])
 
-  const deleteSearch = useCallback((id) => {
+  const deleteSearch = useCallback((/** @type {string} */ id) => {
     if (!supabase || !userId) return
     setSearches(prev => prev.filter(s => s.id !== id))
     supabase

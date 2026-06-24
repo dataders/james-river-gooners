@@ -1,3 +1,9 @@
+// AUTO-GENERATED Supabase database types — do NOT edit by hand.
+// Regenerate with `npm run gen:types` (see scripts/gen-types.sh) whenever a
+// migration under supabase/migrations/ changes the schema. The Supabase view/
+// table/function shapes here are the source of truth the typed browser client
+// (src/lib/supabase.js) flows into the data hooks.
+
 export type Json =
   | string
   | number
