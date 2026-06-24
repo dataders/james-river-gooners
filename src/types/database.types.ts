@@ -145,6 +145,60 @@ export type Database = {
           },
         ]
       }
+      category_groups: {
+        Row: {
+          category_group: string
+          sort_order: number
+        }
+        Insert: {
+          category_group: string
+          sort_order: number
+        }
+        Update: {
+          category_group?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      category_inference: {
+        Row: {
+          keyword: string
+          priority: number
+          subcategory: string
+        }
+        Insert: {
+          keyword: string
+          priority: number
+          subcategory: string
+        }
+        Update: {
+          keyword?: string
+          priority?: number
+          subcategory?: string
+        }
+        Relationships: []
+      }
+      category_mappings: {
+        Row: {
+          category_group: string
+          raw_category: string
+          source: string
+          subcategory: string
+        }
+        Insert: {
+          category_group: string
+          raw_category: string
+          source: string
+          subcategory: string
+        }
+        Update: {
+          category_group?: string
+          raw_category?: string
+          source?: string
+          subcategory?: string
+        }
+        Relationships: []
+      }
       comp_quality_eval: {
         Row: {
           arm: string
@@ -1008,6 +1062,30 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_searches: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sold_listing_embeddings: {
         Row: {
           ebay_item_id: string
@@ -1826,6 +1904,27 @@ export type Database = {
             referencedColumns: ["auction_safe_id", "item_id"]
           },
         ]
+      }
+      public_category_mappings: {
+        Row: {
+          category_group: string | null
+          raw_category: string | null
+          source: string | null
+          subcategory: string | null
+        }
+        Insert: {
+          category_group?: string | null
+          raw_category?: string | null
+          source?: string | null
+          subcategory?: string | null
+        }
+        Update: {
+          category_group?: string | null
+          raw_category?: string | null
+          source?: string | null
+          subcategory?: string | null
+        }
+        Relationships: []
       }
       public_category_sold_stats: {
         Row: {

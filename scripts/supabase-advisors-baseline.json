@@ -36,11 +36,13 @@
     "rls_enabled_no_policy_public_sold_listings",
     "rls_enabled_no_policy_public_soldcomps_usage",
     "rls_enabled_no_policy_public_users",
-    "rls_policy_always_true_public_user_feedback_Anyone can submit feedback"
+    "rls_policy_always_true_public_user_feedback_Anyone can submit feedback",
+    "security_definer_view_public_public_category_mappings"
   ],
   "performance": [
     "auth_db_connections_absolute",
     "auth_rls_init_plan_public_favorites_own favorites",
+    "auth_rls_init_plan_public_saved_searches_own saved searches",
     "auth_rls_init_plan_public_filter_preferences_own filter preferences",
     "auth_rls_init_plan_public_ignored_own ignored",
     "auth_rls_init_plan_public_user_bids_users read own bids",

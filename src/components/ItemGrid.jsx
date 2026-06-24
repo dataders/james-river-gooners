@@ -24,7 +24,7 @@ function colsForWidth(width) {
 const ITEM_HEIGHT_ESTIMATE = 380
 const COMPACT_ITEM_HEIGHT = 132
 
-export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses }) {
+export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatuses, forYouScores = null }) {
   const wrapperRef = useRef(null)
   const [numCols, setNumCols] = useState(3)
   // The page (window) is the scroll container, so the virtual list must offset
@@ -111,6 +111,7 @@ export function ItemGrid({ items, compact = false, allComps = {}, isFavorite, on
                 onToggleIgnored={onToggleIgnored}
                 onItemClick={onItemClick}
                 bidStatus={bidStatuses?.get(String(item.id))}
+                forYouScore={forYouScores?.get(`${item.auctionSafeId}:${item.id}`)}
               />
             </div>
           )

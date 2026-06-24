@@ -16,6 +16,7 @@ import { useHeaderVisible } from './hooks/useHeaderVisible'
 import { useItemPipeline } from './hooks/useItemPipeline'
 import { useFilterBounds } from './hooks/useFilterBounds'
 import { useForYou } from './hooks/useForYou'
+import { useSavedSearches } from './hooks/useSavedSearches'
 import { itemKey } from './utils/itemKey'
 import { sortByForYou } from './utils/sort'
 import { DEFAULT_LOCATION, DEFAULT_RADIUS_MILES } from './utils/distance'
@@ -162,6 +163,7 @@ export default function App() {
   const { favoriteIds, isFavorite, toggleFavorite, removeFavorite } = useFavorites(auth.user)
   const { ignoredIds, isIgnored, toggleIgnored, removeIgnored } = useIgnored(auth.user)
   const cannonBids = useCannonBids(auth.user)
+  const { searches: savedSearches, saveSearch, loadSearch, deleteSearch } = useSavedSearches(auth.user)
 
   // Favorites and ignores are mutually exclusive: deciding one clears the other.
   const handleToggleFavorite = useCallback((item) => {
@@ -722,6 +724,10 @@ export default function App() {
           onRemoveBaselineGroup={removeBaselineGroup}
           onAddBaselineCategory={addBaselineCategory}
           onRemoveBaselineCategory={removeBaselineCategory}
+          savedSearches={auth.user ? savedSearches : null}
+          onSaveSearch={saveSearch}
+          onLoadSearch={loadSearch}
+          onDeleteSearch={deleteSearch}
         />
 
         <main data-load-complete={loadComplete ? 'true' : 'false'}>
@@ -816,6 +822,7 @@ export default function App() {
               onToggleIgnored={handleToggleIgnored}
               onItemClick={handleItemClick}
               bidStatuses={cannonBids.bidStatuses}
+              forYouScores={sort === 'foryou' ? forYouScores : null}
             />
           )}
         </main>
