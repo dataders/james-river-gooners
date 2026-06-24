@@ -3345,6 +3345,25 @@ body {
   color: var(--text-muted);
 }
 
+.for-you-badge {
+  align-self: flex-start;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+  padding: 1px 6px;
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--border));
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+
+.for-you-badge--top {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 60%, var(--border));
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  font-weight: 600;
+}
+
 .enrichment-flags {
   display: flex;
   flex-wrap: wrap;

@@ -5,7 +5,7 @@ import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from 
 import { getDisplayEnrichment } from '../utils/enrichment'
 import { useFullImages } from '../hooks/useFullImages'
 
-export const ItemCard = memo(function ItemCard({ item, compact = false, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
+export const ItemCard = memo(function ItemCard({ item, compact = false, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus, forYouScore }) {
   const remaining = itemTimeRemaining(item)
   const enrichment = getDisplayEnrichment(item)
   const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
@@ -277,6 +277,11 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
             </div>
           )
         })()}
+        {forYouScore >= 0.82
+          ? <div className="for-you-badge for-you-badge--top">Top pick</div>
+          : forYouScore >= 0.72
+            ? <div className="for-you-badge">Match</div>
+            : null}
         {isFacebook ? (
           <div className="item-bid-row item-price-row">
             <span className="item-bid">${Number(item.currentBid || 0).toLocaleString()}</span>

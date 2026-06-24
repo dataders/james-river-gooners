@@ -816,6 +816,7 @@ export default function App() {
               onToggleIgnored={handleToggleIgnored}
               onItemClick={handleItemClick}
               bidStatuses={cannonBids.bidStatuses}
+              forYouScores={sort === 'foryou' ? forYouScores : null}
             />
           )}
         </main>
