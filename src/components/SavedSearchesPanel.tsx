@@ -1,11 +1,25 @@
-// @ts-nocheck
 import { useState } from 'react'
+import type { SyntheticEvent } from 'react'
 
-export function SavedSearchesPanel({ searches, onSave, onLoad, onDelete }) {
+interface SavedSearch {
+  id: string
+  name: string
+  filters: Record<string, unknown>
+  created_at: string
+}
+
+interface Props {
+  searches: SavedSearch[]
+  onSave: (name: string) => void
+  onLoad: (search: SavedSearch) => void
+  onDelete: (id: string) => void
+}
+
+export function SavedSearchesPanel({ searches, onSave, onLoad, onDelete }: Props) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
 
-  const handleSave = (e) => {
+  const handleSave = (e: SyntheticEvent) => {
     e.preventDefault()
     if (!name.trim()) return
     onSave(name.trim())
@@ -17,7 +31,7 @@ export function SavedSearchesPanel({ searches, onSave, onLoad, onDelete }) {
       <button
         type="button"
         className="saved-searches-toggle"
-        onClick={() => setOpen(v => !v)}
+        onClick={() => { setOpen(v => !v) }}
         aria-expanded={open}
       >
         <span>Saved filters</span>
@@ -35,7 +49,7 @@ export function SavedSearchesPanel({ searches, onSave, onLoad, onDelete }) {
               type="text"
               placeholder="Name these filters…"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => { setName(e.target.value) }}
               maxLength={60}
             />
             <button
@@ -65,7 +79,7 @@ export function SavedSearchesPanel({ searches, onSave, onLoad, onDelete }) {
                     type="button"
                     className="saved-search-delete"
                     aria-label={`Delete "${s.name}"`}
-                    onClick={() => onDelete(s.id)}
+                    onClick={() => { onDelete(s.id) }}
                   >
                     ✕
                   </button>
