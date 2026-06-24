@@ -31,12 +31,13 @@ class FacebookDiscoveryTest(unittest.TestCase):
 
 class FacebookMappingTest(unittest.TestCase):
     def test_maps_apify_card_to_shared_item(self):
+        # Current Apify schema: marketplace_listing_title + flat primary_listing_photo.uri
         card = {
             "id": "123",
             "listingUrl": "https://www.facebook.com/marketplace/item/123/",
-            "title": "Ping G425 Driver",
+            "marketplace_listing_title": "Ping G425 Driver",
             "listing_price": {"amount": "185", "formatted_amount": "$185"},
-            "primary_listing_photo": {"image": {"uri": "https://img.test/ping.jpg"}},
+            "primary_listing_photo": {"uri": "https://img.test/ping.jpg"},
             "location": {"reverse_geocode": {"city": "Richmond"}},
         }
 
@@ -53,15 +54,28 @@ class FacebookMappingTest(unittest.TestCase):
         self.assertIsNone(item.get("endDate"))
         self.assertNotIn("totalBids", item)
 
+    def test_maps_apify_card_old_schema(self):
+        # Old Apify schema backward compat: title + nested primary_listing_photo.image.uri
+        card = {
+            "id": "124",
+            "listingUrl": "https://www.facebook.com/marketplace/item/124/",
+            "title": "Callaway Irons",
+            "listing_price": {"amount": "250", "formatted_amount": "$250"},
+            "primary_listing_photo": {"image": {"uri": "https://img.test/callaway.jpg"}},
+        }
+
+        item = scrape_facebook.card_to_item(card)
+
+        self.assertEqual(item["title"], "Callaway Irons")
+        self.assertEqual(item["images"], ["https://img.test/callaway.jpg"])
+
     def test_maps_apify_card_to_sold_row(self):
         card = {
             "id": "sold-1",
             "listingUrl": "https://www.facebook.com/marketplace/item/sold-1/",
-            "title": "Titleist Irons",
+            "marketplace_listing_title": "Titleist Irons",
             "listing_price": {"amount": 425, "formatted_amount": "$425"},
-            "primary_listing_photo": {
-                "image": {"uri": "https://img.test/titleist.jpg"}
-            },
+            "primary_listing_photo": {"uri": "https://img.test/titleist.jpg"},
             "location": {"name": "Richmond, VA"},
         }
 

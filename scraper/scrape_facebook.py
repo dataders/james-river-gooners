@@ -117,12 +117,16 @@ def _price(card: dict) -> tuple[float | None, str]:
 
 def _photo(card: dict) -> str:
     photo = card.get("primary_listing_photo") or card.get("primaryListingPhoto") or {}
-    if isinstance(photo, dict):
-        image = photo.get("image") or {}
-        if isinstance(image, dict):
-            return _text(image.get("uri") or image.get("url"))
-        return _text(photo.get("uri") or photo.get("url"))
-    return ""
+    if not isinstance(photo, dict):
+        return ""
+    # Nested image object (old Apify schema: primary_listing_photo.image.uri)
+    image = photo.get("image")
+    if isinstance(image, dict):
+        uri = _text(image.get("uri") or image.get("url"))
+        if uri:
+            return uri
+    # Flat uri/url on the photo itself (current Apify schema)
+    return _text(photo.get("uri") or photo.get("url"))
 
 
 def _location(card: dict) -> str:
@@ -145,7 +149,7 @@ def card_to_item(card: dict) -> dict:
     image = _photo(card)
     item = {
         "id": listing_id,
-        "title": _text(card.get("title")),
+        "title": _text(card.get("marketplace_listing_title") or card.get("title")),
         "description": _text(card.get("description")),
         "currentBid": price or 0.0,
         "images": [image] if image else [],
@@ -163,7 +167,7 @@ def card_to_sold_listing_row(card: dict, *, keyword: str) -> dict:
     return {
         "id": _text(card.get("id") or card.get("listing_id") or card.get("listingUrl")),
         "keyword": keyword,
-        "title": _text(card.get("title")),
+        "title": _text(card.get("marketplace_listing_title") or card.get("title")),
         "price_value": price,
         "price_label": label,
         "sold_date": card.get("sold_date") or card.get("soldDate"),
