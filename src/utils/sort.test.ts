@@ -4,12 +4,10 @@ import type { Item } from '../types.ts'
 import { sortItems, sortByForYou, sortByMargin, sortByMaxBid, SORT_OPTIONS } from './sort.ts'
 import { itemKey } from './itemKey.js'
 
-// Build a slash-formatted local datetime `h` hours from now — the Maxanet
-// shape parseAuctionDate reads as local time (matching the on-card timer).
+// ISO timestamp `h` hours from now — parseAuctionDate handles both ISO (HiBid)
+// and Maxanet naive formats; ISO is simpler and timezone-unambiguous for tests.
 function inHours(h: number): string {
-  const d = new Date(Date.now() + h * 3_600_000)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  return new Date(Date.now() + h * 3_600_000).toISOString()
 }
 
 // Intentionally partial lots — these tests exercise ordering, not the full
@@ -76,7 +74,7 @@ test('price sort treats null and NaN bids as zero', () => {
 
 test('ending sort handles ISO (HiBid) and Maxanet dates together', () => {
   // Regression: a naive dash→slash swap corrupts ISO 8601 strings, sending
-  // every HiBid lot to the bottom. parseAuctionDate parses both forms, so the
+  // every HiBid lot to the bottom. parseAuctionDate handles both forms, so the
   // ISO lot must interleave by its real end time, not sort last.
   const isoIn = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString()
   const mixed = [

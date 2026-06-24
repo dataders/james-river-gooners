@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { memo, useState, useRef } from 'react'
-import { itemTimeRemaining } from '../utils/time'
+import { itemTimeRemaining, timeRemaining } from '../utils/time'
+import { parseAuctionDate } from '../utils/dates'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { getDisplayEnrichment } from '../utils/enrichment'
 import { useFullImages } from '../hooks/useFullImages'
@@ -8,6 +9,18 @@ import { useFullImages } from '../hooks/useFullImages'
 export const ItemCard = memo(function ItemCard({ item, compact = false, itemComps, isFavorite, onToggleFavorite, isIgnored, onToggleIgnored, onItemClick, bidStatus }) {
   const remaining = itemTimeRemaining(item)
   const enrichment = getDisplayEnrichment(item)
+
+  // Urgency badge: image overlay for lots closing within 24h. Only uses
+  // item.endDate (not the auction-level fallback) so it fires on lot-level
+  // deadlines only. Suppressed in compact/swipe-deck mode.
+  const urgencyBadge = (() => {
+    if (compact || !item.endDate || item.closed) return null
+    const end = parseAuctionDate(item.endDate)
+    if (!end) return null
+    const msLeft = end.getTime() - Date.now()
+    if (msLeft <= 0 || msLeft > 86_400_000) return null
+    return { text: timeRemaining(item.endDate), critical: msLeft < 4 * 3_600_000 }
+  })()
   const usedLabelAsTitle = enrichment != null && /^lot\s*-/i.test(item.title || '')
   const displayTitle = usedLabelAsTitle ? enrichment.label : item.title
   const isFacebook = item.source === 'facebook'
@@ -209,6 +222,11 @@ export const ItemCard = memo(function ItemCard({ item, compact = false, itemComp
                 onClick={(e) => goToImage(e, i)}
               />
             ))}
+          </div>
+        )}
+        {urgencyBadge && (
+          <div className={`item-urgency-badge${urgencyBadge.critical ? ' item-urgency-badge--critical' : ''}`}>
+            {urgencyBadge.text}
           </div>
         )}
       </div>

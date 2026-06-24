@@ -8,6 +8,14 @@
 
 export const CHANGELOG = [
   {
+    date: '2026-06-24',
+    title: 'Urgency countdown + timezone fix',
+    changes: [
+      { id: 'urgency-badge', icon: '⏰', text: 'Lots closing within 24 hours now show a time-left badge on the photo — turns red when under 4 hours so you can spot the tightest deadlines at a glance.' },
+      { id: 'timezone-fix', icon: '🕐', text: 'Auction end times are now correctly treated as US Eastern — countdown timers and "ending soon" filters were off by your timezone offset if you weren\'t in ET.' },
+    ],
+  },
+  {
     date: '2026-06-21',
     title: 'Interface polish',
     changes: [

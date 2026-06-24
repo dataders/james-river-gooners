@@ -16,10 +16,18 @@ test('parseAuctionDate returns null for an unparseable string', () => {
 
 // ── parseAuctionDate: both supported formats ─────────────────────────────────
 
-test('parseAuctionDate parses Maxanet "YYYY-MM-DD H:MM:SS AM/PM"', () => {
+test('parseAuctionDate parses Maxanet "YYYY-MM-DD H:MM:SS AM/PM" as US Eastern (EDT, UTC-4)', () => {
   const d = parseAuctionDate('2026-06-01 9:59:00 PM')
   assert.ok(d instanceof Date)
-  assert.equal(d.getFullYear(), 2026)
+  // 9:59 PM EDT (UTC-4) → 2026-06-02T01:59:00Z
+  assert.equal(d.toISOString(), '2026-06-02T01:59:00.000Z')
+})
+
+test('parseAuctionDate parses Maxanet winter date as US Eastern (EST, UTC-5)', () => {
+  const d = parseAuctionDate('2026-01-15 9:59:00 PM')
+  assert.ok(d instanceof Date)
+  // 9:59 PM EST (UTC-5) → 2026-01-16T02:59:00Z
+  assert.equal(d.toISOString(), '2026-01-16T02:59:00.000Z')
 })
 
 test('parseAuctionDate parses ISO (HiBid) without corrupting it', () => {

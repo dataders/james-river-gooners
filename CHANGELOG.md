@@ -4,6 +4,11 @@ User-facing changes to James River Gooners. This mirrors the in-app **What's
 New** panel (the ✨ button in the header); both are generated from the same
 list in `src/data/changelog.js`, so update that file when you add an entry.
 
+## 2026-06-24 — Urgency countdown + timezone fix
+
+- ⏰ **Closing-soon badge on photos** — lots closing within 24 hours now show a time-left badge on the photo — turns red when under 4 hours so you can spot the tightest deadlines at a glance.
+- 🕐 **Auction end times now correctly Eastern** — countdown timers and "ending soon" filters were off by your timezone offset if you weren't in ET; times are now always interpreted as US Eastern.
+
 ## 2026-06-21 — Facebook Marketplace comps
 
 - 🛒 **Facebook listings in the grid** — Facebook Marketplace listings now appear in the grid alongside auction lots, with a clear marketplace badge and direct listing links.
