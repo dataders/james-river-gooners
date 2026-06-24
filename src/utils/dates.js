@@ -25,7 +25,9 @@ export function parseAuctionDate(endDate) {
   // Maxanet/Cannon's/Rasmus naive format: "YYYY-MM-DD H:MM:SS AM/PM" in US Eastern.
   const m = endDate.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d+):(\d+):(\d+)\s*(AM|PM)$/i)
   if (!m) return null
-  const [, yr, mo, da, hr, mn, sc, ampm] = m
+  // Destructure with ?? '' so checkJs sees string (not string|undefined) for each group.
+  const yr = m[1] ?? '', mo = m[2] ?? '', da = m[3] ?? '', hr = m[4] ?? ''
+  const mn = m[5] ?? '', sc = m[6] ?? '', ampm = m[7] ?? ''
   let h = parseInt(hr, 10)
   if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12
   else if (ampm.toUpperCase() === 'AM' && h === 12) h = 0
@@ -42,8 +44,9 @@ export function parseAuctionDate(endDate) {
   )
   // Step 3: measure the UTC↔ET offset; shift by it to get the true UTC instant.
   // The `% 24` guards against engines that return hour='24' for midnight.
-  const etH = Number(parts.hour) % 24
-  const etAsUtc = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), etH, Number(parts.minute), Number(parts.second)))
+  // Bracket notation required: Object.fromEntries gives an index-signature type.
+  const etH = Number(parts['hour']) % 24
+  const etAsUtc = new Date(Date.UTC(Number(parts['year']), Number(parts['month']) - 1, Number(parts['day']), etH, Number(parts['minute']), Number(parts['second'])))
   return new Date(approx.getTime() + (approx.getTime() - etAsUtc.getTime()))
 }
 
