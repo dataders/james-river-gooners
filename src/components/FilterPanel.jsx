@@ -5,6 +5,7 @@ import { HasFilters } from './HasFilters'
 import { AuctionFilter } from './AuctionFilter'
 import { FilterBar } from './FilterBar'
 import { LocationFilter } from './LocationFilter'
+import { SavedSearchesPanel } from './SavedSearchesPanel'
 
 function Accordion({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -64,6 +65,11 @@ export function FilterPanel({
   baselineExcludedGroups, baselineExcludedCategories,
   onToggleExcluded, onHideGroup, onShowGroup, onHideAll, onShowAll, onShowOnly,
   onAddBaselineGroup, onRemoveBaselineGroup, onAddBaselineCategory, onRemoveBaselineCategory,
+  // Saved filter presets (auth-gated — only rendered when user is logged in)
+  savedSearches = null,
+  onSaveSearch,
+  onLoadSearch,
+  onDeleteSearch,
 }) {
   return (
     <>
@@ -84,6 +90,15 @@ export function FilterPanel({
             aria-label="Close filters"
           >✕</button>
         </div>
+
+        {savedSearches !== null && (
+          <SavedSearchesPanel
+            searches={savedSearches}
+            onSave={onSaveSearch}
+            onLoad={onLoadSearch}
+            onDelete={onDeleteSearch}
+          />
+        )}
 
         {/* View options — archive mode, favorites, view layout, quick toggles */}
         <Accordion title="View" defaultOpen={true}>

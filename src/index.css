@@ -320,6 +320,105 @@ body {
   letter-spacing: 0.1em;
   color: var(--text-muted);
 }
+/* Saved filter presets panel — sits at the top of the filter sidebar */
+.saved-searches {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.saved-searches-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 0;
+  cursor: pointer;
+  text-align: left;
+}
+.saved-searches-toggle:hover { color: var(--text); }
+.saved-searches-count {
+  background: var(--chip-bg);
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-size: 0.65rem;
+  padding: 0 5px;
+}
+.saved-searches-arrow { margin-left: auto; }
+.saved-searches-body { padding-bottom: 10px; }
+.saved-searches-save-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.saved-searches-input {
+  flex: 1;
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
+.saved-searches-input::placeholder { color: var(--text-muted); }
+.saved-searches-save-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.saved-searches-save-btn:not(:disabled):hover { color: var(--text); border-color: var(--text-muted); }
+.saved-searches-save-btn:disabled { opacity: 0.4; cursor: default; }
+.saved-searches-empty {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 2px 0;
+}
+.saved-searches-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.saved-search-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.saved-search-load {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-align: left;
+  padding: 3px 0;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.saved-search-load:hover { color: var(--accent); }
+.saved-search-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 2px 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.saved-search-delete:hover { color: var(--text); }
+
 .filter-panel-close {
   background: none;
   border: none;
