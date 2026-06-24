@@ -61,7 +61,9 @@ class FacebookMappingTest(unittest.TestCase):
             "listingUrl": "https://www.facebook.com/marketplace/item/124/",
             "title": "Callaway Irons",
             "listing_price": {"amount": "250", "formatted_amount": "$250"},
-            "primary_listing_photo": {"image": {"uri": "https://img.test/callaway.jpg"}},
+            "primary_listing_photo": {
+                "image": {"uri": "https://img.test/callaway.jpg"}
+            },
         }
 
         item = scrape_facebook.card_to_item(card)
