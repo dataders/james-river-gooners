@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import { getCompMedianPrice, calcMaxBid, COST_MULTIPLIER, DEFAULT_MARGIN } from '../utils/roiCalc'
 import { itemTimeRemaining } from '../utils/time'
+import { parseAuctionDate } from '../utils/dates'
 
 const HOUR_OPTIONS = [
   { label: '24h', value: 24 },
@@ -11,9 +12,9 @@ const HOUR_OPTIONS = [
 ]
 
 function hoursUntil(endDate) {
-  if (!endDate) return Infinity
-  const end = new Date(endDate.replace(/-/g, '/'))
-  return Math.max(0, (end - new Date()) / 3600000)
+  const end = parseAuctionDate(endDate)
+  if (!end) return Infinity
+  return Math.max(0, (end - Date.now()) / 3600000)
 }
 
 function buildDeal(item, itemComps) {

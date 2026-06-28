@@ -2086,6 +2086,37 @@ body {
   margin-top: 2px;
 }
 
+.item-urgency-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--gold);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 2;
+  letter-spacing: 0.02em;
+}
+
+.item-urgency-badge--critical {
+  background: rgba(200, 30, 20, 0.85);
+  color: #fff;
+}
+
+@media (min-width: 600px) {
+  /* On desktop, show the non-critical (4–24h) badge only on hover */
+  .item-urgency-badge:not(.item-urgency-badge--critical) {
+    opacity: 0;
+    transition: opacity 150ms;
+  }
+  .item-card:hover .item-urgency-badge:not(.item-urgency-badge--critical) {
+    opacity: 1;
+  }
+}
+
 .item-roi-row {
   display: flex;
   justify-content: space-between;
