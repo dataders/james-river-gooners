@@ -35,6 +35,7 @@ companies:
       - 756771   # August 1, 2026 Sports & Trading Cards Auction
       - 756718   # August 2nd, 2026 Coin Auction
       - 757693   # August 2nd, 2026 Weekly Stamp Auction
+      - 759763   # August 9th, 2026 Weekly Stamp Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -77,6 +78,7 @@ companies:
       - 755300   # Chesterfield "Home and Garage Collection" Auction
       - 757142   # Cumberland Weekly General Surplus #91
       - 757265   # Powhatan Farm and Supply Sale
+      - 759309   # Cumberland Weekly General Surplus #92
   - id: 149734
     slug: lorak-deals-llc
     name: "Lorak Deals LLC"
