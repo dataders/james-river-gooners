@@ -46,7 +46,7 @@
     "posthog-js": "^1.392.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "valibot": "^1.4.1",
+    "valibot": "^1.4.2",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
