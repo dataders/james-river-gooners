@@ -69,6 +69,7 @@ companies:
     catalog_ids:
       - 751393  # 6/26/26 Prince George Extravaganza Auction
       - 761384  # SNEAK PEEK MORE Prince George Estate Extravaganza
+      - 765388  # 8/6/26 EARLY AUGUST Consignment Treasures Auction
   - id: 132962
     slug: patriot-auction-company
     name: "Patriot Auction Company"
@@ -84,6 +85,7 @@ companies:
       - 759309   # Cumberland Weekly General Surplus #92
       - 761341   # Cumberland Weekly General Surplus #93
       - 763491   # Cumberland Weekly General Surplus #94
+      - 765497   # Cumberland Weekly General Surplus #95
   - id: 149734
     slug: lorak-deals-llc
     name: "Lorak Deals LLC"
