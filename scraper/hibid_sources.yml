@@ -41,6 +41,7 @@ companies:
       - 765908   # August 30th, 2026 Stamps & Postal History Auction
       - 765906   # September 5, 2026 Sports & Trading Cards Auction
       - 765888   # September 6th, 2026 Coin and Paper Money Auction
+      - 766583   # September 20th, 2026 Coin and Currency Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -89,6 +90,7 @@ companies:
       - 761341   # Cumberland Weekly General Surplus #93
       - 763491   # Cumberland Weekly General Surplus #94
       - 765497   # Cumberland Weekly General Surplus #95
+      - 766727   # Bonbrooke Vintage & Household Estate
   - id: 149734
     slug: lorak-deals-llc
     name: "Lorak Deals LLC"
