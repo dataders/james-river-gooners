@@ -45,7 +45,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
 
       - name: Cache HuggingFace models (Nomic text + vision)
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/huggingface
           key: huggingface-clip-vit-b-32-nomic-embed-v1.5
