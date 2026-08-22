@@ -44,6 +44,7 @@ companies:
       - 766583   # September 20th, 2026 Coin and Currency Auction
       - 767780   # September 6th, 2026 Weekly Stamp Auction
       - 769909   # September 13th, 2026 Weekly Stamp Auction
+      - 771258   # September 20th, 2026 Weekly Stamp Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -76,6 +77,7 @@ companies:
       - 751393  # 6/26/26 Prince George Extravaganza Auction
       - 761384  # SNEAK PEEK MORE Prince George Estate Extravaganza
       - 765388  # 8/6/26 EARLY AUGUST Consignment Treasures Auction
+      - 771285  # 8/27/26 EVEN MORE! PG Extravaganza Auction
   - id: 132962
     slug: patriot-auction-company
     name: "Patriot Auction Company"
