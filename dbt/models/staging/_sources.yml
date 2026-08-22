@@ -103,7 +103,7 @@ sources:
       - name: lot_enrichment
         description: >
           LLM-extracted product metadata (brand, model, condition) for lots where
-          Claude Haiku identified a specific product with medium or high confidence.
+          GPT-5.6 Luna identified a specific product with medium or high confidence.
 
       - name: ebay_comp_snapshots
         description: >

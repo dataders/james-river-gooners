@@ -107,10 +107,10 @@ models:
 
   - name: fct_api_spend
     description: >
-      Daily API usage and estimated spend across eBay and Anthropic.
+      Daily API usage and estimated spend across eBay and OpenAI.
       Cost figures are estimates based on average token counts set in dbt vars
       (est_enrichment_input_tokens, est_enrichment_output_tokens,
-      anthropic_haiku_input_cost_per_1m, anthropic_haiku_output_cost_per_1m).
+      openai_luna_input_cost_per_1m, openai_luna_output_cost_per_1m).
       Update vars in dbt_project.yml when you change prompts or upgrade models.
       Cumulative columns give lifetime spend; rolling_30d_* gives the burn rate.
     columns:
@@ -124,7 +124,7 @@ models:
         tests:
           - dbt_utils.accepted_range:
               min_value: 0
-      - name: anthropic_total_cost_usd
+      - name: openai_total_cost_usd
         tests:
           - dbt_utils.accepted_range:
               min_value: 0

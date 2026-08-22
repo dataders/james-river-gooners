@@ -25,7 +25,7 @@ with ebay_daily as (
     group by 1
 ),
 
-anthropic_by_model as (
+openai_by_model as (
     -- One row per (date, enrichment_model): tracks cost per model version
     select
         date_trunc('day', updated_at)::date                         as activity_date,
@@ -38,7 +38,7 @@ anthropic_by_model as (
     group by 1, 2
 ),
 
-anthropic_daily as (
+openai_daily as (
     -- Roll up to date level; keep dominant model for reference
     select
         activity_date,
@@ -47,14 +47,14 @@ anthropic_daily as (
         sum(medium_conf_calls)                                       as medium_conf_calls,
         mode(enrichment_model)                                       as primary_model,
         count(distinct enrichment_model)                             as distinct_models_used
-    from anthropic_by_model
+    from openai_by_model
     group by activity_date
 ),
 
 all_dates as (
     select activity_date from ebay_daily
     union
-    select activity_date from anthropic_daily
+    select activity_date from openai_daily
 ),
 
 daily as (
@@ -78,85 +78,85 @@ daily as (
             4
         )                                                           as ebay_cost_usd,
 
-        -- Anthropic usage
+        -- OpenAI usage
         coalesce(a.enrichment_calls, 0)                             as enrichment_calls,
         coalesce(a.high_conf_calls, 0)                              as enrichment_high_conf,
         coalesce(a.medium_conf_calls, 0)                            as enrichment_medium_conf,
         a.primary_model                                              as enrichment_primary_model,
         coalesce(a.distinct_models_used, 0)                         as enrichment_distinct_models,
 
-        -- Anthropic estimated cost breakdown
+        -- OpenAI estimated cost breakdown
         -- Input cost: est input tokens × calls × rate
         round(
             coalesce(a.enrichment_calls, 0)
             * {{ var('est_enrichment_input_tokens') }}
             / 1000000.0
-            * {{ var('anthropic_haiku_input_cost_per_1m') }},
+            * {{ var('openai_luna_input_cost_per_1m') }},
             4
-        )                                                           as anthropic_input_cost_usd,
+        )                                                           as openai_input_cost_usd,
 
         -- Output cost: est output tokens × calls × rate
         round(
             coalesce(a.enrichment_calls, 0)
             * {{ var('est_enrichment_output_tokens') }}
             / 1000000.0
-            * {{ var('anthropic_haiku_output_cost_per_1m') }},
+            * {{ var('openai_luna_output_cost_per_1m') }},
             4
-        )                                                           as anthropic_output_cost_usd,
+        )                                                           as openai_output_cost_usd,
 
-        -- Total Anthropic cost for the day
+        -- Total OpenAI cost for the day
         round(
             coalesce(a.enrichment_calls, 0) * (
                 {{ var('est_enrichment_input_tokens') }}
-                / 1000000.0 * {{ var('anthropic_haiku_input_cost_per_1m') }}
+                / 1000000.0 * {{ var('openai_luna_input_cost_per_1m') }}
                 + {{ var('est_enrichment_output_tokens') }}
-                / 1000000.0 * {{ var('anthropic_haiku_output_cost_per_1m') }}
+                / 1000000.0 * {{ var('openai_luna_output_cost_per_1m') }}
             ),
             4
-        )                                                           as anthropic_total_cost_usd
+        )                                                           as openai_total_cost_usd
 
     from all_dates d
     left join ebay_daily e using (activity_date)
-    left join anthropic_daily a using (activity_date)
+    left join openai_daily a using (activity_date)
 )
 
 select
     *,
 
     -- Combined daily spend
-    round(ebay_cost_usd + anthropic_total_cost_usd, 4)             as total_api_cost_usd,
+    round(ebay_cost_usd + openai_total_cost_usd, 4)                as total_api_cost_usd,
 
     -- Cumulative totals — "how much have we spent since the start?"
-    round(sum(anthropic_total_cost_usd) over (
+    round(sum(openai_total_cost_usd) over (
         order by activity_date
         rows between unbounded preceding and current row
-    ), 2)                                                           as cumulative_anthropic_cost_usd,
+    ), 2)                                                           as cumulative_openai_cost_usd,
 
     round(sum(ebay_cost_usd) over (
         order by activity_date
         rows between unbounded preceding and current row
     ), 2)                                                           as cumulative_ebay_cost_usd,
 
-    round(sum(ebay_cost_usd + anthropic_total_cost_usd) over (
+    round(sum(ebay_cost_usd + openai_total_cost_usd) over (
         order by activity_date
         rows between unbounded preceding and current row
     ), 2)                                                           as cumulative_total_cost_usd,
 
     -- 30-day rolling spend (budget burn rate)
-    round(sum(anthropic_total_cost_usd) over (
+    round(sum(openai_total_cost_usd) over (
         order by activity_date
         rows between 29 preceding and current row
-    ), 2)                                                           as rolling_30d_anthropic_cost_usd,
+    ), 2)                                                           as rolling_30d_openai_cost_usd,
 
-    round(sum(ebay_cost_usd + anthropic_total_cost_usd) over (
+    round(sum(ebay_cost_usd + openai_total_cost_usd) over (
         order by activity_date
         rows between 29 preceding and current row
     ), 2)                                                           as rolling_30d_total_cost_usd,
 
     -- Cost efficiency: $ per successfully enriched lot
     case when enrichment_calls > 0
-        then round(anthropic_total_cost_usd / enrichment_calls, 6)
-    end                                                             as anthropic_cost_per_enriched_lot,
+        then round(openai_total_cost_usd / enrichment_calls, 6)
+    end                                                             as openai_cost_per_enriched_lot,
 
     -- Cost efficiency: $ per successful eBay match
     case when ebay_matches > 0

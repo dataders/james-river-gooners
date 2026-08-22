@@ -6,7 +6,7 @@
 // Returns: { title, description, suggestedPrice, fbCategory, fbCondition,
 //            photoAssessment, photoRecommendations }
 //
-// Requires: ANTHROPIC_API_KEY set as an Edge Function secret.
+// Requires: OPENAI_API_KEY set as an Edge Function secret.
 // Auth: requires a valid user session (Authorization: Bearer <token>).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -19,7 +19,7 @@ const CORS_HEADERS = {
 const FB_LISTING_TOOL = {
   name: 'generate_fb_listing',
   description: 'Generate a Facebook Marketplace listing for an auction item the user has won',
-  input_schema: {
+  schema: {
     type: 'object',
     properties: {
       title: {
@@ -80,6 +80,7 @@ const FB_LISTING_TOOL = {
             notes: { type: 'string', description: 'Brief note on why usable or not' },
           },
           required: ['index', 'usable', 'notes'],
+          additionalProperties: false,
         },
       },
       photoRecommendations: {
@@ -89,6 +90,7 @@ const FB_LISTING_TOOL = {
       },
     },
     required: ['title', 'description', 'suggestedPrice', 'fbCategory', 'fbCondition', 'photoAssessment', 'photoRecommendations'],
+    additionalProperties: false,
   },
 }
 
@@ -98,7 +100,7 @@ function buildUserMessage(item: Record<string, unknown>): unknown[] {
   // Add images (up to 5, passed as URLs)
   const images = Array.isArray(item.images) ? item.images as string[] : []
   for (let i = 0; i < Math.min(images.length, 5); i++) {
-    parts.push({ type: 'image', source: { type: 'url', url: images[i] } })
+    parts.push({ type: 'input_image', image_url: images[i] })
   }
 
   const lines: string[] = []
@@ -113,8 +115,19 @@ function buildUserMessage(item: Record<string, unknown>): unknown[] {
   lines.push(`Amount paid at auction: $${pricePaid}`)
   if (item.description) lines.push(`\nAuction description:\n${item.description as string}`)
 
-  parts.push({ type: 'text', text: lines.join('\n') })
+  parts.push({ type: 'input_text', text: lines.join('\n') })
   return parts
+}
+
+function responseText(body: Record<string, unknown>): string {
+  const output = Array.isArray(body.output) ? body.output : []
+  for (const item of output as Array<Record<string, unknown>>) {
+    const content = Array.isArray(item.content) ? item.content : []
+    for (const block of content as Array<Record<string, unknown>>) {
+      if (block.type === 'output_text' && typeof block.text === 'string') return block.text
+    }
+  }
+  return ''
 }
 
 Deno.serve(async (req: Request) => {
@@ -145,8 +158,8 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) {
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiKey) {
       return new Response(JSON.stringify({ error: 'Service not configured' }), {
         status: 503,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -155,17 +168,17 @@ Deno.serve(async (req: Request) => {
 
     const item = await req.json()
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const aiRes = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
+        Authorization: `Bearer ${openaiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 1200,
-        system: `You help people resell items they won at auction on Facebook Marketplace.
+        model: 'gpt-5.6-luna',
+        max_output_tokens: 1800,
+        reasoning: { effort: 'low' },
+        instructions: `You help people resell items they won at auction on Facebook Marketplace.
 Given the auction listing details and photos, generate an optimized Facebook Marketplace listing.
 
 Guidelines:
@@ -173,23 +186,29 @@ Guidelines:
 - Description: conversational, not auction-style. Lead with what it is and condition. Note what's included, any known flaws. Honest and helpful. 200-500 words.
 - Price: suggest a fair resale price. The person paid the auction amount; suggest a competitive price that gives a reasonable margin (typically 30-100% above cost for most items, more for jewelry/art/collectibles).
 - Photos: the provided images are from the auction house. Assess each honestly — Facebook Marketplace buyers want clear, natural photos showing actual condition. Recommend any additional shots needed.`,
-        messages: [{ role: 'user', content: buildUserMessage(item) }],
-        tools: [FB_LISTING_TOOL],
-        tool_choice: { type: 'tool', name: 'generate_fb_listing' },
+        input: [{ role: 'user', content: buildUserMessage(item) }],
+        text: {
+          format: {
+            type: 'json_schema',
+            name: FB_LISTING_TOOL.name,
+            strict: true,
+            schema: FB_LISTING_TOOL.schema,
+          },
+        },
       }),
     })
 
     if (!aiRes.ok) {
-      console.error('Anthropic API error:', await aiRes.text())
+      console.error('OpenAI API error:', await aiRes.text())
       return new Response(JSON.stringify({ error: 'AI service error' }), {
         status: 502,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       })
     }
 
-    const aiBody = await aiRes.json()
-    const toolUse = (aiBody.content as unknown[])?.find((b: unknown) => (b as Record<string, unknown>).type === 'tool_use') as Record<string, unknown> | undefined
-    if (!toolUse?.input) {
+    const aiBody = await aiRes.json() as Record<string, unknown>
+    const text = responseText(aiBody)
+    if (!text) {
       console.error('Unexpected AI response:', JSON.stringify(aiBody))
       return new Response(JSON.stringify({ error: 'Unexpected AI response' }), {
         status: 502,
@@ -197,7 +216,7 @@ Guidelines:
       })
     }
 
-    return new Response(JSON.stringify(toolUse.input), {
+    return new Response(JSON.stringify(JSON.parse(text)), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })
   } catch (err) {

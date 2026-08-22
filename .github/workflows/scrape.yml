@@ -40,17 +40,13 @@ jobs:
       # model is written and MotherDuck is an optional mirror.
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      # Nomic Embed (text+vision, 768-dim) → Supabase pgvector (#165). Always on
-      # when Supabase is configured; no-op when SUPABASE_SECRET_KEY is absent so
-      # local/offline scrapes are unaffected.
-      GOONERS_NOMIC_EMBEDDINGS: '1'
       # LLM lot enrichment (#99/#104). Now ON for every run, including the hourly
       # schedule — quality has been validated, so new/changed lots are enriched
       # incrementally as they're scraped (reuse via input_hash means unchanged
       # lots never re-call the API, keeping the per-scrape cost to just the deltas).
       # The one-time historical catch-up is the separate `enrich-backfill.yml`.
-      # No-op without ANTHROPIC_API_KEY, so local/offline scrapes are unaffected.
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # No-op without OPENAI_API_KEY, so local/offline scrapes are unaffected.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GOONERS_ENRICHMENT: '1'
       # Server-side telemetry (scraper/telemetry.py): records the metered
       # SoldComps API calls + the provider's reported remaining quota to PostHog.
@@ -66,12 +62,6 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v7
-
-      - name: Cache HuggingFace models (Nomic)
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/huggingface
-          key: huggingface-nomic-embed-v1.5
 
       - uses: actions/setup-node@v6
         with:
@@ -94,13 +84,13 @@ jobs:
           if [ -n "${GOONERS_SCRAPE_AUCTION_URL}" ]; then
             echo "Scraping single auction..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
+              --with openai --with pillow \
               --with 'pydantic-settings>=2,<3' \
               python scrape.py "${GOONERS_SCRAPE_AUCTION_URL}"
           else
             echo "Re-scraping all Cannon's auctions..."
             uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-              --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
+              --with openai --with pillow \
               --with 'pydantic-settings>=2,<3' \
               python rescrape_all.py --source maxanet
           fi
@@ -119,7 +109,7 @@ jobs:
           fi
           echo "Re-scraping HiBid auctions..."
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml --with 'duckdb==1.5.2' \
-            --with sentence-transformers --with 'transformers==4.49.0' --with torchvision --with pillow --with einops --with anthropic \
+            --with openai --with pillow \
             --with 'pydantic-settings>=2,<3' \
             python rescrape_all.py --source hibid
 

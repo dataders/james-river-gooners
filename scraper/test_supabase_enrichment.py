@@ -19,7 +19,7 @@ ENRICHED_LOT = {
     "condition": "used",
     "productUrl": "https://www.sony.com/wh1000xm4",
     "enrichmentConfidence": "high",
-    "enrichmentModel": "claude-haiku-4-5",
+    "enrichmentModel": "gpt-5.6-luna",
     "images": ["https://img/a.jpg", "https://img/b.jpg"],
     "detailUrl": "https://example.test/item",
     "source": "cannons",
@@ -42,7 +42,7 @@ class EnrichmentRowTest(unittest.TestCase):
         self.assertEqual(row["brand"], "Sony")
         self.assertEqual(row["model_or_sku"], "WH-1000XM4")
         self.assertEqual(row["confidence"], "high")
-        self.assertEqual(row["model"], "claude-haiku-4-5")
+        self.assertEqual(row["model"], "gpt-5.6-luna")
         self.assertEqual(row["image_url"], "https://img/a.jpg")
 
     def test_below_display_bar_is_skipped(self):
@@ -141,7 +141,7 @@ class RecordEnrichRunTest(unittest.TestCase):
         n = supabase_enrichment.record_enrich_run(
             {
                 "mode": "batch",
-                "model": "claude-haiku-4-5",
+                "model": "gpt-5.6-luna",
                 "schema_version": "6",
                 "lots_submitted": 10,
                 "lots_enriched": 7,

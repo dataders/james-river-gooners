@@ -57,14 +57,14 @@ class _Base(BaseSettings):
 
 
 class EnrichmentSettings(_Base):
-    """LLM enrichment via Claude Haiku (scraper/enrich.py)."""
+    """LLM enrichment via GPT-5.6 Luna (scraper/enrich.py)."""
 
     enabled: bool = Field(
         default=False,
         validation_alias="GOONERS_ENRICHMENT",
         description=(
-            "Enable Claude Haiku lot enrichment. "
-            "Also requires ANTHROPIC_API_KEY to be set."
+            "Enable GPT-5.6 Luna lot enrichment. "
+            "Also requires OPENAI_API_KEY to be set."
         ),
     )
     text_only: bool = Field(
@@ -76,7 +76,7 @@ class EnrichmentSettings(_Base):
         ),
     )
     model: str = Field(
-        default="claude-haiku-4-5",
+        default="gpt-5.6-luna",
         validation_alias="GOONERS_ENRICHMENT_MODEL",
         description="LLM model ID used for enrichment.",
     )
@@ -119,7 +119,7 @@ class EnrichmentSettings(_Base):
         default=180 * 1024 * 1024,
         validation_alias="GOONERS_ENRICHMENT_BATCH_MAX_BYTES",
         ge=1,
-        description="Byte budget per inline batch (Anthropic hard limit is 256 MB).",
+        description="Byte budget per inline batch (OpenAI batch file limit is 200 MB).",
     )
     batch_max_requests: int = Field(
         default=10_000,

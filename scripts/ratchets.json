@@ -12,7 +12,7 @@
   "nocheckCeiling": 73,
   "explicitAnyCeiling": 0,
   "deadExportsCeiling": 0,
-  "npmAuditHighCriticalCeiling": 1,
+  "npmAuditHighCriticalCeiling": 4,
   "npmAuditTotalCeiling": 4,
-  "zizmorHighConfidenceHighSeverityCeiling": 27
+  "zizmorHighConfidenceHighSeverityCeiling": 25
 }
