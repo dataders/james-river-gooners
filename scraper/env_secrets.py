@@ -3,11 +3,11 @@
 Secrets are not validated settings — they have no defaults, no types to coerce,
 and must never be echoed or exposed. This module centralises the ``os.environ``
 reads so every credential lookup is greppable in one place rather than scattered
-across the codebase as bare ``os.environ.get("ANTHROPIC_API_KEY")`` strings.
+across the codebase as bare ``os.environ.get("OPENAI_API_KEY")`` strings.
 
 None is returned (not raised) when a credential is absent, so callers can gate
 cleanly:
-    if not anthropic_key():
+    if not openai_key():
         return  # enrichment not configured
 
 The secret-key variables must never appear in a VITE_* env var or in committed
@@ -19,9 +19,9 @@ from __future__ import annotations
 import os
 
 
-def anthropic_key() -> str | None:
-    """Anthropic API key for LLM enrichment (enrich.py)."""
-    return os.environ.get("ANTHROPIC_API_KEY") or None
+def openai_key() -> str | None:
+    """OpenAI API key for LLM enrichment (enrich.py)."""
+    return os.environ.get("OPENAI_API_KEY") or None
 
 
 def supabase_url() -> str | None:

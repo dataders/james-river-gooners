@@ -42,11 +42,11 @@ def tearDownModule():
 
 class _FakeBlock:
     def __init__(self, text):
-        self.type = "text"
+        self.type = "output_text"
         self.text = text
 
 
-class _FakeMessages:
+class _FakeResponses:
     """Returns a canned structured-output JSON per item, keyed by the lot id in
     the request text, so a multi-item run can assert per-item results."""
 
@@ -57,80 +57,84 @@ class _FakeMessages:
     def create(self, **kwargs):
         self.calls += 1
         text = ""
-        for block in kwargs["messages"][0]["content"]:
-            if block.get("type") == "text":
+        for block in kwargs["input"][0]["content"]:
+            if block.get("type") == "input_text":
                 text = block["text"]
         for keyword, payload in self.by_keyword.items():
             if keyword in text:
                 if isinstance(payload, Exception):
                     raise payload
-                return mock.Mock(content=[_FakeBlock(json.dumps(payload))])
-        return mock.Mock(content=[_FakeBlock(json.dumps({}))])
+                return mock.Mock(output_text=json.dumps(payload))
+        return mock.Mock(output_text=json.dumps({}))
 
 
 class _FakeClient:
     def __init__(self, by_keyword):
-        self.messages = _FakeMessages(by_keyword)
+        self.responses = _FakeResponses(by_keyword)
 
 
 def _prompt_text(params):
-    for block in params["messages"][0]["content"]:
-        if block.get("type") == "text":
+    for block in params["input"][0]["content"]:
+        if block.get("type") == "input_text":
             return block["text"]
     return ""
 
 
-class _FakeBatchOutcome:
-    def __init__(self, type_, message=None):
-        self.type = type_
-        self.message = message
-
-
-class _FakeBatchResult:
-    def __init__(self, custom_id, outcome):
-        self.custom_id = custom_id
-        self.result = outcome
-
-
 class _FakeBatches:
-    """Mimics client.messages.batches: create() captures the requests, retrieve()
-    reports ended immediately, results() returns a per-request outcome keyed by
-    the lot text (Exception payload → an `errored` outcome, not a raise)."""
+    """Mimics OpenAI Batch creation and immediate completion."""
 
     def __init__(self, by_keyword):
         self.by_keyword = by_keyword
         self.created = 0
         self._requests = []
 
-    def create(self, requests):
+    def create(self, **kwargs):
         self.created += 1
-        self._requests = requests
-        return mock.Mock(id="batch_test", processing_status="in_progress")
+        return mock.Mock(id=f"batch_test_{self.created}", status="in_progress")
 
     def retrieve(self, batch_id):
         return mock.Mock(
-            processing_status="ended",
+            status="completed",
+            output_file_id="file_output",
             request_counts=mock.Mock(
-                processing=0, succeeded=len(self._requests), errored=0
+                completed=len(self._requests), failed=0, total=len(self._requests)
             ),
         )
 
-    def results(self, batch_id):
+    def result_text(self):
+        lines = []
         for req in self._requests:
-            text = _prompt_text(req["params"])
+            text = _prompt_text(req["body"])
             payload = next((p for kw, p in self.by_keyword.items() if kw in text), {})
             if isinstance(payload, Exception):
-                yield _FakeBatchResult(req["custom_id"], _FakeBatchOutcome("errored"))
+                response = {"status_code": 500, "body": {"error": {"message": str(payload)}}}
             else:
-                message = mock.Mock(content=[_FakeBlock(json.dumps(payload))])
-                yield _FakeBatchResult(
-                    req["custom_id"], _FakeBatchOutcome("succeeded", message)
-                )
+                response = {"status_code": 200, "body": {
+                    "output": [{"type": "message", "content": [
+                        {"type": "output_text", "text": json.dumps(payload)}
+                    ]}],
+                    "usage": {"input_tokens": 10, "output_tokens": 5},
+                }}
+            lines.append(json.dumps({"custom_id": req["custom_id"], "response": response}))
+        return "\n".join(lines)
+
+
+class _FakeFiles:
+    def __init__(self, batches):
+        self.batches = batches
+
+    def create(self, file, purpose):
+        self.batches._requests = [json.loads(line) for line in file.read().decode().splitlines()]
+        return mock.Mock(id="file_input")
+
+    def content(self, file_id):
+        return mock.Mock(text=self.batches.result_text())
 
 
 class _FakeBatchClient:
     def __init__(self, by_keyword):
-        self.messages = mock.Mock(batches=_FakeBatches(by_keyword))
+        self.batches = _FakeBatches(by_keyword)
+        self.files = _FakeFiles(self.batches)
 
 
 class ParseEnrichmentTests(unittest.TestCase):
@@ -459,22 +463,19 @@ class PromptShapeTests(unittest.TestCase):
 
     def test_build_content_inlines_image_as_base64_when_url_present(self):
         # The sync path downloads + inlines images as base64 (not image-by-URL),
-        # so sources Anthropic can't fetch (e.g. HiBid) still get their photos.
+        # so source-host restrictions never silently drop photos.
         with mock.patch.object(
             enrich, "fetch_image_base64", return_value=("image/jpeg", "ZGF0YQ==")
         ):
             content = build_content({"title": "Drill", "images": ["https://img/1.jpg"]})
-        self.assertEqual(content[0]["type"], "image")
-        self.assertEqual(
-            content[0]["source"],
-            {"type": "base64", "media_type": "image/jpeg", "data": "ZGF0YQ=="},
-        )
-        self.assertEqual(content[-1]["type"], "text")
+        self.assertEqual(content[0]["type"], "input_image")
+        self.assertEqual(content[0]["image_url"], "data:image/jpeg;base64,ZGF0YQ==")
+        self.assertEqual(content[-1]["type"], "input_text")
 
     def test_build_content_is_text_only_without_images(self):
         content = build_content({"title": "Drill", "images": []})
         self.assertEqual(len(content), 1)
-        self.assertEqual(content[0]["type"], "text")
+        self.assertEqual(content[0]["type"], "input_text")
 
     def test_build_content_is_text_only_when_image_unfetchable(self):
         # fetch_image_base64 returns None for an unreachable image host — the lot
@@ -482,7 +483,7 @@ class PromptShapeTests(unittest.TestCase):
         with mock.patch.object(enrich, "fetch_image_base64", return_value=None):
             content = build_content({"title": "Drill", "images": ["https://img/1.jpg"]})
         self.assertEqual(len(content), 1)
-        self.assertEqual(content[0]["type"], "text")
+        self.assertEqual(content[0]["type"], "input_text")
 
     def test_build_content_includes_up_to_max_images(self):
         # #152: feed the first few photos, not just one (capped at MAX_IMAGES).
@@ -491,9 +492,9 @@ class PromptShapeTests(unittest.TestCase):
             enrich, "fetch_image_base64", return_value=("image/jpeg", "ZGF0YQ==")
         ):
             content = build_content(item)
-        image_blocks = [b for b in content if b["type"] == "image"]
+        image_blocks = [b for b in content if b["type"] == "input_image"]
         self.assertEqual(len(image_blocks), 3)  # default GOONERS_MAX_IMAGES
-        self.assertEqual(content[-1]["type"], "text")
+        self.assertEqual(content[-1]["type"], "input_text")
 
     def test_item_image_urls_filters_non_http_and_respects_limit(self):
         item = {"images": ["ftp://x/1.jpg", "https://img/1.jpg", "https://img/2.jpg"]}
@@ -507,17 +508,17 @@ class PromptShapeTests(unittest.TestCase):
 class EnablementTests(unittest.TestCase):
     def test_requires_both_optin_and_key(self):
         with mock.patch.dict("os.environ", {"GOONERS_ENRICHMENT": "1"}, clear=False):
-            with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False):
+            with mock.patch.dict("os.environ", {"OPENAI_API_KEY": ""}, clear=False):
                 self.assertFalse(is_enrichment_enabled())
         with mock.patch.dict(
             "os.environ",
-            {"GOONERS_ENRICHMENT": "0", "ANTHROPIC_API_KEY": "sk"},
+            {"GOONERS_ENRICHMENT": "0", "OPENAI_API_KEY": "sk"},
             clear=False,
         ):
             self.assertFalse(is_enrichment_enabled())
         with mock.patch.dict(
             "os.environ",
-            {"GOONERS_ENRICHMENT": "1", "ANTHROPIC_API_KEY": "sk"},
+            {"GOONERS_ENRICHMENT": "1", "OPENAI_API_KEY": "sk"},
             clear=False,
         ):
             self.assertTrue(is_enrichment_enabled())
@@ -613,14 +614,14 @@ class IncrementalReuseTests(unittest.TestCase):
         client = self._client()
         # First pass enriches and stamps the fingerprint.
         enrich_items([item], client=client)
-        self.assertEqual(client.messages.calls, 1)
+        self.assertEqual(client.responses.calls, 1)
         prior_by_id = {"good": dict(item)}
 
         # Second pass with an identical lot reuses the prior row — no new call.
         fresh = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
         client2 = self._client()
         enrich_items([fresh], client=client2, prior_by_id=prior_by_id)
-        self.assertEqual(client2.messages.calls, 0)
+        self.assertEqual(client2.responses.calls, 0)
         self.assertEqual(fresh["brand"], "DeWalt")
         self.assertEqual(fresh["enrichmentConfidence"], "high")
 
@@ -635,7 +636,7 @@ class IncrementalReuseTests(unittest.TestCase):
         fresh = {"id": "good", "title": "DeWalt DCD771 drill", "images": []}
         client = self._client()
         enrich_items([fresh], client=client, prior_by_id=prior_by_id)
-        self.assertEqual(client.messages.calls, 1)
+        self.assertEqual(client.responses.calls, 1)
 
     def test_empty_result_is_still_cached(self):
         # A generic lot the model can't identify still gets a fingerprint, so it
@@ -659,7 +660,7 @@ class IncrementalReuseTests(unittest.TestCase):
         }
         client2 = _FakeClient({})
         enrich_items([fresh], client=client2, prior_by_id=prior_by_id)
-        self.assertEqual(client2.messages.calls, 0)
+        self.assertEqual(client2.responses.calls, 0)
 
 
 class LoadPriorEnrichmentTests(unittest.TestCase):
@@ -740,7 +741,7 @@ class EnrichItemsBatchTests(unittest.TestCase):
         # as the synchronous path counts it); only `good` is actually identified.
         enriched = enrich_items_batch(items, client=client, poll_interval=0)
         self.assertEqual(enriched, 2)
-        self.assertEqual(client.messages.batches.created, 1)
+        self.assertEqual(client.batches.created, 1)
 
         good = next(i for i in items if i["id"] == "good")
         junk = next(i for i in items if i["id"] == "junk")
@@ -748,7 +749,7 @@ class EnrichItemsBatchTests(unittest.TestCase):
         self.assertEqual(good["enrichmentConfidence"], "high")
         # Identified lots get a model stamp; the junk lot doesn't, but both get a
         # fingerprint so neither is re-called on the next backfill.
-        self.assertEqual(good["enrichmentModel"], "claude-haiku-4-5")
+        self.assertEqual(good["enrichmentModel"], "gpt-5.6-luna")
         self.assertEqual(junk["enrichmentModel"], "")
         self.assertTrue(good["enrichmentInputHash"])
         self.assertTrue(junk["enrichmentInputHash"])
@@ -801,7 +802,7 @@ class EnrichItemsBatchTests(unittest.TestCase):
         enrich_items_batch(
             [fresh], client=client2, prior_by_id=prior_by_id, poll_interval=0
         )
-        self.assertEqual(client2.messages.batches.created, 0)
+        self.assertEqual(client2.batches.created, 0)
         self.assertEqual(fresh["brand"], "DeWalt")
 
     def test_chunks_when_over_batch_size(self):
@@ -827,12 +828,12 @@ class EnrichItemsBatchTests(unittest.TestCase):
             enriched = enrich_items_batch(items, client=client, poll_interval=0)
         self.assertEqual(enriched, 5)
         # 5 lots / 2 per batch → 3 submissions.
-        self.assertEqual(client.messages.batches.created, 3)
+        self.assertEqual(client.batches.created, 3)
 
     def test_inline_images_are_fetched_and_base64_encoded(self):
         # With inline_images (the default), the photo is downloaded + downscaled
         # and sent as a base64 block — no image URL reaches the request, so
-        # Anthropic never does a server-side fetch (the 100 RPM URL-fetch limit).
+        # The request remains self-contained and does no server-side image fetch.
         items = [
             {
                 "id": "good",
@@ -855,12 +856,11 @@ class EnrichItemsBatchTests(unittest.TestCase):
             enrich, "fetch_image_base64", lambda url: ("image/jpeg", "ZmFrZQ==")
         ):
             enrich_items_batch(items, client=client, poll_interval=0)
-        req = client.messages.batches._requests[0]
-        blocks = req["params"]["messages"][0]["content"]
-        image_blocks = [b for b in blocks if b.get("type") == "image"]
+        req = client.batches._requests[0]
+        blocks = req["body"]["input"][0]["content"]
+        image_blocks = [b for b in blocks if b.get("type") == "input_image"]
         self.assertEqual(len(image_blocks), 1)
-        self.assertEqual(image_blocks[0]["source"]["type"], "base64")
-        self.assertEqual(image_blocks[0]["source"]["data"], "ZmFrZQ==")
+        self.assertEqual(image_blocks[0]["image_url"], "data:image/jpeg;base64,ZmFrZQ==")
         self.assertEqual(items[0]["brand"], "DeWalt")
 
     def test_inline_image_fetch_failure_falls_back_to_text_only(self):
@@ -884,9 +884,9 @@ class EnrichItemsBatchTests(unittest.TestCase):
         )
         with mock.patch.object(enrich, "fetch_image_base64", lambda url: None):
             enriched = enrich_items_batch(items, client=client, poll_interval=0)
-        req = client.messages.batches._requests[0]
-        blocks = req["params"]["messages"][0]["content"]
-        self.assertFalse([b for b in blocks if b.get("type") == "image"])  # text-only
+        req = client.batches._requests[0]
+        blocks = req["body"]["input"][0]["content"]
+        self.assertFalse([b for b in blocks if b.get("type") == "input_image"])  # text-only
         self.assertEqual(enriched, 1)  # still enriched from the text
 
 
@@ -925,9 +925,10 @@ class EstimateCostTests(unittest.TestCase):
     class _FakeClient:
         def __init__(self, input_tokens):
             self._n = input_tokens
-            self.messages = self
+            self.responses = self
+            self.input_tokens = self
 
-        def count_tokens(self, **_kwargs):
+        def count(self, **_kwargs):
             return type("Ct", (), {"input_tokens": self._n})()
 
     def test_zero_lots_is_free(self):
@@ -999,7 +1000,7 @@ class NotesAndTextOnlyTests(unittest.TestCase):
             content = enrich.build_content(item)
         self.assertTrue(urls_img)  # had images by default
         self.assertNotEqual(fp_img, fp_text)  # distinct cache key
-        self.assertTrue(all(b["type"] == "text" for b in content))  # no image blocks
+        self.assertTrue(all(b["type"] == "input_text" for b in content))  # no image blocks
 
 
 class LimitFlagTests(unittest.TestCase):
@@ -1142,7 +1143,7 @@ class BackfillRunTests(unittest.TestCase):
 
         self.assertEqual(rc, 0)
         # Per-auction (durable/resumable): one batch + one write + one mirror each.
-        self.assertEqual(client.messages.batches.created, 2)
+        self.assertEqual(client.batches.created, 2)
         self.assertEqual(sorted(s for _, s, _ in writes), ["a1", "old1"])
         self.assertEqual(len(mirrored), 2)
         self.assertEqual(sum(len(m) for m in mirrored), 2)
@@ -1164,7 +1165,7 @@ class BackfillRunTests(unittest.TestCase):
                 "condition": "used",
                 "productUrl": "",
                 "enrichmentConfidence": "high",
-                "enrichmentModel": "claude-haiku-4-5",
+                "enrichmentModel": "gpt-5.6-luna",
             }
             row["enrichmentInputHash"] = enrich.enrichment_fingerprint(row)
             (active / "done1.ndjson").write_text(
@@ -1186,7 +1187,7 @@ class BackfillRunTests(unittest.TestCase):
                 rc = enrich._backfill([], use_batch=True, include_all=True)
 
         self.assertEqual(rc, 0)
-        self.assertEqual(client.messages.batches.created, 0)  # nothing re-submitted
+        self.assertEqual(client.batches.created, 0)  # nothing re-submitted
 
 
 if __name__ == "__main__":

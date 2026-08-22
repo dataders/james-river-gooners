@@ -98,7 +98,7 @@ def _stamp_auction_metadata(items: list[dict], ctx: WriteContext) -> None:
 def _enrich_items(items: list[dict], ctx: WriteContext, ndjson_path: Path) -> None:
     """LLM metadata enrichment (#99/#104) + Supabase mirror.
 
-    No-op unless GOONERS_ENRICHMENT=1 + ANTHROPIC_API_KEY are set, so default
+    No-op unless GOONERS_ENRICHMENT=1 + OPENAI_API_KEY are set, so default
     behavior is unchanged. Runs while images are still arrays. Hands prior
     enrichment to ``enrich_items`` so unchanged lots reuse it instead of
     re-paying for an identical API call (incremental enrichment).

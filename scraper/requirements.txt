@@ -3,4 +3,4 @@ beautifulsoup4
 pyarrow
 pyyaml
 duckdb==1.5.4
-anthropic
+openai

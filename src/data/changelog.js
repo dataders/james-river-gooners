@@ -187,21 +187,21 @@ export const CHANGELOG = [
     date: '2026-06-06',
     title: 'Comps filter',
     changes: [
-      { id: 'comps-filter-rename', icon: '🔎', text: 'The sidebar comp filters are now grouped under "Comps" with clearer labels: eBay, Auctions, and Claude.' },
+      { id: 'comps-filter-rename', icon: '🔎', text: 'The sidebar comp filters are now grouped under "Comps" with clearer labels: eBay, Auctions, and AI.' },
     ],
   },
   {
     date: '2026-06-06',
     title: 'Image search',
     changes: [
-      { id: 'image-search-modal', icon: '📷', text: 'New image search: snap or upload a photo and Claude identifies the item, then surfaces matching active lots, eBay sold comps, FB Marketplace links, and historical Cannon\'s sold prices — all from the 📷 button in the search bar.' },
+      { id: 'image-search-modal', icon: '📷', text: 'New image search: snap or upload a photo and AI identifies the item, then surfaces matching active lots, eBay sold comps, FB Marketplace links, and historical Cannon\'s sold prices — all from the 📷 button in the search bar.' },
     ],
   },
   {
     date: '2026-06-06',
     title: 'Facebook Marketplace listing generator',
     changes: [
-      { id: 'fb-listing-generator', icon: '📋', text: 'New "List on FB" button in item details: paste your won lot\'s title, description, suggested price, category, and condition straight into a Facebook Marketplace listing — Claude writes a buyer-friendly description and tells you which auction photos to use.' },
+      { id: 'fb-listing-generator', icon: '📋', text: 'New "List on FB" button in item details: paste your won lot\'s title, description, suggested price, category, and condition straight into a Facebook Marketplace listing — AI writes a buyer-friendly description and tells you which auction photos to use.' },
     ],
   },
   {

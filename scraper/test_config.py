@@ -51,7 +51,7 @@ class EnrichmentDefaultsTest(unittest.TestCase):
             cfg = EnrichmentSettings()
         self.assertFalse(cfg.enabled)
         self.assertFalse(cfg.text_only)
-        self.assertEqual(cfg.model, "claude-haiku-4-5")
+        self.assertEqual(cfg.model, "gpt-5.6-luna")
         self.assertEqual(cfg.workers, 8)
         self.assertEqual(cfg.rpm, 45.0)
         self.assertEqual(cfg.max_images, 3)
@@ -66,8 +66,8 @@ class EnrichmentEnvOverrideTest(unittest.TestCase):
             self.assertTrue(EnrichmentSettings().enabled)
 
     def test_model_via_env(self):
-        with _env(GOONERS_ENRICHMENT_MODEL="claude-opus-4-8"):
-            self.assertEqual(EnrichmentSettings().model, "claude-opus-4-8")
+        with _env(GOONERS_ENRICHMENT_MODEL="gpt-5.6-sol"):
+            self.assertEqual(EnrichmentSettings().model, "gpt-5.6-sol")
 
     def test_workers_via_env(self):
         with _env(GOONERS_ENRICHMENT_WORKERS="16"):
@@ -526,7 +526,7 @@ class DescribeTest(unittest.TestCase):
         describe(out=buf)
         output = buf.getvalue()
         # A few representative defaults
-        self.assertIn("claude-haiku-4-5", output)
+        self.assertIn("gpt-5.6-luna", output)
         self.assertIn("motherduck", output)
 
 
@@ -536,17 +536,17 @@ class DescribeTest(unittest.TestCase):
 
 
 class SecretsTest(unittest.TestCase):
-    def test_anthropic_key_absent(self):
+    def test_openai_key_absent(self):
         with _env():
-            self.assertIsNone(_secrets.anthropic_key())
+            self.assertIsNone(_secrets.openai_key())
 
-    def test_anthropic_key_present(self):
-        with _env(ANTHROPIC_API_KEY="sk-test"):
-            self.assertEqual(_secrets.anthropic_key(), "sk-test")
+    def test_openai_key_present(self):
+        with _env(OPENAI_API_KEY="sk-test"):
+            self.assertEqual(_secrets.openai_key(), "sk-test")
 
-    def test_anthropic_key_empty_string_is_none(self):
-        with _env(ANTHROPIC_API_KEY=""):
-            self.assertIsNone(_secrets.anthropic_key())
+    def test_openai_key_empty_string_is_none(self):
+        with _env(OPENAI_API_KEY=""):
+            self.assertIsNone(_secrets.openai_key())
 
     def test_supabase_url_absent(self):
         with _env():

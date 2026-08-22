@@ -144,7 +144,7 @@ test('buildEbaySoldSearches uses a quoted exact phrase for the specific query', 
 })
 
 test('buildEbaySoldSearches prefers the enriched searchQuery for confident lots', () => {
-  // A confidently-identified lot uses the Haiku searchQuery (unquoted, so eBay
+  // A confidently-identified lot uses the AI searchQuery (unquoted, so eBay
   // AND-matches the terms) instead of the lot's own title/description text.
   const searches = buildEbaySoldSearches({
     title: 'Lot - 42',
