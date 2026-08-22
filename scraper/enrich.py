@@ -594,10 +594,14 @@ def build_request_params(item: dict, content: list | None = None) -> dict:
                 "content": content if content is not None else build_content(item),
             }
         ],
-        "text": {"format": {
-            "type": "json_schema", "name": "lot_enrichment",
-            "strict": True, "schema": OUTPUT_SCHEMA,
-        }},
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "lot_enrichment",
+                "strict": True,
+                "schema": OUTPUT_SCHEMA,
+            }
+        },
     }
 
 
@@ -614,7 +618,9 @@ def _response_text(response) -> str:
         if content is None and isinstance(item, dict):
             content = item.get("content", [])
         for block in content or []:
-            kind = getattr(block, "type", None) or (block.get("type") if isinstance(block, dict) else None)
+            kind = getattr(block, "type", None) or (
+                block.get("type") if isinstance(block, dict) else None
+            )
             if kind == "output_text":
                 return getattr(block, "text", None) or block.get("text", "")
     return ""
@@ -1083,7 +1089,9 @@ def _run_one_batch(
     requests, by_custom_id = _build_batch_requests(chunk, inline_images)
     temp_path = None
     try:
-        with tempfile.NamedTemporaryFile("w", suffix=".jsonl", encoding="utf-8", delete=False) as handle:
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".jsonl", encoding="utf-8", delete=False
+        ) as handle:
             temp_path = handle.name
             for request in requests:
                 handle.write(json.dumps(request, separators=(",", ":")) + "\n")
@@ -1147,7 +1155,10 @@ def _run_one_batch(
             # errored / expired / canceled — leave the seeded empty fields and no
             # fingerprint, so the lot is retried on the next backfill (like sync).
             errored += 1
-            print(f"  enrich: batch lot HTTP {response.get('status_code')}", file=sys.stderr)
+            print(
+                f"  enrich: batch lot HTTP {response.get('status_code')}",
+                file=sys.stderr,
+            )
             continue
         body = response.get("body") or {}
         usage = body.get("usage") or {}

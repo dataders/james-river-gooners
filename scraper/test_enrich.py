@@ -107,15 +107,28 @@ class _FakeBatches:
             text = _prompt_text(req["body"])
             payload = next((p for kw, p in self.by_keyword.items() if kw in text), {})
             if isinstance(payload, Exception):
-                response = {"status_code": 500, "body": {"error": {"message": str(payload)}}}
+                response = {
+                    "status_code": 500,
+                    "body": {"error": {"message": str(payload)}},
+                }
             else:
-                response = {"status_code": 200, "body": {
-                    "output": [{"type": "message", "content": [
-                        {"type": "output_text", "text": json.dumps(payload)}
-                    ]}],
-                    "usage": {"input_tokens": 10, "output_tokens": 5},
-                }}
-            lines.append(json.dumps({"custom_id": req["custom_id"], "response": response}))
+                response = {
+                    "status_code": 200,
+                    "body": {
+                        "output": [
+                            {
+                                "type": "message",
+                                "content": [
+                                    {"type": "output_text", "text": json.dumps(payload)}
+                                ],
+                            }
+                        ],
+                        "usage": {"input_tokens": 10, "output_tokens": 5},
+                    },
+                }
+            lines.append(
+                json.dumps({"custom_id": req["custom_id"], "response": response})
+            )
         return "\n".join(lines)
 
 
@@ -124,7 +137,9 @@ class _FakeFiles:
         self.batches = batches
 
     def create(self, file, purpose):
-        self.batches._requests = [json.loads(line) for line in file.read().decode().splitlines()]
+        self.batches._requests = [
+            json.loads(line) for line in file.read().decode().splitlines()
+        ]
         return mock.Mock(id="file_input")
 
     def content(self, file_id):
@@ -860,7 +875,9 @@ class EnrichItemsBatchTests(unittest.TestCase):
         blocks = req["body"]["input"][0]["content"]
         image_blocks = [b for b in blocks if b.get("type") == "input_image"]
         self.assertEqual(len(image_blocks), 1)
-        self.assertEqual(image_blocks[0]["image_url"], "data:image/jpeg;base64,ZmFrZQ==")
+        self.assertEqual(
+            image_blocks[0]["image_url"], "data:image/jpeg;base64,ZmFrZQ=="
+        )
         self.assertEqual(items[0]["brand"], "DeWalt")
 
     def test_inline_image_fetch_failure_falls_back_to_text_only(self):
@@ -886,7 +903,9 @@ class EnrichItemsBatchTests(unittest.TestCase):
             enriched = enrich_items_batch(items, client=client, poll_interval=0)
         req = client.batches._requests[0]
         blocks = req["body"]["input"][0]["content"]
-        self.assertFalse([b for b in blocks if b.get("type") == "input_image"])  # text-only
+        self.assertFalse(
+            [b for b in blocks if b.get("type") == "input_image"]
+        )  # text-only
         self.assertEqual(enriched, 1)  # still enriched from the text
 
 
@@ -1000,7 +1019,9 @@ class NotesAndTextOnlyTests(unittest.TestCase):
             content = enrich.build_content(item)
         self.assertTrue(urls_img)  # had images by default
         self.assertNotEqual(fp_img, fp_text)  # distinct cache key
-        self.assertTrue(all(b["type"] == "input_text" for b in content))  # no image blocks
+        self.assertTrue(
+            all(b["type"] == "input_text" for b in content)
+        )  # no image blocks
 
 
 class LimitFlagTests(unittest.TestCase):
