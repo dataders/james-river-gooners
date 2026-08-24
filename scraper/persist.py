@@ -63,9 +63,12 @@ def write_read_model(items: list[dict], ctx: WriteContext) -> dict:
     ndjson_path = ITEMS_DIR / f"{ctx.safe_id}.ndjson"
 
     _stamp_auction_metadata(items, ctx)
+    # Insert the parent lot rows before enrichment is mirrored. New auctions
+    # otherwise hit lot_enrichment's FK because _enrich_items exports its rows
+    # before the corresponding lots exist.
+    _upsert_supabase_lots(items, ctx.safe_id)
     _enrich_items(items, ctx, ndjson_path)
     _write_ndjson(items, ndjson_path)
-    _upsert_supabase_lots(items, ctx.safe_id)
     _generate_embeddings(items, ctx)
     _write_parquet(items, items_path)
     _snapshot_motherduck(items, ctx)
@@ -98,7 +101,7 @@ def _stamp_auction_metadata(items: list[dict], ctx: WriteContext) -> None:
 def _enrich_items(items: list[dict], ctx: WriteContext, ndjson_path: Path) -> None:
     """LLM metadata enrichment (#99/#104) + Supabase mirror.
 
-    No-op unless GOONERS_ENRICHMENT=1 + ANTHROPIC_API_KEY are set, so default
+    No-op unless GOONERS_ENRICHMENT=1 + OPENAI_API_KEY are set, so default
     behavior is unchanged. Runs while images are still arrays. Hands prior
     enrichment to ``enrich_items`` so unchanged lots reuse it instead of
     re-paying for an identical API call (incremental enrichment).

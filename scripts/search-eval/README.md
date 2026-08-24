@@ -21,7 +21,7 @@ query can silently wreck another. The harness gives a single defensible number
 | `baseline.json` | the committed scores of the current config. **The line you defend.** |
 | `eval.mjs` | runs the search for each judged query and prints nDCG@10 / Recall@20 / MRR@10, diffing the baseline. |
 | `make-judger.mjs` | builds `judge.html` — a self-contained page to grade lots by hand (with photos). |
-| `judge.mjs` | optional: grade pools with an LLM judge (Claude Haiku) to scale labeling. Needs `ANTHROPIC_API_KEY`. |
+| `judge.mjs` | optional: grade pools with an LLM judge (GPT-5.6 Luna) to scale labeling. Needs `OPENAI_API_KEY`. |
 
 The corpus is the `eval_embeddings` Supabase table (migration `0013`) — a frozen
 snapshot of `nomic_embeddings`, decoupled from the live table that churns hourly,
@@ -69,7 +69,7 @@ judgments.jsonl**, and replace this folder's `judgments.jsonl`. Then re-baseline
 ### Judging with the LLM (to scale)
 
 ```bash
-ANTHROPIC_API_KEY=… node scripts/search-eval/judge.mjs --k 15
+OPENAI_API_KEY=… node scripts/search-eval/judge.mjs --k 15
 ```
 
 Validate the LLM's grades against a hand-labeled sample (aim for ≥80% agreement)

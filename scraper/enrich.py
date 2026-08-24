@@ -14,7 +14,7 @@ After a scrape, each lot has a title, a free-text description, a category, and a
 few image URLs — but the fields that actually make a good eBay sold-comp query
 (brand + model/SKU) are buried in prose or, for Cannon's "Other" lots, absent
 from the title entirely (it's a ``Lot - N`` placeholder; the detail lives in the
-description). This module asks Claude Haiku to read each lot (its text plus the
+description). This module asks GPT-5.6 Luna to read each lot (its text plus the
 first photo) and pull out structured resale metadata — brand, model_or_sku,
 condition, a canonical product_url, and a confidence — then writes those fields
 back onto the item dict so they persist to the NDJSON/Parquet read model
@@ -29,30 +29,28 @@ Two consumers:
     confidence.
 
 Graceful degradation is the whole point: enrichment runs only when opted in
-(``GOONERS_ENRICHMENT=1``) AND an ``ANTHROPIC_API_KEY`` is present AND the
-``anthropic`` SDK is importable. Miss any of those and ``enrich_items`` is a
+(``GOONERS_ENRICHMENT=1``) AND an ``OPENAI_API_KEY`` is present AND the
+``openai`` SDK is importable. Miss any of those and ``enrich_items`` is a
 silent no-op, so the scrape, the static site, and CI all behave exactly as
 before. API cost is negligible (a full ~500-lot Cannon's auction enriches for
-well under $0.10 on Haiku), but it's off by default so output quality can be
+low on Luna), but it's off by default so output quality can be
 validated before it becomes a standing cost on every scheduled scrape.
 
     python enrich.py <safe_id> [<safe_id> ...]            # backfill (synchronous)
-    python enrich.py --batch <safe_id> [<safe_id> ...]   # backfill via the Message
-        Batches API at 50% cost. Photos are inlined as base64 (needs ``requests``
-        + ``pillow``) rather than sent by URL — Anthropic fetching image URLs is
-        capped by an org-wide ~100 RPM URL Content Fetching limit that batches do
-        NOT lift, so a batch of URL images would mostly return rate_limit_error.
+    python enrich.py --batch <safe_id> [<safe_id> ...]   # backfill via OpenAI's
+        Batch API at 50% cost. Photos are inlined as base64 (needs ``requests``
+        + ``pillow``) so each batch request is self-contained.
         A batch can take up to 24h, so the live scrape path stays synchronous.
     python enrich.py --batch --all                        # every auction across the
         active AND archive read models. Named ids also resolve in either dir.
     python enrich.py --enrich 1 <safe_id>                 # set the GOONERS_ENRICHMENT
         gate via flag instead of exporting the env var (running the backfill *is*
         the intent to enrich). Bare ``--enrich`` means 1; ``--enrich 0`` forces the
-        no-op path. ``ANTHROPIC_API_KEY`` is still required.
+        no-op path. ``OPENAI_API_KEY`` is still required.
 
 Backfill spans active + archive, rewrites the NDJSON/Parquet read model, then
 mirrors the identified lots into the Supabase ``lot_enrichment`` table (a no-op
-without ``SUPABASE_SECRET_KEY``). For the batch path add ``--with anthropic
+without ``SUPABASE_SECRET_KEY``). For the batch path add ``--with openai
 --with requests --with pillow``.
 """
 
@@ -62,6 +60,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -126,10 +125,10 @@ BATCH_MAX_WAIT = float(24 * 3600)
 # identity extraction; 768px gave no measurable lift in testing.
 MAX_IMAGE_PX = 512
 IMAGE_FETCH_WORKERS = 16
-# Pre-flight cost estimation (--estimate-only). Haiku 4.5 list price per million
+# Pre-flight cost estimation (--estimate-only). GPT-5.6 Luna price per million
 # tokens; the Batches API is 50% off.
-PRICE_IN_PER_MTOK = 1.0
-PRICE_OUT_PER_MTOK = 5.0
+PRICE_IN_PER_MTOK = 0.20
+PRICE_OUT_PER_MTOK = 1.20
 ESTIMATE_SAMPLE = 30
 ESTIMATE_OUTPUT_TOKENS = 300
 
@@ -240,7 +239,7 @@ DETAIL_SUPERSET_KEYS = (
 # Rank for taking the max of the per-field confidences.
 _CONFIDENCE_RANK = {"": 0, "low": 1, "medium": 2, "high": 3}
 
-# Structured-output schema (json_schema). Haiku 4.5 supports structured outputs;
+# Structured-output schema (json_schema). Luna supports structured outputs;
 # enums keep condition/confidences/flags on the closed value sets above. Every
 # field is required and additionalProperties is false, so the response is always
 # parseable.
@@ -400,7 +399,7 @@ def is_enrichment_enabled() -> bool:
 
     Reads from EnrichmentSettings so "1"/"true"/"yes"/"on" all work (previously
     only "1" was accepted, silently treating GOONERS_ENRICHMENT=true as OFF)."""
-    return _EnrichmentSettings().enabled and bool(secrets.anthropic_key())
+    return _EnrichmentSettings().enabled and bool(secrets.openai_key())
 
 
 def _empty_enrichment() -> dict:
@@ -408,17 +407,17 @@ def _empty_enrichment() -> dict:
 
 
 def _make_client():
-    """Construct an Anthropic client, or None if the SDK isn't installed. Import
-    is local so importing this module never requires the `anthropic` package."""
+    """Construct an OpenAI client, or None if the SDK isn't installed. Import is
+    local so importing this module never requires the ``openai`` package."""
     try:
-        import anthropic
+        from openai import OpenAI
     except ImportError:
         print(
-            "  enrich: anthropic SDK not installed; skipping enrichment",
+            "  enrich: openai SDK not installed; skipping enrichment",
             file=sys.stderr,
         )
         return None
-    return anthropic.Anthropic(max_retries=MAX_RETRIES)
+    return OpenAI(max_retries=MAX_RETRIES)
 
 
 class _RateLimiter:
@@ -528,9 +527,7 @@ def build_content(item: dict) -> list:
     """The user-turn content: the first few photos plus the lot's identifying text.
 
     Photos are downloaded and inlined as base64 (like the batch path) rather than
-    sent as image URLs. Anthropic's URL fetcher can't reach some sources' image
-    hosts — HiBid returns ``400 'Unable to download the file'`` for every lot —
-    which silently dropped images from those lots' enrichment. Downloading locally
+    sent as image URLs. Downloading locally
     (our scraper session can fetch them) and inlining sidesteps that entirely;
     a lot whose images can't be fetched degrades to text-only via
     ``build_content_inline``."""
@@ -545,8 +542,7 @@ def build_content(item: dict) -> list:
 def fetch_image_base64(url: str) -> tuple[str, str] | None:
     """Download an image and return ``(media_type, base64_data)`` as a downscaled
     JPEG, or ``None`` on any failure (caller falls back to text-only). Used by the
-    batch path to inline images so Anthropic doesn't fetch the URL itself (which
-    would hit the org's URL Content Fetching rate limit)."""
+    batch path to keep each request self-contained."""
     if not url.startswith(("http://", "https://")):
         return None
     try:
@@ -572,42 +568,62 @@ def build_content_inline(item: dict, images: list[tuple[str, str]]) -> list:
     be fetched). The batch counterpart to ``build_content``."""
     content = [
         {
-            "type": "image",
-            "source": {"type": "base64", "media_type": media_type, "data": data},
+            "type": "input_image",
+            "image_url": f"data:{media_type};base64,{data}",
         }
         for media_type, data in images
     ]
-    content.append({"type": "text", "text": item_prompt_text(item)})
+    content.append({"type": "input_text", "text": item_prompt_text(item)})
     return content
 
 
 def build_request_params(item: dict, content: list | None = None) -> dict:
-    """The Messages API params for one lot. ``content`` defaults to the
+    """The Responses API params for one lot. ``content`` defaults to the
     synchronous-path content (``build_content``, which now also inlines images as
     base64); the batch path passes its own pre-fetched inlined-image content.
     Everything else is identical so both transports score the same."""
     return {
         "model": _EnrichmentSettings().model,
         # Room for the v4 fields (arrays + url); output tokens are tiny regardless.
-        "max_tokens": 512,
-        # Deterministic extraction — we want the same lot to score the same way.
-        "temperature": 0,
-        "system": SYSTEM_PROMPT,
-        "messages": [
+        "max_output_tokens": 900,
+        "reasoning": {"effort": "low"},
+        "instructions": SYSTEM_PROMPT,
+        "input": [
             {
                 "role": "user",
                 "content": content if content is not None else build_content(item),
             }
         ],
-        "output_config": {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "lot_enrichment",
+                "strict": True,
+                "schema": OUTPUT_SCHEMA,
+            }
+        },
     }
 
 
-def _response_text(content) -> str:
-    """The first text block's text from a message's content list, or ""."""
-    return next(
-        (block.text for block in content if getattr(block, "type", None) == "text"), ""
-    )
+def _response_text(response) -> str:
+    """Structured output text from an OpenAI Responses SDK object or dict."""
+    text = getattr(response, "output_text", None)
+    if text:
+        return text
+    output = getattr(response, "output", None)
+    if output is None and isinstance(response, dict):
+        output = response.get("output", [])
+    for item in output or []:
+        content = getattr(item, "content", None)
+        if content is None and isinstance(item, dict):
+            content = item.get("content", [])
+        for block in content or []:
+            kind = getattr(block, "type", None) or (
+                block.get("type") if isinstance(block, dict) else None
+            )
+            if kind == "output_text":
+                return getattr(block, "text", None) or block.get("text", "")
+    return ""
 
 
 def _valid_confidence(raw_value) -> str:
@@ -772,12 +788,12 @@ def _finalize_result(item: dict, result: dict) -> dict:
 
 
 def enrich_item(client, item: dict) -> dict:
-    """Call Claude for one lot and return its parsed enrichment. Raises on API
+    """Call OpenAI for one lot and return its parsed enrichment. Raises on API
     error — the caller isolates per-lot failures."""
     _limiter.acquire()
-    response = client.messages.create(**build_request_params(item))
+    response = client.responses.create(**build_request_params(item))
     result = _finalize_result(
-        item, parse_enrichment(json.loads(_response_text(response.content)))
+        item, parse_enrichment(json.loads(_response_text(response)))
     )
     # Stash usage for the run's cost ledger. These private keys are not in
     # ENRICHMENT_FIELDS, so apply_enrichment never copies them onto the item.
@@ -914,7 +930,7 @@ def enrich_items(
 
     This is the **synchronous** path — one throttled request per lot — suited to
     a live scrape where latency matters. For a large historical backfill, prefer
-    ``enrich_items_batch`` (Message Batches API: 50% cheaper, no rate-limit
+    ``enrich_items_batch`` (OpenAI Batch API: 50% cheaper, separate rate limits,
     thrashing, async)."""
     if not items:
         return 0
@@ -988,24 +1004,22 @@ def enrich_items(
 def _wait_for_batch(
     client, batch_id: str, poll_interval: float, max_wait: float
 ) -> str:
-    """Poll a Message Batch until it ends; return its final processing status
-    (``"ended"`` on success, or the last-seen status / ``"timed_out"`` if the
-    deadline passes first)."""
+    """Poll an OpenAI Batch until it reaches a terminal state."""
     deadline = time.monotonic() + max_wait
     while True:
-        batch = client.messages.batches.retrieve(batch_id)
-        status = getattr(batch, "processing_status", None)
-        if status == "ended":
-            return "ended"
+        batch = client.batches.retrieve(batch_id)
+        status = getattr(batch, "status", None)
+        if status in {"completed", "failed", "expired", "cancelled"}:
+            return status
         if time.monotonic() >= deadline:
             return status or "timed_out"
         counts = getattr(batch, "request_counts", None)
         if counts is not None:
             print(
                 f"    batch {batch_id}: {status} "
-                f"(processing={getattr(counts, 'processing', '?')}, "
-                f"succeeded={getattr(counts, 'succeeded', '?')}, "
-                f"errored={getattr(counts, 'errored', '?')})"
+                f"(completed={getattr(counts, 'completed', '?')}, "
+                f"failed={getattr(counts, 'failed', '?')}, "
+                f"total={getattr(counts, 'total', '?')})"
             )
         time.sleep(poll_interval)
 
@@ -1054,7 +1068,9 @@ def _build_batch_requests(
         requests.append(
             {
                 "custom_id": custom_id,
-                "params": build_request_params(item, content=content),
+                "method": "POST",
+                "url": "/v1/responses",
+                "body": build_request_params(item, content=content),
             }
         )
     return requests, by_custom_id
@@ -1067,12 +1083,29 @@ def _run_one_batch(
     max_wait: float,
     inline_images: bool,
 ) -> int:
-    """Submit one Message Batch for ``chunk`` and apply the results in place.
+    """Submit one OpenAI Batch for ``chunk`` and apply the results in place.
     Returns the count of lots that got any field populated."""
     model = _EnrichmentSettings().model
     requests, by_custom_id = _build_batch_requests(chunk, inline_images)
-    batch = client.messages.batches.create(requests=requests)
-    batch_id = getattr(batch, "id", None) or batch["id"]
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".jsonl", encoding="utf-8", delete=False
+        ) as handle:
+            temp_path = handle.name
+            for request in requests:
+                handle.write(json.dumps(request, separators=(",", ":")) + "\n")
+        with open(temp_path, "rb") as handle:
+            input_file = client.files.create(file=handle, purpose="batch")
+        batch = client.batches.create(
+            input_file_id=input_file.id,
+            endpoint="/v1/responses",
+            completion_window="24h",
+        )
+    finally:
+        if temp_path:
+            Path(temp_path).unlink(missing_ok=True)
+    batch_id = batch.id
     print(f"  enrich: submitted batch {batch_id} ({len(requests)} lots); polling…")
     _telemetry_capture(
         "enrich_batch_submitted",
@@ -1085,7 +1118,7 @@ def _run_one_batch(
     )
 
     status = _wait_for_batch(client, batch_id, poll_interval, max_wait)
-    if status != "ended":
+    if status != "completed":
         print(
             f"  enrich: batch {batch_id} did not finish (status={status}); skipping",
             file=sys.stderr,
@@ -1105,29 +1138,36 @@ def _run_one_batch(
     errored = 0
     input_tokens = 0
     output_tokens = 0
-    for result in client.messages.batches.results(batch_id):
-        custom_id = getattr(result, "custom_id", None)
+    batch = client.batches.retrieve(batch_id)
+    output_file_id = getattr(batch, "output_file_id", None)
+    if not output_file_id:
+        print(f"  enrich: batch {batch_id} has no output file", file=sys.stderr)
+        return 0
+    result_lines = client.files.content(output_file_id).text.splitlines()
+    for line in result_lines:
+        result = json.loads(line)
+        custom_id = result.get("custom_id")
         item = by_custom_id.get(custom_id) if isinstance(custom_id, str) else None
         if item is None:
             continue
-        outcome = result.result
-        outcome_type = getattr(outcome, "type", None)
-        if outcome_type != "succeeded":
+        response = result.get("response") or {}
+        if response.get("status_code") != 200:
             # errored / expired / canceled — leave the seeded empty fields and no
             # fingerprint, so the lot is retried on the next backfill (like sync).
             errored += 1
-            print(f"  enrich: batch lot {outcome_type}", file=sys.stderr)
+            print(
+                f"  enrich: batch lot HTTP {response.get('status_code')}",
+                file=sys.stderr,
+            )
             continue
-        usage = getattr(getattr(outcome, "message", None), "usage", None)
-        if usage is not None:
-            in_tok = getattr(usage, "input_tokens", 0)
-            out_tok = getattr(usage, "output_tokens", 0)
-            input_tokens += in_tok if isinstance(in_tok, int) else 0
-            output_tokens += out_tok if isinstance(out_tok, int) else 0
+        body = response.get("body") or {}
+        usage = body.get("usage") or {}
+        input_tokens += int(usage.get("input_tokens", 0) or 0)
+        output_tokens += int(usage.get("output_tokens", 0) or 0)
         try:
             applied = _finalize_result(
                 item,
-                parse_enrichment(json.loads(_response_text(outcome.message.content))),
+                parse_enrichment(json.loads(_response_text(body))),
             )
         except Exception:  # noqa: BLE001 — isolate per-lot failures
             print("  enrich: batch parse failed for one lot", file=sys.stderr)
@@ -1186,16 +1226,14 @@ def enrich_items_batch(
     max_wait: float = BATCH_MAX_WAIT,
     inline_images: bool = True,
 ) -> int:
-    """Enrich every lot in place via the **Message Batches API**; return the count
+    """Enrich every lot in place via the **OpenAI Batch API**; return the count
     that got any field populated.
 
     Same gating, seeding, and unchanged-lot reuse as ``enrich_items`` — the
     difference is transport: lots that need the API are submitted as async
     batches at 50% of the per-token cost. With ``inline_images`` (the default)
-    each photo is downloaded + downscaled and inlined as base64, so Anthropic
-    never fetches the URL itself — that avoids the org's URL Content Fetching
-    rate limit (~100 RPM), which a batch of URL images would otherwise blow
-    through. Inline batches are chunked by both ``GOONERS_ENRICHMENT_BATCH_INLINE_SIZE`` and
+    each photo is downloaded + downscaled and inlined as a data URL. Inline
+    batches are chunked by both ``GOONERS_ENRICHMENT_BATCH_INLINE_SIZE`` and
     ``GOONERS_ENRICHMENT_BATCH_MAX_BYTES`` (payload budget under the 256 MB hard limit);
     URL batches chunk by ``GOONERS_ENRICHMENT_BATCH_SIZE`` only.
 
@@ -1338,7 +1376,7 @@ def _backfill(
     the identified lots into Supabase.
 
     Spans the **active and archive** read models — ``--all`` covers every auction
-    in both; named ids resolve in either. ``use_batch`` uses the Message Batches
+    in both; named ids resolve in either. ``use_batch`` uses the OpenAI Batch
     API (50% cost); otherwise the synchronous path.
 
     Processing is **per auction, write-and-mirror as it goes** — each auction is
@@ -1350,7 +1388,7 @@ def _backfill(
     hook (a no-op without ``SUPABASE_SECRET_KEY``; warns rather than raising)."""
     if not is_enrichment_enabled():
         print(
-            "Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.",
+            "Enrichment disabled. Set GOONERS_ENRICHMENT=1 and OPENAI_API_KEY.",
             file=sys.stderr,
         )
         return 1
@@ -1423,10 +1461,12 @@ def estimate_enrichment_cost(
             params = build_request_params(
                 item, content=build_content_inline(item, images.get(id(item), []))
             )
-            ct = client.messages.count_tokens(
+            ct = client.responses.input_tokens.count(
                 model=params["model"],
-                system=params["system"],
-                messages=params["messages"],
+                instructions=params["instructions"],
+                input=params["input"],
+                reasoning=params["reasoning"],
+                text=params["text"],
             )
             counts.append(int(ct.input_tokens))
         except Exception as exc:  # noqa: BLE001 — estimate is best-effort
@@ -1472,7 +1512,7 @@ def _backfill_from_supabase(
     """
     if not is_enrichment_enabled():
         print(
-            "Enrichment disabled. Set GOONERS_ENRICHMENT=1 and ANTHROPIC_API_KEY.",
+            "Enrichment disabled. Set GOONERS_ENRICHMENT=1 and OPENAI_API_KEY.",
             file=sys.stderr,
         )
         return 1
@@ -1576,7 +1616,7 @@ def main(argv: list[str] | None = None) -> int:
     # --enrich [0|1] sets the GOONERS_ENRICHMENT gate in-process so a backfill
     # doesn't require exporting the env var first (running enrich.py *is* the
     # intent to enrich). Bare --enrich means 1; --enrich 0 forces the no-op path.
-    # ANTHROPIC_API_KEY is still required (see is_enrichment_enabled). Safe ids are
+    # OPENAI_API_KEY is still required (see is_enrichment_enabled). Safe ids are
     # never "0"/"1", so the value is unambiguous to consume.
     if "--enrich" in argv:
         i = argv.index("--enrich")

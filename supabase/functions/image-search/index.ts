@@ -4,11 +4,10 @@
 // Returns:   { brand, model, category, keywords, description, searchTerms, estimatedValue }
 //
 // Requires:
-//   ANTHROPIC_API_KEY  — set in Supabase Edge Function secrets
+//   OPENAI_API_KEY  — set in Supabase Edge Function secrets
 //   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY — auto-injected by Supabase
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.39'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +20,17 @@ const VALID_MIME_TYPES = new Set([
   'image/gif',
   'image/webp',
 ])
+
+function responseText(body: Record<string, unknown>): string {
+  const output = Array.isArray(body.output) ? body.output : []
+  for (const item of output as Array<Record<string, unknown>>) {
+    const content = Array.isArray(item.content) ? item.content : []
+    for (const block of content as Array<Record<string, unknown>>) {
+      if (block.type === 'output_text' && typeof block.text === 'string') return block.text
+    }
+  }
+  return ''
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -49,7 +59,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Image search is not configured (missing API key)' }), {
       status: 503,
@@ -78,16 +88,23 @@ Deno.serve(async (req) => {
 
   const safeMime = VALID_MIME_TYPES.has(mimeType) ? mimeType : 'image/jpeg'
 
-  const anthropic = new Anthropic({ apiKey })
-
-  const message = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 1024,
-    tools: [
-      {
-        name: 'identify_item',
-        description: 'Identify an auction item from a photo for resale research',
-        input_schema: {
+  const aiRes = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-5.6-luna',
+      max_output_tokens: 1024,
+      reasoning: { effort: 'low' },
+      instructions: 'You are an expert auction appraiser. Identify the photographed item for resale research. Be specific about visible brand and model, but never invent details.',
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'identify_item',
+          strict: true,
+          schema: {
           type: 'object',
           properties: {
             brand: {
@@ -121,40 +138,46 @@ Deno.serve(async (req) => {
             },
           },
           required: ['brand', 'model', 'category', 'keywords', 'description', 'searchTerms', 'estimatedValue'],
+          additionalProperties: false,
         },
       },
-    ],
-    tool_choice: { type: 'tool', name: 'identify_item' },
-    messages: [
+      },
+      input: [
       {
         role: 'user',
         content: [
           {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: safeMime as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: imageBase64,
-            },
+            type: 'input_image',
+            image_url: `data:${safeMime};base64,${imageBase64}`,
           },
           {
-            type: 'text',
+            type: 'input_text',
             text: 'You are an expert auction appraiser. Identify this item so a buyer can research its resale value. Be specific about brand and model when visible. Focus on what makes this useful for eBay or auction price research.',
           },
         ],
       },
-    ],
+      ],
+    }),
   })
 
-  const toolUse = message.content.find(block => block.type === 'tool_use')
-  if (!toolUse || toolUse.type !== 'tool_use') {
+  if (!aiRes.ok) {
+    console.error('OpenAI API error:', await aiRes.text())
+    return new Response(JSON.stringify({ error: 'AI service error' }), {
+      status: 502,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    })
+  }
+
+  const aiBody = await aiRes.json() as Record<string, unknown>
+  const text = responseText(aiBody)
+  if (!text) {
     return new Response(JSON.stringify({ error: 'Failed to identify item' }), {
       status: 500,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })
   }
 
-  return new Response(JSON.stringify(toolUse.input), {
+  return new Response(JSON.stringify(JSON.parse(text)), {
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
 })

@@ -549,9 +549,14 @@ def export_from_read_model(
     for path in paths:
         if path.exists():
             lots.extend(_iter_ndjson(path))
+    seen = build_seen_rows(lots)
+    seen_written = upsert_seen(seen, **kwargs)
     rows = build_enrichment_rows(lots)
     written = upsert_enrichment(rows, **kwargs)
-    print(f"Upserted {written} enrichment row(s) from {len(paths)} file(s)")
+    print(
+        f"Upserted {written} enrichment row(s) and {seen_written} processed-lot "
+        f"hash(es) from {len(paths)} file(s)"
+    )
     return written
 
 

@@ -1,7 +1,7 @@
 name: Enrich Backfill (LLM)
 
 # Manual, re-runnable LLM enrichment backfill (issue #104 / PR #195). Reads
-# lots from the Supabase ``lots`` table, enriches them via the Message Batches
+# lots from the Supabase ``lots`` table, enriches them via the OpenAI Batch
 # API (50% cost), and upserts results to ``lot_enrichment``. No NDJSON files
 # are read or written.
 #
@@ -9,7 +9,7 @@ name: Enrich Backfill (LLM)
 # ``lot_enrichment``, so a re-dispatch reuses already-enriched lots and only
 # spends on new/changed ones.
 #
-# Requires ANTHROPIC_API_KEY + VITE_SUPABASE_URL + SUPABASE_SECRET_KEY.
+# Requires OPENAI_API_KEY + VITE_SUPABASE_URL + SUPABASE_SECRET_KEY.
 
 on:
   workflow_dispatch:
@@ -41,13 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       GOONERS_ENRICHMENT: '1'
       # Server-side enrichment telemetry (scraper/telemetry.py): the batch
       # submitted/completed/failed events to PostHog. No-op without the key.
-      GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
+      GOONERS_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
     steps:
       - uses: actions/checkout@v7
 
@@ -61,8 +61,8 @@ jobs:
           GOONERS_ENRICH_LIMIT: ${{ inputs.limit }}
         run: |
           cd scraper
-          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-            echo "ANTHROPIC_API_KEY not set — cannot enrich"
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "OPENAI_API_KEY not set — cannot enrich"
             exit 1
           fi
           if [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
@@ -80,5 +80,5 @@ jobs:
             args+=(--limit "${GOONERS_ENRICH_LIMIT}")
           fi
           read -r -a safe_id_args <<< "${GOONERS_ENRICH_SAFE_IDS}"
-          uv run --with anthropic --with requests --with pillow \
+          uv run --with openai --with requests --with pillow \
             python enrich.py "${args[@]}" "${safe_id_args[@]}"

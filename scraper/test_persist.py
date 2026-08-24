@@ -112,6 +112,18 @@ class WriteReadModelTest(unittest.TestCase):
             items[0]["images"], json.dumps(["https://img/a.jpg", "https://img/b.jpg"])
         )
 
+    def test_upserts_parent_lots_before_exporting_enrichment(self):
+        calls = []
+        self.export_enrich.side_effect = lambda *args, **kwargs: calls.append("enrich")
+        with mock.patch.object(
+            persist,
+            "_upsert_supabase_lots",
+            side_effect=lambda *args, **kwargs: calls.append("lots"),
+        ):
+            write_read_model([_item()], _ctx(Path(self._tmp.name)))
+
+        self.assertEqual(calls, ["lots", "enrich"])
+
     def test_embeddings_invoked_for_every_source(self):
         """The whole point of the shared tail: HiBid/Rasmus no longer skip embeddings."""
         items = [_item()]

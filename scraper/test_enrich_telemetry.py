@@ -1,9 +1,9 @@
 """PostHog telemetry events emitted by enrich.py's batch + sync paths.
 
 Monkeypatches enrich._telemetry_capture (so no real PostHog client is built) and
-asserts the right events + property keys fire. Reuses the fake Anthropic clients
+asserts the right events + property keys fire. Reuses the fake OpenAI clients
 from test_enrich. Run:
-  uv run --with anthropic --with pytest python -m pytest scraper/test_enrich_telemetry.py -q
+  uv run --with openai --with pytest python -m pytest scraper/test_enrich_telemetry.py -q
 """
 
 import unittest
@@ -49,7 +49,7 @@ class EnrichTelemetryTests(unittest.TestCase):
         props = events["enrich_sync_completed"]
         self.assertEqual(props["lots"], 1)
         self.assertEqual(props["enriched"], 1)
-        self.assertEqual(props["model"], "claude-haiku-4-5")
+        self.assertEqual(props["model"], "gpt-5.6-luna")
 
     def test_batch_path_emits_submitted_and_completed(self):
         client = _FakeBatchClient(

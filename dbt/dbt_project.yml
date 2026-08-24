@@ -18,10 +18,10 @@ clean-targets:
 vars:
   min_sold_price: 1
 
-  # Anthropic cost estimation vars — override in profiles.yml or CLI.
-  # Pricing as of claude-haiku-4-5 (2025). Update when model changes.
-  anthropic_haiku_input_cost_per_1m: 0.80     # $ per 1M input tokens
-  anthropic_haiku_output_cost_per_1m: 4.00    # $ per 1M output tokens
+  # OpenAI cost estimation vars — override in profiles.yml or CLI.
+  # GPT-5.6 Luna standard pricing. Update when model changes.
+  openai_luna_input_cost_per_1m: 0.20         # $ per 1M input tokens
+  openai_luna_output_cost_per_1m: 1.20        # $ per 1M output tokens
   # Estimated token usage per enrichment call (title + description + image URL + system prompt)
   est_enrichment_input_tokens: 600
   est_enrichment_output_tokens: 80

@@ -1,5 +1,7 @@
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -19,7 +21,7 @@ ENRICHED_LOT = {
     "condition": "used",
     "productUrl": "https://www.sony.com/wh1000xm4",
     "enrichmentConfidence": "high",
-    "enrichmentModel": "claude-haiku-4-5",
+    "enrichmentModel": "gpt-5.6-luna",
     "images": ["https://img/a.jpg", "https://img/b.jpg"],
     "detailUrl": "https://example.test/item",
     "source": "cannons",
@@ -42,7 +44,7 @@ class EnrichmentRowTest(unittest.TestCase):
         self.assertEqual(row["brand"], "Sony")
         self.assertEqual(row["model_or_sku"], "WH-1000XM4")
         self.assertEqual(row["confidence"], "high")
-        self.assertEqual(row["model"], "claude-haiku-4-5")
+        self.assertEqual(row["model"], "gpt-5.6-luna")
         self.assertEqual(row["image_url"], "https://img/a.jpg")
 
     def test_below_display_bar_is_skipped(self):
@@ -141,7 +143,7 @@ class RecordEnrichRunTest(unittest.TestCase):
         n = supabase_enrichment.record_enrich_run(
             {
                 "mode": "batch",
-                "model": "claude-haiku-4-5",
+                "model": "gpt-5.6-luna",
                 "schema_version": "6",
                 "lots_submitted": 10,
                 "lots_enriched": 7,
@@ -406,6 +408,38 @@ class MaybeExportTest(unittest.TestCase):
             seen_rows, [{"auction_safe_id": "s", "item_id": "7", "input_hash": "h7"}]
         )
         enr.assert_not_called()  # nothing identified -> no lot_enrichment write
+
+
+class ExportFromReadModelTest(unittest.TestCase):
+    def test_replays_identified_rows_and_processed_hash_cache(self):
+        identified = dict(ENRICHED_LOT, enrichmentInputHash="identified-hash")
+        unidentified = {
+            "auctionSafeId": "safe1",
+            "id": 43,
+            "enrichmentConfidence": "low",
+            "enrichmentInputHash": "unidentified-hash",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "safe1.ndjson"
+            path.write_text(
+                "\n".join(json.dumps(row) for row in (identified, unidentified)),
+                encoding="utf-8",
+            )
+            with (
+                patch.object(
+                    supabase_enrichment, "upsert_seen", return_value=2
+                ) as seen,
+                patch.object(
+                    supabase_enrichment, "upsert_enrichment", return_value=1
+                ) as enrichment,
+            ):
+                written = supabase_enrichment.export_from_read_model(
+                    ["safe1"], items_dir=Path(tmp)
+                )
+
+        self.assertEqual(written, 1)
+        self.assertEqual(len(seen.call_args.args[0]), 2)
+        self.assertEqual(len(enrichment.call_args.args[0]), 1)
 
 
 if __name__ == "__main__":

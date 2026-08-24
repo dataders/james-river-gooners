@@ -106,6 +106,12 @@ GOONERS_MOTHERDUCK_SNAPSHOTS=1 uv run --with 'duckdb==1.5.2' \
 GOONERS_NOMIC_EMBEDDINGS=1 uv run --with sentence-transformers --with 'transformers==4.49.0' \
   --with torchvision --with pillow --with einops \
   scrape.py "<full_auction_url>"
+
+# Resumable local backfill of active + archived Supabase lots. Automatically
+# uses CUDA, Apple Silicon MPS, or CPU. Add safeIds after --archive for a shard.
+GOONERS_NOMIC_EMBEDDINGS=1 uv run --with sentence-transformers --with 'transformers==4.49.0' \
+  --with torchvision --with pillow --with einops --with numpy --with requests \
+  embed_nomic.py --from-supabase --archive
 ```
 
 ---

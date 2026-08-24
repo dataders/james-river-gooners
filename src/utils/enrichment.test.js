@@ -146,7 +146,7 @@ test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
     condition: 'used',
     product_url: 'https://delta.com/36-220c',
     confidence: 'high',
-    model: 'claude-haiku-4-5',
+    model: 'gpt-5.6-luna',
   })
   assert.deepEqual(out, {
     brand: 'Delta',
@@ -164,7 +164,7 @@ test('mapEnrichmentRow maps snake_case view columns to the item shape', () => {
     details: '',
     detailConfidence: '',
     enrichmentConfidence: 'high',
-    enrichmentModel: 'claude-haiku-4-5',
+    enrichmentModel: 'gpt-5.6-luna',
   })
   // The mapped shape feeds getDisplayEnrichment unchanged.
   assert.equal(getDisplayEnrichment(out).label, 'Delta 36-220C')

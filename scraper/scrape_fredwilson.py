@@ -50,6 +50,13 @@ _CITY_IN_TEXT_RE = re.compile(
     r"(?:located\s+in|in|at)\s+([A-Za-z][A-Za-z ]{1,30}),\s*([A-Z]{2})\b",
     re.IGNORECASE,
 )
+# Some Fred Wilson tag lines omit the state (for example, "Located in Newport
+# News"). The company only operates in Virginia, so this narrow tag-line-only
+# fallback can safely supply VA without making description parsing permissive.
+_CITY_ONLY_TAG_LINE_RE = re.compile(
+    r"^\s*located\s+in\s+([A-Za-z][A-Za-z ]{1,30})\s*$",
+    re.IGNORECASE,
+)
 
 # Skip "How to bid", "Payment instructions", etc. info-only lots
 _INFO_LOT_RE = re.compile(
@@ -106,6 +113,10 @@ def _city_from_auction(auction: dict) -> tuple[str, str]:
         m = _CITY_IN_TEXT_RE.search(text)
         if m:
             return m.group(1).strip().title(), m.group(2).upper()
+        if field == "tag_line":
+            m = _CITY_ONLY_TAG_LINE_RE.match(text)
+            if m:
+                return m.group(1).strip().title(), "VA"
 
     return "", "VA"
 

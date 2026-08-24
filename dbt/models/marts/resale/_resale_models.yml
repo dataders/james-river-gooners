@@ -23,7 +23,7 @@ models:
   - name: fct_enrichment_coverage
     description: >
       LLM enrichment coverage per auction. Tracks what fraction of lots were
-      identified by Claude Haiku, at what confidence, and which model version
+      identified by GPT-5.6 Luna, at what confidence, and which model version
       was used (for model migration tracking).
     columns:
       - name: auction_safe_id

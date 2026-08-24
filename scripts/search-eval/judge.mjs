@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate relevance judgments with an LLM judge (Claude Haiku).
+ * Generate relevance judgments with an LLM judge (GPT-5.6 Luna).
  *
  * For each query it pools the top-K from the current search config (the path we
  * want to measure) PLUS any hand-seeded known-relevant lots (so recall misses
@@ -9,7 +9,7 @@
  * Writes judgments.jsonl. Validate the output against a hand-labeled sample
  * before trusting it (see README); humans remain the final arbiter.
  *
- *   ANTHROPIC_API_KEY=… SUPABASE_URL=… VITE_SUPABASE_PUBLISHABLE_KEY=… \
+ *   OPENAI_API_KEY=… SUPABASE_URL=… VITE_SUPABASE_PUBLISHABLE_KEY=… \
  *     node scripts/search-eval/judge.mjs [--k 15]
  */
 import { pipeline, env } from '@huggingface/transformers'
@@ -22,12 +22,12 @@ const DIR = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(DIR, '../..')
 const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
 const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_SECRET_KEY
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY
-const MODEL = 'claude-haiku-4-5'
+const OPENAI_KEY = process.env.OPENAI_API_KEY
+const MODEL = 'gpt-5.6-luna'
 const K = process.argv.includes('--k') ? Number(process.argv[process.argv.indexOf('--k') + 1]) : 15
 
-if (!SUPABASE_URL || !SUPABASE_KEY || !ANTHROPIC_KEY) {
-  console.error('Need SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, ANTHROPIC_API_KEY.')
+if (!SUPABASE_URL || !SUPABASE_KEY || !OPENAI_KEY) {
+  console.error('Need SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, OPENAI_API_KEY.')
   process.exit(2)
 }
 
@@ -82,13 +82,16 @@ Grade how well this lot matches what the searcher wants:
 0 = not relevant
 
 Reply with ONLY the single digit 0, 1, or 2.`
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
-    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 5, messages: [{ role: 'user', content: prompt }] }),
+    headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, max_output_tokens: 16, reasoning: { effort: 'low' }, input: prompt }),
   })
-  if (!resp.ok) throw new Error(`anthropic ${resp.status}: ${await resp.text()}`)
-  const txt = (await resp.json()).content[0].text.trim()
+  if (!resp.ok) throw new Error(`openai ${resp.status}: ${await resp.text()}`)
+  const body = await resp.json()
+  const txt = (body.output || [])
+    .flatMap(item => item.content || [])
+    .find(block => block.type === 'output_text')?.text?.trim() || ''
   const m = txt.match(/[012]/)
   return m ? Number(m[0]) : 0
 }
