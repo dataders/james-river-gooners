@@ -63,9 +63,12 @@ def write_read_model(items: list[dict], ctx: WriteContext) -> dict:
     ndjson_path = ITEMS_DIR / f"{ctx.safe_id}.ndjson"
 
     _stamp_auction_metadata(items, ctx)
+    # Insert the parent lot rows before enrichment is mirrored. New auctions
+    # otherwise hit lot_enrichment's FK because _enrich_items exports its rows
+    # before the corresponding lots exist.
+    _upsert_supabase_lots(items, ctx.safe_id)
     _enrich_items(items, ctx, ndjson_path)
     _write_ndjson(items, ndjson_path)
-    _upsert_supabase_lots(items, ctx.safe_id)
     _generate_embeddings(items, ctx)
     _write_parquet(items, items_path)
     _snapshot_motherduck(items, ctx)

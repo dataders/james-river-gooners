@@ -113,11 +113,36 @@ jobs:
             --with 'pydantic-settings>=2,<3' \
             python rescrape_all.py --source hibid
 
+      - name: Scrape Rasmus auctions
+        id: scrape_rasmus
+        if: ${{ !inputs.auction_url }}
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          cd scraper
+          uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+            --with openai --with pillow \
+            --with 'pydantic-settings>=2,<3' \
+            python rescrape_all.py --source rasmus
+
+      - name: Scrape Fred Wilson auctions
+        id: scrape_fredwilson
+        if: ${{ !inputs.auction_url }}
+        continue-on-error: true
+        timeout-minutes: 45
+        run: |
+          cd scraper
+          uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+            --with openai --with pillow \
+            --with 'pydantic-settings>=2,<3' \
+            python rescrape_all.py --source fredwilson
+
       - name: Archive closed auctions and rebuild manifests
         if: ${{ !inputs.auction_url }}
         run: |
           cd scraper
           uv run --with requests --with beautifulsoup4 --with pyarrow --with pyyaml \
+            --with 'pydantic-settings>=2,<3' \
             python rescrape_all.py --archive-only
 
       - name: Install agent-browser Playwright deps
@@ -176,4 +201,10 @@ jobs:
         if: ${{ steps.scrape_maxanet.outcome == 'failure' }}
         run: |
           echo "Cannon's (Maxanet) scrape failed — see 'Scrape Cannon's' step above for details."
+          exit 1
+
+      - name: Fail if additional source scrapes errored
+        if: ${{ steps.scrape_rasmus.outcome == 'failure' || steps.scrape_fredwilson.outcome == 'failure' }}
+        run: |
+          echo "Rasmus or Fred Wilson scrape failed — see the source step above for details."
           exit 1

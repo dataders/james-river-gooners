@@ -1,5 +1,7 @@
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -406,6 +408,38 @@ class MaybeExportTest(unittest.TestCase):
             seen_rows, [{"auction_safe_id": "s", "item_id": "7", "input_hash": "h7"}]
         )
         enr.assert_not_called()  # nothing identified -> no lot_enrichment write
+
+
+class ExportFromReadModelTest(unittest.TestCase):
+    def test_replays_identified_rows_and_processed_hash_cache(self):
+        identified = dict(ENRICHED_LOT, enrichmentInputHash="identified-hash")
+        unidentified = {
+            "auctionSafeId": "safe1",
+            "id": 43,
+            "enrichmentConfidence": "low",
+            "enrichmentInputHash": "unidentified-hash",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "safe1.ndjson"
+            path.write_text(
+                "\n".join(json.dumps(row) for row in (identified, unidentified)),
+                encoding="utf-8",
+            )
+            with (
+                patch.object(
+                    supabase_enrichment, "upsert_seen", return_value=2
+                ) as seen,
+                patch.object(
+                    supabase_enrichment, "upsert_enrichment", return_value=1
+                ) as enrichment,
+            ):
+                written = supabase_enrichment.export_from_read_model(
+                    ["safe1"], items_dir=Path(tmp)
+                )
+
+        self.assertEqual(written, 1)
+        self.assertEqual(len(seen.call_args.args[0]), 2)
+        self.assertEqual(len(enrichment.call_args.args[0]), 1)
 
 
 if __name__ == "__main__":

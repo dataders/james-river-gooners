@@ -59,7 +59,7 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           # Server-side telemetry (scraper/telemetry.py): the cannons_comps_completed
           # run summary to PostHog. No-op without the key.
-          GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
+          GOONERS_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
         run: |
           cd scraper
           args=(--from-supabase)

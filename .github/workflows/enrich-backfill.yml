@@ -47,7 +47,7 @@ jobs:
       GOONERS_ENRICHMENT: '1'
       # Server-side enrichment telemetry (scraper/telemetry.py): the batch
       # submitted/completed/failed events to PostHog. No-op without the key.
-      GOONERS_POSTHOG_KEY: ${{ secrets.GOONERS_POSTHOG_KEY }}
+      GOONERS_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
     steps:
       - uses: actions/checkout@v7
 
