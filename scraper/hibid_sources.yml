@@ -45,6 +45,7 @@ companies:
       - 767780   # September 6th, 2026 Weekly Stamp Auction
       - 769909   # September 13th, 2026 Weekly Stamp Auction
       - 771258   # September 20th, 2026 Weekly Stamp Auction
+      - 773768   # September 27th, 2026 Weekly Stamp Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -61,6 +62,7 @@ companies:
       - 753911   # Video Game Auction! Gamecube, Wii, PS1 & More
       - 755734   # Sports Card Auction! Vintage, Modern, Graded & Mor
       - 758772   # 3rd Annual Vinyl Record, Music & Media Rarities Au
+      - 773543   # Throwback & Collectibles! Toys,Gaming, Sports Card
   - id: 78672
     slug: peoples_auction
     name: "Peoples Auction"
