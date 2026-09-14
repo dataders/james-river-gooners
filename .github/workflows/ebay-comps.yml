@@ -90,7 +90,7 @@ jobs:
           cd scraper
           uv run --with requests python backfill_comps_to_supabase.py
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: ${{ ! inputs.backfill_from_json }}
         with:
           node-version: '20'
