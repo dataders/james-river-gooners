@@ -53,6 +53,8 @@ companies:
       - 779468   # October 18th, 2026 Coin and Currency Auction
       - 779574   # October 18th, 2026 Stamps & Postal History Auction
       - 781416   # October 25th, 2026 Weekly Stamp Auction
+      - 783440   # November 1st, 2026 Weekly Stamp Auction
+      - 783451   # November 1st, 2026 Coin and Paper Money Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -70,6 +72,7 @@ companies:
       - 755734   # Sports Card Auction! Vintage, Modern, Graded & Mor
       - 758772   # 3rd Annual Vinyl Record, Music & Media Rarities Au
       - 773543   # Throwback & Collectibles! Toys,Gaming, Sports Card
+      - 783273   # Collectibles! Gaming, Star Wars, Disney,Sports Car
   - id: 78672
     slug: peoples_auction
     name: "Peoples Auction"
@@ -89,6 +92,7 @@ companies:
       - 771285  # 8/27/26 EVEN MORE! PG Extravaganza Auction
       - 780573  # 10/1/26 Part 4 Prince George Extravaganza Auction
       - 781752  # 10/4/26 2013 Ford Explorer XLT SUV NO RESERVE
+      - 783441  # 10/16/26 Fabulous Genito West Moseley Auction
   - id: 132962
     slug: patriot-auction-company
     name: "Patriot Auction Company"
