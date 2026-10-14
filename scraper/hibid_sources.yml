@@ -132,3 +132,4 @@ companies:
     # catalog_ids: find on hibid.com/company/149734 — look for /catalog/NNNNNN/ in auction links
     catalog_ids:
       - 746879  # Lorak Deals LLC
+      - 785990  # Lorak Deals LLC
