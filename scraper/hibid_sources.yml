@@ -61,6 +61,7 @@ companies:
       - 787843   # November 15th, 2026 Coin Auction
       - 789526   # November 22nd, 2026 Weekly Stamp Auction
       - 791497   # December 6th, 2026 Coins & Currency Auction
+      - 792811   # November 29th, 2026 Weekly Stamp Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -134,6 +135,7 @@ companies:
       - 789150   # Amelia Surplus Online Auction #7
       - 790992   # Amelia Surplus Online Auction #8
       - 792537   # Amelia Vintage and Antiques Gallery Auction
+      - 792938   # Amelia Surplus Online Auction #9
   - id: 149734
     slug: lorak-deals-llc
     name: "Lorak Deals LLC"
