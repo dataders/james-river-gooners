@@ -104,6 +104,7 @@ companies:
       - 781752  # 10/4/26 2013 Ford Explorer XLT SUV NO RESERVE
       - 783441  # 10/16/26 Fabulous Genito West Moseley Auction
       - 787627  # 10/28/26 Prince George Rock N Roll Palooza Auction
+      - 794945  # 11/20/26 Eclectic Norfolk Estate-Pt 1 The Vehicles
   - id: 132962
     slug: patriot-auction-company
     name: "Patriot Auction Company"
@@ -139,6 +140,7 @@ companies:
       - 790992   # Amelia Surplus Online Auction #8
       - 792537   # Amelia Vintage and Antiques Gallery Auction
       - 792938   # Amelia Surplus Online Auction #9
+      - 795006   # Amelia Surplus Online Auction #10
   - id: 149734
     slug: lorak-deals-llc
     name: "Lorak Deals LLC"
