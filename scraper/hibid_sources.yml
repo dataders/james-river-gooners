@@ -65,6 +65,7 @@ companies:
       - 793517   # December 5th, 2026 Sports Card and Comics Auction
       - 793726   # December 6th, 2026 Weekly Stamp Auction
       - 795450   # December 13th, 2026 Stamps & Postal History Auctio
+      - 795849   # December 13th, 2026 Coins & Paper Money Auction
     closed_catalog_ids:
       - 739431   # Jun 6 Sports Card & Comics
       - 739720   # Jun 7 Weekly Stamp
@@ -106,6 +107,7 @@ companies:
       - 783441  # 10/16/26 Fabulous Genito West Moseley Auction
       - 787627  # 10/28/26 Prince George Rock N Roll Palooza Auction
       - 794945  # 11/20/26 Eclectic Norfolk Estate-Pt 1 The Vehicles
+      - 796061  # Coming Soon-Eclectic Norfolk Estate - The Records
   - id: 132962
     slug: patriot-auction-company
     name: "Patriot Auction Company"
